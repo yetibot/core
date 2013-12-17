@@ -1,14 +1,14 @@
 # yetibot-core
 
-A Clojure library designed to ... well, that part is up to you.
+Core yetibot utilities, extracted for shared use among yetibot and its various
+plugins.
 
-## Usage
+## Docs
 
-FIXME
+- [Load Order](Load Order)
 
 ## License
 
-Copyright © 2013 FIXME
+Copyright © 2013 Trevor C. Hartman
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Distributed under the Eclipse Public License version 1.0.
