@@ -2,12 +2,15 @@
   "Config is stored in an edn file. The config data structure maps to the
    namespaces of the code that depends on the config."
   (:require
+    [clojure.java.io :refer [as-file]]
     [taoensso.timbre :refer [info warn error]]
     [clojure.pprint :refer [pprint]]
     [clojure.edn :as edn]
     [clojure.string :refer [blank? split]]))
 
 (def config-path "config/config.edn")
+
+(defn config-exists? [] (.exists (as-file config-path)))
 
 (defonce ^:private config (atom nil))
 
@@ -31,7 +34,9 @@
     (get-in @config path)))
 
 (defn write-config []
-  (spit config-path (with-out-str (pprint @config))))
+  (if (config-exists?)
+    (spit config-path (with-out-str (pprint @config)))
+    (warn config-path "file doesn't exist, skipped write")))
 
 (defn update-config
   "Update the config data structure and write it to disk."

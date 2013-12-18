@@ -17,7 +17,8 @@
   (is (not (nil? (get-config :yetibot)))))
 
 (deftest test-update-config
-  (update-config :yetibot :foo :bar "baz")
-  (is (= "baz" (get-config :yetibot :foo :bar)))
-  (reload-config)
-  (is (= "baz" (get-config :yetibot :foo :bar))))
+  (when (config-exists?)
+    (update-config :yetibot :foo :bar "baz")
+    (is (= "baz" (get-config :yetibot :foo :bar)))
+    (reload-config)
+    (is (= "baz" (get-config :yetibot :foo :bar)))))
