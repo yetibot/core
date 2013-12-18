@@ -5,7 +5,7 @@ plugins.
 
 ## Docs
 
-- [Load Order](Load Order)
+- [Load Order](doc/load_order.md)
 
 ## License
 
