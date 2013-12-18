@@ -5,6 +5,8 @@ plugins. yetibot.core is not meant to be run standalone, but instead used as a
 dependency from another project that provides config and optionally other
 yetibot plugins, private or public.
 
+[![Build Status](https://travis-ci.org/devth/yetibot.core.png?branch=master)](https://travis-ci.org/devth/yetibot.core)
+
 ```
 [yetibot.core "0.1.0"]
 ```
