@@ -5,7 +5,7 @@
 
 (deftest grep-data-structure-test
   (is (= (grep-data-structure #"bar" [["foo" 1] ["bar" 2]])
-         [[["bar" 2]]])))
+         '("bar" 2))))
 
 (deftest slide-context-test
   (is (= (slide-context (range 10) 3 2)
@@ -28,17 +28,17 @@
            #"yes"
            '("devth: foo" "devth: yes" "devth: bar" "devth: lol" "devth: ok" "devth: baz" "devth: !history | grep -C 2 yes")
            {:context 2})
-         [["devth: foo" "devth: yes" "devth: bar" "devth: lol"] ["devth: ok" "devth: baz" "devth: !history | grep -C 2 yes"]]))
+         '("devth: foo" "devth: yes" "devth: bar" "devth: lol" "devth: ok" "devth: baz" "devth: !history | grep -C 2 yes")))
   (is (= (grep-data-structure
            #"foo"
            ["bar" "lol" "foo" "baz" "qux"]
            {:context 1})
-         [["lol" "foo" "baz"]])))
+         '("lol" "foo" "baz"))))
 
 (deftest grep-cmd-test
   (is (= (grep-cmd {:args "foo"
                     :opts ["foo" "bar"]})
-         [["foo"]]))
+         '("foo")))
   (is (= (grep-cmd {:match (re-find #"-C\s+(\d+)\s+(.+)" "-C 1 baz")
                     :opts ["foo" "bar" "baz"]})
-         [["bar" "baz"]])))
+         '("bar" "baz"))))

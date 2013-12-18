@@ -210,7 +210,7 @@
                     (cond
                       (string? i) (finder i)
                       (coll? i) (some finder (map str (flatten i)))))]
-    (sliding-filter context-count filter-fn d)))
+    (flatten (sliding-filter context-count filter-fn d))))
 
 (defn grep-cmd
   "grep <pattern> <list> # filters the items in <list> by <pattern>
