@@ -8,7 +8,7 @@ yetibot plugins, private or public.
 [![Build Status](https://travis-ci.org/devth/yetibot.core.png?branch=master)](https://travis-ci.org/devth/yetibot.core)
 
 ```
-[yetibot.core "0.1.0"]
+[yetibot.core "0.1.1"]
 ```
 
 The main yetibot commands live at:
