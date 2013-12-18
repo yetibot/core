@@ -3,6 +3,13 @@
 Core yetibot utilities, extracted for shared use among yetibot and its various
 plugins.
 
+```
+[yetibot.core "0.1.0"]
+```
+
+The main yetibot commands live at:
+https://github.com/devth/yetibot
+
 ## Docs
 
 - [Load Order](doc/load_order.md)
