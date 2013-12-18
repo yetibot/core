@@ -46,7 +46,7 @@
 
                  ; email
                  [com.draines/postal "1.9.0"]
-                 [clojure-mail "0.1.3-SNAPSHOT"]
+                 [clojure-mail "0.1.4"]
 
                  ; chat protocols
                  [clj-campfire "2.2.0"]
