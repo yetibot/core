@@ -1,9 +1,11 @@
 (defproject yetibot.core "0.1.0-SNAPSHOT"
-  :description "Core yetibot utilities, extracted for shared use among yetibot and its various plugins"
-  :url "https://github.com/devth/yetibot-core"
+  :description "Core yetibot utilities, extracted for shared use among yetibot
+                and its various plugins"
+  :url "https://github.com/devth/yetibot.core"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :resource-paths ["config"]
+  :aot [yetibot.core.init]
   :main yetibot.core.init
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/data.json "0.1.2"]
