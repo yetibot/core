@@ -17,6 +17,10 @@ All database schemas should live in `db` namespaces:
 The `yetibot.core.db` namespace will map over these, building up their
 `schema`s if available.
 
+## logging
+
+`start` fn is called on `yetibot.core.logging` to initialize its database-appender.
+
 ## chat adapters
 
 Chat adapters are loaded next. Their `start` functions are called, which
@@ -24,5 +28,5 @@ connects to the chat protocol and bootstraps its users into the `users` model.
 
 ## observers and commands
 
-Observers and commands are loaded next. These typically `require` models and api
+Finally, observers and commands are loaded. These typically `require` models and api
 namespaces, which may make network or database calls to bootstrap data.
