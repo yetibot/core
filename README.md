@@ -15,6 +15,7 @@ https://github.com/devth/yetibot
 ## Docs
 
 - [Load Order](doc/load_order.md)
+- [Yetibot project README](https://github.com/devth/yetibot)
 
 ## License
 
