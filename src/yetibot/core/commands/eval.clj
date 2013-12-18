@@ -1,5 +1,7 @@
 (ns yetibot.core.commands.eval
   (:require
+    [clojure.repl :refer :all]
+    [clojure.pprint :refer [pprint]]
     [yetibot.core.config :refer [config-for-ns]]
     [yetibot.core.hooks :refer [cmd-hook]]
     [clojure.string :refer [split]]))
