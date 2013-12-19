@@ -11,7 +11,6 @@
     [yetibot.core.adapters.irc :as irc]))
 
 (defn welcome-message []
-  (println (str "Welcome to YetiBot " version))
   (println logo))
 
 (defn -main [& args]
