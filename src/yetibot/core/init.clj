@@ -6,7 +6,6 @@
     [yetibot.core.loader :refer [load-commands-and-observers]]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [yetibot.core.logo :refer [logo]]
-    [yetibot.core.version :refer [version]]
     [yetibot.core.adapters.campfire :as cf]
     [yetibot.core.adapters.irc :as irc]))
 
