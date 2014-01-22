@@ -14,6 +14,29 @@ yetibot plugins, private or public.
 The main yetibot commands live at:
 https://github.com/devth/yetibot
 
+
+## Usage
+
+You can depend on this library to build your own yetibot plugins.
+Building your own commands is dead simple. Here's an example command that
+adds two numbers:
+
+```clojure
+(ns mycompany.plugins.commands.add
+  (:require [yetibot.core.hooks :refer [cmd-hook]]))
+
+(defn add-cmd
+  "add <number1> <number2> # Add two numbers"
+  [{[_ n1 n2] :match}] (+ (read-string n1) (read-string n2)))
+
+(cmd-hook #"add" ; command prefix
+          #"(\d+)\s+(\d+)" add-cmd)
+```
+
+See yetibot's own [commands](https://github.com/devth/yetibot/tree/master/src/yetibot/commands)
+for more complex and diverse examples.
+
+
 ## Docs
 
 - [Load Order](doc/load_order.md)
