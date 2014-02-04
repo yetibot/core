@@ -121,9 +121,9 @@
 
 ; split
 (defn split
-  "split <string> # split string by provided character"
-  [{[_ split-str to-split] :match}]
-  (let [split-by (re-pattern split-str)]
+  "split <pattern> <string> # split string with <pattern>"
+  [{[_ split-by-str to-split] :match}]
+  (let [split-by (re-pattern split-by-str)]
     (s/split to-split split-by)))
 
 (cmd-hook #"split"
