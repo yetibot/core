@@ -28,6 +28,6 @@
             (s/join \newline section))))
 
 (cmd-hook #"help"
-          #"all" help-all-cmd
+          #"^all$" help-all-cmd
           #"^$" help-topics
           #"^\S+$" help-for-topic)
