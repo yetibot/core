@@ -81,7 +81,7 @@
                    [(condp = k#
                       '_ #".*"
                       k#)
-                    (resolve v#)])
+                    v#])
                  cmd-pairs))))
 
 (defn obs-hook
