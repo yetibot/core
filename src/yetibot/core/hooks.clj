@@ -17,69 +17,72 @@
   [data-structure]
   (with-meta data-structure {:suppress true}))
 
-(defn cmd-unhook [topic]
-  (help/remove-docs topic)
-  (rh/remove-hook #'handle-cmd topic))
+; Stores the mapping of prefix-regex -> sub-commands.
+(defonce hooks (atom {}))
 
-(defmacro cmd-hook [prefix & exprs]
-  ; let consumer pass [topic regex] as prefix arg when a (str regex) isn't enough
+(defonce prefix->topic (atom {}))
+
+(defn find-sub-cmds
+  "Matches prefix against command regexes in `hooks.`"
+  [prefix]
+  (first (filter (fn [[k v]] (re-find k prefix)) @hooks)))
+
+(defn cmd-unhook
+  "Removes the sub-commands for a prefix / topic."
+  [topic]
+  (help/remove-docs topic)
+  (swap! hooks dissoc topic))
+
+(defn handle-with-hooked-cmds
+  "Looks up the set of possible commands by matching the first word against
+   prefixes stored in `hooks`. If it finds a match, it then matches against
+   sub-commands and defaults to help if no sub-commands match.
+   If unable to match prefix, it calls the callback, letting `handle-cmd`
+   implement its own default behavior."
+  [callback cmd-with-args {:keys [chat-source user opts] :as extra}]
+  (let [[cmd args] (s/split cmd-with-args #"\s+" 2)
+        args (or args "")] ; make it an empty string if no args
+    (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
+      ; Now try to find a matching sub-commands
+      (let [cmd-pairs (partition 2 sub-cmds)]
+        (info "found" cmd-re "on cmd" cmd "args:" args)
+        (if-let [[match sub-fn] (some (fn [[sub-re sub-fn]]
+                                        (info "some?" sub-re args)
+                                        (when-let [match (re-find sub-re args)]
+                                          [match sub-fn])) cmd-pairs)]
+          (sub-fn (merge extra {:cmd cmd :args args :match match}))
+          ; couldn't find any sub commands so default to help.
+          (yetibot.core.handler/handle-unparsed-expr (str "help " (get @prefix->topic cmd-re)))))
+      (callback cmd-with-args extra))))
+
+; Hook the actual handle-cmd called during interpretation.
+(rh/add-hook #'handle-cmd #'handle-with-hooked-cmds)
+
+(defn cmd-hook-resolved
+  "Expects fully resolved syntax where as plain cmd-hook can take normally
+   unresolved symbols like _ and translate them into '_"
+  [prefix & cmds]
   (let [[topic prefix] (if (vector? prefix) prefix [(str prefix) prefix])
-        callback (gensym "callback")
-        cmd-with-args (gensym "cmd-with-args")
-        cmd (gensym "cmd")
-        args (gensym "args")
-        user (gensym "user")
-        opts (gensym "opts")
-        match (gensym "match")
-        chat-source (gensym "chat-source")
-        extra (gensym "extra")]
-    `(do
-       (rh/add-hook
-         #'handle-cmd
-         ~topic ; use topic string as the hook-key to enable removing/re-adding
-         ; (fn [~callback ~cmd ~args ~user ~opts])
-         (fn [~callback ~cmd-with-args {~chat-source :chat-source
-                                        ~user :user
-                                        ~opts :opts
-                                        :as ~extra}]
-           (let [[~cmd & ~args] (s/split ~cmd-with-args #"\s+")
-                 ~args (s/join " " ~args)]
-             ; only match against the first word in ~args
-             (if (re-find ~prefix (s/lower-case ~cmd))
-               (do
-                 (info "found" ~prefix "on cmd" ~cmd
-                       ; "opts:" ~opts ; "extra" ~extra
-                       "args:" ~args)
-                 ; try matching the available sub-commands
-                 (cond-let [~match]
-                           ; rebuild the pairs in `exprs` as valid input for cond-let
-                           ~@(map (fn [i#]
-                                    (cond
-                                      ; prefix to match
-                                      (instance? Pattern i#) `(re-find ~i# ~args)
-                                      ; placeholder / fallthrough - set match equal to
-                                      ; :empty, which will trigger this match for
-                                      ; cond-let while not explicitly matching
-                                      ; anything.
-                                      (= i# '_) `(or :empty)
-                                      ; send result back to hooked fn
-                                      :else `(~i# {:cmd ~cmd
-                                                   :args ~args
-                                                   :match ~match
-                                                   :user ~user
-                                                   :chat-source ~chat-source
-                                                   :opts ~opts})))
-                                  exprs)
-                           ; default to help
-                           true (yetibot.core.handler/handle-unparsed-expr (str "help " ~topic))))
-               (~callback ~cmd-with-args ~extra)))))
-       ; extract the meta from the commands and use it to build docs
-       (help/add-docs ~topic
-                      (map
-                        (fn [i#]
-                          (when (and (symbol? i#) (not= i# '_))
-                            (:doc (meta (resolve i#)))))
-                        '~exprs)))))
+        cmd-pairs (partition 2 cmds)]
+    (swap! prefix->topic conj {prefix topic})
+    (help/add-docs topic
+                   (map (fn [[_ cmd-fn]] (:doc (meta cmd-fn)))
+                        cmd-pairs))
+    (swap! hooks conj {prefix cmds})))
+
+(defmacro cmd-hook
+  "Takes potentially special syntax and resolves it to symbols for
+   cmd-hook-resolved. Currently _ is the only special syntax."
+  [prefix & cmds]
+  (let [cmd-pairs (partition 2 cmds)]
+    `(cmd-hook-resolved
+       ~prefix
+       ~@(mapcat (fn [[k# v#]]
+                   [(condp = k#
+                      '_ #".*"
+                      k#)
+                    (resolve v#)])
+                 cmd-pairs))))
 
 (defn obs-hook
   "Pass a collection of event-types you're interested in and an observer function
