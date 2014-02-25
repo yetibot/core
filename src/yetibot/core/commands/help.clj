@@ -10,7 +10,7 @@
   [_]
   (str "Use help <topic> for more details"
        \newline
-       (s/join \newline
+       (s/join ", "
                (sort (keys (get-docs))))))
 
 (defn help-for-topic

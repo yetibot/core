@@ -81,7 +81,12 @@
                    [(condp = k#
                       '_ #".*"
                       k#)
-                    v#])
+                    ; Need to resolve the var in order to get at its docstring.
+                    ; This only applies to regular usage of cmd-hook. If using
+                    ; cmd-hook with unresolvable anonymous functions (such as in
+                    ; alias) the client must add the help metdata itself as
+                    ; cmd-hook cannot extract it.
+                    (if-let [resolved (resolve v#)] resolved v#)])
                  cmd-pairs))))
 
 (defn obs-hook
