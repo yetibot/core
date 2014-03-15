@@ -7,16 +7,21 @@
      [core :as irc]
      [connection :as irc-conn]]
     [yetibot.core.models.users :as users]
-    [clojure.string :refer [split-lines]]
+    [clojure.string :refer [split-lines join]]
     [yetibot.core.config :refer [get-config config-for-ns conf-valid?]]
     [yetibot.core.chat :refer [send-msg-for-each register-chat-adapter]]
     [yetibot.core.util.format :as fmt]
     [yetibot.core.handler :refer [handle-raw]]))
 
-(def conn (atom nil))
+(defonce conn (atom nil))
 (declare config channel connect start)
 (def chat-source (format "irc/%s" channel))
-(def wait-before-reconnect 25000)
+(def wait-before-reconnect 30000)
+
+(def irc-max-message-length 420)
+
+(defn split-msg-into-irc-max-length-chunks [msg]
+  (map join (partition-all irc-max-message-length msg)))
 
 (def send-msg
   "Rate-limited function for sending messages to IRC. It's rate limited in order
@@ -24,14 +29,16 @@
   (rate-limit
     (fn [msg]
       (try
-        (irc/message @conn channel msg)
+        (if (> (count msg) irc-max-message-length)
+          (doall (map send-msg (split-msg-into-irc-max-length-chunks msg)))
+          (irc/message @conn channel msg))
         (catch java.net.SocketException e
           ; it must have disconnect, try reconnecting again
           (info "SocketException, trying to reconnect in" wait-before-reconnect "ms")
           (Thread/sleep wait-before-reconnect)
           (connect)
           (start))))
-    3 600))
+    3 900))
 
 (defn- create-user [info]
   (let [username (:nick info)
