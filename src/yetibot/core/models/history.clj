@@ -33,6 +33,19 @@
 (defn items-for-user [{:keys [chat-source user]}]
   (filter #(= (-> % :user :id) (:id user)) (items-with-user chat-source)))
 
+
+;; non-cmd history
+(def ^:private history-ignore #"^\!")
+
+(defn non-cmd-items
+  "Return `chat-item` only if it doesn't match any regexes in `history-ignore`"
+  [chat-source]
+  (->> (history)
+       (take-last 100)
+       reverse
+       (filter (fn [[_ body]] (not (re-find history-ignore body))))
+       first))
+
 ;;;; write
 
 (defn add [{:keys [user-id body] :as history-item}]
