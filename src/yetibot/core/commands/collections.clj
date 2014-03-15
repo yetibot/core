@@ -168,9 +168,10 @@
 
 ; list
 (defn list-cmd
-  "list <comma-delimited-items> # construct a list"
+  "list <comma-or-space-delimited-items> # construct a list"
   [{:keys [args]}]
-  (map s/trim (s/split args #",")))
+  (let [delimiter (if (re-find #"," args) #"," #"\s")]
+    (map s/trim (s/split args delimiter))))
 
 (cmd-hook #"list"
           _ list-cmd)
