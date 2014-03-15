@@ -17,15 +17,16 @@
 (defn- load-edn [path]
   (try
     (edn/read-string (slurp path))
-    (catch Exception _
-      (warn "Config is missing")
+    (catch Exception e
+      (warn "Failed loading config: " e)
       {:yetibot {}})))
 
 (defn reload-config []
   (let [new-conf (load-edn config-path)]
-    (info "☐ Loading config at" config-path)
+    (info "☐ Try loading config at" config-path)
     (reset! config new-conf)
-    (info "☑ Config loaded")
+    (when-not (empty? (:yetibot @config))
+      (info "☑ Config loaded"))
     new-conf))
 
 (defn get-config
