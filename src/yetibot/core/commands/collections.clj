@@ -112,7 +112,7 @@
 (defn join
   "join <list> # joins list with a single space or whatever character is given"
   [{match :match items :opts}]
-  (let [join-char (if (= match :empty) " " match)]
+  (let [join-char (if (empty? match) " " match)]
     (s/join join-char (ensure-items-collection items))))
 
 (cmd-hook #"join"
