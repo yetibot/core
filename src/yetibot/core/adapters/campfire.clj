@@ -8,13 +8,13 @@
     [yetibot.core.models.users :as users]
     [clojure.string :as s]
     [clojure.stacktrace :as st]
-    [yetibot.core.config :refer [config-for-ns conf-valid?]]
+    [yetibot.core.config :refer [get-config conf-valid?]]
     [yetibot.core.util.http :as http]
     [yetibot.core.util.format :as fmt]
     [clj-campfire.core :as cf]))
 
 ; Settings
-(def config (config-for-ns))
+(def config (get-config :yetibot :adapters :campfire))
 
 (def room-id (:room-id config))
 
