@@ -97,8 +97,8 @@
                    ; on nested collections, e.g.:
                    ; repeat 5 jargon | xargs words | xargs head
                    (if (coll? item)
-                     [args (merge cmd-params {:opts item})]
-                     [(psuedo-format args item) (merge cmd-params {:opts nil})]))
+                     [args (merge cmd-params {:raw item :opts item})]
+                     [(psuedo-format args item) (merge cmd-params {:raw item :opts nil})]))
             (catch Exception ex
               (error "Exception in xargs pmap"
                      (format-exception-log ex))
