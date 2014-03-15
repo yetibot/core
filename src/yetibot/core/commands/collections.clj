@@ -110,9 +110,10 @@
 
 ; join
 (defn join
-  "join <list> # joins list with a single space or whatever character is given"
+  "join <list> <separator> # joins list with optional <separator> or no separator if not specified. See also `unwords`."
   [{match :match items :opts}]
-  (let [join-char (if (empty? match) " " match)]
+  (info (str "join with:'" match "'."))
+  (let [join-char (if (empty? match) "" match)]
     (s/join join-char (ensure-items-collection items))))
 
 (cmd-hook #"join"
@@ -144,8 +145,17 @@
   [{args :args}]
   (s/split args #" "))
 
-(cmd-hook #"words"
+(cmd-hook ["words" #"^words$"]
           _ words)
+
+; unwords
+(defn unwords
+  "unwords <list> # join <list> with a single space"
+  [{opts :opts}]
+  (s/join " " (ensure-items-collection opts)))
+
+(cmd-hook ["unwords" #"^unwords$"]
+          _ unwords)
 
 ; set
 (defn set-cmd

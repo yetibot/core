@@ -54,7 +54,6 @@
      [:expr [:cmd [:words "urban" [:space " "] "random"]] [:cmd [:words "buffer"]] [:cmd [:words "echo" [:space " "] [:expr [:cmd [:words "meme" [:space " "] "wizard:" [:space " "] "what" [:space " "] "is" [:space " "] [:expr [:cmd [:words "buffer" [:space " "] "peek"]] [:cmd [:words "head"]]] "?"]]] "\n" [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:expr [:cmd [:words "meme" [:space " "] "chemistry:" [:space " "] "a" [:space " "] [:expr [:cmd [:words "buffer" [:space " "] "peek"]] [:cmd [:words "head"]]] [:space " "] "is" [:space " "] [:expr [:cmd [:words "buffer" [:space " "] "peek"]] [:cmd [:words "head" [:space " "] "2"]] [:cmd [:words "tail"]]]]]]]]])
     "Complex nested sub-expressions with newlines should be parsed"))
 
-
 (deftest literal-test
   (is
     (= (parser "alias foo = \"bar\"")
@@ -91,3 +90,11 @@
          [:expr [:cmd [:words "foo" [:space " "] "$"]]])
       "Parsing with a sub-expr special character works as long as it doesn't fit
        the shape of the beginning of a sub-expr, e.g. $(....."))
+
+(deftest significant-whitespace-test
+  (is (= (parser "list 1, 2, 3 | join        ")
+         [:expr [:cmd [:words "list" [:space " "] "1," [:space " "] "2," [:space " "] "3"]] [:cmd [:words "join" [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:space " "]]]])
+      "Parser should preserve whitespace")
+  (is (= (parser "list 1, 2, 3 | join  | echo hi")
+         [:expr [:cmd [:words "list" [:space " "] "1," [:space " "] "2," [:space " "] "3"]] [:cmd [:words "join" [:space " "]]] [:cmd [:words "echo" [:space " "] "hi"]]])
+      "Parser should preserve whitespace"))

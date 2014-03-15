@@ -24,7 +24,7 @@
      <sub-expr> = <backtick> expr <backtick> | nestable-sub-expr
      <nestable-sub-expr> = <dollar> <lparen> expr <rparen>
      <non-nestable-sub-expr> = dollar !lparen
-     words = space* word (space* word)*
+     words = space* word (space* word)* space*
      <word> = sub-expr | parened | word-chars | lparen | rparen | quote | literal | non-nestable-sub-expr
      <word-chars> = #'[^ `$()|\"]+'
      parened = lparen words rparen

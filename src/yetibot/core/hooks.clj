@@ -40,12 +40,12 @@
    If unable to match prefix, it calls the callback, letting `handle-cmd`
    implement its own default behavior."
   [callback cmd-with-args {:keys [chat-source user opts] :as extra}]
-  (let [[cmd args] (s/split cmd-with-args #"\s+" 2)
+  (let [[cmd args] (s/split cmd-with-args #"\s" 2)
         args (or args "")] ; make it an empty string if no args
     (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
       ; Now try to find a matching sub-commands
       (let [cmd-pairs (partition 2 sub-cmds)]
-        (info "found" cmd-re "on cmd" cmd "args:" args)
+        (info "found" cmd-re "on cmd" cmd (str "args:'" args "'"))
         (if-let [[match sub-fn] (some (fn [[sub-re sub-fn]]
                                         (info "some?" sub-re args)
                                         (when-let [match (re-find sub-re args)]
