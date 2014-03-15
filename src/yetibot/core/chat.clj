@@ -17,7 +17,7 @@
 (def send-msg (mk-sender :msg))
 (def send-paste (mk-sender :paste))
 
-(def max-msg-count 50)
+(def max-msg-count 30)
 
 (defn send-msg-for-each [msgs]
   (doseq [m (take max-msg-count msgs)] (send-msg m))
