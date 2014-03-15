@@ -85,7 +85,7 @@
 ; example usage: !users | xargs attack
 (defn xargs
   "xargs <cmd> <list> # run <cmd> for every item in <list>; behavior is similar to xargs(1)'s xargs -n1"
-  [{:keys [args opts]}]
+  [{:keys [args opts user] :as cmd-params}]
   (if (s/blank? args)
     opts ; passthrough if no args
     (let [itms (ensure-items-collection opts)]
@@ -97,8 +97,8 @@
                    ; on nested collections, e.g.:
                    ; repeat 5 jargon | xargs words | xargs head
                    (if (coll? item)
-                     [args {:opts item}]
-                     [(psuedo-format args item) {}]))
+                     [args (merge cmd-params {:opts item})]
+                     [(psuedo-format args item) (merge cmd-params {:opts nil})]))
             (catch Exception ex
               (error "Exception in xargs pmap"
                      (format-exception-log ex))

@@ -3,8 +3,6 @@
             [clojure.string :as s]
             [yetibot.core.hooks :refer [cmd-hook]]))
 
-(def chat-source "campfire/523232")
-
 (defn show-users
   "users # list all users presently in the room"
   [{:keys [chat-source]}]
