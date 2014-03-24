@@ -40,7 +40,7 @@
     (warn config-path "file doesn't exist, skipped write")))
 
 (defn update-config
-  "Update the config data structure and write it to disk."
+  "Updates the config data structure and write it to disk."
   [& path-and-val]
   (let [path (butlast path-and-val)
         value (last path-and-val)]

@@ -8,14 +8,15 @@
      [connection :as irc-conn]]
     [yetibot.core.models.users :as users]
     [clojure.string :refer [split-lines join]]
-    [yetibot.core.config :refer [get-config config-for-ns conf-valid?]]
+    [yetibot.core.config :refer [update-config get-config config-for-ns
+                                 reload-config conf-valid?]]
     [yetibot.core.chat :refer [send-msg-for-each register-chat-adapter]]
     [yetibot.core.util.format :as fmt]
     [yetibot.core.handler :refer [handle-raw]]))
 
 (defonce conn (atom nil))
 
-(declare connect start)
+(declare join-channels connect start)
 
 (defn config [] (get-config :yetibot :adapters :irc))
 
@@ -120,7 +121,17 @@
     (users/add-user (chat-source channel)
                     (create-user {:user user :nick nick}))))
 
-(defn raw-log [a b c] #_(debug b c))
+(defn handle-invite [_ info]
+  (log/info "handle invite" info)
+  (let [config-path [:yetibot :adapters :irc :channels]
+        target-chan (second (:params info))
+        current-chans (apply get-config config-path)
+        target-chans (conj current-chans target-chan)]
+    (apply update-config (conj config-path target-chans))
+    (reload-config)
+    (join-channels)))
+
+(defn raw-log [a b c] (log/debug b c))
 
 (defn handle-end-of-names
   "Callback for end of names list from IRC. Currently not doing anything with it."
@@ -132,6 +143,7 @@
                 :part #'handle-part
                 :join #'handle-join
                 :nick #'handle-nick
+                :invite #'handle-invite ; verify
                 :366 #'handle-end-of-names
                 :352 #'handle-who-reply})
 
@@ -142,6 +154,10 @@
       (:host (config)) (read-string (or (:port (config)) "6667")) (:username (config))
       :callbacks callbacks)))
 
+(defn join-channels []
+  (doall (map #(irc/join @conn %) (channels)))
+  (fetch-users))
+
 (defn start
   "Join and fetch all users with WHO <channel>"
   []
@@ -149,9 +165,8 @@
     (do
       (register-chat-adapter 'yetibot.core.adapters.irc)
       (connect)
-      (doall (map #(irc/join @conn %) (channels)))
-      (fetch-users))
-   (log/info "✗ IRC is not configured")))
+      (join-channels))
+    (log/info "✗ IRC is not configured")))
 
 (defn part [channel]
   (when conn (irc/part @conn channel)))
