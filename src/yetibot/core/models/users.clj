@@ -34,14 +34,24 @@
 (defn get-users [source]
   (@users source))
 
+(defn get-users-for-adapter
+  "Get the full list of known users for a specific adapter"
+  [{:keys [adapter]}]
+  (->> @users
+       (filter (fn [[{a :adapter} _]] (= a adapter)))
+       vals
+       (apply merge)))
+
 (defn get-user [source id]
-  ((get-users source) (str id)))
+  (when-let [users-for-source (or (get-users source)
+                                  ; fallback to all known users for :adapter
+                                  (get-users-for-adapter source))]
+    (users-for-source (str id))))
 
 (defn find-user-like [chat-source name]
   (let [patt (re-pattern (str "(?i)" name))]
     (some #(when (re-find patt (:name %)) %)
           (vals (get-users chat-source)))))
-
 
 ; (def campfire-date-pattern "yyyy/MM/dd HH:mm:ss Z")
 ; (def date-formatter (doto (new SimpleDateFormat campfire-date-pattern) (.setTimeZone (java.util.TimeZone/getTimeZone "GreenwichEtc"))))

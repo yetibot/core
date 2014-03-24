@@ -18,7 +18,7 @@
 
 (def room-id (:room-id config))
 
-(def chat-source (format "campfire/%s" room-id))
+(def chat-source [:campfire room-id])
 
 (def cf-settings
   {:api-token (:api-key config),

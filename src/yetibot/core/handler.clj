@@ -23,8 +23,8 @@
 
 (def ^:private exception-format "👮 %s 👮")
 
-; TODO: move handle-unparsed-expr calls out of the adapters and call it from here
-; instead
+; TODO: move handle-unparsed-expr calls out of the adapters and call it from
+; here instead
 (defn handle-raw
   "No-op handler for optional hooks.
    Expected event-types are:

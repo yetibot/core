@@ -13,6 +13,7 @@
   (require 'yetibot.core.commands.help :reload)
   (require 'yetibot.core.observers.history :reload)
   (require 'yetibot.core.commands.history :reload)
+  (require 'yetibot.core.commands.users :reload)
   (require 'yetibot.core.commands.collections :reload))
 
 (defn start []
