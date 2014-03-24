@@ -10,7 +10,7 @@
     [clojure.string :refer [split-lines join]]
     [yetibot.core.config :refer [update-config get-config config-for-ns
                                  reload-config conf-valid?]]
-    [yetibot.core.chat :refer [send-msg-for-each register-chat-adapter]]
+    [yetibot.core.chat :refer [chat-data-structure send-msg-for-each register-chat-adapter] :as chat]
     [yetibot.core.util.format :as fmt]
     [yetibot.core.handler :refer [handle-raw]]))
 
@@ -52,11 +52,6 @@
           (start))))
     3 900))
 
-(defn send-to-all
-  "Send message to all targets. TODO: use chat-data-structure"
-  [msg]
-  (doall (map #(binding [*target* %] (send-msg msg)) (channels))))
-
 (defn- create-user [info]
   (let [username (:nick info)
         id (:user info)]
@@ -74,12 +69,21 @@
    split it and send one for each"
   [p] (send-msg-for-each (prepare-paste p)))
 
-(defn fetch-users []
-  (doall (map #(irc-conn/write-irc-line @conn "WHO" %) (channels))))
-
 (def messaging-fns
   {:msg send-msg
    :paste send-paste})
+
+(defn send-to-all
+  "Send message to all targets. TODO: use chat-data-structure"
+  [msg]
+  (doall (map #(binding [*target* %
+                         chat/*messaging-fns* messaging-fns]
+                 (chat-data-structure msg))
+              (channels))))
+
+
+(defn fetch-users []
+  (doall (map #(irc-conn/write-irc-line @conn "WHO" %) (channels))))
 
 (defn recognized-chan? [c] ((set (channels)) c))
 
