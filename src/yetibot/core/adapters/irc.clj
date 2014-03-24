@@ -52,6 +52,11 @@
           (start))))
     3 900))
 
+(defn send-to-all
+  "Send message to all targets. TODO: use chat-data-structure"
+  [msg]
+  (doall (map #(binding [*target* %] (send-msg msg)) (channels))))
+
 (defn- create-user [info]
   (let [username (:nick info)
         id (:user info)]

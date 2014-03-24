@@ -70,6 +70,5 @@
   (prn "send msg to all" msg)
   (prn @active-chat-namespaces)
   (doseq [n @active-chat-namespaces]
-    (when-let [mfns (deref (ns-resolve n 'messaging-fns))]
-      (binding [*messaging-fns* mfns]
-        (chat-data-structure msg)))))
+    (when-let [send-to-all (deref (ns-resolve n 'send-to-all))]
+      (send-to-all msg))))

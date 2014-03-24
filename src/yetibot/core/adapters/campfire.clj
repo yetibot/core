@@ -38,6 +38,8 @@
 
 (defn send-tweet [t] (cf/tweet cf-settings room t))
 
+(def send-to-all send-message)
+
 (defn self [token]
   (let [auth {:user token :password "x"}
         uri (str base-uri "/users/me.json")]
