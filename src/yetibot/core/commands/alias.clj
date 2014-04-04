@@ -39,7 +39,7 @@
    Use first arg only:
    alias sayhi = echo hi, $1"
   [{:keys [cmd-name cmd]}]
-  (let [docstring (str "alias for " cmd)
+  (let [docstring (str cmd-name " # alias for " cmd)
         existing-alias (existing-alias cmd-name)
         cmd-fn (build-alias-cmd-fn cmd)]
     (cmd-hook [cmd-name (re-pattern (str "^" cmd-name "$"))]
