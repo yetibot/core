@@ -18,7 +18,7 @@
 (defn start [& [opts]]
   (if (conf-valid? (get-config :yetibot :db))
     (do
-      (info "☐ Loading Datomic schemas")
+      (info "☐ Loading Datomic schemas at" (:datomic-url (get-config :yetibot :db)))
       (dc/start (merge opts {:uri (:datomic-url (get-config :yetibot :db))
                              :schemas (filter identity (schemas))}))
       (info "☑ Datomic connected"))
