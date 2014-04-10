@@ -20,6 +20,15 @@
 (cmd-hook #"random"
           _ random)
 
+; shuffle
+(defn shuffle-cmd
+  "shuffle <list>"
+  [{items :opts}]
+  (shuffle (ensure-items-collection items)))
+
+(cmd-hook #"shuffle"
+          _ shuffle-cmd)
+
 (def head-tail-regex #"(\d+).+")
 
 ; head / tail helpers
