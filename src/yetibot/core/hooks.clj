@@ -20,7 +20,7 @@
 ; Stores the mapping of prefix-regex -> sub-commands.
 (defonce hooks (atom {}))
 
-(defonce prefix->topic (atom {}))
+(defonce re-prefix->topic (atom {}))
 
 (defn find-sub-cmds
   "Matches prefix against command regexes in `hooks.`"
@@ -52,23 +52,33 @@
                                           [match sub-fn])) cmd-pairs)]
           (sub-fn (merge extra {:cmd cmd :args args :match match}))
           ; couldn't find any sub commands so default to help.
-          (yetibot.core.handler/handle-unparsed-expr (str "help " (get @prefix->topic cmd-re)))))
+          (yetibot.core.handler/handle-unparsed-expr (str "help " (get @re-prefix->topic cmd-re)))))
       (callback cmd-with-args extra))))
 
 ; Hook the actual handle-cmd called during interpretation.
 (rh/add-hook #'handle-cmd #'handle-with-hooked-cmds)
 
+(defn lockdown-prefix-regex
+  "Takes a regex and ensures that it's locked down with ^ or $ to prevent
+   collisions with runtime aliases."
+  [re]
+  (let [re-str (str re)]
+    (if (or (re-find #"^\^" re-str) (re-find #"\$$" re-str))
+      re
+      (re-pattern (str "^" re-str "$")))))
+
 (defn cmd-hook-resolved
   "Expects fully resolved syntax where as plain cmd-hook can take normally
    unresolved symbols like _ and translate them into '_"
-  [prefix & cmds]
-  (let [[topic prefix] (if (vector? prefix) prefix [(str prefix) prefix])
+  [re-prefix & cmds]
+  (let [[topic re-prefix] (if (vector? re-prefix) re-prefix [(str re-prefix) re-prefix])
+        re-prefix (lockdown-prefix-regex re-prefix)
         cmd-pairs (partition 2 cmds)]
-    (swap! prefix->topic conj {prefix topic})
+    (swap! re-prefix->topic conj {re-prefix topic})
     (help/add-docs topic
                    (map (fn [[_ cmd-fn]] (:doc (meta cmd-fn)))
                         cmd-pairs))
-    (swap! hooks conj {prefix cmds})))
+    (swap! hooks conj {re-prefix cmds})))
 
 (defmacro cmd-hook
   "Takes potentially special syntax and resolves it to symbols for
