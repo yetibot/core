@@ -60,8 +60,7 @@
 ; Passive chatters (those that are not responding to a command from a single
 ; chat interface) need to be able to broadcast messages to any sources, so when
 ; a namespace is configured it should add itself to this list.
-(defonce active-chat-namespaces
-  (atom []))
+(defonce active-chat-namespaces (atom []))
 
 (defn register-chat-adapter [n]
   (swap! active-chat-namespaces conj n))
@@ -72,3 +71,11 @@
   (doseq [n @active-chat-namespaces]
     (when-let [send-to-all (deref (ns-resolve n 'send-to-all))]
       (send-to-all msg))))
+
+
+; TODO: move hooks/suppress right here
+
+(defn with-target
+  "Add target meta data to the data structure to instruct `chat` where to send it"
+  [target data-structure]
+  (with-meta data-structure {:target target}))

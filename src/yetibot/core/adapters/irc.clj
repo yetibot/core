@@ -74,7 +74,7 @@
    :paste send-paste})
 
 (defn send-to-all
-  "Send message to all targets. TODO: use chat-data-structure"
+  "Send message to all targets."
   [msg]
   (doall (map #(binding [*target* %
                          chat/*messaging-fns* messaging-fns]
