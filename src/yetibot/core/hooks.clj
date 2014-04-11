@@ -25,13 +25,15 @@
 (defn find-sub-cmds
   "Matches prefix against command regexes in `hooks.`"
   [prefix]
-  (first (filter (fn [[k v]] (re-find k prefix)) @hooks)))
+  (first (filter (fn [[k v]] (re-find (re-pattern k) prefix)) @hooks)))
 
 (defn cmd-unhook
   "Removes the sub-commands for a prefix / topic."
   [topic]
-  (help/remove-docs topic)
-  (swap! hooks dissoc topic))
+  (let [str-re (str "^" topic "$")]
+    (help/remove-docs topic)
+    (swap! re-prefix->topic dissoc str-re)
+    (swap! hooks dissoc str-re)))
 
 (defn handle-with-hooked-cmds
   "Looks up the set of possible commands by matching the first word against
@@ -40,6 +42,7 @@
    If unable to match prefix, it calls the callback, letting `handle-cmd`
    implement its own default behavior."
   [callback cmd-with-args {:keys [chat-source user opts] :as extra}]
+  (info "handle-with-hooked-cmds" extra)
   (let [[cmd args] (s/split cmd-with-args #"\s" 2)
         args (or args "")] ; make it an empty string if no args
     (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
@@ -52,7 +55,7 @@
                                           [match sub-fn])) cmd-pairs)]
           (sub-fn (merge extra {:cmd cmd :args args :match match}))
           ; couldn't find any sub commands so default to help.
-          (yetibot.core.handler/handle-unparsed-expr (str "help " (get @re-prefix->topic cmd-re)))))
+          (yetibot.core.handler/handle-unparsed-expr (str "help " (get @re-prefix->topic (str cmd-re))))))
       (callback cmd-with-args extra))))
 
 ; Hook the actual handle-cmd called during interpretation.
@@ -74,11 +77,11 @@
   (let [[topic re-prefix] (if (vector? re-prefix) re-prefix [(str re-prefix) re-prefix])
         re-prefix (lockdown-prefix-regex re-prefix)
         cmd-pairs (partition 2 cmds)]
-    (swap! re-prefix->topic conj {re-prefix topic})
+    (swap! re-prefix->topic conj {(str re-prefix) topic})
     (help/add-docs topic
                    (map (fn [[_ cmd-fn]] (:doc (meta cmd-fn)))
                         cmd-pairs))
-    (swap! hooks conj {re-prefix cmds})))
+    (swap! hooks conj {(str re-prefix) cmds})))
 
 (defmacro cmd-hook
   "Takes potentially special syntax and resolves it to symbols for

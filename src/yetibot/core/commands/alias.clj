@@ -52,6 +52,7 @@
 
 (defn add-alias [{:keys [cmd-name cmd userid] :as alias-info}]
   (let [new-alias-map {:userid userid :cmd-name cmd-name :cmd cmd}]
+    (info "adding alias with" new-alias-map)
     (if (existing-alias cmd-name)
       (model/update (:id existing-alias) new-alias-map)
       (model/create new-alias-map)))
@@ -69,6 +70,7 @@
 (defn create-alias
   "alias <alias> = \"<cmd>\" # alias a cmd, where <cmd> is a normal command expression. Note the use of quotes, which treats the right-hand side as a literal allowing the use of pipes. Use $s as a placeholder for all args, or $n (where n is a 1-based index of which arg) as a placeholder for a specific arg."
   [{[_ a-name a-cmd] :match user :user}]
+  (info "create alias" a-name a-cmd "user:" user)
   (let [cmd-name (cleaned-cmd-name a-name)
         cmd (clean-alias-cmd a-cmd)]
     (if (built-in? cmd-name)

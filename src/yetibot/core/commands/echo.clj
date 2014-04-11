@@ -1,9 +1,13 @@
 (ns yetibot.core.commands.echo
-  (:use [yetibot.core.hooks :only (cmd-hook)]))
+  (:require
+    [taoensso.timbre :refer [info warn error]]
+    [yetibot.core.hooks :refer [cmd-hook]]))
 
 (defn echo-cmd
   "echo <text> # Echos back <text>. Useful for piping."
-  [{args :args}] args)
+  [{:keys [args] :as cmd-args}]
+  (info "echo cmd args:" cmd-args)
+  args)
 
 (cmd-hook #"echo"
           _ echo-cmd)
