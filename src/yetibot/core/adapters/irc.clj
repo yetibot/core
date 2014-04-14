@@ -177,5 +177,11 @@
       (join-channels))
     (log/info "✗ IRC is not configured")))
 
+(defn stop
+  "Kill the irc conection"
+  []
+  (irc/kill @conn)
+  (reset! conn nil))
+
 (defn part [channel]
   (when conn (irc/part @conn channel)))

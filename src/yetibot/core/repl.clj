@@ -22,6 +22,9 @@
   (cf/start)
   (irc/start))
 
+(defn stop []
+  (irc/stop))
+
 (defn load-all []
   (future
     (load-commands-and-observers)))
