@@ -1,5 +1,6 @@
 (ns yetibot.core.models.status
   (:require
+    [taoensso.timbre :refer [info warn error]]
     [yetibot.core.db.status :refer :all]
     [clj-time
      [coerce :refer [from-date]]
@@ -58,6 +59,7 @@
 (defn status-since
   "Retrieve statuses after or equal to a given joda timestamp"
   [chat-source ts]
+  (info "show status for" chat-source "since" ts)
   (let [after-ts? (fn [{:keys [created-at]}]
                     (after-or-equal? (from-date created-at) ts))]
     (filter after-ts? (statuses chat-source))))
