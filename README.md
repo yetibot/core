@@ -7,9 +7,8 @@ yetibot plugins, private or public.
 
 [![Build Status](https://travis-ci.org/devth/yetibot.core.svg?branch=master)](https://travis-ci.org/devth/yetibot.core)
 
-```clojure
-[yetibot.core "0.1.15"]
-```
+[![yetibot.core on Clojars](http://clojars.org/yetibot.core/latest-version.svg)]
+
 
 The main yetibot commands live at:
 https://github.com/devth/yetibot
