@@ -1,18 +1,14 @@
-# yetibot.core
+# yetibot.core [![Build Status](https://travis-ci.org/devth/yetibot.core.svg?branch=master)](https://travis-ci.org/devth/yetibot.core)
 
 Core yetibot utilities, extracted for shared use among yetibot and its various
 plugins. yetibot.core is not meant to be run standalone, but instead used as a
 dependency from another project that provides config and optionally other
-yetibot plugins, private or public.
-
-[![Build Status](https://travis-ci.org/devth/yetibot.core.svg?branch=master)](https://travis-ci.org/devth/yetibot.core)
-
-[![yetibot.core on Clojars](http://clojars.org/yetibot.core/latest-version.svg)]
-
+yetibot plugins, private or public.  
 
 The main yetibot commands live at:
 https://github.com/devth/yetibot
 
+[<img src="http://clojars.org/yetibot.core/latest-version.svg" />](https://clojars.org/yetibot.core)
 
 ## Usage
 
