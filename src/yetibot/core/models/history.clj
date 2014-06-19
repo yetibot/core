@@ -34,17 +34,25 @@
   (filter #(= (-> % :user :id) (:id user)) (items-with-user chat-source)))
 
 
-;; non-cmd history
-(def ^:private history-ignore #"^\!")
+;; history filters
+(def ^:private cmd-history #"^\!")
+(def ^:private non-cmd-history #"^[^!]")
+
+(defn filter-history-by [re last-n]
+  (->> (history)
+       (take-last last-n)
+       reverse
+       (filter (fn [[_ body]] (re-find re body)))))
 
 (defn non-cmd-items
   "Return `chat-item` only if it doesn't match any regexes in `history-ignore`"
   [chat-source]
-  (->> (history)
-       (take-last 100)
-       reverse
-       (filter (fn [[_ body]] (not (re-find history-ignore body))))
-       first))
+  (filter-history-by non-cmd-history 100))
+
+(defn cmd-only-items
+  "Return `chat-item` only if it does match any regexes in `history-ignore`"
+  [chat-source]
+  (filter-history-by cmd-history 100))
 
 ;;;; write
 
