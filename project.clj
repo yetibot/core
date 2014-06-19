@@ -1,4 +1,4 @@
-(defproject yetibot.core "0.1.18"
+(defproject yetibot.core "0.1.19-SNAPSHOT"
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/devth/yetibot.core"
