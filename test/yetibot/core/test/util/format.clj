@@ -46,3 +46,8 @@
     (is (= (pseudo-format-n "--> %s <--" [1 2])
            "--> %s <-- 1 2")
         "It shouldn't work with the old prefix after a new one is bound.")))
+
+(deftest replace-even-if-nothing-to-replace-with
+  (binding [*subst-prefix* "\\$"]
+    (is (= (pseudo-format-n "qux --> $s <-- should b empty" [])
+           "qux -->  <-- should b empty"))))
