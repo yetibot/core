@@ -46,7 +46,7 @@
 (defn pseudo-format-n
   "Combination of pseudo-format and format-n - it can do both if the string
    contains both %s and %1 substitution placeholders. If neither are found, it
-   appends joined args to end of string. Yes"
+   appends joined args to end of string."
   [s args]
   (if (empty? args)
     (s/replace s (general-subst-pattern) "")
@@ -58,8 +58,6 @@
         gen? (pseudo-format joined)
         num? (format-n args)
         neither? (str " " joined)))))
-
-(s/replace "foo $s hi" #"\$s" "")
 
 ;; chat formaters
 
