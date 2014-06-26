@@ -53,8 +53,8 @@
 (defn add-alias [{:keys [cmd-name cmd userid] :as alias-info}]
   (let [new-alias-map {:userid userid :cmd-name cmd-name :cmd cmd}]
     (info "adding alias with" new-alias-map)
-    (if (existing-alias cmd-name)
-      (model/update (:id existing-alias) new-alias-map)
+    (if-let [existing (existing-alias cmd-name)]
+      (model/update (:id existing) new-alias-map)
       (model/create new-alias-map)))
   alias-info)
 
