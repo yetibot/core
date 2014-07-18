@@ -39,6 +39,6 @@ for more complex and diverse examples.
 
 ## License
 
-Copyright © 2013 Trevor C. Hartman
+Copyright © 2013–2014 Trevor C. Hartman
 
 Distributed under the Eclipse Public License version 1.0.
