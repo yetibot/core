@@ -98,3 +98,15 @@
   (is (= (parser "list 1, 2, 3 | join  | echo hi")
          [:expr [:cmd [:words "list" [:space " "] "1," [:space " "] "2," [:space " "] "3"]] [:cmd [:words "join" [:space " "]]] [:cmd [:words "echo" [:space " "] "hi"]]])
       "Parser should preserve whitespace"))
+
+
+;; Failing test for https://github.com/devth/yetibot/issues/423
+;; the problem is the parser tries to close the sub-expression too soon, leaving
+;; a trailing ) outside of the sub-expr.
+(deftest preserve-matched-parens-in-subexpr
+  (is
+    (= (parser "hi $((hi))")
+       [:expr [:cmd [:words "hi" [:space " "] [:expr [:cmd [:words "(" "hi" ")"]]]]]]))
+  (is (=
+       (parser "echo $(clj (+ 1 1))")
+       [:expr [:cmd [:words "echo" [:space " "] [:expr [:cmd [:words "clj" [:space " "] "(" "+" [:space " "] "1" [:space " "] "1" ")"]]]]]])))
