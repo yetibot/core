@@ -35,6 +35,7 @@ for more complex and diverse examples.
 ## Docs
 
 - [Load Order](doc/load_order.md)
+- [Command handling pipeline](doc/command_handling_pipeline.md)
 - [Yetibot project README](https://github.com/devth/yetibot)
 
 ## License
