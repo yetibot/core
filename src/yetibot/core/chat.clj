@@ -40,10 +40,11 @@
        (re-find #"\n" formatted)
        (contains-image-url-lines? formatted)))
 
-(defn chat-data-structure [d]
+(defn chat-data-structure
   "Formatters to send data structures to chat.
    If `d` is a nested data structure, it will attempt to recursively flatten
    or merge (if it's a map)."
+  [d]
   (when-not (:suppress (meta d))
     (let [[formatted flattened] (fmt/format-data-structure d)]
       (info "formatted is " formatted)
