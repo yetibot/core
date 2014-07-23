@@ -10,7 +10,7 @@
                  :welcome (println "Welcome to the YetiBot development repl!")}
   :aot [yetibot.core.init]
   :main yetibot.core.init
-  :dependencies [[org.clojure/clojure "1.5.1"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/data.json "0.1.2"]
                  [org.clojure/tools.namespace "0.2.2"]
                  [org.clojure/tools.trace "0.7.6"]
