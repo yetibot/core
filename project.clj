@@ -52,7 +52,7 @@
 
                  ; chat protocols
                  [clj-campfire "2.2.0"]
-                 [irclj "0.5.0-alpha2"]
+                 [irclj "0.5.0-alpha4"]
 
                  ; database
                  [com.datomic/datomic-free "0.8.3814"]
