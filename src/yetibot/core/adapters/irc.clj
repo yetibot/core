@@ -161,6 +161,7 @@
     conn
     (irc/connect
       (:host (config)) (read-string (or (:port (config)) "6667")) (:username (config))
+      :ssl? (:ssl? (config))
       :callbacks callbacks)))
 
 (defn join-channels []
