@@ -64,6 +64,9 @@
                  ; ssh
                  [clj-ssh "0.4.0"]
 
+                 ; dynamic dependency reloading / adding
+                 [com.cemerick/pomegranate "0.3.0"]
+
                  ; wordnik dictionary
                  [clj-wordnik "0.1.0-alpha1"]
 
