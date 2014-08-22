@@ -11,11 +11,13 @@
   :aot [yetibot.core.init]
   :main yetibot.core.init
   :dependencies [[org.clojure/clojure "1.6.0"]
+                 [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
                  [org.clojure/data.json "0.1.2"]
                  [org.clojure/tools.namespace "0.2.2"]
                  [org.clojure/tools.trace "0.7.6"]
                  [org.clojure/java.classpath "0.2.0"]
                  [org.clojure/core.cache "0.6.3"]
+
                  [org.clojure/core.memoize "0.5.6"]
                  [org.clojure/core.match "0.2.0-rc5"]
                  [org.clojure/data.xml "0.0.6"]
