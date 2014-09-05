@@ -200,14 +200,6 @@
       :callbacks callbacks)))
 
 (defonce current-channels (atom []))
-
-
-(difference #{1 2 3} #{3})
-
-(difference #{1 2 3} #{4 5 6 1})
-
-(difference #{2 3 7} #{3 2 5 1 4 55} )
-
 (defn join-or-part-with-current-channels []
   (let [chs (channels)
         to-part (difference @current-channels chs)
