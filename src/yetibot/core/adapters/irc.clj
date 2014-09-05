@@ -1,5 +1,6 @@
 (ns yetibot.core.adapters.irc
   (:require
+    [clojure.set :refer [difference union intersection]]
     [taoensso.timbre :as log]
     [rate-gate.core :refer [rate-limit]]
     [yetibot.core.chat]
@@ -16,11 +17,20 @@
 
 (defonce conn (atom nil))
 
-(declare join-channels connect start)
+(declare join-or-part-with-current-channels connect start)
 
 (defn config [] (get-config :yetibot :adapters :irc))
 
-(defn channels [] (:channels (config)))
+(defn rooms [] (:rooms (config)))
+
+(def rooms-config-path [:yetibot :adapters :irc :rooms])
+
+(defn channels [] (set (keys (rooms))))
+
+(defn channels-with-broadcast-enabled []
+  (->> (rooms)
+       (filter #(:broadcast? (second %)))
+       (map first)))
 
 (defn chat-source [channel] {:adapter :irc :channel channel})
 
@@ -69,17 +79,48 @@
    split it and send one for each"
   [p] (send-msg-for-each (prepare-paste p)))
 
+(defn set-rooms-config
+  "Accepts a function that will be passed the current rooms config. Return value
+   of function will be used to set the new rooms config"
+  [f]
+  (apply update-config (conj rooms-config-path (f (rooms))))
+  (reload-config))
+
+(defn add-room-to-config [room]
+  (log/info "add room to irc config")
+  (set-rooms-config (fn [rooms] (conj rooms [room {:broadcast? false}]))))
+
+(defn remove-room-from-config [room]
+  (log/info "remove room from irc config")
+  (set-rooms-config #(dissoc % room)))
+
+(defn set-room-broadcast [room broadcast?]
+  (let [opts-updater (fn [room-opts] (assoc room-opts :broadcast? broadcast?))]
+    (set-rooms-config #(update-in % [room] opts-updater))))
+
+(defn join-room [room]
+  (add-room-to-config room)
+  (join-or-part-with-current-channels))
+
+(defn leave-room [room]
+  (remove-room-from-config room)
+  (join-or-part-with-current-channels))
+
 (def messaging-fns
   {:msg send-msg
-   :paste send-paste})
+   :paste send-paste
+   :join join-room
+   :leave leave-room
+   :set-room-broadcast set-room-broadcast
+   :rooms rooms})
 
 (defn send-to-all
-  "Send message to all targets."
+  "Send message to all targets that have :broadcast? true."
   [msg]
   (doall (map #(binding [*target* %
                          chat/*messaging-fns* messaging-fns]
                  (chat-data-structure msg))
-              (channels))))
+              (channels-with-broadcast-enabled))))
 
 
 (defn fetch-users []
@@ -132,13 +173,7 @@
 
 (defn handle-invite [_ info]
   (log/info "handle invite" info)
-  (let [config-path [:yetibot :adapters :irc :channels]
-        target-chan (second (:params info))
-        current-chans (apply get-config config-path)
-        target-chans (conj current-chans target-chan)]
-    (apply update-config (conj config-path target-chans))
-    (reload-config)
-    (join-channels)))
+  (join-room (second (:params info))))
 
 (defn raw-log [a b c] (log/debug b c))
 
@@ -164,9 +199,23 @@
       :ssl? (:ssl? (config))
       :callbacks callbacks)))
 
-(defn join-channels []
-  (doall (map #(irc/join @conn %) (channels)))
-  (fetch-users))
+(defonce current-channels (atom []))
+
+
+(difference #{1 2 3} #{3})
+
+(difference #{1 2 3} #{4 5 6 1})
+
+(difference #{2 3 7} #{3 2 5 1 4 55} )
+
+(defn join-or-part-with-current-channels []
+  (let [chs (channels)
+        to-part (difference @current-channels chs)
+        to-join (difference chs @current-channels)]
+    (reset! current-channels (channels))
+    (doall (map #(irc/join @conn %) to-join))
+    (doall (map #(irc/part @conn %) to-part))
+    (fetch-users)))
 
 (defn start
   "Join and fetch all users with WHO <channel>"
@@ -175,7 +224,7 @@
     (do
       (register-chat-adapter 'yetibot.core.adapters.irc)
       (connect)
-      (join-channels))
+      (join-or-part-with-current-channels))
     (log/info "✗ IRC is not configured")))
 
 (defn stop

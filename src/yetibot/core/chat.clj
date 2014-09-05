@@ -4,9 +4,8 @@
     [clojure.string :refer [blank?]]
     [yetibot.core.util.format :as fmt]))
 
-; the chat adapter should set this before firing off command handlers.
-; expected keys are :paste, :msg
-; TODO: with-scope might be nicer than binding dynamic messaging-fns
+; The chat adapter should set this before firing off command handlers.
+; expected keys are :paste, :msg, :join, :leave
 (def ^:dynamic *messaging-fns*)
 
 (defn- mk-sender [sender-key]
@@ -16,6 +15,10 @@
 
 (def send-msg (mk-sender :msg))
 (def send-paste (mk-sender :paste))
+(defn join [room] ((:join *messaging-fns*) room))
+(defn leave [room] ((:leave *messaging-fns*) room))
+(defn rooms [] ((:rooms *messaging-fns*)))
+(defn set-room-broadcast [room broadcast?] ((:set-room-broadcast *messaging-fns*) room broadcast?))
 
 (def max-msg-count 30)
 
