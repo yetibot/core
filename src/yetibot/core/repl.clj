@@ -16,11 +16,19 @@
   (require 'yetibot.core.commands.users :reload)
   (require 'yetibot.core.commands.collections :reload))
 
-(defn start []
+(defn start
+  "Load a minimal set of commands, start the database and connect to chat adapters"
+  []
   (load-minimal)
   (db/repl-start)
   (cf/start)
   (irc/start))
+
+(defn start-offline
+  "Offline repl-driven dev mode"
+  []
+  (load-minimal)
+  (db/repl-start))
 
 (defn stop []
   (irc/stop))
