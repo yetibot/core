@@ -5,5 +5,9 @@
 
 (obs-hook #{:message}
           (fn [event-info]
-            (h/add {:user-id (-> event-info :user :id str)
-                    :body (:body event-info)})))
+            ;; todo: rename channel to room
+            (let [{:keys [adapter channel]} (:chat-source event-info)]
+              (h/add {:chat-source-adapter adapter
+                      :chat-source-room channel
+                      :user-id (-> event-info :user :id str)
+                      :body (:body event-info)}))))

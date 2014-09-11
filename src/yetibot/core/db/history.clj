@@ -8,7 +8,9 @@
 (def model-namespace :history)
 
 (def schema (dc/build-schema model-namespace
-                             [[:user-id :string]
+                             [[:chat-source-adapter :string]
+                              [:chat-source-room :string]
+                              [:user-id :string]
                               [:body :string]]))
 
 (dc/create-model-fns model-namespace)
