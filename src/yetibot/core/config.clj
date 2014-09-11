@@ -8,6 +8,10 @@
     [clojure.edn :as edn]
     [clojure.string :refer [blank? split]]))
 
+
+;; TODO: is there a Clojure lens lib that could make accessing and getting
+;; updates from config easier and more idiomatic?
+
 (def config-path "config/config.edn")
 
 (defn config-exists? [] (.exists (as-file config-path)))
