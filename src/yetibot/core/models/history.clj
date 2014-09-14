@@ -13,9 +13,12 @@
   "retrieve all history and sort it by transaction instant"
   [] (->>
        (q '[:find ?user-id ?body ?txInstant
+            ?chat-source-adapter ?chat-source-room
             :where
             [?tx :db/txInstant ?txInstant]
             [?i :history/user-id ?user-id ?tx]
+            [?i :history/chat-source-adapter ?chat-source-adapter ?tx]
+            [?i :history/chat-source-room ?chat-source-room ?tx]
             [?i :history/body ?body ?tx]])
        (sort-by (fn [[_ _ inst]] inst))))
 

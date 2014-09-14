@@ -2,6 +2,7 @@
   "Load this namespace when working with YetiBot in the REPL or during dev."
   (:require
     [yetibot.core.db :as db]
+    [yetibot.core.logging :as logging] ; enable logging to file
     [yetibot.core.models.users :as users]
     [yetibot.core.loader :refer [load-commands-and-observers load-ns]]
     [yetibot.core.adapters.campfire :as cf]

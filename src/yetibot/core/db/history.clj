@@ -8,7 +8,7 @@
 (def model-namespace :history)
 
 (def schema (dc/build-schema model-namespace
-                             [[:chat-source-adapter :string]
+                             [[:chat-source-adapter :keyword]
                               [:chat-source-room :string]
                               [:user-id :string]
                               [:body :string]]))
