@@ -1,6 +1,6 @@
 (ns yetibot.core.hooks
   (:require
-    [taoensso.timbre :refer [info warn error]]
+    [taoensso.timbre :refer [debug info warn error]]
     [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.handler]
     [clojure.string :as s]

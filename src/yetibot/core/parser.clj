@@ -45,7 +45,7 @@
      :space str
      :parened str
      :cmd identity
-     :expr handle-expr}))
+     :expr #'handle-expr}))
 
 (defn parse-and-eval [input]
   (-> input parser transformer))

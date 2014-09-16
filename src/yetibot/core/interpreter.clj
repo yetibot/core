@@ -21,20 +21,42 @@
 (defn pipe-cmds
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra
    :opts"
-  [acc cmd-with-args]
-  (let [extra {:raw acc
+  [acc [cmd-with-args & next-cmds]]
+  (info "pipe-cmds" acc cmd-with-args next-cmds)
+  (let [extra {:raw (:value acc)
+               :skip-next-n (:skip-next-n acc)
+               :next-cmds next-cmds
                :user *current-user*
                :chat-source *chat-source*}
-        possible-coll-acc (to-coll-if-contains-newlines acc)]
-    ; if possible-coll-acc is a string, append acc to args. otherwise send
-    ; possible-coll-acc as an extra :opts param and append nothing to
-    ; cmd-with-args.
-    (apply
-      handle-cmd
-      (if (coll? possible-coll-acc)
-        [cmd-with-args (conj extra {:opts possible-coll-acc})]
-        [(if (empty? acc) cmd-with-args (psuedo-format cmd-with-args acc))
-         extra]))))
+        value (:value acc)
+        possible-coll-acc (to-coll-if-contains-newlines value)]
+    (if (> @(:skip-next-n acc) 0)
+      (do
+        (swap! (:skip-next-n acc) dec)
+        (info "skipping already-consumed command" cmd-with-args "and the next"
+              @(:skip-next-n acc) "commands")
+        acc)
+      ; if possible-coll-acc is a string, append acc to args. otherwise send
+      ; possible-coll-acc as an extra :opts param and append nothing to
+      ; cmd-with-args.
+      (-> acc
+          (update-in
+            [:value]
+            (fn [value]
+              (apply
+                handle-cmd
+                (if (coll? possible-coll-acc)
+                  [cmd-with-args (conj extra {:opts possible-coll-acc})]
+                  [(if (empty? value) cmd-with-args (psuedo-format cmd-with-args value))
+                   extra]))))))))
 
 (defn handle-expr [& cmds]
-  (reduce pipe-cmds "" cmds))
+  (info "reduce commands" (prn-str cmds) (partition-all (count cmds) 1 cmds))
+  (:value
+    (reduce
+      pipe-cmds
+      ; allow commands to consume n next commands in the pipeline and tell
+      ; the reducer to skip over them
+      {:skip-next-n (atom 0)
+       :value ""}
+      (partition-all (count cmds) 1 cmds))))
