@@ -6,11 +6,10 @@
 
 (defn history-observer
   [event-info]
-  ;; todo: rename channel to room
   (info "history obs" event-info)
-  (let [{:keys [adapter channel]} (:chat-source event-info)]
+  (let [{:keys [adapter room]} (:chat-source event-info)]
     (h/add {:chat-source-adapter adapter
-            :chat-source-room channel
+            :chat-source-room room
             :user-id (-> event-info :user :id str)
             :body (:body event-info)})))
 

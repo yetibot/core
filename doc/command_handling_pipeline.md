@@ -7,7 +7,7 @@ its command handling pipeline.
 
 `yetibot.core.handler/handle-raw` is passed params from an adapter:
 
-- `chat-source` e.g. `{:adapter :irc :channel "#clojure"}`
+- `chat-source` e.g. `{:adapter :irc :room "#clojure"}`
 - `user` e.g. `{:last-active #<DateTime 2014-07-16T17:28:59.363Z>, :name devth, :username devth, :id ~devth, :user ~devth, :nick devth}`
 - `event-type` one of: `:message`, `:leave`, `:enter`, `:sound`, `:kick`
 - `body`–this is the actual text the user wrote. Only `event-type`s of

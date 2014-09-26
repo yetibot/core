@@ -32,7 +32,7 @@
        (filter #(:broadcast? (second %)))
        (map first)))
 
-(defn chat-source [channel] {:adapter :irc :channel channel})
+(defn chat-source [channel] {:adapter :irc :room channel})
 
 (def wait-before-reconnect 30000)
 

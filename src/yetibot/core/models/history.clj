@@ -1,11 +1,13 @@
 (ns yetibot.core.models.history
   (:require
     [yetibot.core.db.history :refer :all]
+    [clojure.string :refer [join split]]
     [yetibot.core.models.users :as u]
+    [taoensso.timbre :refer [info warn error spy]]
     [datomico.core :as dc]
-    [datomico.db :refer [q]]
+    [datomic.api :as d]
+    [datomico.db :refer [q] :as db]
     [datomico.action :refer [all where raw-where]]))
-
 
 ;;;; read
 
@@ -36,16 +38,63 @@
 (defn items-for-user [{:keys [chat-source user]}]
   (filter #(= (-> % :user :id) (:id user)) (items-with-user chat-source)))
 
+;; helpers
+
+;; new read fns
+
+(defn format-entity [e]
+  (join ": "((juxt :history/user-id :history/body) e)))
+
+(defn grep [re]
+  {:find ['?e]
+   :where [['?e :history/body '?body]
+           [(list re-find re '?body)]]})
+
+(defn all-entities [] '{:find [?e] :where [[?e :history/body ?body]]})
+
+(defn head [n query] (take n (q query)))
+
+(defn tail [n query] (take-last n (q query)))
+
+(defn count-entities [] '{:find [(count ?e)]
+                       :where [[?e :history/body ?body]]})
+
+(defn random [] '{:find [(rand ?e)] :where [[?e :history/body ?body]]})
+
+(defn run [query] (q query))
+
+(defn filter-chat-source
+  ([adapter room] (filter-chat-source adapter room (all-entities)))
+  ([adapter room query]
+   (update-in query [:where] into [['?e :history/chat-source-room room]
+                                   ['?e :history/chat-source-adapter adapter]])))
+
+;; entities
+
+(defn touch-all [eids]
+  (->> eids
+       (map first)
+       (map db/entity)
+       (map d/touch)))
+
+(defn touch-and-fmt [eids]
+  (->> eids
+      touch-all
+      (map format-entity)))
+
+
+(comment
+  (def entities (q '[:find ?e :where [?e :history/body]]))
+  )
 
 ;; history filters
 (def ^:private cmd-history #"^\!")
 (def ^:private non-cmd-history #"^[^!]")
 
 (defn filter-history-by [re last-n]
-  (->> (history)
-       (take-last last-n)
+  (->> (tail last-n (grep re))
        reverse
-       (filter (fn [[_ body]] (re-find re body)))))
+       touch-all))
 
 (defn non-cmd-items
   "Return `chat-item` only if it doesn't match any regexes in `history-ignore`"
@@ -56,6 +105,7 @@
   "Return `chat-item` only if it does match any regexes in `history-ignore`"
   [chat-source]
   (filter-history-by cmd-history 100))
+
 
 ;;;; write
 
