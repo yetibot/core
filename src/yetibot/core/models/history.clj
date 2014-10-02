@@ -50,7 +50,9 @@
    :where [['?e :history/body '?body]
            [(list re-find re '?body)]]})
 
-(defn all-entities [] '{:find [?e] :where [[?e :history/body ?body]]})
+(defn all-entities [] '{:find [?e]
+                        :where [[?e :history/body ?body ?tx]
+                                [?tx :db/txInstant ?ts]]})
 
 (defn head [n query] (take n (q query)))
 

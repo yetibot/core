@@ -16,3 +16,6 @@
      [?i :history/body ?body ?tx]])
 
 (defn is-command? [h] (re-find #"^\!" h))
+
+(def chat-source {:adapter :test :room "foo"})
+
