@@ -2,7 +2,6 @@
   (:require
     [yetibot.core.db.history :refer :all]
     [clojure.string :refer [join split]]
-    [clojure.core.reducers :as r]
     [yetibot.core.models.users :as u]
     [taoensso.timbre :refer [info warn error spy]]
     [datomico.core :as dc]
