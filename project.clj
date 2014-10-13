@@ -1,4 +1,4 @@
-(defproject yetibot.core "0.2.3"
+(defproject yetibot.core "0.2.4-SNAPSHOT"
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/devth/yetibot.core"
@@ -60,7 +60,7 @@
 
                  ; database
                  [com.datomic/datomic-free "0.9.4899"]
-                 [datomico "0.2.0"]
+                 [datomico "0.2.0" :exclusions [org.clojure/clojure]]
 
                  ; javascript evaluation
                  [evaljs "0.1.2"]
