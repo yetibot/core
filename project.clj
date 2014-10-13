@@ -59,8 +59,8 @@
                  [irclj "0.5.0-alpha4"]
 
                  ; database
-                 [com.datomic/datomic-free "0.9.4899"]
-                 [datomico "0.2.0" :exclusions [org.clojure/clojure]]
+                 [com.datomic/datomic-free "0.8.3814"]
+                 [datomico "0.2.0"]
 
                  ; javascript evaluation
                  [evaljs "0.1.2"]
