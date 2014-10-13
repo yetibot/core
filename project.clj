@@ -1,4 +1,4 @@
-(defproject yetibot.core "0.2.5"
+(defproject yetibot.core "0.2.6-SNAPSHOT"
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/devth/yetibot.core"
@@ -7,7 +7,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :lein-release {:deploy-via :clojars}
   :signing {:gpg-key "C9764E34"}
-  :deploy-repositories [["clojars" {:creds :gpg}]]
+  :deploy-repositories [["releases" :clojars]]
   :repl-options {:init-ns yetibot.core.repl
                  :welcome (println "Welcome to the YetiBot development repl!")}
   :aot [yetibot.core.init]
