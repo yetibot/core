@@ -2,11 +2,13 @@
   (:require
     [yetibot.core.db.history :refer :all]
     [clojure.string :refer [join split]]
+    [clojure.core.reducers :as r]
     [yetibot.core.models.users :as u]
     [taoensso.timbre :refer [info warn error spy]]
     [datomico.core :as dc]
     [datomic.api :as d]
     [datomico.db :refer [q] :as db]
+    [yetibot.core.util :refer [with-fresh-db]]
     [datomico.action :refer [all where raw-where]]))
 
 ;;;; read
@@ -50,9 +52,10 @@
    :where [['?e :history/body '?body]
            [(list re-find re '?body)]]})
 
-(defn all-entities [] '{:find [?e]
-                        :where [[?e :history/body ?body ?tx]
-                                [?tx :db/txInstant ?ts]]})
+(defn all-entities [] '
+  {:find [?e]
+   :where [[?e :history/body ?body ?tx]
+           [?tx :db/txInstant ?ts]]})
 
 (defn head [n query] (take n (q query)))
 
@@ -76,18 +79,25 @@
 (defn touch-all [eids]
   (->> eids
        (map first)
+       sort
        (map db/entity)
        (map d/touch)))
+
+;; scratch space to experiment
+(comment
+  (with-fresh-db
+    db/*db*
+    )
+  d/seek-datoms
+  d/since
+  )
+
 
 (defn touch-and-fmt [eids]
   (->> eids
       touch-all
       (map format-entity)))
 
-
-(comment
-  (def entities (q '[:find ?e :where [?e :history/body]]))
-  )
 
 ;; history filters
 (def ^:private cmd-history #"^\!")
