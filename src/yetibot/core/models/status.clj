@@ -10,14 +10,9 @@
                    default-time-zone now time-zone-for-id date-time utc
                    ago hours days weeks years months]]]
     [yetibot.core.models.users :refer [get-user]]
+    [yetibot.core.util.time :as t]
     [yetibot.core.interpreter]))
 
-;;;; time helpers
-
-(def time-zone (time-zone-for-id "America/Los_Angeles"))
-(def short-time (formatter "hh:mm aa" time-zone))
-(defn- format-time [dt] (unparse short-time dt))
-(defn- after-or-equal? [d1 d2] (or (= d1 d2) (after? d1 d2)))
 
 ;;;; write
 
@@ -46,7 +41,7 @@
 (def ^:private sts-to-strings
   "Format statuses collection as a collection of string"
   (partial map (fn [[user st date]]
-                 (format "%s at %s: %s" (:name user) (format-time date) st))))
+                 (format "%s at %s: %s" (:name user) (t/format-time date) st))))
 
 (defn format-sts
   "Transform statuses collection into a normalized collection of formatted strings"
@@ -61,5 +56,5 @@
   [chat-source ts]
   (info "show status for" chat-source "since" ts)
   (let [after-ts? (fn [{:keys [created-at]}]
-                    (after-or-equal? (from-date created-at) ts))]
+                    (t/after-or-equal? (from-date created-at) ts))]
     (filter after-ts? (statuses chat-source))))

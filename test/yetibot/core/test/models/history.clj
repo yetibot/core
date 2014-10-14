@@ -19,3 +19,18 @@
 
 (def chat-source {:adapter :test :room "foo"})
 
+(cmd-only-items chat-source)
+
+
+
+(deftest history-should-be-in-order
+
+  (doall (map #(add {:user-id "test"
+                     :chat-source-adapter (:adapter chat-source)
+                     :chat-source-room (:room chat-source)
+                     :body (str "body" %)}) (range 10)))
+
+  (touch-and-fmt (q (all-entities)))
+
+  )
+
