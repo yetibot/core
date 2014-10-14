@@ -59,7 +59,7 @@
                  [irclj "0.5.0-alpha4"]
 
                  ; database
-                 [com.datomic/datomic-free "0.8.3814"]
+                 [com.datomic/datomic-free "0.9.4956"]
                  [datomico "0.2.0"]
 
                  ; javascript evaluation
