@@ -59,7 +59,8 @@
                  [irclj "0.5.0-alpha4"]
 
                  ; database
-                 [com.datomic/datomic-free "0.9.4956"]
+                 ; [com.datomic/datomic-free "0.9.4956"]
+                 [com.datomic/datomic-free "0.9.4899"]
                  [datomico "0.2.0"]
 
                  ; javascript evaluation
@@ -80,9 +81,9 @@
 
                  ; utils
                  [robert/hooke "1.3.0"]
-                 [clj-time "0.4.4"]
+                 [clj-time "0.8.0"]
                  [rate-gate "1.3.1"]
                  [overtone/at-at "1.0.0"]
                  [inflections "0.7.3"]
-                 [environ "0.3.0"]
+                 [environ "1.0.0"]
                  ])
