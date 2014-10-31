@@ -43,7 +43,8 @@
 
                  ; http
                  [clj-http "0.7.7"]
-                 [http.async.client "0.5.2"]
+                 [http.async.client "0.5.2" :exclusions [[org.slf4j/slf4j-api]
+                                                         [io.netty/netty]]]
 
                  ; web
                  [compojure "1.1.5"]
