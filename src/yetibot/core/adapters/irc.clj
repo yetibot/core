@@ -156,6 +156,7 @@
               (create-user info) :leave nil))
 
 (defn handle-join [_ info]
+  (log/debug "handle-join" info)
   (handle-raw (chat-source (:target info))
               (create-user info) :enter nil))
 
