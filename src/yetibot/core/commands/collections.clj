@@ -278,7 +278,6 @@
 
    Results are returned as collections."
   [{:keys [match]}]
-  (prn "hi")
   (let [range-args (map read-string (rest match))]
     (apply range range-args)))
 
