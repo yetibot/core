@@ -265,6 +265,27 @@
 (cmd-hook #"reverse"
           _ reverse-cmd)
 
+; range
+(defn range-cmd
+  "range <end> # create a list from 0 to <end> (exclusive)
+   range <start> <end> # create a list from <start> (inclusive) to <end> (exclusive)
+   range <start> <end> <step> # create a list from <start> (inclusive) to <end> (exclusive) by <step>
+
+   Examples:
+   range 2 => 0 1
+   range 2 4 => 2 3
+   range 0 6 2 => 0 2 4
+
+   Results are returned as collections."
+  [{:keys [match]}]
+  (prn "hi")
+  (let [range-args (map read-string (rest match))]
+    (apply range range-args)))
+
+(cmd-hook #"range"
+  #"(\d+)\s+(\d+)\s+(\d+)" range-cmd
+  #"(\d+)\s+(\d+)" range-cmd
+  #"(\d+)" range-cmd)
 
 ; keys
 (defn keys-cmd
