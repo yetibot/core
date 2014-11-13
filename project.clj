@@ -1,4 +1,4 @@
-(defproject yetibot.core "0.2.10-SNAPSHOT"
+(defproject yetibot.core "0.2.11-SNAPSHOT"
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/devth/yetibot.core"
@@ -43,7 +43,8 @@
 
                  ; http
                  [clj-http "0.7.7"]
-                 [http.async.client "0.5.2"]
+                 [http.async.client "0.5.2" :exclusions [[org.slf4j/slf4j-api]
+                                                         [io.netty/netty]]]
 
                  ; web
                  [compojure "1.1.5"]
@@ -59,8 +60,7 @@
                  [irclj "0.5.0-alpha4"]
 
                  ; database
-                 ; [com.datomic/datomic-free "0.9.4956"]
-                 [com.datomic/datomic-free "0.9.4899"]
+                 [com.datomic/datomic-free "0.9.5052"]
                  [datomico "0.2.0"]
 
                  ; javascript evaluation
