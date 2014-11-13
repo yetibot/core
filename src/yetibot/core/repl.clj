@@ -1,5 +1,5 @@
 (ns yetibot.core.repl
-  "Load this namespace when working with YetiBot in the REPL or during dev."
+  "Load this namespace when working with yetibot in the REPL or during dev."
   (:require
     [clojure.stacktrace :refer [print-stack-trace]]
     [yetibot.core.db :as db]

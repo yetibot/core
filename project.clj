@@ -9,7 +9,7 @@
   :signing {:gpg-key "C9764E34"}
   :deploy-repositories [["releases" :clojars]]
   :repl-options {:init-ns yetibot.core.repl
-                 :welcome (println "Welcome to the YetiBot development repl!")}
+                 :welcome (println "Welcome to the yetibot development repl!")}
   :aot [yetibot.core.init]
   :main yetibot.core.init
   :dependencies [[org.clojure/clojure "1.6.0"]
