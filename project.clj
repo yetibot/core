@@ -60,7 +60,9 @@
                  [irclj "0.5.0-alpha4"]
 
                  ; database
-                 [com.datomic/datomic-free "0.9.5052"]
+                 [com.datomic/datomic-free "0.9.5052" 
+                  :exclusions [org.slf4j/slf4j-nop org.slf4j/slf4j-log4j12]]
+                 [org.slf4j/slf4j-jdk14 "1.6.4"] ; peer logging
                  [datomico "0.2.0"]
 
                  ; javascript evaluation
