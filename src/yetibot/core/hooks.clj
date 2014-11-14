@@ -102,13 +102,17 @@
                     (if-let [resolved (resolve v#)] resolved v#)])
                  cmd-pairs))))
 
+(defonce observers (atom {}))
+
 (defn obs-hook
-  "Pass a collection of event-types you're interested in and an observer function
-   that accepts a single arg. If an event occurs that matches the events in your
-   event-types arg, your observer will be called with the event's json."
-  [event-types observer]
+  "Pass a collection of event-types you're interested in and an observer
+   function that accepts a single arg. If an event occurs that matches the
+   events in your event-types arg, your observer will be called with the event's
+   json."
+  [event-types observer & [k]]
   (rh/add-hook
     #'yetibot.core.handler/handle-raw
+    k
     (let [event-types (set event-types)]
       (fn [callback chat-source user event-type body]
         (when (contains? event-types event-type)
