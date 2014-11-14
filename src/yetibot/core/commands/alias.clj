@@ -2,7 +2,8 @@
   (:require
     [taoensso.timbre :refer [info warn error]]
     [clojure.string :as s]
-    [yetibot.core.util.format :refer [pseudo-format-n *subst-prefix*]]
+    [yetibot.core.util.format :refer [pseudo-format-n *subst-prefix*
+                                      remove-surrounding-quotes]]
     [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [yetibot.core.util.format :refer [format-n]]
@@ -11,9 +12,6 @@
     [yetibot.core.hooks :refer [cmd-hook cmd-unhook]]))
 
 (defn- clean-alias-cmd
-  "cmd should be a literal, so chop off the surrounding quotes"
-  [cmd]
-  (-> cmd s/trim (s/replace #"^\"([^\"]+)\"$" "$1")))
 
 (def method-like-replacement-prefix "\\$")
 
