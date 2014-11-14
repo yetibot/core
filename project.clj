@@ -31,6 +31,8 @@
 
                  ; logging
                  [com.taoensso/timbre "3.3.1"]
+                 ; datomic peer logging
+                 [org.slf4j/slf4j-log4j12 "1.6.4"]
 
                  ; TODO - kill this some day. We're only relying on it for
                  ; cond-let at this point.
