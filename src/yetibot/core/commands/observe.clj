@@ -57,7 +57,7 @@
 
    Examples:
    1. Generate a meme when appropriate
-   !observe y.+u.+no.* = meme y u no:
+   !observe y.?u.?no = meme y u no:
 
    2. Lookup the temperature any time someone mentions something that looks like a zip code:
    !observe \\b\\d{5}\\b = \"weather | head 2 | tail\"
