@@ -22,12 +22,10 @@
 ;; Use a single obs-hook to monitor all dynamic observers. That way when it's
 ;; removed from the database, it won't be checked here either.
 (defn obs-handler [event-info]
-  (info "obs-handler:" event-info)
   (let [observers (model/find-all)
         body (:body event-info)]
     ;; check all known observers from the db to see if any fired
     (doseq [observer observers]
-      (info "check:" observer event-info)
       (let [event-type-matches? (= (:event-type event-info)
                                    (keyword (:event-type observer)))
             match? (and event-type-matches?
@@ -36,9 +34,6 @@
           (chat-data-structure
             (handle-unparsed-expr
               (format "echo %s | %s" body (:cmd observer)))))))))
-
-;; TODO: now the problem is the resulting command from a dynamic observer is
-;; being observed, because it goes through  ... ????
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
 
