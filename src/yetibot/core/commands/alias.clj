@@ -11,8 +11,6 @@
     [yetibot.core.db.alias :as model]
     [yetibot.core.hooks :refer [cmd-hook cmd-unhook]]))
 
-(defn- clean-alias-cmd
-
 (def method-like-replacement-prefix "\\$")
 
 (defn- build-alias-cmd-fn [cmd]
@@ -70,7 +68,7 @@
   [{[_ a-name a-cmd] :match user :user}]
   (info "create alias" a-name a-cmd "user:" user)
   (let [cmd-name (cleaned-cmd-name a-name)
-        cmd (clean-alias-cmd a-cmd)]
+        cmd (remove-surrounding-quotes a-cmd)]
     (if (built-in? cmd-name)
       (str "Can not alias existing built-in command " a-name)
       ((comp wire-alias add-alias) {:userid (:id user) :cmd-name cmd-name :cmd cmd}))))
