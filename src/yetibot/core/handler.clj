@@ -23,6 +23,8 @@
 
 (def ^:private exception-format "👮 %s 👮")
 
+(def all-event-types #{:message :leave :enter :sound :kick})
+
 (defn handle-raw
   "No-op handler for optional hooks.
    Expected event-types are:
