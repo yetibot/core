@@ -14,9 +14,10 @@
 ; (timbre/set-config! [:shared-appender-config :spit-filename] "/var/log/yetibot/yetibot.log")
 
 ;; rolling log files
-(make-rolling-appender {:enabled? true}
-                       {:path "/var/log/yetibot/yetibot.log"
-                        :pattern :daily})
+(timbre/set-config! [:appenders :rolling]
+                    (make-rolling-appender {:enabled? true}
+                                           {:path "/var/log/yetibot/yetibot.log"
+                                            :pattern :daily}))
 
 (defn log-to-db
   [{:keys [ap-config level prefix throwable message] :as args}]
