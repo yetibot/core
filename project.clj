@@ -30,7 +30,7 @@
                  [org.apache.commons/commons-lang3 "3.1"]
 
                  ; logging
-                 [com.taoensso/timbre "3.3.1"]
+                 [devth/timbre "3.3.1"]
 
                  ; TODO - kill this some day. We're only relying on it for
                  ; cond-let at this point.
