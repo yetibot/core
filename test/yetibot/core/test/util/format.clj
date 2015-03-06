@@ -51,3 +51,14 @@
   (binding [*subst-prefix* "\\$"]
     (is (= (pseudo-format-n "qux --> $s <-- should b empty" [])
            "qux -->  <-- should b empty"))))
+
+
+(deftest limit-and-trim-string-lines-test
+  (let [s "foo
+           bar
+           baz
+           hi
+           ok
+           hi"
+        expected "foo\nbar"]
+    (is (= (limit-and-trim-string-lines 2 s) expected))))

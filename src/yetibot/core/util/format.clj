@@ -117,3 +117,8 @@
   [literal]
   (-> literal s/trim (s/replace #"^\"([^\"]+)\"$" "$1")))
 
+(defn limit-and-trim-string-lines [n s]
+  (->> (s/split s #"\n")
+       (take n)
+       (map s/trim)
+       (s/join "\n")))
