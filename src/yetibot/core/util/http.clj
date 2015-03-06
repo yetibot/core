@@ -1,5 +1,6 @@
 (ns yetibot.core.util.http
   (:require
+    [yetibot.core.util.format :refer [limit-and-trim-string-lines]]
     [http.async.client :as client]
     [taoensso.timbre :refer [info warn error]]
     [clojure.string :as s]
@@ -36,7 +37,8 @@
       (xml/parse raw)
       (catch Exception e
         (error "Exception trying to fetch xml" args)
-        (throw (Exception. (str "Unable to parse XML from response:" raw)))))))
+        (let [limited-raw (str (limit-and-trim-string-lines 3 raw) "...")]
+          (throw (Exception. (str "Unable to parse XML from response:" limited-raw))))))))
 
 (defn encode [s]
   (URLEncoder/encode (str s) "UTF-8"))
