@@ -76,3 +76,9 @@
     (map (comp s/trim f) kvs)
     items))
 
+
+;; patterns
+
+(defn is-command? [h] (re-find #"^\!" h))
+
+

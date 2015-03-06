@@ -6,6 +6,7 @@
     [yetibot.core.db.observe :as model]
     [yetibot.core.handler :refer [handle-unparsed-expr all-event-types]]
     [yetibot.core.hooks :refer [cmd-hook obs-hook]]
+    [yetibot.core.util :refer [is-command?]]
     [yetibot.core.models.help :as help]
     [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.util.format :refer [remove-surrounding-quotes]]))
@@ -24,16 +25,17 @@
 (defn obs-handler [event-info]
   (let [observers (model/find-all)
         body (:body event-info)]
-    ;; check all known observers from the db to see if any fired
-    (doseq [observer observers]
-      (let [event-type-matches? (= (:event-type event-info)
-                                   (keyword (:event-type observer)))
-            match? (and event-type-matches?
-                        (re-find (re-pattern (:pattern observer)) body))]
-        (when match?
-          (chat-data-structure
-            (handle-unparsed-expr
-              (format "echo %s | %s" body (:cmd observer)))))))))
+    (when-not (is-command? body) ;; ignore commands
+      ;; check all known observers from the db to see if any fired
+      (doseq [observer observers]
+        (let [event-type-matches? (= (:event-type event-info)
+                                     (keyword (:event-type observer)))
+              match? (and event-type-matches?
+                          (re-find (re-pattern (:pattern observer)) body))]
+          (when match?
+            (chat-data-structure
+              (handle-unparsed-expr
+                (format "echo %s | %s" body (:cmd observer))))))))))
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
 
