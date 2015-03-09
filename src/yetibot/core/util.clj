@@ -79,6 +79,6 @@
 
 ;; patterns
 
-(defn is-command? [h] (re-find #"^\!" h))
+(defn is-command? [h] (and h (re-find #"^\!" h)))
 
 
