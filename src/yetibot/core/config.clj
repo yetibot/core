@@ -38,7 +38,7 @@
   (let [path (if (coll? path) path [path])]
     (get-in @config path)))
 
-(defn write-config []
+(defn write-config! []
   (if (config-exists?)
     (spit config-path (with-out-str (pprint @config)))
     (warn config-path "file doesn't exist, skipped write")))
@@ -49,7 +49,16 @@
   (let [path (butlast path-and-val)
         value (last path-and-val)]
     (swap! config update-in path (constantly value))
-    (write-config)))
+    (write-config!)))
+
+(defn remove-config
+  "Remove config at path and write it to disk."
+  [& fullpath]
+  (let [path (butlast fullpath)
+        k (last fullpath)]
+    (swap! config update-in path dissoc k))
+  (write-config!))
+
 
 (defn config-for-ns []
   (apply get-config (map keyword (split (str *ns*) #"\."))))

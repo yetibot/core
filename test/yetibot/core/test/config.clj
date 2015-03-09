@@ -9,7 +9,7 @@
     (f)
     ; reset config back to what it originally was and write to file
     (reset! @#'yetibot.core.config/config original-config)
-    (write-config)))
+    (write-config!)))
 
 (use-fixtures :once wrap)
 
