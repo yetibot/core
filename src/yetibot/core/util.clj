@@ -57,6 +57,16 @@
     items
     (s/split items #"\n")))
 
+(defn ensure-items-seqential
+  "Ensures items is Sequential. If it's not, such as a map, it will transform it
+   to a sequence of k: v strings."
+  [items]
+  (if (sequential? items)
+    items
+    (if (map? items)
+      (map (fn [[k v]] (str k ": " v)) items)
+      (seq items))))
+
 ; keys / vals helpers
 (defn map-like? [items]
   (or (map? items)

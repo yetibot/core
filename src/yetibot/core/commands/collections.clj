@@ -6,7 +6,9 @@
     [yetibot.core.hooks :refer [cmd-hook]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.util.format :refer [format-exception-log]]
-    [yetibot.core.util :refer [psuedo-format split-kvs-with ensure-items-collection]]))
+    [yetibot.core.util :refer
+     [psuedo-format split-kvs-with ensure-items-seqential
+      ensure-items-collection]]))
 
 ; random
 (defn random
@@ -223,7 +225,10 @@
     []
     (range (count coll))))
 
-(defn grep-data-structure [pattern d & [opts]]
+(defn grep-data-structure
+  "opts available:
+     :context int - how many items around matched line to return"
+  [pattern d & [opts]]
   (let [finder (partial re-find pattern)
         context-count (or (:context opts) 0)
         filter-fn (fn [i]
@@ -238,7 +243,7 @@
   [{:keys [match opts args]}]
   (let [[n p] (if (sequential? match) (rest match) ["0" args])
         pattern (re-pattern (str "(?i)" p))
-        items (ensure-items-collection opts)]
+        items (-> opts ensure-items-collection ensure-items-seqential)]
     (grep-data-structure pattern items {:context (read-string n)})))
 
 
