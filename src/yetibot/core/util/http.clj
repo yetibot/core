@@ -29,7 +29,8 @@
       (json/read-json raw)
       (catch Exception e
         (error "Exception trying to fetch json" args)
-        (throw (Exception. (str "Unable to parse JSON from response:" raw)))))))
+        (let [limited-raw (str (limit-and-trim-string-lines 3 raw) "...")]
+          (throw (Exception. (str "Unable to parse JSON from response:" limited-raw))))))))
 
 (defn fetch-xml [& args]
   (let [raw (apply fetch args)]
