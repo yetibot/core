@@ -25,9 +25,10 @@
      <nestable-sub-expr> = <dollar> <lparen> expr <rparen>
      <non-nestable-sub-expr> = dollar !lparen
      words = space* word (space* word)* space*
-     <word> = sub-expr | word-chars | lparen | rparen | quote | literal | non-nestable-sub-expr
+     <word> = sub-expr | word-chars | lparen | rparen | quote | literal | regex-pipe | non-nestable-sub-expr
      <word-chars> = #'[^ `$()|\"]+'
      parened = lparen words rparen
+     <regex-pipe> = word-chars pipe word-chars
      <quote> = '\"'
      literal = quote #'[^\"]+' quote
      space = ' '

@@ -91,6 +91,12 @@
       "Parsing with a sub-expr special character works as long as it doesn't fit
        the shape of the beginning of a sub-expr, e.g. $(....."))
 
+(deftest regex-pipe-test
+  (is (= (parser "grep foo|bar")
+         [:expr [:cmd [:words "grep" [:space " "] "foo" "|" "bar"]]])
+      "Parser should be able to handle a pipe without whitespace as a literal,
+       as in the case of regexes"))
+
 (deftest significant-whitespace-test
   (is (= (parser "list 1, 2, 3 | join        ")
          [:expr [:cmd [:words "list" [:space " "] "1," [:space " "] "2," [:space " "] "3"]] [:cmd [:words "join" [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:space " "] [:space " "]]]])
