@@ -95,7 +95,10 @@
   (is (= (parser "grep foo|bar")
          [:expr [:cmd [:words "grep" [:space " "] "foo" "|" "bar"]]])
       "Parser should be able to handle a pipe without whitespace as a literal,
-       as in the case of regexes"))
+       as in the case of regexes")
+  (is (= (parser "grep foo|bar|baz")
+         [:expr [:cmd [:words "grep" [:space " "] "foo" "|" "bar" "|" "baz"]]])
+      "Parser should be able to parse repeated pipes without surrounding whitespace"))
 
 (deftest significant-whitespace-test
   (is (= (parser "list 1, 2, 3 | join        ")

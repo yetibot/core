@@ -28,7 +28,7 @@
      <word> = sub-expr | word-chars | lparen | rparen | quote | literal | regex-pipe | non-nestable-sub-expr
      <word-chars> = #'[^ `$()|\"]+'
      parened = lparen words rparen
-     <regex-pipe> = word-chars pipe word-chars
+     <regex-pipe> = word-chars pipe word-chars (pipe word-chars)*
      <quote> = '\"'
      literal = quote #'[^\"]+' quote
      space = ' '
