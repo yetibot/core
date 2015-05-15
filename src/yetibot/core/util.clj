@@ -7,7 +7,9 @@
     [clojure.stacktrace :as st]
     [clojure.data.json :as json]))
 
-(defn filter-nil-vals [m]
+(defn filter-nil-vals
+  "Takes a map and returns all of its non-nil values"
+  [m]
   (into {} (remove (comp nil? second) m)))
 
 (defn map-to-strs [m]
