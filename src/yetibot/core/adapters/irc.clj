@@ -3,7 +3,6 @@
     [clojure.set :refer [difference union intersection]]
     [taoensso.timbre :as log]
     [rate-gate.core :refer [rate-limit]]
-    [yetibot.core.chat]
     [irclj
      [core :as irc]
      [connection :as irc-conn]]
@@ -11,7 +10,8 @@
     [clojure.string :refer [split-lines join]]
     [yetibot.core.config :refer [update-config get-config config-for-ns
                                  reload-config conf-valid?]]
-    [yetibot.core.chat :refer [chat-data-structure send-msg-for-each register-chat-adapter] :as chat]
+    [yetibot.core.chat :refer [chat-data-structure send-msg-for-each
+                               register-chat-adapter] :as chat]
     [yetibot.core.util.format :as fmt]
     [yetibot.core.handler :refer [handle-raw]]))
 

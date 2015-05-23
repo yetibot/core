@@ -7,7 +7,8 @@
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [yetibot.core.logo :refer [logo]]
     [yetibot.core.adapters.campfire :as cf]
-    [yetibot.core.adapters.irc :as irc]))
+    [yetibot.core.adapters.irc :as irc]
+    [yetibot.core.adapters.slack :as slack]))
 
 (defn welcome-message []
   (println logo))
@@ -18,4 +19,5 @@
   (log/start)
   (cf/start)
   (irc/start)
+  (slack/start)
   (load-commands-and-observers))

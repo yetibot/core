@@ -14,7 +14,7 @@
   :main yetibot.core.init
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
-                 [org.clojure/data.json "0.1.2"]
+                 [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.namespace "0.2.2"]
                  [org.clojure/tools.trace "0.7.6"]
                  [org.clojure/java.classpath "0.2.0"]
@@ -58,6 +58,8 @@
                  ; chat protocols
                  [clj-campfire "2.2.0"]
                  [irclj "0.5.0-alpha4"]
+                 [org.julienxx/clj-slack "0.4.3"]
+                 [slack-rtm "0.1.0-SNAPSHOT"]
 
                  ; database
                  [com.datomic/datomic-free  "0.9.5078"]
