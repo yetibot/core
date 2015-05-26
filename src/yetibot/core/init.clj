@@ -1,8 +1,9 @@
 (ns yetibot.core.init
   (:require
+    [clojure.stacktrace :refer [print-stack-trace]]
     [yetibot.core.config :as config]
     [yetibot.core.db :as db]
-    [taoensso.timbre :refer [warn]]
+    [taoensso.timbre :refer [info warn]]
     [yetibot.core.logging :as log]
     [yetibot.core.loader :refer [load-commands-and-observers]]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
@@ -16,9 +17,10 @@
 
 (defn report-ex [f n]
   (future (try
+            (info "Trying to start adapter" n)
             (f)
             (catch Exception e
-              (warn "Error starting adapter" n e)))))
+              (warn "Error starting adapter" n (with-out-str (print-stack-trace e)))))))
 
 (defn -main [& args]
   (welcome-message)
