@@ -2,6 +2,7 @@
   (:require
     [yetibot.core.config :as config]
     [yetibot.core.db :as db]
+    [taoensso.timbre :refer [warn]]
     [yetibot.core.logging :as log]
     [yetibot.core.loader :refer [load-commands-and-observers]]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
@@ -13,11 +14,17 @@
 (defn welcome-message []
   (println logo))
 
+(defn report-ex [f n]
+  (future (try
+            (f)
+            (catch Exception e
+              (warn "Error starting adapter" n e)))))
+
 (defn -main [& args]
   (welcome-message)
   (db/start)
   (log/start)
-  (cf/start)
-  (irc/start)
-  (slack/start)
+  (report-ex #(cf/start) "Campfire")
+  (report-ex #(irc/start) "IRC")
+  (report-ex #(slack/start) "Slack")
   (load-commands-and-observers))
