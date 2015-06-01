@@ -59,7 +59,7 @@
                  [clj-campfire "2.2.0"]
                  [irclj "0.5.0-alpha4"]
                  [org.julienxx/clj-slack "0.4.3"]
-                 [slack-rtm "0.1.0-SNAPSHOT"]
+                 [devth/slack-rtm "0.1.0"]
 
                  ; database
                  [com.datomic/datomic-free  "0.9.5078"]

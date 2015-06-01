@@ -10,7 +10,9 @@
 (defonce ^{:private true} users (atom {}))
 
 (defn create-user
-  "Ensures a consistent data structure when creating users from multiple chat sources"
+  "Build a data structure representing a user in common adapter-agnostic format.
+   Ensures a consistent data structure when creating users from multiple chat
+   sources"
   [username {:keys [id] :as user-info}]
   (let [id (str (or id username))] ; use username as the id if nil
     (merge user-info {:username username
@@ -19,8 +21,7 @@
                       :last-active (now)})))
 
 (defn add-user
-  "Add a user according to source. Source may be string identifying a Campfire room
-   or IRC channel"
+  "Add a user according to chat-source."
   [chat-source {:keys [id] :as user}]
   (swap! users assoc-in [chat-source (str id)] user))
 

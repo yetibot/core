@@ -1,6 +1,6 @@
 (ns yetibot.core.chat
   (:require
-    [taoensso.timbre :refer [info warn error]]
+    [taoensso.timbre :refer [debug info warn error]]
     [clojure.string :refer [blank?]]
     [yetibot.core.util.format :as fmt]))
 
@@ -50,8 +50,8 @@
   [d]
   (when-not (:suppress (meta d))
     (let [[formatted flattened] (fmt/format-data-structure d)]
-      (info "formatted is " formatted)
-      (info "flattened is " flattened)
+      (debug "formatted is" formatted)
+      (debug "flattened is" flattened)
       (cond
         ; send each item in the coll as a separate message if it contains images and
         ; the total length of the collection is less than 20

@@ -7,7 +7,8 @@
     [yetibot.core.models.users :as users]
     [yetibot.core.loader :refer [load-commands-and-observers load-ns]]
     [yetibot.core.adapters.campfire :as cf]
-    [yetibot.core.adapters.irc :as irc]))
+    [yetibot.core.adapters.irc :as irc]
+    [yetibot.core.adapters.slack :as slack]))
 
 ; use a few non-network commands for testing
 (defn load-minimal []
@@ -23,6 +24,7 @@
   []
   (load-minimal)
   (db/repl-start)
+  (slack/start)
   (cf/start)
   (irc/start))
 
@@ -33,6 +35,7 @@
   (db/repl-start))
 
 (defn stop []
+  (slack/stop)
   (irc/stop))
 
 (defn load-all []
