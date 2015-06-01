@@ -76,6 +76,8 @@
     (some #(when (re-find patt (:name %)) %)
           (vals (get-users chat-source)))))
 
+
+
 ; (def campfire-date-pattern "yyyy/MM/dd HH:mm:ss Z")
 ; (def date-formatter (doto (new SimpleDateFormat campfire-date-pattern) (.setTimeZone (java.util.TimeZone/getTimeZone "GreenwichEtc"))))
 

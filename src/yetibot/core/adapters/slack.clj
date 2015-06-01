@@ -87,14 +87,18 @@
   (log/info "channel joined" e))
 
 (defn handle-presence-change [e]
-  )
+  (let [active? (= "active" (:presence e))
+        id (:user e)
+        source {:adapter adapter}]
+    (log/debug id "presence change active?=" active?)
+    (users/update-user source id {:active? active?})))
 
 (defn on-presence-change [e]
-  (log/info "presence changed" e)
+  (log/debug "presence changed" e)
   (handle-presence-change e))
 
 (defn on-manual-presence-change [e]
-  (log/info "manual presence changed" e)
+  (log/debug "manual presence changed" e)
   (handle-presence-change e))
 
 ;; users
