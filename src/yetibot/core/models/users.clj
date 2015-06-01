@@ -55,6 +55,9 @@
   (let [user-key {:adapter (:adapter source) :id id}]
     ; ensure user exists
     (or (get @users user-key)
+        ; the user might not exist if an event came through for a channel that
+        ; yetibot wasn't in, since yetibot only builds user models for users it
+        ; can listen to in the channels that it's in.
         (throw
           (ex-info (str "User " user-key " doesn't exist")
                    {:causes user-key})))

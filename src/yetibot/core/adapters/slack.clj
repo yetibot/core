@@ -80,11 +80,13 @@
       "channel_leave" (on-channel-leave event))
     ; don't listen to yetibot's own messages
     (when (not= (:id (self)) (:user event))
-      (let [channel (:channel event)]
+      (let [channel (:channel event)
+            cs (chat-source channel)
+            user-model (users/get-user cs (:user event))]
         (binding [*target* channel
                   yetibot.core.chat/*messaging-fns* messaging-fns]
-          (handle-raw (chat-source channel)
-                      (:user event)
+          (handle-raw cs
+                      user-model
                       :message
                       (:text event)))))))
 
