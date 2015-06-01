@@ -21,6 +21,12 @@
 
 (defonce conn (atom nil))
 
+(defn self
+  "Slack acount for yetibot from `rtm.start` (represented at (-> @conn :start)).
+   You must call `start` in order to define `conn`."
+  []
+  (-> @conn :start :self))
+
 (defn slack-config []
   (let [c (config)]
     {:api-url (:endpoint c) :token (:token c)}))
@@ -53,14 +59,16 @@
 ;; events
 
 (defn on-message [event]
-  (log/info "message" event)
-  (let [channel (:channel event)]
-    (binding [*target* channel
-              yetibot.core.chat/*messaging-fns* messaging-fns]
-      (handle-raw (chat-source channel)
-                  (:user event)
-                  :message
-                  (:text event)))))
+  ;; don't listen to yetibot's own messages
+  (when (not= (:id (self)) (:user event))
+    (log/info "message" event)
+    (let [channel (:channel event)]
+      (binding [*target* channel
+                yetibot.core.chat/*messaging-fns* messaging-fns]
+        (handle-raw (chat-source channel)
+                    (:user event)
+                    :message
+                    (:text event))))))
 
 (defn on-hello [event]
   (log/info "hello" event))
