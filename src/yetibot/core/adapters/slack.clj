@@ -77,7 +77,9 @@
     ; handle the subtype
     (condp = subtype
       "channel_join" (on-channel-join event)
-      "channel_leave" (on-channel-leave event))
+      "channel_leave" (on-channel-leave event)
+      ; do nothing if we don't understand
+      nil)
     ; don't listen to yetibot's own messages
     (when (not= (:id (self)) (:user event))
       (let [channel (:channel event)
