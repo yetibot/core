@@ -38,12 +38,13 @@
 
 ;;;;
 
-(defn chat-source [channel] {:adapter :slack :room channel})
+(def adapter :slack)
+
+(defn chat-source [channel] {:adapter adapter :room channel})
 
 (defn send-msg [msg]
   (slack-chat/post-message (slack-config) *target* msg
-                           {:as_user "true"
-                            :username "yetibot"}))
+                           {:as_user "true"}))
 
 (defn send-paste [msg]
   (send-msg msg))
@@ -85,40 +86,51 @@
 (defn on-channel-joined [e]
   (log/info "channel joined" e))
 
+(defn handle-presence-change [e]
+  )
+
 (defn on-presence-change [e]
-  (log/info "presence changed" e))
+  (log/info "presence changed" e)
+  (handle-presence-change e))
 
 (defn on-manual-presence-change [e]
-  (log/info "manual presence changed" e))
+  (log/info "manual presence changed" e)
+  (handle-presence-change e))
 
 ;; users
 
 (defn filter-chans-or-grps-containing-user [user-id chans-or-grps]
   (filter #((-> % :members set) user-id) chans-or-grps))
 
-(-> @conn :start :users rand-nth)
-
-
 (defn reset-users-from-conn []
   (let [groups (-> @conn :start :groups)
         channels (-> @conn :start :channels)
-        users (-> @conn :start :users)
-        active-users (filter #(= "active" (:presence %)) users)]
-    (doall
+        users (-> @conn :start :users)]
+    (dorun
       (map
         (fn [{:keys [id] :as user}]
-          ; determine which channels and groups the user is in
           (let [filter-for-user (partial filter-chans-or-grps-containing-user id)
+                ; determine which channels and groups the user is in
                 chans-or-grps-for-user (concat (filter-for-user channels)
-                                               (filter-for-user groups))]
-            (doall
-              (map
-                (fn [cog]
-                  (let [cs (chat-source (-> cog :id))
-                        u (users/create-user (:name user) user)]
-                    (users/add-user cs u)))
-                chans-or-grps-for-user))))
-        active-users))))
+                                               (filter-for-user groups))
+                active? (= "active" (:presence user))
+                ; turn the list of chans-or-grps-for-user into a list of chat sources
+                chat-sources (set (map (comp chat-source :id) chans-or-grps-for-user))
+                ; create a user model
+                user-model (users/create-user (:name user) active? user)]
+            (dorun
+              ; for each chat source add a user individually
+              (map (fn [cs] (users/add-user cs user-model)) chat-sources))))
+        users))))
+
+
+(let [chat-source {:adapter :slack :room :lol}]
+  (merge-with
+    (fn [existing-user new-user] (update-in existing-user [:rooms] conj chat-source))
+    {1 {:rooms #{{:adapter :slack :room :lol}}}}
+    {2 {:username "foo"}}
+    ))
+
 
 ;; start/stop
 

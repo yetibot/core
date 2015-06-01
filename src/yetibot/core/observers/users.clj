@@ -16,5 +16,6 @@
 (obs-hook
   #{:leave}
   (fn [event-info]
+    (log/debug "leave" event-info)
     (users/remove-user (:chat-source event-info)
                        (-> event-info :user :id))))

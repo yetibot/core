@@ -6,48 +6,70 @@
 
 (def config {:active-threshold-milliseconds (* 15 60 1000)})
 
-;; keys: username, id, last-active
-(defonce ^{:private true} users (atom {}))
+(defonce ^{:private true
+          :doc
+  "key: {:adapter adapter, :id user-id
+  value: user with keys: adapter, username, id, active?,
+  last-active, rooms e.g.
+  {:adapter :slack :id 1} {:adapter :slack, :username \"yetibot\", :id 1,
+     :active? true, :last-active <DateTime>,
+     :rooms #{{:adapter :slack :room \"C123\"}}}"}
+  users (atom {}))
 
 (defn create-user
   "Build a data structure representing a user in common adapter-agnostic format.
    Ensures a consistent data structure when creating users from multiple chat
-   sources"
-  [username {:keys [id] :as user-info}]
-  (let [id (str (or id username))] ; use username as the id if nil
-    (merge user-info {:username username
-                      :name username ; alias for backward compat
-                      :id id
-                      :last-active (now)})))
+   sources.
+
+   `active?` can be determined by any criteria. In Slack it's managed by
+   presence detection. In IRC and Campfire it could be managed by being offline,
+   or have an activity timeout. If ommitted, it defaults to true."
+  ([username user-info] (create-user username true user-info))
+  ([username active? {:keys [id] :as user-info}]
+   (let [id (str (or id username))] ; use username as the id if nil
+     (merge user-info {:username username
+                       :name username ; alias for backward compat
+                       :active? active?
+                       :id id
+                       :last-active (now)}))))
+
+(defn add-user-merge
+  "Knows how to merge a new user with an existing user by combining the set of
+   rooms"
+  [chat-source]
+  (partial
+    merge-with
+    (fn [existing-user new-user]
+      (update-in existing-user [:rooms] conj chat-source))))
 
 (defn add-user
-  "Add a user according to chat-source."
+  "Add a user according to chat-source. If the user already exists, its rooms
+   will be merged via `add-user-merge` but all other user properties will remain
+   unchanged."
   [chat-source {:keys [id] :as user}]
-  (swap! users assoc-in [chat-source (str id)] user))
+  (let [user-key {:adapter (:adapter chat-source) :id id}]
+    (swap! users (add-user-merge chat-source)
+           {user-key (merge user {:rooms #{chat-source}})})))
 
 (defn update-user [source id attrs]
-  (swap! users update-in [source (str id)] merge attrs))
+  (let [user-key {:adapter (:adapter source) :id id}]
+    (swap! users update-in [user-key] merge attrs)))
 
 (defn remove-user
+  "Removes chat-source from the user's :rooms set"
   [chat-source id]
-  (swap! users update-in [chat-source] dissoc (str id)))
+  (let [user-key {:adapter (:adapter chat-source) :id id}]
+    (swap! users update-in [user-key :rooms] disj chat-source)))
 
-(defn get-users [source]
-  (@users source))
-
-(defn get-users-for-adapter
-  "Get the full list of known users for a specific adapter"
-  [{:keys [adapter]}]
+(defn get-users
+  "Returns active users for a given chat source"
+  [source]
   (->> @users
-       (filter (fn [[{a :adapter} _]] (= a adapter)))
        vals
-       (apply merge)))
+       (filter (fn [u] (and (:active? u) ((:rooms u) source))))))
 
 (defn get-user [source id]
-  (when-let [users-for-source (or (get-users source)
-                                  ; fallback to all known users for :adapter
-                                  (get-users-for-adapter source))]
-    (users-for-source (str id))))
+  (@users {:adapter (:adapter source) :id id}))
 
 (defn find-user-like [chat-source name]
   (let [patt (re-pattern (str "(?i)" name))]
@@ -67,9 +89,7 @@
 
 ; (defn get-user-ms [user] (.getTime (.parse date-formatter (:last_active user))))
 
-(defn is-active?
-  [user]
-  false)
+(defn is-active? [user] (:active? user))
 
   ; (if (contains? user :last_active)
   ;   (let [current-ms (.getTime (new Date))
@@ -84,10 +104,10 @@
 
 (defn get-active-humans [] (remove is-yetibot? (get-active-users)))
 
-(defn get-updated-user [id last_active]
-  (assoc (get-user id) :last_active last_active))
+; (defn get-updated-user [id last_active]
+;   (assoc (get-user id) :last_active last_active))
 
-(defn update-active-timestamp [{id :user_id last_active :created_at}]
-  (do
-    (swap! users conj {id (get-updated-user id last_active)})
-    (info @users)))
+; (defn update-active-timestamp [{id :user_id last_active :created_at}]
+;   (do
+;     (swap! users conj {id (get-updated-user id last_active)})
+;     (info @users)))
