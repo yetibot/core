@@ -59,17 +59,34 @@
 
 ;; events
 
+(defn on-channel-join [e]
+  (log/info "channel join" e)
+  (let [cs (chat-source (:channel e))
+        user-model (users/get-user cs (:user e))]
+    (handle-raw cs user-model :enter nil)))
+
+(defn on-channel-leave [e]
+  (log/info "channel leave" e)
+  (let [cs (chat-source (:channel e))
+        user-model (users/get-user cs (:user e))]
+    (handle-raw cs user-model :leave nil)))
+
 (defn on-message [event]
-  ;; don't listen to yetibot's own messages
-  (when (not= (:id (self)) (:user event))
-    (log/info "message" event)
-    (let [channel (:channel event)]
-      (binding [*target* channel
-                yetibot.core.chat/*messaging-fns* messaging-fns]
-        (handle-raw (chat-source channel)
-                    (:user event)
-                    :message
-                    (:text event))))))
+  (log/info "message" event)
+  (if-let [subtype (:subtype event)]
+    ; handle the subtype
+    (condp = subtype
+      "channel_join" (on-channel-join event)
+      "channel_leave" (on-channel-leave event))
+    ; don't listen to yetibot's own messages
+    (when (not= (:id (self)) (:user event))
+      (let [channel (:channel event)]
+        (binding [*target* channel
+                  yetibot.core.chat/*messaging-fns* messaging-fns]
+          (handle-raw (chat-source channel)
+                      (:user event)
+                      :message
+                      (:text event)))))))
 
 (defn on-hello [event]
   (log/info "hello" event))
@@ -82,9 +99,6 @@
 
 (defn on-error [exception]
   (log/error "error" exception))
-
-(defn on-channel-joined [e]
-  (log/info "channel joined" e))
 
 (defn handle-presence-change [e]
   (let [active? (= "active" (:presence e))
@@ -145,7 +159,6 @@
 (defn start []
   (stop)
   (reset! conn (slack/connect (slack-config)
-                              :channel_joined on-channel-joined
                               :on-connect on-connect
                               :on-error on-error
                               :on-close on-close

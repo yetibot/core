@@ -17,13 +17,14 @@
   (require 'yetibot.core.observers.history :reload)
   (require 'yetibot.core.commands.history :reload)
   (require 'yetibot.core.commands.users :reload)
-  (require 'yetibot.core.commands.collections :reload))
+  (require 'yetibot.core.commands.collections :reload)
+  (require 'yetibot.core.observers.users :reload))
 
 (defn start
   "Load a minimal set of commands, start the database and connect to chat adapters"
   []
-  (load-minimal)
   (db/repl-start)
+  (load-minimal)
   (slack/start)
   (cf/start)
   (irc/start))

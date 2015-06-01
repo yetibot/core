@@ -53,6 +53,11 @@
 
 (defn update-user [source id attrs]
   (let [user-key {:adapter (:adapter source) :id id}]
+    ; ensure user exists
+    (or (get @users user-key)
+        (throw
+          (ex-info (str "User " user-key " doesn't exist")
+                   {:causes user-key})))
     (swap! users update-in [user-key] merge attrs)))
 
 (defn remove-user
@@ -61,12 +66,13 @@
   (let [user-key {:adapter (:adapter chat-source) :id id}]
     (swap! users update-in [user-key :rooms] disj chat-source)))
 
+
 (defn get-users
   "Returns active users for a given chat source"
   [source]
   (->> @users
        vals
-       (filter (fn [u] (and (:active? u) ((:rooms u) source))))))
+       (filter (fn [u] (and (:active? u) (:rooms u) ((:rooms u) source))))))
 
 (defn get-user [source id]
   (@users {:adapter (:adapter source) :id id}))
@@ -75,7 +81,6 @@
   (let [patt (re-pattern (str "(?i)" name))]
     (some #(when (re-find patt (:name %)) %)
           (vals (get-users chat-source)))))
-
 
 
 ; (def campfire-date-pattern "yyyy/MM/dd HH:mm:ss Z")
