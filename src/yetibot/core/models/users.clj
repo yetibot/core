@@ -95,7 +95,7 @@
   (let [us (filter (fn [[k user]] (= (:adapter k) (:adapter chat-source)))
                    @users)
         patt (re-pattern (str "(?i)" name))]
-    (some (fn [[k v]] (when (re-find patt (:name v)) v)) us)))
+    (some (fn [[k v]] (when (re-find patt (or (:name v) "")) v)) us)))
 
 ; (def campfire-date-pattern "yyyy/MM/dd HH:mm:ss Z")
 ; (def date-formatter (doto (new SimpleDateFormat campfire-date-pattern) (.setTimeZone (java.util.TimeZone/getTimeZone "GreenwichEtc"))))
