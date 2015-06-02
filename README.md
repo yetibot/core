@@ -1,9 +1,13 @@
 # yetibot.core [![Build Status](https://travis-ci.org/devth/yetibot.core.svg?branch=master)](https://travis-ci.org/devth/yetibot.core)
 
+> NB: The build is not passing because of a [parsing
+> bug](https://github.com/devth/yetibot/issues/423) having to do with nested
+> parenthesis.
+
 Core yetibot utilities, extracted for shared use among yetibot and its various
 plugins. yetibot.core is not meant to be run standalone, but instead used as a
 dependency from another project that provides config and optionally other
-yetibot plugins, private or public.  
+yetibot plugins, private or public.
 
 The main yetibot commands live at:
 https://github.com/devth/yetibot
@@ -51,7 +55,7 @@ for more complex and diverse examples.
 
 The above `:irc` settings would allow yetibot to post Tweets in the #yetibot
 channel, but not in the #workstuff channel. Not backwards compatible with old
-config 
+config
 
 
 ## License
