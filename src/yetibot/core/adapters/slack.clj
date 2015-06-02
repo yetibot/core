@@ -132,8 +132,13 @@
 
 (defn on-channel-left
   "Fires when yetibot gets kicked from a channel or group"
-  []
-  )
+  [e]
+  (log/debug "channel left" e)
+  (let [c (:channel e)
+        cs (chat-source c)
+        users-in-chan (users/get-users cs)]
+    (log/debug "remove users from" cs (map :id users-in-chan))
+    (dorun (map (fn [u] (users/remove-user cs (:id u))) users-in-chan))))
 
 ;; users
 
