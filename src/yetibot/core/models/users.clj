@@ -42,6 +42,13 @@
     (fn [existing-user new-user]
       (update-in existing-user [:rooms] conj chat-source))))
 
+(defn add-user-without-room
+  [adapter {:keys [id] :as user}]
+  "Added for Slack, where we might know about users but don't know the rooms
+   that they are in because yetibot is not in those rooms."
+  (let [user-key {:adapter adapter :id id}]
+    (swap! users assoc user-key user)))
+
 (defn add-user
   "Add a user according to chat-source. If the user already exists, its rooms
    will be merged via `add-user-merge` but all other user properties will remain
@@ -69,6 +76,10 @@
   (let [user-key {:adapter (:adapter chat-source) :id id}]
     (swap! users update-in [user-key :rooms] disj chat-source)))
 
+(defn add-chat-source-to-user
+  [chat-source id]
+  (let [user-key {:adapter (:adapter chat-source) :id id}]
+    (swap! users update-in [user-key :rooms] conj chat-source)))
 
 (defn get-users
   "Returns active users for a given chat source"
@@ -107,7 +118,6 @@
   ;     (< ms-since-active active-threshold-milliseconds))
   ;   false))
 
-; TODO: so borked
 (defn is-yetibot? [user] false)
 
 (defn get-active-users [] (filter is-active? (vals @users)))

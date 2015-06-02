@@ -65,6 +65,7 @@
         user-model (users/get-user cs (:user e))]
     (handle-raw cs user-model :enter nil)))
 
+
 (defn on-channel-leave [e]
   (log/info "channel leave" e)
   (let [cs (chat-source (:channel e))
@@ -119,6 +120,16 @@
   (log/debug "manual presence changed" e)
   (handle-presence-change e))
 
+(defn on-channel-joined
+  "Fires when yetibot gets invited and joins a channel"
+  [e]
+  (log/debug "channel joined" e)
+  (let [c (:channel e)
+        cs (chat-source (:id c))
+        user-ids (:members c)]
+    (log/debug "adding chat source" cs "for users" user-ids)
+    (dorun (map #(users/add-chat-source-to-user cs %) user-ids))))
+
 ;; users
 
 (defn filter-chans-or-grps-containing-user [user-id chans-or-grps]
@@ -140,19 +151,12 @@
                 chat-sources (set (map (comp chat-source :id) chans-or-grps-for-user))
                 ; create a user model
                 user-model (users/create-user (:name user) active? user)]
-            (dorun
-              ; for each chat source add a user individually
-              (map (fn [cs] (users/add-user cs user-model)) chat-sources))))
+            (if (empty? chat-sources)
+              (users/add-user-without-room adapter user-model)
+              (dorun
+                ; for each chat source add a user individually
+                (map (fn [cs] (users/add-user cs user-model)) chat-sources)))))
         users))))
-
-
-(let [chat-source {:adapter :slack :room :lol}]
-  (merge-with
-    (fn [existing-user new-user] (update-in existing-user [:rooms] conj chat-source))
-    {1 {:rooms #{{:adapter :slack :room :lol}}}}
-    {2 {:username "foo"}}
-    ))
-
 
 ;; start/stop
 
@@ -167,6 +171,8 @@
                               :on-error on-error
                               :on-close on-close
                               :presence_change on-presence-change
+                              :channel_joined on-channel-joined
+                              :group_joined on-channel-joined
                               :manual_presence_change on-manual-presence-change
                               :message on-message
                               :hello on-hello))
