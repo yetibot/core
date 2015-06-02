@@ -92,10 +92,10 @@
   (@users {:adapter (:adapter source) :id id}))
 
 (defn find-user-like [chat-source name]
-  (let [patt (re-pattern (str "(?i)" name))]
-    (some #(when (re-find patt (:name %)) %)
-          (vals (get-users chat-source)))))
-
+  (let [us (filter (fn [[k user]] (= (:adapter k) (:adapter chat-source)))
+                   @users)
+        patt (re-pattern (str "(?i)" name))]
+    (some (fn [[k v]] (when (re-find patt (:name v)) v)) us)))
 
 ; (def campfire-date-pattern "yyyy/MM/dd HH:mm:ss Z")
 ; (def date-formatter (doto (new SimpleDateFormat campfire-date-pattern) (.setTimeZone (java.util.TimeZone/getTimeZone "GreenwichEtc"))))
