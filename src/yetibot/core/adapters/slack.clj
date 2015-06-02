@@ -121,7 +121,7 @@
   (handle-presence-change e))
 
 (defn on-channel-joined
-  "Fires when yetibot gets invited and joins a channel"
+  "Fires when yetibot gets invited and joins a channel or group"
   [e]
   (log/debug "channel joined" e)
   (let [c (:channel e)
@@ -129,6 +129,11 @@
         user-ids (:members c)]
     (log/debug "adding chat source" cs "for users" user-ids)
     (dorun (map #(users/add-chat-source-to-user cs %) user-ids))))
+
+(defn on-channel-left
+  "Fires when yetibot gets kicked from a channel or group"
+  []
+  )
 
 ;; users
 
@@ -173,6 +178,8 @@
                               :presence_change on-presence-change
                               :channel_joined on-channel-joined
                               :group_joined on-channel-joined
+                              :channel_left on-channel-left
+                              :group_left on-channel-left
                               :manual_presence_change on-manual-presence-change
                               :message on-message
                               :hello on-hello))
