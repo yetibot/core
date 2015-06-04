@@ -1,10 +1,10 @@
 (ns yetibot.core.commands.help
-  (:require [clojure.string :as s])
-  (:use [yetibot.core.hooks :only [cmd-hook]]
-        [yetibot.core.models.help :only (get-docs get-docs-for)]))
+  (:require
+    [clojure.string :as s]
+    [yetibot.core.models.help :refer [fuzzy-get-docs-for get-docs get-docs-for]]
+    [yetibot.core.hooks :refer [cmd-hook]]))
 
-(def separator
-  "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
+(def separator "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
 
 (defn help-topics
   [_]
@@ -14,10 +14,12 @@
                (sort (keys (get-docs))))))
 
 (defn help-for-topic
-  "help <topic> # get help for <topic>"
+  "help <topic> # get help for <topic>. If no exact matches are found for topic,
+   it will fallback to the topic with the smallest Levenshtein distance < 2"
   [{prefix :args}]
   (or
     (seq (get-docs-for prefix))
+    (seq (fuzzy-get-docs-for prefix))
     (format "I couldn't find any help for topic '%s'" prefix)))
 
 (defn help-all-cmd
@@ -28,6 +30,6 @@
             (s/join \newline section))))
 
 (cmd-hook #"help"
-          #"^all$" help-all-cmd
-          #"^$" help-topics
-          #"^\S+$" help-for-topic)
+  #"^all$" help-all-cmd
+  #"^$" help-topics
+  #"^\S+$" help-for-topic)

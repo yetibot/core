@@ -82,6 +82,7 @@
                  [cheshire "5.0.1"]
 
                  ; utils
+                 [clj-fuzzy "0.2.1"]
                  [robert/hooke "1.3.0"]
                  [clj-time "0.8.0"]
                  [rate-gate "1.3.1"]
