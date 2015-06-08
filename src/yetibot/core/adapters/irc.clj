@@ -223,7 +223,8 @@
 (defn stop
   "Kill the irc conection"
   []
-  (irc/kill @conn)
+  (when @conn
+    (irc/kill @conn))
   (reset! conn nil))
 
 (defn part [channel]
