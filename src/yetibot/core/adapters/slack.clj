@@ -172,7 +172,8 @@
 
 (defn stop []
   (when @conn
-    (slack/send-event (:dispatcher @conn) :close)))
+    (slack/send-event (:dispatcher @conn) :close))
+  (reset! conn nil))
 
 (defn start []
   (stop)
