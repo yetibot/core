@@ -14,8 +14,7 @@
                (sort (keys (get-docs))))))
 
 (defn help-for-topic
-  "help <topic> # get help for <topic>. If no exact matches are found for topic,
-   it will fallback to the topic with the smallest Levenshtein distance < 2"
+  "help <topic> # get help for <topic>. If no exact matches are found for topic, it will fallback to the topic with the smallest Levenshtein distance < 2"
   [{prefix :args}]
   (or
     (seq (get-docs-for prefix))
