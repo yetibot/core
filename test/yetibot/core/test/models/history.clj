@@ -3,10 +3,12 @@
     [yetibot.core.models.history :refer :all]
     [yetibot.core.db :as db]
     [yetibot.core.util :refer [is-command?]]
+    [yetibot.core.config :refer [reload-config]]
     [datomico.core :as dc]
     [datomico.db :refer [q]]
     [clojure.test :refer :all]))
 
+(reload-config "test/resources/test-config.edn")
 (db/repl-start)
 
 ;; normal query for all records in history

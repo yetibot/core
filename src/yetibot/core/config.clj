@@ -25,13 +25,15 @@
       (warn "Failed loading config: " e)
       {:yetibot {}})))
 
-(defn reload-config []
-  (let [new-conf (load-edn config-path)]
-    (info "☐ Try loading config at" config-path)
-    (reset! config new-conf)
-    (when-not (empty? (:yetibot @config))
-      (info "☑ Config loaded"))
-    new-conf))
+(defn reload-config
+  ([] (reload-config config-path))
+  ([path]
+    (let [new-conf (load-edn path)]
+      (info "☐ Try loading config at" path)
+      (reset! config new-conf)
+      (when-not (empty? (:yetibot @config))
+        (info "☑ Config loaded"))
+      new-conf)))
 
 (defn get-config
   [& path]
