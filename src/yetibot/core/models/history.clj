@@ -44,7 +44,7 @@
 ;; new read fns
 
 (defn format-entity [e]
-  (join ": "((juxt :history/user-id :history/body) e)))
+  (join ": " ((juxt :history/user-name :history/body) e)))
 
 (defn grep [re]
   {:find ['?e]

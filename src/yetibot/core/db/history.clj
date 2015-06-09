@@ -11,6 +11,7 @@
                              [[:chat-source-adapter :keyword]
                               [:chat-source-room :string]
                               [:user-id :string]
+                              [:user-name :string]
                               [:body :string]]))
 
 (dc/create-model-fns model-namespace)

@@ -26,9 +26,12 @@
    or have an activity timeout. If ommitted, it defaults to true."
   ([username user-info] (create-user username true user-info))
   ([username active? {:keys [id] :as user-info}]
-   (let [id (str (or id username))] ; use username as the id if nil
+   (let [id (str (or id username))
+         mention-name (or (:mention-name user-info) username)] ; use username as the id if nil
+     (clojure.pprint/pprint username)
      (merge user-info {:username username
                        :name username ; alias for backward compat
+                       :mention-name mention-name
                        :active? active?
                        :id id
                        :last-active (now)}))))
@@ -55,6 +58,7 @@
    unchanged."
   [chat-source {:keys [id] :as user}]
   (let [user-key {:adapter (:adapter chat-source) :id id}]
+    (clojure.pprint/pprint (:username user))
     (swap! users (add-user-merge chat-source)
            {user-key (merge user {:rooms #{chat-source}})})))
 

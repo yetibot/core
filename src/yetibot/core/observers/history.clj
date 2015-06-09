@@ -11,6 +11,7 @@
     (h/add {:chat-source-adapter adapter
             :chat-source-room room
             :user-id (-> event-info :user :id str)
+            :user-name (-> event-info :user :mention-name str)
             :body (:body event-info)})))
 
 (defonce observer (obs-hook #{:message} #'history-observer))
