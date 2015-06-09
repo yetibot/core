@@ -9,7 +9,7 @@
   "users # list all users presently in the room"
   [{:keys [chat-source]}]
   (log/info "show users for" chat-source)
-  (map :username (users/get-users chat-source)))
+  (map :mention-name (users/get-users chat-source)))
 
 ; (defn reset
 ;   "users reset # reset the user list for the current room"

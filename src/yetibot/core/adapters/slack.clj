@@ -160,7 +160,7 @@
                 ; turn the list of chans-or-grps-for-user into a list of chat sources
                 chat-sources (set (map (comp chat-source :id) chans-or-grps-for-user))
                 ; create a user model
-                user-model (users/create-user (:name user) active? user)]
+                user-model (users/create-user (:name user) active? (assoc user :mention-name (str "<@" (:id user) ">")))]
             (if (empty? chat-sources)
               (users/add-user-without-room adapter user-model)
               (dorun
