@@ -1,10 +1,13 @@
 (ns yetibot.core.test.models.history
   (:require
     [yetibot.core.models.history :refer :all]
+    [yetibot.core.db :as db]
     [yetibot.core.util :refer [is-command?]]
     [datomico.core :as dc]
     [datomico.db :refer [q]]
     [clojure.test :refer :all]))
+
+(db/repl-start)
 
 ;; normal query for all records in history
 (comment

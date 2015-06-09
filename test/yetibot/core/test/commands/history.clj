@@ -1,14 +1,16 @@
 (ns yetibot.core.test.commands.history
   (:require
+    [yetibot.core.db :as db]
+    [yetibot.core.models.history :as h]
     [yetibot.core.commands.history :refer :all]))
+
+(db/repl-start)
 
 (history-cmd {:chat-source {:adapter :test :room "foo"}
               :next-cmds ["scount"]
               :skip-next-n (atom 0)})
 
 (def f (partial h/filter-chat-source :test "foo"))
-
-(f (h/random))
 
 (history-for-cmd-sequence ["count"] f)
 

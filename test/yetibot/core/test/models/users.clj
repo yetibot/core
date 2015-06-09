@@ -3,8 +3,8 @@
     [yetibot.core.models.users :refer :all]
     [clojure.test :refer :all]))
 
-(def chat-source "test")
-(def user-id 0)
+(def chat-source {:adapter :test :room "test"})
+(def user-id "0")
 (def username "devth")
 
 (defn setup-user [f]
