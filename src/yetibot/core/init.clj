@@ -4,7 +4,7 @@
     [yetibot.core.config :as config]
     [yetibot.core.db :as db]
     [taoensso.timbre :refer [info warn]]
-    [yetibot.core.logging :as log]
+    [yetibot.core.logging :as logging]
     [yetibot.core.loader :refer [load-commands-and-observers]]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [yetibot.core.logo :refer [logo]]
@@ -25,7 +25,7 @@
 (defn -main [& args]
   (welcome-message)
   (db/start)
-  (log/start)
+  (logging/start)
   (report-ex #(cf/start) "Campfire")
   (report-ex #(irc/start) "IRC")
   (report-ex #(slack/start) "Slack")
