@@ -46,11 +46,6 @@
                  [http.async.client "0.5.2" :exclusions [[org.slf4j/slf4j-api]
                                                          [io.netty/netty]]]
 
-                 ; web
-                 [compojure "1.1.5"]
-                 [hiccup "1.0.2"]
-                 [lib-noir "0.3.4" :exclusions [[org.clojure/tools.namespace]]]
-
                  ; email
                  [com.draines/postal "1.9.0"]
                  [clojure-mail "0.1.4"]
