@@ -9,7 +9,7 @@
 (def parser
   "Major components of the parser:
    expr     - the top-level expression made up of cmds and sub-exprs. When multiple
-              cmds are present, it implies they should be sucessively piped.
+              cmds are present, it implies they should be successively piped.
    cmd      - a single command consisting of words.
    sub-expr - a backticked or $(..)-style sub-expression to be evaluated inline.
    parened  - a grouping of words wrapped in parenthesis, explicitly tokenized to
