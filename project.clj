@@ -21,7 +21,7 @@
                  [org.clojure/core.cache "0.6.3"]
 
                  [org.clojure/core.memoize "0.5.6"]
-                 [org.clojure/core.match "0.2.0-rc5"]
+                 [org.clojure/core.match "0.3.0-alpha4"]
                  [org.clojure/data.xml "0.0.6"]
                  [org.clojure/data.zip "0.1.1"]
                  [org.clojure/java.jdbc "0.2.3"]
