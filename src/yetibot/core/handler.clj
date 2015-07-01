@@ -9,6 +9,7 @@
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.interpreter :as interp]
     [clojure.string :refer [join]]
+    [yetibot.core.models.help :as help]
     [clojure.stacktrace :as st]))
 
 (defn handle-unparsed-expr
@@ -32,8 +33,12 @@
 
 (def ^:private exception-format "👮 %s 👮")
 
-
 (def all-event-types #{:message :leave :enter :sound :kick})
+
+(defn command?
+  "Returns true if prefix matches a built-in command or alias"
+  [prefix]
+  (boolean (help/get-docs-for prefix)))
 
 (defn embedded-cmds
   "Parse a string and only return a collection of any embedded commands instead
@@ -41,7 +46,10 @@
   [body]
   (->> (parser body)
        second second rest
-       (filter #(= :expr (first %)))))
+       ; get expressions
+       (filter #(= :expr (first %)))
+       ; ensure prefix is actually a command
+       (filter #(command? (-> % second second second)))))
 
 (defn handle-raw
   "No-op handler for optional hooks.
