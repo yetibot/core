@@ -1,6 +1,7 @@
 (ns yetibot.core.adapters.slack
   (:require
     [gniazdo.core :as ws]
+    [clojure.string :as s]
     [http.async.client :as c]
     [org.httpkit.client :as http]
     [yetibot.core.models.users :as users]
@@ -57,6 +58,16 @@
    :set-room-broadcast nil
    :rooms rooms})
 
+;; formatting
+
+(defn unencode-message
+  "Slack gets fancy with URL detection, channel names, user mentions, as
+   described in https://api.slack.com/docs/formatting. This can break support
+   for things where YB is expecting a URL (e.g. configuring Jenkins), so strip
+   it for now. Replaces <X|Y> with Y."
+  [body]
+  (s/replace body #"\<(.+)\|(.+)\>" "$2"))
+
 ;; events
 
 (defn on-channel-join [e]
@@ -91,7 +102,7 @@
           (handle-raw cs
                       user-model
                       :message
-                      (:text event)))))))
+                      (unencode-message (:text event))))))))
 
 (defn on-hello [event]
   (log/info "hello" event))
@@ -167,6 +178,7 @@
                 ; for each chat source add a user individually
                 (map (fn [cs] (users/add-user cs user-model)) chat-sources)))))
         users))))
+
 
 ;; start/stop
 
