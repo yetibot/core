@@ -206,6 +206,15 @@
 (cmd-hook #"sort"
           _ sort-cmd)
 
+; sortnum
+(defn sortnum-cmd
+  "sortnum <list> # numerically sort a list"
+  [{items :opts}]
+  (sort #(- (read-string %1) (read-string %2)) (ensure-items-collection items)))
+
+(cmd-hook #"sortnum"
+          _ sortnum-cmd)
+
 ; grep
 (defn slide-context [coll i n]
   (reduce
