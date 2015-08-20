@@ -27,7 +27,7 @@
   ([username user-info] (create-user username true user-info))
   ([username active? {:keys [id] :as user-info}]
    (let [id (str (or id username))
-         mention-name (or (:mention-name user-info) username)] ; use username as the id if nil
+         mention-name username] ; mention name breaks pure-text representation of user
      (merge user-info {:username username
                        :name username ; alias for backward compat
                        :mention-name mention-name
