@@ -45,7 +45,7 @@
 
 (defn send-msg [msg]
   (slack-chat/post-message (slack-config) *target* msg
-                           {:as_user "true"}))
+                           {:unfurl_media "true" :as_user "true"}))
 
 (defn send-paste [msg]
   (send-msg msg))
