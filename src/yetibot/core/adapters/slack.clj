@@ -5,6 +5,7 @@
     [http.async.client :as c]
     [org.httpkit.client :as http]
     [yetibot.core.models.users :as users]
+    [yetibot.core.util.http :refer [html-decode]]
     [clj-slack
      [users :as slack-users]
      [chat :as slack-chat]
@@ -66,7 +67,9 @@
    for things where YB is expecting a URL (e.g. configuring Jenkins), so strip
    it for now. Replaces <X|Y> with Y."
   [body]
-  (s/replace body #"\<(.+)\|(.+)\>" "$2"))
+  (-> body
+    (s/replace #"\<(.+)\|(.+)\>" "$2")
+    html-decode))
 
 ;; events
 
