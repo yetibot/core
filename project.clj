@@ -57,7 +57,7 @@
                  [devth/slack-rtm "0.1.0"]
 
                  ; database
-                 [com.datomic/datomic-free  "0.9.5078"]
+                 [com.datomic/datomic-free  "0.9.5302"]
                  [datomico "0.2.0"]
 
                  ; javascript evaluation
