@@ -10,7 +10,8 @@
     [yetibot.core.logo :refer [logo]]
     [yetibot.core.adapters.campfire :as cf]
     [yetibot.core.adapters.irc :as irc]
-    [yetibot.core.adapters.slack :as slack]))
+    [yetibot.core.adapters.slack :as slack])
+  (:gen-class))
 
 (defn welcome-message []
   (println logo))
