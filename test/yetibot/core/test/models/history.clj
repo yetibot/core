@@ -50,3 +50,5 @@
         non-cmd (touch-all (last-chat-for-room chat-source false))]
     (println "cmd:" cmd)
     (println "non-cmd:" non-cmd)))
+
+(touch-all (last-chat-for-room chat-source true 3))

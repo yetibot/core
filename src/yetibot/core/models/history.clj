@@ -116,10 +116,11 @@
    `cmd?` is a boolean specifying whether it should be the last yetibot command
    or a normal chat.
    Useful for `that` commands."
-  [{:keys [adapter room]} cmd?]
-  (->> (filter-chat-source
-         adapter room (grep (if cmd? cmd-history non-cmd-history)))
-       (tail 1)))
+  ([chat-source cmd?] (last-chat-for-room chat-source cmd? 1))
+  ([{:keys [adapter room]} cmd? history-count]
+   (->> (filter-chat-source
+          adapter room (grep (if cmd? cmd-history non-cmd-history)))
+        (tail history-count))))
 
 (defn non-cmd-items
   "Return `chat-item` only if it doesn't match any regexes in `history-ignore`"
