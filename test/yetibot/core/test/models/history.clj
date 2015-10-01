@@ -27,15 +27,26 @@
 
 (cmd-only-items chat-source)
 
+(defn add-history [body]
+  (add {:user-id "test"
+        :user-name "test"
+        :chat-source-adapter (:adapter chat-source)
+        :chat-source-room (:room chat-source)
+        :body body}))
 
+(defonce add-normal-history
+  (doall (map #(add-history (str "body" %)) (range 10))))
+
+(defonce add-cmd-history
+  (doall
+    (map add-history ["!echo" "!status" "!poke"])))
 
 (deftest history-should-be-in-order
+  (touch-and-fmt (q (all-entities))))
 
-  (doall (map #(add {:user-id "test"
-                     :chat-source-adapter (:adapter chat-source)
-                     :chat-source-room (:room chat-source)
-                     :body (str "body" %)}) (range 10)))
 
-  (touch-and-fmt (q (all-entities)))
-  )
-
+(deftest last-chat-for-room-test
+  (let [cmd (touch-and-fmt (last-chat-for-room chat-source true))
+        non-cmd (touch-and-fmt (last-chat-for-room chat-source false))]
+    (println "cmd:" cmd)
+    (println "non-cmd:" non-cmd)))

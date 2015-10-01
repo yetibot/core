@@ -43,6 +43,7 @@
   (let [chat-source-filter (partial h/filter-chat-source
                                     (:adapter chat-source)
                                     (:room chat-source))
+        ;; figure out how many commands to consume
         skip-n (count (take-while should-consume-cmd? (take 1 next-cmds)))
         history (if (> skip-n 0)
                   (do
