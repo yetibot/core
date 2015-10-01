@@ -56,9 +56,9 @@
    :where [[?e :history/body ?body ?tx]
            [?tx :db/txInstant ?ts]]})
 
-(defn head [n query] (take n (q query)))
+(defn head [n query] (take n (sort (q query))))
 
-(defn tail [n query] (take-last n (q query)))
+(defn tail [n query] (take-last n (sort (q query))))
 
 (defn count-entities [] '{:find [(count ?e)]
                        :where [[?e :history/body ?body]]})

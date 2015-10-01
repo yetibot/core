@@ -46,7 +46,7 @@
 
 
 (deftest last-chat-for-room-test
-  (let [cmd (touch-and-fmt (last-chat-for-room chat-source true))
-        non-cmd (touch-and-fmt (last-chat-for-room chat-source false))]
+  (let [cmd (touch-all (last-chat-for-room chat-source true))
+        non-cmd (touch-all (last-chat-for-room chat-source false))]
     (println "cmd:" cmd)
     (println "non-cmd:" non-cmd)))
