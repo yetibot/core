@@ -1,6 +1,7 @@
 (ns yetibot.core.init
   (:require
     [clojure.stacktrace :refer [print-stack-trace]]
+    [clojure.tools.nrepl.server :refer [start-server stop-server]]
     [yetibot.core.config :as config]
     [yetibot.core.db :as db]
     [taoensso.timbre :refer [info warn]]
@@ -25,6 +26,7 @@
 
 (defn -main [& args]
   (welcome-message)
+  (start-server :port 6789)
   (db/start)
   (logging/start)
   (report-ex #(cf/start) "Campfire")

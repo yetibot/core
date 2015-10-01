@@ -16,6 +16,7 @@
                  [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.namespace "0.2.2"]
+                 [org.clojure/tools.nrepl "0.2.11"]
                  [org.clojure/tools.trace "0.7.6"]
                  [org.clojure/java.classpath "0.2.0"]
                  [org.clojure/core.cache "0.6.3"]
