@@ -19,24 +19,29 @@
     [yetibot.core.chat :refer [chat-data-structure send-msg-for-each
                                register-chat-adapter] :as chat]))
 
-(defn config [] (get-config :yetibot :adapters :slack))
+(defn all-config
+  "Can be a single slack configuration map or a collection of multiple
+   configurations."
+  [] (get-config :yetibot :adapters :slack))
 
-(defonce conn (atom nil))
+;; dynamic vars are per-slack config
+(defonce ^{:dynamic true} *conn* (atom nil))
+(defonce ^{:dynamic true} *config* nil)
 
 (defn self
-  "Slack acount for yetibot from `rtm.start` (represented at (-> @conn :start)).
-   You must call `start` in order to define `conn`."
+  "Slack acount for yetibot from `rtm.start` (represented at (-> @*conn* :start)).
+   You must call `start` in order to define `*conn*`."
   []
-  (-> @conn :start :self))
+  (-> @*conn* :start :self))
 
 (defn slack-config []
-  (let [c (config)]
+  (let [c *config*]
     {:api-url (:endpoint c) :token (:token c)}))
 
 (def ^{:dynamic true
        :doc "the channel or user that a message came from"} *target*)
 
-(defn rooms [] (:rooms (config)))
+(defn rooms [] (:rooms *config*))
 
 ;;;;
 
@@ -160,9 +165,9 @@
   (filter #((-> % :members set) user-id) chans-or-grps))
 
 (defn reset-users-from-conn []
-  (let [groups (-> @conn :start :groups)
-        channels (-> @conn :start :channels)
-        users (-> @conn :start :users)]
+  (let [groups (-> @*conn* :start :groups)
+        channels (-> @*conn* :start :channels)
+        users (-> @*conn* :start :users)]
     (dorun
       (map
         (fn [{:keys [id] :as user}]
@@ -186,26 +191,36 @@
 ;; start/stop
 
 (defn stop []
-  (when @conn
-    (slack/send-event (:dispatcher @conn) :close))
-  (reset! conn nil))
+  (when @*conn*
+    (log/info "Closing" @*conn*)
+    (slack/send-event (:dispatcher @*conn*) :close))
+  (reset! *conn* nil))
 
 (defn start []
   (stop)
-  (reset! conn (slack/connect (slack-config)
-                              :on-connect on-connect
-                              :on-error on-error
-                              :on-close on-close
-                              :presence_change on-presence-change
-                              :channel_joined on-channel-joined
-                              :group_joined on-channel-joined
-                              :channel_left on-channel-left
-                              :group_left on-channel-left
-                              :manual_presence_change on-manual-presence-change
-                              :message on-message
-                              :hello on-hello))
-
-  (reset-users-from-conn))
+  (let [ac (all-config)
+        ; make it a vector if it isn't already
+        configs (if (map? ac) [ac] ac)]
+    (dorun
+      (map
+        (fn [config]
+          (binding [*config* config
+                    *conn* (atom nil)]
+            (log/info "setting up" *config*)
+            (reset! *conn* (slack/connect (slack-config)
+                                          :on-connect on-connect
+                                          :on-error on-error
+                                          :on-close on-close
+                                          :presence_change on-presence-change
+                                          :channel_joined on-channel-joined
+                                          :group_joined on-channel-joined
+                                          :channel_left on-channel-left
+                                          :group_left on-channel-left
+                                          :manual_presence_change on-manual-presence-change
+                                          :message on-message
+                                          :hello on-hello))
+            (reset-users-from-conn)))
+        configs))))
 
 (defn list-channels [] (channels/list (slack-config)))
 
