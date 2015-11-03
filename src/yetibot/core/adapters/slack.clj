@@ -54,7 +54,7 @@
                            {:unfurl_media "true" :as_user "true"}))
 
 (defn send-paste [msg]
-  (send-msg (str "```" msg "```")))
+  (send-msg msg))
 
 (def messaging-fns
   {:msg send-msg
