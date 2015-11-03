@@ -26,11 +26,12 @@
 
 (defn start []
   ; log to datomic
-  (timbre/set-config!
-    [:appenders :datomic]
-    {:doc       "Datomic logger"
-     :min-level :info
-     :enabled?  true
-     :async?    false
-     :limit-per-msecs nil ; No rate limit
-     :fn #'log-to-db}))
+  #_(timbre/set-config!
+      [:appenders :datomic]
+      {:doc       "Datomic logger"
+       :min-level :info
+       :enabled?  true
+       :async?    false
+       :limit-per-msecs nil ; No rate limit
+       :fn #'log-to-db})
+  )
