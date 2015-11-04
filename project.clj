@@ -9,6 +9,7 @@
   :signing {:gpg-key "C9764E34"}
   :deploy-repositories [["releases" :clojars]]
   :repl-options {:init-ns yetibot.core.repl
+                 :timeout 120000
                  :welcome (println "Welcome to the yetibot development repl!")}
   :aot [yetibot.core.init]
   :main yetibot.core.init
@@ -54,7 +55,8 @@
                  ; chat protocols
                  [clj-campfire "2.2.0"]
                  [irclj "0.5.0-alpha4"]
-                 [org.julienxx/clj-slack "0.4.3"]
+                 ; [org.julienxx/clj-slack "0.4.3"]
+                 [org.julienxx/clj-slack "0.5.1"]
                  [devth/slack-rtm "0.1.0"]
 
                  ; database

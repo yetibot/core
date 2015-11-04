@@ -2,8 +2,8 @@
   (:require
     [gniazdo.core :as ws]
     [clojure.string :as s]
-    [http.async.client :as c]
-    [org.httpkit.client :as http]
+    ; [http.async.client :as c]
+    ; [org.httpkit.client :as http]
     [yetibot.core.models.users :as users]
     [yetibot.core.util.http :refer [html-decode]]
     [clj-slack
@@ -54,7 +54,12 @@
                            {:unfurl_media "true" :as_user "true"}))
 
 (defn send-paste [msg]
-  (send-msg msg))
+  (slack-chat/post-message
+    (slack-config)
+    *target*
+    ""
+    {:unfurl_media "true" :as_user "true"
+     :attachments [{:pretext "" :text msg}]}))
 
 (def messaging-fns
   {:msg send-msg
