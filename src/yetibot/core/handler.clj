@@ -15,8 +15,9 @@
 (defn handle-unparsed-expr
   "Top-level entry point for parsing and evaluation of commands"
   ([chat-source user body]
-   ; For backward compat, support setting user at this level. After deprecating, this
-   ; can be removed.
+   ; For backward compat, support setting user at this level.
+   ; After deprecating, this can be removed.
+   ; Currently it's used by the web API in yetibot.
    (info "handle unparsed expr:" chat-source body user)
    (binding [interp/*current-user* user
              interp/*chat-source* chat-source]

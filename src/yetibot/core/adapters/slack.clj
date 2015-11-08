@@ -2,6 +2,7 @@
   (:require
     [gniazdo.core :as ws]
     [clojure.string :as s]
+    [yetibot.core.interpreter :refer [*chat-source*]]
     ; [http.async.client :as c]
     ; [org.httpkit.client :as http]
     [yetibot.core.models.users :as users]
@@ -28,14 +29,21 @@
 (defonce ^{:dynamic true} *conn* (atom nil))
 (defonce ^{:dynamic true} *config* nil)
 
+(defonce hash-to-conn (atom {}))
+
 (defn self
   "Slack acount for yetibot from `rtm.start` (represented at (-> @*conn* :start)).
    You must call `start` in order to define `*conn*`."
   []
   (-> @*conn* :start :self))
 
+(defn determine-config-from-chat-source-hash []
+    (get @hash-to-conn (:conn-hash *chat-source*)))
+
 (defn slack-config []
-  (let [c *config*]
+  ; if *config* is not bound, it's probably an API call, which will pass a :hash
+  ; key in chat-source that maps to the correct config in `hash-to-conn`.
+  (let [c (or *config* (determine-config-from-chat-source-hash))]
     {:api-url (:endpoint c) :token (:token c)}))
 
 (def ^{:dynamic true
@@ -47,7 +55,7 @@
 
 (def adapter :slack)
 
-(defn chat-source [channel] {:adapter adapter :room channel})
+(defn chat-source [channel] {:adapter adapter :room channel :conn-hash (hash *conn*)})
 
 (defn send-msg [msg]
   (slack-chat/post-message (slack-config) *target* msg
@@ -224,6 +232,7 @@
                                           :manual_presence_change on-manual-presence-change
                                           :message on-message
                                           :hello on-hello))
+            (swap! hash-to-conn conj {(hash *conn*) *conn*})
             (reset-users-from-conn)))
         configs))))
 
