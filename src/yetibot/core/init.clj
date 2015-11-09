@@ -6,6 +6,7 @@
     [yetibot.core.db :as db]
     [taoensso.timbre :refer [info warn]]
     [yetibot.core.logging :as logging]
+    [yetibot.core.webapp.handler :as web]
     [yetibot.core.loader :refer [load-commands-and-observers]]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [yetibot.core.logo :refer [logo]]
@@ -24,9 +25,11 @@
             (catch Exception e
               (warn "Error starting adapter" n (with-out-str (print-stack-trace e)))))))
 
+
 (defn -main [& args]
   (welcome-message)
   (start-server :port 6789)
+  (web/start-web-server)
   (db/start)
   (logging/start)
   (report-ex #(cf/start) "Campfire")

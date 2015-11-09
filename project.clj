@@ -87,4 +87,29 @@
                  [overtone/at-at "1.0.0"]
                  [inflections "0.7.3"]
                  [environ "1.0.0"]
+
+                 ; web/ring
+                 [ring/ring-json "0.3.1"]
+                 [ring/ring-core "1.4.0"]
+
+                 ; [ring/ring-jetty-adapter "1.4.0"]
+                 [http-kit "2.1.18"]
+
+                 ; [ring-server "0.4.0"]
+                 ; [info.sunng/ring-jetty9-adapter "0.8.4"]
+
+
+                 [ring/ring-defaults "0.1.5"]
+                 [ring/ring-session-timeout "0.1.0"]
+
+                 [metosin/ring-middleware-format "0.6.0"]
+                 [metosin/ring-http-response "0.6.5"]
+
+                 ; web
+                 [selmer "0.8.2"]
+                 [compojure "1.4.0"]
+                 [prone "0.8.2"]
+                 [hiccup "1.0.5"]
+                 ; [markdown-clj "0.9.66"]
+
                  ])

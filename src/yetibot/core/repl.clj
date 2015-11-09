@@ -5,6 +5,7 @@
     [yetibot.core.db :as db]
     [yetibot.core.logging :as logging] ; enable logging to file
     [yetibot.core.models.users :as users]
+    [yetibot.core.webapp.handler :as web]
     [yetibot.core.loader :refer [load-commands-and-observers load-ns]]
     [yetibot.core.adapters.campfire :as cf]
     [yetibot.core.adapters.irc :as irc]
@@ -27,6 +28,7 @@
 (defn start
   "Load a minimal set of commands, start the database and connect to chat adapters"
   []
+  (web/start-web-server)
   (load-minimal-with-db)
   (slack/start)
   (cf/start)
