@@ -29,7 +29,6 @@
 (defonce ^{:dynamic true} *conn* (atom nil))
 (defonce ^{:dynamic true} *config* nil)
 
-
 (defonce hash-to-conn-and-config (atom {}))
 
 (defn self
@@ -62,8 +61,20 @@
 ;; send-msg and send-paste must bind *config* and *conn* themselves if it is
 ;; missing, as in the case of API calls. this is getting pretty ridiculous.
 
-(defn mk-sender-with-verified-bindings [f]
-  (fn [msg]
+;; this results in: "No matching ctor found for class ;; yetibot.core.adapters.slack$mk_sender_with_verified_bindings$fn__14051"
+; (defn mk-sender-with-verified-bindings [f]
+;   (fn [msg]
+;     (if (and *config* @*conn*)
+;       (f msg)
+;       (let [[conn config] (determine-conn-and-config-from-chat-source-hash)]
+;         (binding [*conn* conn
+;                   *config* config]
+;           (f msg))))))
+
+(defn send-msg [msg]
+  (let [f (fn [msg] (slack-chat/post-message
+                      (slack-config) *target* msg
+                      {:unfurl_media "true" :as_user "true"}))]
     (if (and *config* @*conn*)
       (f msg)
       (let [[conn config] (determine-conn-and-config-from-chat-source-hash)]
@@ -71,21 +82,18 @@
                   *config* config]
           (f msg))))))
 
-(def send-msg
-  (mk-sender-with-verified-bindings
-    (fn [msg]
-      (slack-chat/post-message (slack-config) *target* msg
-                               {:unfurl_media "true" :as_user "true"}))))
-
-(def send-paste
-  (mk-sender-with-verified-bindings
-    (fn [msg]
-      (slack-chat/post-message
-        (slack-config)
-        *target*
-        ""
-        {:unfurl_media "true" :as_user "true"
-         :attachments [{:pretext "" :text msg}]}))))
+(defn send-paste [msg]
+  (let [f (fn [msg]
+            (slack-chat/post-message
+              (slack-config) *target* ""
+              {:unfurl_media "true" :as_user "true"
+               :attachments [{:pretext "" :text msg}]}))]
+    (if (and *config* @*conn*)
+      (f msg)
+      (let [[conn config] (determine-conn-and-config-from-chat-source-hash)]
+        (binding [*conn* conn
+                  *config* config]
+          (f msg))))))
 
 (def messaging-fns
   {:msg send-msg
