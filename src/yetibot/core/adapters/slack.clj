@@ -38,7 +38,9 @@
   (-> @*conn* :start :self))
 
 (defn determine-config-from-chat-source-hash []
-    (get @hash-to-conn (:conn-hash *chat-source*)))
+  (log/info "*conn* not set; find using" *chat-source*)
+  (log/info (keys @hash-to-conn))
+  (get @hash-to-conn (:conn-hash *chat-source*)))
 
 (defn slack-config []
   ; if *config* is not bound, it's probably an API call, which will pass a :hash
@@ -55,7 +57,8 @@
 
 (def adapter :slack)
 
-(defn chat-source [channel] {:adapter adapter :room channel :conn-hash (hash *conn*)})
+(defn chat-source [channel] {:adapter adapter :room channel
+                             :conn-hash (hash *config*)})
 
 (defn send-msg [msg]
   (slack-chat/post-message (slack-config) *target* msg
@@ -232,7 +235,7 @@
                                           :manual_presence_change on-manual-presence-change
                                           :message on-message
                                           :hello on-hello))
-            (swap! hash-to-conn conj {(hash *conn*) *conn*})
+            (swap! hash-to-conn conj {(hash *config*) *conn*})
             (reset-users-from-conn)))
         configs))))
 
