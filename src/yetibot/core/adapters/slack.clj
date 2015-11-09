@@ -64,7 +64,7 @@
 
 (defn mk-sender-with-verified-bindings [f]
   (fn [msg]
-    (if (bound? *config* *conn*)
+    (if (and *config* @*conn*)
       (f msg)
       (let [[conn config] (determine-conn-and-config-from-chat-source-hash)]
         (binding [*conn* conn
