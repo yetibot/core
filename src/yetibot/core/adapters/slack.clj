@@ -29,7 +29,8 @@
 (defonce ^{:dynamic true} *conn* (atom nil))
 (defonce ^{:dynamic true} *config* nil)
 
-(defonce hash-to-conn (atom {}))
+
+(defonce hash-to-conn-and-config (atom {}))
 
 (defn self
   "Slack acount for yetibot from `rtm.start` (represented at (-> @*conn* :start)).
@@ -37,15 +38,13 @@
   []
   (-> @*conn* :start :self))
 
-(defn determine-config-from-chat-source-hash []
+(defn determine-conn-and-config-from-chat-source-hash []
   (log/info "*conn* not set; find using" *chat-source*)
-  (log/info (keys @hash-to-conn))
-  (get @hash-to-conn (:conn-hash *chat-source*)))
+  (log/info (keys @hash-to-conn-and-config))
+  (get @hash-to-conn-and-config (:conn-hash *chat-source*)))
 
 (defn slack-config []
-  ; if *config* is not bound, it's probably an API call, which will pass a :hash
-  ; key in chat-source that maps to the correct config in `hash-to-conn`.
-  (let [c (or *config* (determine-config-from-chat-source-hash))]
+  (let [c *config* ]
     {:api-url (:endpoint c) :token (:token c)}))
 
 (def ^{:dynamic true
@@ -60,17 +59,33 @@
 (defn chat-source [channel] {:adapter adapter :room channel
                              :conn-hash (hash *config*)})
 
-(defn send-msg [msg]
-  (slack-chat/post-message (slack-config) *target* msg
-                           {:unfurl_media "true" :as_user "true"}))
+;; send-msg and send-paste must bind *config* and *conn* themselves if it is
+;; missing, as in the case of API calls. this is getting pretty ridiculous.
 
-(defn send-paste [msg]
-  (slack-chat/post-message
-    (slack-config)
-    *target*
-    ""
-    {:unfurl_media "true" :as_user "true"
-     :attachments [{:pretext "" :text msg}]}))
+(defn mk-sender-with-verified-bindings [f]
+  (fn [msg]
+    (if (bound? *config* *conn*)
+      (f msg)
+      (let [[conn config] (determine-conn-and-config-from-chat-source-hash)]
+        (binding [*conn* conn
+                  *config* config]
+          (f msg))))))
+
+(def send-msg
+  (mk-sender-with-verified-bindings
+    (fn [msg]
+      (slack-chat/post-message (slack-config) *target* msg
+                               {:unfurl_media "true" :as_user "true"}))))
+
+(def send-paste
+  (mk-sender-with-verified-bindings
+    (fn [msg]
+      (slack-chat/post-message
+        (slack-config)
+        *target*
+        ""
+        {:unfurl_media "true" :as_user "true"
+         :attachments [{:pretext "" :text msg}]}))))
 
 (def messaging-fns
   {:msg send-msg
@@ -235,7 +250,7 @@
                                           :manual_presence_change on-manual-presence-change
                                           :message on-message
                                           :hello on-hello))
-            (swap! hash-to-conn conj {(hash *config*) *conn*})
+            (swap! hash-to-conn-and-config conj {(hash *config*) [*conn* *config*]})
             (reset-users-from-conn)))
         configs))))
 
