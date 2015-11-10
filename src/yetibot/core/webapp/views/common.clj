@@ -4,7 +4,7 @@
     [hiccup.page :refer [include-css include-js html5]]
     [hiccup.element :refer :all]))
 
-(def title "YetiBot – A command line in your Campfire")
+(def title "Yetibot 🔥")
 
 (defn layout [& content]
   (html5
