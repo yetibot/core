@@ -23,7 +23,8 @@
      ; e.g. 'yetibot.core.adapters.slack/*target*
      (symbol (str adapter-ns) "*target*")]))
 
-(defn api [{:keys [chat-source command token]}]
+(defn api [{:keys [chat-source command token] :as params}]
+  (info "/api called with params:" params)
   (cond
     (empty? chat-source) "chat-source parameter is required!"
     (empty? command) "command parameter is required!"
