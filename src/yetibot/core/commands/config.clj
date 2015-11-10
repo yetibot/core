@@ -15,5 +15,5 @@
       (with-out-str (pprint conf))
       (str "Couldn't find config at " match))))
 
-(cmd-hook #"config"
-          #"\w+[\s\w]*" lookup-config)
+; (cmd-hook #"config"
+;           #"\w+[\s\w]*" lookup-config)
