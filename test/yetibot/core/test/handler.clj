@@ -3,6 +3,7 @@
     [yetibot.core.parser :refer [parser]]
     [yetibot.core.handler :refer :all]
     [yetibot.core.commands.history]
+    [clojure.string :as s]
     [yetibot.core.repl :refer [load-minimal]]
     [instaparse.core :as insta]
     [clojure.test :refer :all]))
@@ -29,4 +30,7 @@
      [[:expr [:cmd [:words "echo" [:space " "] "your" [:space " "] "temp:"]]]])
     "embedded-cmds should extract a collection of embedded commands from a string"))
 
-
+(deftest test-newline-cmd
+  (let [multi-str (s/join \newline [1 2 3])]
+    (is (= multi-str
+        (handle-unparsed-expr (str "echo " multi-str)))))
