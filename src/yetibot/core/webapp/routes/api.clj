@@ -23,19 +23,19 @@
      ; e.g. 'yetibot.core.adapters.slack/*target*
      (symbol (str adapter-ns) "*target*")]))
 
-(defn api [{:keys [chat-source command token] :as params} req]
+(defn api [{:keys [chat-source text command token] :as params} req]
   (info "/api called with params:" params)
   (info "/api request:" req)
   (when-let [body (:body req)] (info "/api body:" (slurp body)))
   (cond
     (empty? chat-source) "chat-source parameter is required!"
-    (empty? command) "command parameter is required!"
+    (and (empty? command) (empty? text)) "command or text parameter is required!"
     :else (if-let [chat-source (edn/read-string chat-source)]
             (do
               (info "chat-source" chat-source)
               (let [user {:username "api"}
                     room (:room chat-source)
-                    res (handle-unparsed-expr chat-source user command)
+                    res (or text (handle-unparsed-expr chat-source user command))
                     [messaging-fns *target*] (determine-messaging-fns-and-target chat-source)]
                 (binding [*messaging-fns* @messaging-fns
                           *chat-source* chat-source]
