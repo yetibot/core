@@ -23,8 +23,10 @@
      ; e.g. 'yetibot.core.adapters.slack/*target*
      (symbol (str adapter-ns) "*target*")]))
 
-(defn api [{:keys [chat-source command token] :as params}]
+(defn api [{:keys [chat-source command token] :as params} req]
   (info "/api called with params:" params)
+  (info "/api request:" req)
+  (when-let [body (:body req)] (info "/api body:" (slurp body)))
   (cond
     (empty? chat-source) "chat-source parameter is required!"
     (empty? command) "command parameter is required!"
@@ -47,5 +49,5 @@
             (str "invalid chat-source:" chat-source))))
 
 (defroutes api-routes
-  (GET "/api" [& params] (api params))
-  (POST "/api" [& params] (api params)))
+  (GET "/api" [& params :as req] (api params req))
+  (POST "/api" [& params :as req] (api params req)))
