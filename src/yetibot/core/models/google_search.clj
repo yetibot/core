@@ -3,7 +3,7 @@
     [yetibot.core.util.http :refer [get-json map-to-query-string]]))
 
 (def endpoint "http://ajax.googleapis.com/ajax/services/search/images")
-(def configured? true)
+(defn configured? [] true)
 
 (def ^:private format-result (juxt :url :contentNoFormatting))
 

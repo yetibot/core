@@ -7,18 +7,17 @@
     [yetibot.core.util.http :refer [ensure-img-suffix]]
     [yetibot.core.hooks :refer [cmd-hook]]))
 
-(def
-  ^{:private true
-    :doc "Sequence of configured namespaces to perform image searches on"}
-  engine-nss
-  (filter #(deref (ns-resolve % 'configured?))
+(defn- engine-nss
+  "Sequence of configured namespaces to perform image searches on"
+  []
+  (filter #((ns-resolve % 'configured?))
           ['yetibot.core.models.google-search
            'yetibot.core.models.bing-search]))
 
 (defn- fetch-image
   "Search configured namespaces starting with the first and falling back to next when
    there are no results"
-  ([q] (fetch-image q engine-nss))
+  ([q] (fetch-image q (engine-nss)))
   ([q [n & nssrest]]
    (info "searching for " q "in" n)
    (let [search-fn (ns-resolve n 'image-search)
@@ -35,11 +34,11 @@
         "No results :("
         (f r)))))
 
-(def ^{:doc "image top <query> # fetch the first image from google images"}
+(def ^{:doc "image top <query> # fetch the first image from image search"}
   top-image
   (mk-fetcher first))
 
-(def ^{:doc "image <query> # fetch a random result from google images"}
+(def ^{:doc "image <query> # fetch a random result from image search"}
   image-cmd
   (mk-fetcher rand-nth))
 
