@@ -1,5 +1,6 @@
 (ns yetibot.core.adapters.slack
   (:require
+    [robert.bruce :refer [try-try-again] :as rb]
     [gniazdo.core :as ws]
     [clojure.string :as s]
     [yetibot.core.interpreter :refer [*chat-source*]]
@@ -157,8 +158,18 @@
 (defn on-connect [e]
   (log/info "connect" e))
 
+(declare start-with-bound-conn-and-config)
+
 (defn on-close [status]
-  (log/info "close" status))
+  (log/info "close" status)
+  (when (not= (:reason status) "Shutdown")
+    (try-try-again
+      {:decay 1.1 :sleep 5000 :tries 500}
+      (fn []
+        (log/info "attempt no. " rb/*try* " to rereconnect to slack")
+        (when rb/*error* (log/info "previous attempt errored:" rb/*error*))
+        (when rb/*last-try* (log/warn "this is the last attempt"))
+        (start-with-bound-conn-and-config)))))
 
 (defn on-error [exception]
   (log/error "error" exception))
@@ -235,6 +246,25 @@
     (slack/send-event (:dispatcher @*conn*) :close))
   (reset! *conn* nil))
 
+(defn start-with-bound-conn-and-config
+  "conn is a reference to an atom.
+   config is a map"
+  []
+  (reset! *conn* (slack/connect (slack-config)
+                                :on-connect on-connect
+                                :on-error on-error
+                                :on-close on-close
+                                :presence_change on-presence-change
+                                :channel_joined on-channel-joined
+                                :group_joined on-channel-joined
+                                :channel_left on-channel-left
+                                :group_left on-channel-left
+                                :manual_presence_change on-manual-presence-change
+                                :message on-message
+                                :hello on-hello))
+  (swap! hash-to-conn-and-config conj {(hash *config*) [*conn* *config*]})
+  (reset-users-from-conn))
+
 (defn start []
   (stop)
   (let [ac (all-config)
@@ -245,21 +275,7 @@
         (fn [config]
           (binding [*config* config
                     *conn* (atom nil)]
-            (log/info "setting up" *config*)
-            (reset! *conn* (slack/connect (slack-config)
-                                          :on-connect on-connect
-                                          :on-error on-error
-                                          :on-close on-close
-                                          :presence_change on-presence-change
-                                          :channel_joined on-channel-joined
-                                          :group_joined on-channel-joined
-                                          :channel_left on-channel-left
-                                          :group_left on-channel-left
-                                          :manual_presence_change on-manual-presence-change
-                                          :message on-message
-                                          :hello on-hello))
-            (swap! hash-to-conn-and-config conj {(hash *config*) [*conn* *config*]})
-            (reset-users-from-conn)))
+            (start-with-bound-conn-and-config)))
         configs))))
 
 (defn list-channels [] (channels/list (slack-config)))

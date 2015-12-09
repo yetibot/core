@@ -56,7 +56,7 @@
                  [devth/slack-rtm "0.1.0"]
 
                  ; database
-                 [com.datomic/datomic-free  "0.9.5302"]
+                 [com.datomic/datomic-free "0.9.5302"]
                  [datomico "0.2.0"]
 
                  ; javascript evaluation
@@ -76,6 +76,7 @@
                  [cheshire "5.0.1"]
 
                  ; utils
+                 [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.2.1"]
                  [robert/hooke "1.3.0"]
                  [clj-time "0.8.0"]
@@ -83,6 +84,8 @@
                  [overtone/at-at "1.0.0"]
                  [inflections "0.7.3"]
                  [environ "1.0.0"]
+                 ; retry
+                 [robert/bruce "0.8.0"]
 
                  ; web/ring
                  [ring/ring-json "0.3.1"]
