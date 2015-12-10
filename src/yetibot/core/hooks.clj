@@ -7,8 +7,7 @@
     [yetibot.core.interpreter :refer [handle-cmd]]
     [yetibot.core.models.help :as help]
     [robert.hooke :as rh]
-    [clojure.stacktrace :as st]
-    [clojure.contrib.cond :refer [cond-let]]))
+    [clojure.stacktrace :as st]))
 
 (def ^:private Pattern java.util.regex.Pattern)
 

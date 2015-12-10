@@ -34,10 +34,6 @@
                  ; logging
                  [devth/timbre "3.3.1"]
 
-                 ; TODO - kill this some day. We're only relying on it for
-                 ; cond-let at this point.
-                 [org.clojure/clojure-contrib "1.2.0"]
-
                  ; parsing
                  [instaparse "1.2.2"]
                  ; parser visualization - disable unless needed
