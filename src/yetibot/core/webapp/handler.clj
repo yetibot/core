@@ -1,9 +1,6 @@
 (ns yetibot.core.webapp.handler
   (:require [compojure.core :refer [defroutes routes wrap-routes]]
-
             [org.httpkit.server :refer [run-server]]
-            ; [ring.adapter.jetty :refer [run-jetty]]
-
             [yetibot.core.webapp.routes.home :refer [home-routes]]
             [yetibot.core.webapp.routes.api :refer [api-routes]]
             [yetibot.core.webapp.middleware :as middleware]
