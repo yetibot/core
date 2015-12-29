@@ -1,7 +1,7 @@
 (ns yetibot.core.commands.reply-to
   (:require
     [clojure.string :refer [blank?]]
-    [yetibot.core.adapters.irc :refer [*target*]]
+    [yetibot.core.chat :refer [*target*]]
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.hooks :refer [cmd-hook suppress]]))
