@@ -1,7 +1,10 @@
 (ns yetibot.core.adapters.campfire
+  "NOTE: Campfire is no longer supported!
+   This code is currently left in place in case anyone still uses Campfire and
+   wants Yetibot to support it. (If so, submit a PR or else ping me!)"
   (:require
     [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.chat :as chat :refer [register-chat-adapter]]
+    [yetibot.core.chat :as chat :as chat]
     [yetibot.core.handler :refer [handle-raw]]
     [http.async.client :as c]
     [clojure.data.json :as json]
@@ -110,8 +113,10 @@
 (defn handle-text-message [json]
   "Parse a `TextMessage` campfire event into a command and its args"
   (let [user (users/get-user chat-source (:user_id json))]
-    (binding [chat/*messaging-fns* messaging-fns]
-      (handle-raw chat-source user :message (:body json)))))
+    ; (binding [
+    ;           ; chat/*messaging-fns* messaging-fns
+    ;           ]
+      (handle-raw chat-source user :message (:body json))))
 
 (defn handle-campfire-event [json]
   (let [event-type (:type json)]
@@ -123,7 +128,7 @@
 (defn start []
   (if (conf-valid? config)
     (do
-      (register-chat-adapter 'yetibot.core.adapters.campfire)
+      ; (register-chat-adapter 'yetibot.core.adapters.campfire)
       (future (reset-users))
       (future
         (while true

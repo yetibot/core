@@ -1,4 +1,4 @@
-(defproject yetibot.core "0.2.63-SNAPSHOT"
+(defproject yetibot.core "0.3.0-SNAPSHOT"
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/devth/yetibot.core"
@@ -11,7 +11,7 @@
   :repl-options {:init-ns yetibot.core.repl
                  :timeout 120000
                  :welcome (println "Welcome to the yetibot development repl!")}
-  :aot [yetibot.core.init]
+  ; :aot [yetibot.core.init]
   :main yetibot.core.init
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
@@ -51,8 +51,7 @@
                  ; chat protocols
                  [clj-campfire "2.2.0"]
                  [irclj "0.5.0-alpha4"]
-                 ; [org.julienxx/clj-slack "0.4.3"]
-                 [org.julienxx/clj-slack "0.5.1"]
+                 [org.julienxx/clj-slack "0.5.2.1"]
                  [devth/slack-rtm "0.1.0"]
 
                  ; database

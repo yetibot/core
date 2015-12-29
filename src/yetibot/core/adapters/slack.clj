@@ -1,108 +1,78 @@
 (ns yetibot.core.adapters.slack
   (:require
+    [clojure.core.memoize :as memo]
+    [yetibot.core.adapters.adapter :as a]
     [robert.bruce :refer [try-try-again] :as rb]
     [gniazdo.core :as ws]
     [clojure.string :as s]
     [yetibot.core.interpreter :refer [*chat-source*]]
-    ; [http.async.client :as c]
-    ; [org.httpkit.client :as http]
     [yetibot.core.models.users :as users]
     [yetibot.core.util.http :refer [html-decode]]
     [clj-slack
      [users :as slack-users]
      [chat :as slack-chat]
      [channels :as channels]
+     [groups :as groups]
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
-    [taoensso.timbre :as log]
+    [taoensso.timbre :as log :refer [info warn error]]
     [yetibot.core.config :refer [update-config get-config config-for-ns
                                  reload-config conf-valid?]]
     [yetibot.core.handler :refer [handle-raw]]
-    [yetibot.core.chat :refer [chat-data-structure send-msg-for-each
-                               register-chat-adapter] :as chat]))
+    [yetibot.core.chat :refer [base-chat-source chat-source
+                               chat-data-structure *target* *adapter*]]))
 
-(defn all-config
-  "Can be a single slack configuration map or a collection of multiple
-   configurations."
-  [] (get-config :yetibot :adapters :slack))
+(def channel-cache-ttl 60000)
 
-;; dynamic vars are per-slack config
-(defonce ^{:dynamic true} *conn* (atom nil))
-(defonce ^{:dynamic true} *config* nil)
+(defn slack-config
+  "Transforms yetibot config to expected Slack config"
+  [config]
+  {:api-url (or (:endpoint config) "https://slack.com/api")
+   :token (:token config)})
 
-(defonce hash-to-conn-and-config (atom {}))
+(defn list-channels [config] (channels/list (slack-config config)))
+
+(def channels-cached
+  (memo/ttl
+    (comp :channels list-channels)
+    :ttl/threshold channel-cache-ttl))
+
+(defn channel-by-id [id config]
+  (first (filter #(= id (:id %)) (channels-cached config))))
+
+
+(defn list-groups [config] (groups/list (slack-config config)))
+
+(defn channels-in
+  "all channels that yetibot is a member of"
+  [config]
+  (filter :is_member (:channels (list-channels config))))
 
 (defn self
-  "Slack acount for yetibot from `rtm.start` (represented at (-> @*conn* :start)).
-   You must call `start` in order to define `*conn*`."
-  []
-  (-> @*conn* :start :self))
-
-(defn determine-conn-and-config-from-chat-source-hash []
-  (log/info "*conn* not set; find using" *chat-source*)
-  (log/info (keys @hash-to-conn-and-config))
-  (get @hash-to-conn-and-config (:conn-hash *chat-source*)))
-
-(defn slack-config []
-  (let [c *config* ]
-    {:api-url (:endpoint c) :token (:token c)}))
-
-(def ^{:dynamic true
-       :doc "the channel or user that a message came from"} *target*)
-
-(defn rooms [] (:rooms *config*))
+  "Slack acount for yetibot from `rtm.start` (represented at (-> @conn :start)).
+   You must call `start` in order to define `conn`."
+  [conn]
+  (-> conn :start :self))
 
 ;;;;
 
-(def adapter :slack)
+(defn rooms
+  "A vector of channels and any private groups by name"
+  [config]
+  (concat
+    (map :name (:groups (list-groups config)))
+    (map #(str "#" (:name %)) (channels-in config))))
 
-(defn chat-source [channel] {:adapter adapter :room channel
-                             :conn-hash (hash *config*)})
+(defn send-msg [config msg]
+  (slack-chat/post-message
+    (slack-config config) *target* msg
+    {:unfurl_media "true" :as_user "true"}))
 
-;; send-msg and send-paste must bind *config* and *conn* themselves if it is
-;; missing, as in the case of API calls. this is getting pretty ridiculous.
-
-;; this results in: "No matching ctor found for class ;; yetibot.core.adapters.slack$mk_sender_with_verified_bindings$fn__14051"
-; (defn mk-sender-with-verified-bindings [f]
-;   (fn [msg]
-;     (if (and *config* @*conn*)
-;       (f msg)
-;       (let [[conn config] (determine-conn-and-config-from-chat-source-hash)]
-;         (binding [*conn* conn
-;                   *config* config]
-;           (f msg))))))
-
-(defn send-msg [msg]
-  (let [f (fn [msg] (slack-chat/post-message
-                      (slack-config) *target* msg
-                      {:unfurl_media "true" :as_user "true"}))]
-    (if (and *config* @*conn*)
-      (f msg)
-      (let [[conn config] (determine-conn-and-config-from-chat-source-hash)]
-        (binding [*conn* conn
-                  *config* config]
-          (f msg))))))
-
-(defn send-paste [msg]
-  (let [f (fn [msg]
-            (slack-chat/post-message
-              (slack-config) *target* ""
-              {:unfurl_media "true" :as_user "true"
-               :attachments [{:pretext "" :text msg}]}))]
-    (if (and *config* @*conn*)
-      (f msg)
-      (let [[conn config] (determine-conn-and-config-from-chat-source-hash)]
-        (binding [*conn* conn
-                  *config* config]
-          (f msg))))))
-
-(def messaging-fns
-  {:msg send-msg
-   :paste send-paste
-   :join nil
-   :leave nil
-   :set-room-broadcast nil
-   :rooms rooms})
+(defn send-paste [config msg]
+  (slack-chat/post-message
+    (slack-config config) *target* ""
+    {:unfurl_media "true" :as_user "true"
+     :attachments [{:pretext "" :text msg}]}))
 
 ;; formatting
 
@@ -116,6 +86,26 @@
     (s/replace #"\<(.+)\|(.+)\>" "$2")
     html-decode))
 
+
+(defn entity-with-name-by-id
+  "Takes a message event and translates a channel ID, group ID, or user id from
+   a direct message (e.g. 'C12312', 'G123123', 'D123123') into a [name entity]
+   pair. Channels have a # prefix"
+  [config event]
+  (let [sc (slack-config config)
+        chan-id (:channel event)]
+    (condp = (first chan-id)
+      ;; direct message - lookup the user
+      \D (let [e (:user (slack-users/info sc (:user event)))]
+           [(:name e) e])
+      ;; channel
+      \C (let [e (:channel (channels/info sc chan-id))]
+           [(str "#" (:name e)) e])
+      ;; group
+      \G (let [e (:group (groups/info sc chan-id))]
+           [(:name e) e])
+      (throw (ex-info "unknown entity type" event)))))
+
 ;; events
 
 (defn on-channel-join [e]
@@ -124,15 +114,15 @@
         user-model (users/get-user cs (:user e))]
     (handle-raw cs user-model :enter nil)))
 
-
 (defn on-channel-leave [e]
   (log/info "channel leave" e)
   (let [cs (chat-source (:channel e))
         user-model (users/get-user cs (:user e))]
     (handle-raw cs user-model :leave nil)))
 
-(defn on-message [event]
+(defn on-message [conn config event]
   (log/info "message" event)
+  (log/info "platform-name" (a/platform-name *adapter*))
   (if-let [subtype (:subtype event)]
     ; handle the subtype
     (condp = subtype
@@ -141,27 +131,25 @@
       ; do nothing if we don't understand
       nil)
     ; don't listen to yetibot's own messages
-    (when (not= (:id (self)) (:user event))
-      (let [channel (:channel event)
-            cs (chat-source channel)
+    (when (not= (:id (self conn)) (:user event))
+      (let [chan-id (:channel event)
+            [chan-name entity] (entity-with-name-by-id config event)
+            cs (chat-source chan-name)
             user-model (users/get-user cs (:user event))]
-        (binding [*target* channel
-                  yetibot.core.chat/*messaging-fns* messaging-fns]
+        (binding [*target* chan-id]
           (handle-raw cs
                       user-model
                       :message
                       (unencode-message (:text event))))))))
 
-(defn on-hello [event]
-  (log/info "hello" event))
+(defn on-hello [event] (log/info "hello" event))
 
-(defn on-connect [e]
-  (log/info "connect" e))
+(defn on-connect [e] (log/info "connect" e))
 
-(declare start-with-bound-conn-and-config)
+(declare restart)
 
-(defn on-close [status]
-  (log/info "close" status)
+(defn on-close [conn config status]
+  (log/info "close" (:name config) status)
   (when (not= (:reason status) "Shutdown")
     (try-try-again
       {:decay 1.1 :sleep 5000 :tries 500}
@@ -169,7 +157,7 @@
         (log/info "attempt no. " rb/*try* " to rereconnect to slack")
         (when rb/*error* (log/info "previous attempt errored:" rb/*error*))
         (when rb/*last-try* (log/warn "this is the last attempt"))
-        (start-with-bound-conn-and-config)))))
+        (restart conn config)))))
 
 (defn on-error [exception]
   (log/error "error" exception))
@@ -177,7 +165,7 @@
 (defn handle-presence-change [e]
   (let [active? (= "active" (:presence e))
         id (:user e)
-        source {:adapter adapter}]
+        source (select-keys (base-chat-source) [:adapter])]
     (log/debug id "presence change active?=" active?)
     (users/update-user source id {:active? active?})))
 
@@ -214,10 +202,10 @@
 (defn filter-chans-or-grps-containing-user [user-id chans-or-grps]
   (filter #((-> % :members set) user-id) chans-or-grps))
 
-(defn reset-users-from-conn []
-  (let [groups (-> @*conn* :start :groups)
-        channels (-> @*conn* :start :channels)
-        users (-> @*conn* :start :users)]
+(defn reset-users-from-conn [conn]
+  (let [groups (-> @conn :start :groups)
+        channels (-> @conn :start :channels)
+        users (-> @conn :start :users)]
     (dorun
       (map
         (fn [{:keys [id] :as user}]
@@ -231,58 +219,69 @@
                 ; create a user model
                 user-model (users/create-user (:name user) active? (assoc user :mention-name (str "<@" (:id user) ">")))]
             (if (empty? chat-sources)
-              (users/add-user-without-room adapter user-model)
+              (users/add-user-without-room (:adapter (base-chat-source)) user-model)
               (dorun
                 ; for each chat source add a user individually
                 (map (fn [cs] (users/add-user cs user-model)) chat-sources)))))
         users))))
 
+;; lifecycle
 
-;; start/stop
+(defn stop [conn]
+  (when @conn
+    (log/info "Closing" @conn)
+    (slack/send-event (:dispatcher @conn) :close))
+  (reset! conn nil))
 
-(defn stop []
-  (when @*conn*
-    (log/info "Closing" @*conn*)
-    (slack/send-event (:dispatcher @*conn*) :close))
-  (reset! *conn* nil))
-
-(defn start-with-bound-conn-and-config
+(defn restart
   "conn is a reference to an atom.
    config is a map"
-  []
-  (reset! *conn* (slack/connect (slack-config)
-                                :on-connect on-connect
-                                :on-error on-error
-                                :on-close on-close
-                                :presence_change on-presence-change
-                                :channel_joined on-channel-joined
-                                :group_joined on-channel-joined
-                                :channel_left on-channel-left
-                                :group_left on-channel-left
-                                :manual_presence_change on-manual-presence-change
-                                :message on-message
-                                :hello on-hello))
-  (swap! hash-to-conn-and-config conj {(hash *config*) [*conn* *config*]})
-  (reset-users-from-conn))
+  [conn config]
+  (reset! conn (slack/connect (slack-config config)
+                              :on-connect on-connect
+                              :on-error on-error
+                              :on-close (partial on-close conn config)
+                              :presence_change on-presence-change
+                              :channel_joined on-channel-joined
+                              :group_joined on-channel-joined
+                              :channel_left on-channel-left
+                              :group_left on-channel-left
+                              :manual_presence_change on-manual-presence-change
+                              :message (partial on-message conn config)
+                              :hello on-hello))
+  (reset-users-from-conn conn))
 
-(defn start []
-  (stop)
-  (let [ac (all-config)
-        ; make it a vector if it isn't already
-        configs (if (map? ac) [ac] ac)]
-    (dorun
-      (map
-        (fn [config]
-          (binding [*config* config
-                    *conn* (atom nil)]
-            (start-with-bound-conn-and-config)))
-        configs))))
+(defn start [adapter conn config]
+  (stop conn)
+  (binding [*adapter* adapter]
+    (info "adapter" adapter "starting up with config" config)
+    (restart conn config)))
 
-(defn list-channels [] (channels/list (slack-config)))
+;; adapter impl
 
-;; can't join rooms as a bot - must be invited
-; (dorun
-;     (map (fn [[channel-name channel-config]]
-;            (log/info "join" channel-name
-;                      (channels/join (slack-config) channel-name)))
-;          (:rooms (config))))
+(defrecord Slack [config config-idx conn]
+  a/Adapter
+
+  (a/uuid [_] (:name config))
+
+  (a/platform-name [_] "Slack")
+
+  (a/rooms [_] (rooms config))
+
+  (a/send-paste [_ msg] (send-paste config msg))
+
+  (a/send-msg [_ msg] (send-msg config msg))
+
+  (a/join [_ room] (str "Slack bots such as myself can't join rooms on their own. Use /invite @yetibot from the channel you'd like me to join instead. ✌️"))
+
+  (a/leave [_ room] (str "Slack bots such as myself can't leave rooms on their own. Use /kick @yetibot from the channel you'd like me to leave instead. 👊"))
+
+  (a/chat-source [_ room] (chat-source room))
+
+  (a/stop [_] (stop conn))
+
+  (a/start [adapter] (start adapter conn config)))
+
+(defn make-slack
+  [idx config]
+  (->Slack config idx (atom nil)))

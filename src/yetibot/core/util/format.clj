@@ -65,7 +65,12 @@
 
 ; send map as key: value pairs
 (defmethod format-flattened Associative [d]
-  (format-flattened (map (fn [[k v]] (str k ": " v)) d)))
+  (format-flattened
+    (map
+      (fn [[k v]]
+        (let [k (if (keyword? k) (name k) k)]
+          (str k ": " v)))
+      d)))
 
 (defmethod format-flattened Sequential [d]
   (s/join \newline d))

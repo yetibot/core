@@ -45,13 +45,21 @@
     (spit config-path (with-out-str (pprint @config)))
     (warn config-path "file doesn't exist, skipped write")))
 
+(def apply-config-lock (Object.))
+
+(defn apply-config
+  "Takes a function to apply to the current value of a config at path"
+  [path f]
+  (locking apply-config-lock
+    (swap! config update-in path f)
+    (write-config!)))
+
 (defn update-config
   "Updates the config data structure and write it to disk."
   [& path-and-val]
   (let [path (butlast path-and-val)
         value (last path-and-val)]
-    (swap! config update-in path (constantly value))
-    (write-config!)))
+    (apply-config path (constantly value))))
 
 (defn remove-config
   "Remove config at path and write it to disk."

@@ -8,7 +8,7 @@
      :as timbre
      :refer [trace debug info warn error fatal spy with-log-level]]))
 
-(timbre/set-level! (get-config :log-level))
+(timbre/set-level! (get-config :yetibot :logging :log-level))
 
 ; (timbre/set-config! [:appenders :spit :enabled?] true)
 ; (timbre/set-config! [:shared-appender-config :spit-filename] "/var/log/yetibot/yetibot.log")

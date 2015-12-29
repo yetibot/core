@@ -6,8 +6,11 @@
 (defn wrap [f]
   (reload-config)
   (let [original-config @@#'yetibot.core.config/config]
+    ;; run all the tests!!!
     (f)
-    ; reset config back to what it originally was and write to file
+    ;; after we're done mucking up the config reset config back to what it
+    ;; originally was and write back to disk.
+    ;; TODO: use a separate config file for tests.
     (reset! @#'yetibot.core.config/config original-config)
     (write-config!)))
 
@@ -20,5 +23,16 @@
   (when (config-exists?)
     (update-config :yetibot :foo :bar "baz")
     (is (= "baz" (get-config :yetibot :foo :bar)))
+    ;; re-read from disk
     (reload-config)
     (is (= "baz" (get-config :yetibot :foo :bar)))))
+
+(deftest test-apply-config
+  ;; create a new value
+  (apply-config [:yetibot :apply-test] (constantly "apply"))
+  (is (= "apply" (get-config :yetibot :apply-test)) "apply")
+  ;; modify the existing value
+  (apply-config
+    [:yetibot :apply-test]
+    (fn [current-val] (.toUpperCase current-val)))
+  (is (= "APPLY" (get-config :yetibot :apply-test))))
