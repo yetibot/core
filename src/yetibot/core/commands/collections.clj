@@ -162,8 +162,10 @@
 ; unwords
 (defn unwords
   "unwords <list> # join <list> with a single space"
-  [{opts :opts}]
-  (s/join " " (ensure-items-collection opts)))
+  [{args :args opts :opts}]
+  (if (nil? opts)
+    args ; no collection, return the value as-is
+    (s/join " " (ensure-items-collection opts))))
 
 (cmd-hook ["unwords" #"^unwords$"]
           _ unwords)
