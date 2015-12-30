@@ -13,7 +13,7 @@
 
   Rooms are now configured independent of adapter configuration. Configuration
   is non-backward compatible. See
-  [config-sample.edn](../config/config-sample.edn) for details.
+  [config-sample.edn](https://github.com/devth/yetibot/blob/master/config/config-sample.edn) for details.
 
 - Refactored room settings. Arbitrary config can now be set on a room, e.g.
   ```
