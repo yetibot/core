@@ -29,6 +29,12 @@
 (defn settings-for-room [uuid room]
   (merge-on-defaults (get (settings-by-uuid uuid) room {})))
 
+(defn settings-for-chat-source
+  "Convenience fn that takes a chat-source, extracts the correct keys and uses
+   them to call settings-for-room"
+  [{:keys [uuid room]}]
+  (settings-for-room uuid room))
+
 (defn update-settings [uuid room k v]
   (config/apply-config
     (conj config-path uuid room)
