@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.3.1
+
+- Fix unwords when a non-collection is passed to it
+- Pass room settings as `:settings` key to all command handlers
+- Fix bug where yetibot was observing itself, causing potential infinite loops
+
 ## 0.3.0
 
 - Deprecated Campfire adapter but left code in place in case anyone wants to
