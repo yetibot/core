@@ -52,7 +52,7 @@
   "Slack acount for yetibot from `rtm.start` (represented at (-> @conn :start)).
    You must call `start` in order to define `conn`."
   [conn]
-  (-> conn :start :self))
+  (-> @conn :start :self))
 
 ;;;;
 
