@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## yetibot.core 0.3.0
+## 0.3.0
 
 - Deprecated Campfire adapter but left code in place in case anyone wants to
   port it to the new protocol-based adapter system. If you use Campfire and want
