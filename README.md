@@ -44,19 +44,7 @@ for more complex and diverse examples.
 
 ## Change Log
 
-### 0.2.0
-
-- Add support for per-room settings (new data structure in config). Format:
-
-```edn
-:irc {:rooms {"#yetibot" {:broadcast? true}
-              "#workstuff" {:broadcast? false}
-```
-
-The above `:irc` settings would allow yetibot to post Tweets in the #yetibot
-channel, but not in the #workstuff channel. Not backwards compatible with old
-config
-
+View the [change log](doc/changes.md).
 
 ## License
 
