@@ -38,8 +38,9 @@ for more complex and diverse examples.
 
 ## Docs
 
-- [Load Order](doc/load_order.md)
-- [Command handling pipeline](doc/command_handling_pipeline.md)
+- [Load Order](doc/LOADING.md)
+- [Categories](doc/CATEGORIES.md)
+- [Command handling pipeline](doc/COMMAND_HANDLING_PIPELINE.md)
 - [Yetibot project README](https://github.com/devth/yetibot)
 
 ## Change Log
