@@ -44,7 +44,7 @@ for more complex and diverse examples.
 
 ## Change Log
 
-View the [change log](doc/changes.md).
+View the [change log](doc/CHANGELOG.md).
 
 ## License
 
