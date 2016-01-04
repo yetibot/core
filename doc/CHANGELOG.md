@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.3.4
+
+- improve disabled category messaging
+- remove `fun` from default room settings since it's now controlled by
+  `category`
+
 ## 0.3.3
 
 - Support categories for commands and enabling/disabling them for specific
