@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.3.5
+
+- further improve disabled category messaging
+
 ## 0.3.4
 
 - improve disabled category messaging
