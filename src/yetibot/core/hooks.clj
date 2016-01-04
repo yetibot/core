@@ -73,7 +73,7 @@
             (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
               (str
                 (s/join ", " (map name matched-disabled-cats))
-                "categories are disabled.")
+                " commands are disabled in this channel🖐")
               (sub-fn (merge extra {:cmd cmd :args args :match match}))))
           ; couldn't find any sub commands so default to help.
           (yetibot.core.handler/handle-unparsed-expr (str "help " (get @re-prefix->topic (str cmd-re))))))
