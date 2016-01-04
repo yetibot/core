@@ -15,5 +15,7 @@
       (with-out-str (pprint conf))
       (str "Couldn't find config at " match))))
 
+; NOTE: Disabled due to obvious security issues. This may be useful with
+; role-based auth in the future.
 ; (cmd-hook #"config"
 ;           #"\w+[\s\w]*" lookup-config)

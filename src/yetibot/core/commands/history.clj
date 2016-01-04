@@ -36,6 +36,7 @@
 ;; search operation is provided, history can return only the latest 30 results
 (defn history-cmd
   "history # show chat history"
+  {:yb/cat #{:util}}
   [{:keys [chat-source next-cmds skip-next-n]}]
   ;; for now, only look at the first item from `next-cmds`. eventually we may
   ;; support some sort of query combinator that could calculate query for

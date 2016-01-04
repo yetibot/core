@@ -15,6 +15,7 @@
 
 (defn help-for-topic
   "help <topic> # get help for <topic>. If no exact matches are found for topic, it will fallback to the topic with the smallest Levenshtein distance < 2"
+  {:yb/cat #{:util}}
   [{prefix :args}]
   (or
     (seq (get-docs-for prefix))
@@ -23,6 +24,7 @@
 
 (defn help-all-cmd
   "help all # get help for all topics"
+  {:yb/cat #{:util}}
   [_]
   (s/join (str \newline separator \newline)
           (for [section (vals (get-docs))]

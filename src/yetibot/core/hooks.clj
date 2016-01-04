@@ -1,9 +1,11 @@
 (ns yetibot.core.hooks
   (:require
+    [clojure.set :refer [difference intersection]]
     [taoensso.timbre :refer [debug info warn error]]
     [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.handler]
     [clojure.string :as s]
+    [yetibot.core.models.room :as r]
     [yetibot.core.interpreter :refer [handle-cmd]]
     [yetibot.core.models.help :as help]
     [robert.hooke :as rh]
@@ -18,6 +20,19 @@
 
 ; Stores the mapping of prefix-regex -> sub-commands.
 (defonce hooks (atom {}))
+
+(defn cmds-for-cat
+  "Return collection of vars for cmd handler functions whose :yb/cat meta
+   includes `search-cat`"
+  [search-cat]
+  (let [search-cat (keyword search-cat)]
+    (->> @hooks vals
+         (mapcat
+           ;; take every other, dropping the left side of the pair (i.e. the
+           ;; regex that triggers the cmd)
+           (comp (partial take-nth 2) rest))
+         (filter
+           (fn [cmd] ((set (:yb/cat (meta cmd))) search-cat))))))
 
 (defonce re-prefix->topic (atom {}))
 
@@ -40,7 +55,7 @@
    sub-commands and defaults to help if no sub-commands match.
    If unable to match prefix, it calls the callback, letting `handle-cmd`
    implement its own default behavior."
-  [callback cmd-with-args {:keys [chat-source user opts] :as extra}]
+  [callback cmd-with-args {:keys [chat-source user opts settings] :as extra}]
   (info "handle-with-hooked-cmds" extra)
   (let [[cmd args] (s/split cmd-with-args #"\s" 2)
         args (or args "")] ; make it an empty string if no args
@@ -52,7 +67,13 @@
                                         (info "some?" sub-re args)
                                         (when-let [match (re-find sub-re args)]
                                           [match sub-fn])) cmd-pairs)]
-          (sub-fn (merge extra {:cmd cmd :args args :match match}))
+          ; extract category settings
+          (let [disabled-cats (set (r/cat-settings-key settings))
+                fn-cats (set (:yb/cat (meta sub-fn)))]
+            (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
+              (str "Categories matching this command are disabled: "
+                   (s/join ", " matched-disabled-cats))
+              (sub-fn (merge extra {:cmd cmd :args args :match match}))))
           ; couldn't find any sub commands so default to help.
           (yetibot.core.handler/handle-unparsed-expr (str "help " (get @re-prefix->topic (str cmd-re))))))
       (callback cmd-with-args extra))))
@@ -77,9 +98,10 @@
         re-prefix (lockdown-prefix-regex re-prefix)
         cmd-pairs (partition 2 cmds)]
     (swap! re-prefix->topic conj {(str re-prefix) topic})
-    (help/add-docs topic
-                   (map (fn [[_ cmd-fn]] (:doc (meta cmd-fn)))
-                        cmd-pairs))
+    (help/add-docs
+      topic
+      (map (fn [[_ cmd-fn]] (:doc (meta cmd-fn)))
+           cmd-pairs))
     (swap! hooks conj {(str re-prefix) cmds})))
 
 (defmacro cmd-hook

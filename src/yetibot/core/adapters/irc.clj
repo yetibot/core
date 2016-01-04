@@ -46,6 +46,7 @@
           (irc/message @conn *target* msg))
         (catch java.net.SocketException e
           ; it must have disconnect, try reconnecting again
+          ; TODO add better retry, like Slack
           (log/info "SocketException, trying to reconnect in" wait-before-reconnect "ms")
           (Thread/sleep wait-before-reconnect)
           (connect adapter)

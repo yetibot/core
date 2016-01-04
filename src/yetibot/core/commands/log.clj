@@ -9,11 +9,13 @@
 
 (defn less-log
   "log less # retrieve log messages only for all time"
+  {:yb/cat #{:util}}
   [_]
   (map :message (log/find-all)))
 
 (defn log-cmd
   "log # retrieve the full yetibot log for all time"
+  {:yb/cat #{:util}}
   [_]
   (map fmt-log (log/find-all)))
 

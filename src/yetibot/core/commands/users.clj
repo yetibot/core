@@ -7,6 +7,7 @@
 
 (defn show-users
   "users # list all users presently in the room"
+  {:yb/cat #{:util}}
   [{:keys [chat-source]}]
   (log/info "show users for" chat-source)
   (map :mention-name (users/get-users chat-source)))

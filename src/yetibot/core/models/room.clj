@@ -7,6 +7,8 @@
 
 (def config-path [:yetibot :room])
 
+(def cat-settings-key :disabled-categories)
+
 (def room-config-defaults
   "Provides both a list of all available settings as well as their defaults"
   {;; whether to send things like global messages and Tweets to a room
@@ -35,9 +37,15 @@
   [{:keys [uuid room]}]
   (settings-for-room uuid room))
 
-(defn update-settings [uuid room k v]
-  (config/apply-config
-    (conj config-path uuid room)
-    (fn [current-val-if-exists]
-      (assoc current-val-if-exists k v)))
+(defn apply-settings
+  "Takes a fn to apply to current value of a setting for a given room"
+  [uuid room f]
+  (config/apply-config (conj config-path uuid room) f)
   (config/reload-config))
+
+(defn update-settings
+  "Updates or creates new setting k = v for a given room"
+  [uuid room k v]
+  (apply-settings
+    (fn [current-val-if-exists]
+      (assoc current-val-if-exists k v))))

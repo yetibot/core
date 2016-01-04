@@ -34,11 +34,13 @@
         "No results :("
         (f r)))))
 
-(def ^{:doc "image top <query> # fetch the first image from image search"}
+(def ^{:doc "image top <query> # fetch the first image from image search"
+       :yb/cat #{:img}}
   top-image
   (mk-fetcher first))
 
-(def ^{:doc "image <query> # fetch a random result from image search"}
+(def ^{:doc "image <query> # fetch a random result from image search"
+       :yb/cat #{:img}}
   image-cmd
   (mk-fetcher rand-nth))
 

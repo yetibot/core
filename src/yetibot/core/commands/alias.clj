@@ -65,6 +65,7 @@
 
 (defn create-alias
   "alias <alias> = \"<cmd>\" # alias a cmd, where <cmd> is a normal command expression. Note the use of quotes, which treats the right-hand side as a literal allowing the use of pipes. Use $s as a placeholder for all args, or $n (where n is a 1-based index of which arg) as a placeholder for a specific arg."
+  {:yb/cat #{:util}}
   [{[_ a-name a-cmd] :match user :user}]
   (info "create alias" a-name a-cmd "user:" user)
   (let [cmd-name (cleaned-cmd-name a-name)
@@ -75,6 +76,7 @@
 
 (defn list-aliases
   "alias # show existing aliases"
+  {:yb/cat #{:util}}
   [_]
   (let [as (model/find-all)]
     (if (empty? as)
@@ -83,6 +85,7 @@
 
 (defn remove-alias
   "alias remove <alias> # remove alias by name"
+  {:yb/cat #{:util}}
   [{[_ cmd] :match}]
   (model/delete-all {:cmd-name cmd})
   (cmd-unhook cmd)

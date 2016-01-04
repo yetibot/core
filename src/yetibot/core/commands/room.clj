@@ -9,16 +9,19 @@
 
 (defn list-cmd
   "room list # list rooms that yetibot is in"
+  {:yb/cat #{:util}}
   [_]
   (chat/rooms))
 
 (defn join-cmd
   "room join <room> # join <room>"
+  {:yb/cat #{:util}}
   [{[_ room] :match}]
   (chat/join room))
 
 (defn leave-cmd
   "room leave <room> # leave <room>"
+  {:yb/cat #{:util}}
   [{[_ room] :match}]
   (chat/leave room))
 
@@ -27,11 +30,13 @@
 
 (defn settings-cmd
   "room settings # show all chat settings for this room"
+  {:yb/cat #{:util}}
   [{:keys [chat-source]}]
   (settings-for-room (:room chat-source)))
 
 (defn settings-for-cmd
   "room settings <key> # show the value for a single setting"
+  {:yb/cat #{:util}}
   [{[_ k] :match cs :chat-source}]
   (if-let [v (get (settings-for-room (:room cs)) k)]
     v
@@ -39,6 +44,7 @@
 
 (defn set-cmd
   "room set <key> <value> # configure a setting for the current room"
+  {:yb/cat #{:util}}
   [{[_ k _ v] :match cs :chat-source}]
   (info "set" k "=" v)
   (model/update-settings (a/uuid chat/*adapter*) (:room cs) k v)

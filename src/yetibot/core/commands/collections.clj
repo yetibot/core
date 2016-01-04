@@ -14,6 +14,7 @@
 (defn random
   "random <list> # returns a random item where <list> is a comma-separated list of items.
    Can also be used to extract a random item when a collection is piped to random."
+  {:yb/cat #{:util}}
   [{items :opts}]
   (if (not (empty? items))
     (rand-nth (ensure-items-collection items))
@@ -25,6 +26,7 @@
 ; shuffle
 (defn shuffle-cmd
   "shuffle <list>"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (shuffle (ensure-items-collection items)))
 
@@ -46,11 +48,13 @@
 ; head
 (defn head-1
   "head <list> # returns the first item from the <list>"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (head 1 items))
 
 (defn head-n
   "head <n> <list> # return the first <n> items from the <list>"
+  {:yb/cat #{:util}}
   [{[_ n] :match items :opts}]
   (head (read-string n) items))
 
@@ -64,10 +68,12 @@
 ; tail
 (defn tail-1
   "tail <list> # returns the last item from the <list>"
+  {:yb/cat #{:util}}
   [{items :opts}] (tail 1 items))
 
 (defn tail-n
   "tail <n> <list> # returns the last <n> items from the <list>"
+  {:yb/cat #{:util}}
   [{[_ n] :match items :opts}]
   (tail (read-string n) items))
 
@@ -78,6 +84,7 @@
 ; droplast
 (defn drop-last-cmd
   "droplast <list> # drop the last item from <list>"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (drop-last (ensure-items-collection items)))
 
@@ -87,6 +94,7 @@
 ; rest
 (defn rest-cmd
   "rest <list> # returns the last item from the <list>"
+  {:yb/cat #{:util}}
   [{items :opts}] (rest items))
 
 (cmd-hook #"rest"
@@ -95,7 +103,8 @@
 ; xargs
 ; example usage: !users | xargs attack
 (defn xargs
-  "xargs <cmd> <list> # run <cmd> for every item in <list>; behavior is similar to xargs(1)'s xargs -n1"
+  "xargs <cmd> <list> # run <cmd> for every item in <list> in parallel; behavior is similar to xargs(1)'s xargs -n1"
+  {:yb/cat #{:util}}
   [{:keys [args opts user] :as cmd-params}]
   (if (s/blank? args)
     opts ; passthrough if no args
@@ -122,6 +131,7 @@
 ; join
 (defn join
   "join <list> <separator> # joins list with optional <separator> or no separator if not specified. See also `unwords`."
+  {:yb/cat #{:util}}
   [{match :match items :opts}]
   (info (str "join with:'" match "'."))
   (let [join-char (if (empty? match) "" match)]
@@ -134,6 +144,7 @@
 ; split
 (defn split
   "split <pattern> <string> # split string with <pattern>"
+  {:yb/cat #{:util}}
   [{[_ split-by-str to-split] :match}]
   (let [split-by (re-pattern split-by-str)]
     (s/split to-split split-by)))
@@ -144,6 +155,7 @@
 ; trim
 (defn trim
   "trim <string> # remove whitespace from both ends of <string>"
+  {:yb/cat #{:util}}
   [{args :args}]
   (s/trim args))
 
@@ -153,6 +165,7 @@
 ; words
 (defn words
   "words <string> # split <string> by spaces into a list"
+  {:yb/cat #{:util}}
   [{args :args}]
   (s/split args #" "))
 
@@ -162,6 +175,7 @@
 ; unwords
 (defn unwords
   "unwords <list> # join <list> with a single space"
+  {:yb/cat #{:util}}
   [{args :args opts :opts}]
   (if (nil? opts)
     args ; no collection, return the value as-is
@@ -173,6 +187,7 @@
 ; letters
 (defn letters
   "letters <string> # turn <string> into a sequence of individual letters"
+  {:yb/cat #{:util}}
   [{args :args}]
   (seq args))
 
@@ -182,6 +197,7 @@
 ; unletters
 (defn unletters
   "unletters <list> # join <list> without a delimiter"
+  {:yb/cat #{:util}}
   [{opts :opts}]
   (s/join "" (ensure-items-collection opts)))
 
@@ -191,6 +207,7 @@
 ; set
 (defn set-cmd
   "set <list> # returns the set of distinct elements in <list>"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (set (ensure-items-collection items)))
 
@@ -200,6 +217,7 @@
 ; list
 (defn list-cmd
   "list <comma-or-space-delimited-items> # construct a list"
+  {:yb/cat #{:util}}
   [{:keys [args]}]
   (let [delimiter (if (re-find #"," args) #"," #"\s")]
     (map s/trim (s/split args delimiter))))
@@ -211,6 +229,7 @@
 ; count
 (defn count-cmd
   "count <list> # count the number of items in <list>"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (str (count (ensure-items-collection items))))
 
@@ -220,6 +239,7 @@
 ; sort
 (defn sort-cmd
   "sort <list> # sort a list"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (sort (ensure-items-collection items)))
 
@@ -229,6 +249,7 @@
 ; sortnum
 (defn sortnum-cmd
   "sortnum <list> # numerically sort a list"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (sort #(- (read-string %1) (read-string %2)) (ensure-items-collection items)))
 
@@ -269,6 +290,7 @@
 (defn grep-cmd
   "grep <pattern> <list> # filters the items in <list> by <pattern>
    grep -C <n> <pattern> <list> # filter items in <list> by <patttern> and include <n> items before and after each matched item"
+  {:yb/cat #{:util}}
   [{:keys [match opts args]}]
   (let [[n p] (if (sequential? match) (rest match) ["0" args])
         pattern (re-pattern (str "(?i)" p))
@@ -283,6 +305,7 @@
 ; tee
 (defn tee-cmd
   "tee <list> # output <list> to chat and return list (useful for pipes)"
+  {:yb/cat #{:util}}
   [{:keys [opts args]}]
   (chat-data-structure (or opts args))
   (or opts args))
@@ -293,6 +316,7 @@
 ; reverse
 (defn reverse-cmd
   "reverse <list> # reverse the ordering of <list>"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (reverse (ensure-items-collection items)))
 
@@ -311,6 +335,7 @@
    range 0 6 2 => 0 2 4
 
    Results are returned as collections."
+  {:yb/cat #{:util}}
   [{:keys [match]}]
   (let [range-args (map read-string (rest match))]
     (apply range range-args)))
@@ -323,6 +348,7 @@
 ; keys
 (defn keys-cmd
   "keys <map> # return the keys from <map>"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (if (map? items)
     (keys items)
@@ -334,6 +360,7 @@
 ; vals
 (defn vals-cmd
   "vals <map> # return the vals from <map>"
+  {:yb/cat #{:util}}
   [{items :opts}]
   (if (map? items)
     (vals items)
@@ -345,6 +372,7 @@
 ; raw
 (defn raw-cmd
   "raw <coll> # output a string representation of the raw collection"
+  {:yb/cat #{:util}}
   [{:keys [opts args]}]
   (pr-str (or opts args)))
 

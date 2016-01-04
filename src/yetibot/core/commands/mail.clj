@@ -9,9 +9,9 @@
     [yetibot.core.hooks :refer [cmd-hook]]))
 
 (def default-subject "A friendly message from YetiBot")
-(def success-message "Sent :email:")
-(def error-message "Failed to send :poop:")
-(def no-messages "No new messages. :soon:")
+(def success-message "Sent  ")
+(def error-message "Failed to send 💩")
+(def no-messages "No new messages.")
 
 (def config (merge model/config {:ssl true}))
 
@@ -47,21 +47,25 @@
 
 (defn send-body-and-subject
   "mail <to> / <subject> / <body> # send an email"
+  {:yb/cat #{:util}}
   [{[_ to subject body] :match opts :opts}]
   (send-mail to subject body opts))
 
 (defn send-piped-and-body
   "mail <to> / <body> # mail with <body> and any piped content"
+  {:yb/cat #{:util}}
   [{[_ to body] :match opts :opts}]
   (send-mail to default-subject body opts))
 
 (defn send-piped
   "mail <to> # mail with piped content"
+  {:yb/cat #{:util}}
   [{[_ to] :match opts :opts}]
   (send-mail to default-subject "" opts))
 
 (defn fetch-cmd
-  "mail fetch # fetch unread messages from YetiBot's mail"
+  "mail fetch # fetch unread messages from Yetibot's mail"
+  {:yb/cat #{:util}}
   [_] (or (fetch-unread-mail) no-messages))
 
 (if model/configured?

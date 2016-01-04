@@ -1,5 +1,15 @@
 # yetibot.core change log
 
+## 0.3.3
+
+- Support categories for commands and enabling/disabling them for specific
+  rooms. All categories are enabled by default. Categories docs are at
+  [CATEGORIES](doc/CATEGORIES.md). See command usage with `help category`.
+
+## 0.3.2
+
+- Re-release due to Clojars downtime
+
 ## 0.3.1
 
 - Fix unwords when a non-collection is passed to it

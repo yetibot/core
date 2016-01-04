@@ -12,7 +12,8 @@
   (boolean (some #{(:id user)} privs)))
 
 (defn eval-cmd
-  "eval <form> # evaluate the <form> data structure in YetiBot's context"
+  "eval <form> # evaluate the <form> data structure in Yetibot's context"
+  {:yb/cat #{:util}}
   [{:keys [args user]}]
   (if (user-is-allowed? user)
     (with-out-str (pprint (eval (read-string args))))

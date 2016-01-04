@@ -1,6 +1,7 @@
 (ns yetibot.core.interpreter
   "Handles evaluation of a parse tree"
   (:require
+    [clojure.set :refer [difference intersection]]
     [yetibot.core.models.room :as room]
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.util :refer [psuedo-format]]
@@ -9,15 +10,37 @@
 (def ^:dynamic *current-user*)
 (def ^:dynamic *chat-source*)
 
+(defn img-loaded? []
+  (find-ns 'yetibot.core.commands.image-search))
+
+(defn img-cmd
+  "Returns nil if image namespace is not loaded"
+  []
+  (try
+    (ns-resolve 'yetibot.core.commands.image-search 'image-cmd)
+    (catch Exception _
+      nil)))
+
 (defn handle-cmd
   "Hooked entry point for all command handlers. If no handlers intercept, it falls
    back to image search when available."
   [cmd-with-args extra]
   (info "nothing handled" cmd-with-args)
-  ; default to looking up a random result from google image search
-  (if (find-ns 'yetibot.core.commands.image-search)
-    (handle-cmd (str "image " cmd-with-args) extra)
-    (format "I don't know how to handle %s" cmd-with-args)))
+    ; default to looking up a random result from image search as long as
+    ; image-search's categories aren't disabled
+    (let [fallback? (:fallback extra)
+          img-cmd-cats (set (:yb/cat (meta (img-cmd))))
+          disabled-cats (set (room/cat-settings-key (:settings extra)))
+          matched-disabled-cats (seq (intersection disabled-cats img-cmd-cats))]
+      ; if fallback? is true, nothing handled this command so don't try to
+      ; fallback again
+      (if (and (not fallback?)
+               ; only fallback if `image` is loaded
+               (img-loaded?)
+               ; only fallback if `image` is not in disabled categories
+               (not matched-disabled-cats))
+        (handle-cmd (str "image " cmd-with-args) (assoc extra :fallback? true))
+        (format "I don't know how to handle %s" cmd-with-args))))
 
 (defn pipe-cmds
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra

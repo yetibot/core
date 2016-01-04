@@ -5,6 +5,7 @@
 
 (defn parse-cmd
   "parse <text> # parse <text> into an AST using yetibot's internal parser"
+  {:yb/cat #{:util}}
   [{match :match}]
   (-> match parser str))
 

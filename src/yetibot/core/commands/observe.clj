@@ -65,6 +65,7 @@
    !observe \\b\\d{5}\\b = \"weather | head 2 | tail\"
 
    Observers can be easily abused. Use them with caution & restraint."
+  {:yb/cat #{:util}}
   [{[_ _ event-type pattern cmd] :match user :user}]
   (let [event-type (or event-type "message")]
     (info "create observer" event-type pattern cmd user)
@@ -76,11 +77,13 @@
 
 (defn list-observers
   "observe # list observers"
+  {:yb/cat #{:util}}
   [_]
   (into {} (map (juxt :pattern :cmd) (model/find-all))))
 
 (defn remove-observers
   "observe remove <pattern> # remove observer by pattern"
+  {:yb/cat #{:util}}
   [{[_ pattern] :match}]
   (model/delete-all {:pattern pattern})
   (format "observer `%s` removed" pattern))
