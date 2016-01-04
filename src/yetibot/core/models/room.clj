@@ -13,8 +13,6 @@
   "Provides both a list of all available settings as well as their defaults"
   {;; whether to send things like global messages and Tweets to a room
    "broadcast" "false"
-   ;; whether to enable "fun" features like image, giphy and meme
-   "fun" "true"
    ;; JIRA project
    "jira-project" ""
    ;; default Jenkins project

@@ -41,7 +41,6 @@
   | Name            | Default |
   | --------------- | ------- |
   | broadcast       | false   |
-  | fun             | true    |
   | jira-project    | ""      |
   | jenkins-default | ""      |
 
