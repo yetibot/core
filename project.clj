@@ -55,7 +55,7 @@
                  [devth/slack-rtm "0.1.0"]
 
                  ; database
-                 [com.datomic/datomic-free "0.9.5302"]
+                 [com.datomic/datomic-free "0.9.5302" :exclusions [joda-time]]
                  [datomico "0.2.0"]
 
                  ; javascript evaluation
@@ -78,7 +78,7 @@
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.2.1"]
                  [robert/hooke "1.3.0"]
-                 [clj-time "0.8.0"]
+                 [clj-time "0.11.0"] ; includes joda-time
                  [rate-gate "1.3.1"]
                  [overtone/at-at "1.0.0"]
                  [inflections "0.7.3"]
