@@ -13,7 +13,7 @@
                  :welcome (println "Welcome to the yetibot development repl!")}
   ; :aot [yetibot.core.init]
   :main yetibot.core.init
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.namespace "0.2.2"]
@@ -35,7 +35,7 @@
                  [devth/timbre "3.3.1"]
 
                  ; parsing
-                 [instaparse "1.2.2"]
+                 [instaparse "1.4.1"]
                  ; parser visualization - disable unless needed
                  ; [rhizome "0.1.9"]
 

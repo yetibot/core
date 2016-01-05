@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.3.7
+
+- fix datomic warnings
+- upgrade Clojure from 1.6 1.7
+- upgrade Instaparse from 1.2.2 to 1.4.1
+
 ## 0.3.5
 
 - further improve disabled category messaging
