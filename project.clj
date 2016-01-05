@@ -6,7 +6,6 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :lein-release {:deploy-via :clojars}
-  :signing {:gpg-key "C9764E34"}
   :deploy-repositories [["releases" :clojars]]
   :repl-options {:init-ns yetibot.core.repl
                  :timeout 120000
