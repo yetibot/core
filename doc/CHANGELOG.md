@@ -2,6 +2,11 @@
 
 ## 0.3.7
 
+- fix airity bug in update-settings that prevented being able to set a room
+  setting
+
+## 0.3.6
+
 - fix datomic warnings
 - upgrade Clojure from 1.6 1.7
 - upgrade Instaparse from 1.2.2 to 1.4.1
