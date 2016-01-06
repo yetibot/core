@@ -45,5 +45,6 @@
   "Updates or creates new setting k = v for a given room"
   [uuid room k v]
   (apply-settings
+    uuid room
     (fn [current-val-if-exists]
       (assoc current-val-if-exists k v))))
