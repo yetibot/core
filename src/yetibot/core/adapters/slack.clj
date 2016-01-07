@@ -56,6 +56,14 @@
 
 ;;;;
 
+(defn chan-or-group-name
+  "Takes either a channel or a group and returns its name as a String.
+   If it's a public channel, # is prepended.
+   If it's a group, just return the name."
+  [chan-or-grp]
+  (str (when (:is_channel chan-or-grp) "#")
+       (:name chan-or-grp)))
+
 (defn rooms
   "A vector of channels and any private groups by name"
   [config]
@@ -215,9 +223,10 @@
                                                (filter-for-user groups))
                 active? (= "active" (:presence user))
                 ; turn the list of chans-or-grps-for-user into a list of chat sources
-                chat-sources (set (map (comp chat-source :id) chans-or-grps-for-user))
+                chat-sources (set (map (comp chat-source chan-or-group-name) chans-or-grps-for-user))
                 ; create a user model
                 user-model (users/create-user (:name user) active? (assoc user :mention-name (str "<@" (:id user) ">")))]
+            (info "chat-sources" chat-sources)
             (if (empty? chat-sources)
               (users/add-user-without-room (:adapter (base-chat-source)) user-model)
               (dorun

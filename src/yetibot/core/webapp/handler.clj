@@ -12,6 +12,8 @@
 
 (defonce nrepl-server (atom nil))
 
+(defonce web-server (atom nil))
+
 (defroutes base-routes
   (route/resources "/")
   (route/not-found "Not Found"))
@@ -67,7 +69,12 @@
 (defn start-web-server []
   (init)
   ; (run-jetty #'simple-app {:join? false :daemon? true :port 3100})
-  (run-server #'app {:join? false :daemon? true :port 3000}))
+  (reset! web-server (run-server #'app {:join? false :daemon? true :port 3000})))
+
+(defn stop-web-server []
+  (when-not (nil? @web-server)
+    (@web-server :timeout 100)
+    (reset! web-server nil)))
 
   ; (web-server/serve
   ;   app

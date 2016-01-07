@@ -41,6 +41,7 @@
   (load-minimal-with-db))
 
 (defn stop []
+  (web/stop-web-server)
   (ai/stop))
 
 (defn load-all []
