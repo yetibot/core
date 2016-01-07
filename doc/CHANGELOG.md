@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.3.8
+
+- stop loading config on namespace load; load it explicitly
+- fix chat-sources in Slack to use channel names instead of IDs
+
 ## 0.3.7
 
 - fix airity bug in update-settings that prevented being able to set a room
