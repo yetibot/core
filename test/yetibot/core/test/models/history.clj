@@ -8,7 +8,8 @@
     [datomico.db :refer [q]]
     [clojure.test :refer :all]))
 
-(reload-config "test/resources/test-config.edn")
+;; we need a database, so load config and start the db
+(reload-config)
 (db/repl-start)
 
 ;; normal query for all records in history

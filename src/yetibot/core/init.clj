@@ -18,6 +18,7 @@
   (println logo))
 
 (defn -main [& args]
+  (config/reload-config)
   (welcome-message)
   (start-server :port 6789)
   (web/start-web-server)

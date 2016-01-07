@@ -1,0 +1,3 @@
+{:yetibot
+ {:logging {:log-level :debug}
+  :db {:datomic-url "datomic:mem://yetibot"}}}

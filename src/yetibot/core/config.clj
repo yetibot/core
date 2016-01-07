@@ -78,5 +78,3 @@
   ([c]
    (and c
         (every? (complement (comp blank? str)) (vals c)))))
-
-(defonce load-conf (reload-config))

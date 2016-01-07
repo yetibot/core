@@ -1,6 +1,6 @@
 (ns yetibot.core.db
   (:require
-    [yetibot.core.config :refer [get-config config-for-ns conf-valid?]]
+    [yetibot.core.config :refer [get-config conf-valid?]]
     [yetibot.core.loader :refer [find-namespaces]]
     [datomico.db :as db]
     [datomico.core :as dc]

@@ -5,7 +5,9 @@
     [yetibot.core.models.history :as h]
     [yetibot.core.commands.history :refer :all]))
 
-(reload-config "test/resources/test-config.edn")
+
+;; we need a database, so load config and start the db
+(reload-config)
 (db/repl-start)
 
 (history-cmd {:chat-source {:adapter :test :room "foo"}
