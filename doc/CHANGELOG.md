@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.3.9
+
+- upgrade data.xml to 0.0.8
+
 ## 0.3.8
 
 - stop loading config on namespace load; load it explicitly
