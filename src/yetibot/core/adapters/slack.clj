@@ -226,7 +226,6 @@
                 chat-sources (set (map (comp chat-source chan-or-group-name) chans-or-grps-for-user))
                 ; create a user model
                 user-model (users/create-user (:name user) active? (assoc user :mention-name (str "<@" (:id user) ">")))]
-            (info "chat-sources" chat-sources)
             (if (empty? chat-sources)
               (users/add-user-without-room (:adapter (base-chat-source)) user-model)
               (dorun
