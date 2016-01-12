@@ -18,22 +18,24 @@
 
 (defonce ^:private config (atom nil))
 
-(defn- load-edn [path]
+(defn- load-edn! [path]
   (try
     (edn/read-string (slurp path))
     (catch Exception e
-      (warn "Failed loading config: " e)
-      {:yetibot {}})))
+      (error "Failed loading config: " e)
+      nil)))
 
-(defn reload-config
-  ([] (reload-config config-path))
+(defn reload-config!
+  ([] (reload-config! config-path))
   ([path]
-    (let [new-conf (load-edn path)]
-      (info "☐ Try loading config at" path)
-      (reset! config new-conf)
-      (when-not (empty? (:yetibot @config))
-        (info "☑ Config loaded"))
-      new-conf)))
+   (info "☐ Try loading config at" path)
+   (let [new-conf (load-edn! path)]
+     (reset! config new-conf)
+     (when new-conf (info "☑ Config loaded"))
+     new-conf)))
+
+; backward compat
+(def reload-config #'reload-config!)
 
 (defn get-config
   [& path]
