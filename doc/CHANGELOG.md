@@ -3,7 +3,7 @@
 ## 0.3.9
 
 - upgrade data.xml to 0.0.8
-- error and exit if config is missing (devth/yetibot#532)
+- error and exit if config is missing; [#532](https://github.com/devth/yetibot/issues/532)
 
 ## 0.3.8
 
