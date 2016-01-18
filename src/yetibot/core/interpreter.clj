@@ -46,7 +46,7 @@
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra
    :opts"
   [acc [cmd-with-args & next-cmds]]
-  (info "pipe-cmds" acc cmd-with-args next-cmds)
+  ;; (info "pipe-cmds" acc cmd-with-args next-cmds)
   (let [extra {:raw (:value acc)
                :settings (:settings acc)
                :skip-next-n (:skip-next-n acc)
