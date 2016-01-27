@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.3.11
+
+- fix botched 0.3.10 release due to compiler error
+
 ## 0.3.10
 
 - support serving web routes in plugins. Namespaces should match:
