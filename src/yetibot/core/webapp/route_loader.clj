@@ -6,6 +6,6 @@
 (def plugin-route-namespaces
   [#"^.*plugins\.routes.*"])
 
-(defn load-plugin-routesx []
+(defn load-plugin-routes []
   (map #(ns-resolve % 'routes)
        (loader/find-and-load-namespaces plugin-route-namespaces)))
