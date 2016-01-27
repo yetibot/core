@@ -5,6 +5,7 @@
             [yetibot.core.webapp.routes.api :refer [api-routes]]
             [yetibot.core.webapp.middleware :as middleware]
             [yetibot.core.webapp.session :as session]
+            [yetibot.core.webapp.route-loader :as rl]
             [compojure.route :as route]
             [taoensso.timbre :as timbre]
             [environ.core :refer [env]]
@@ -53,12 +54,13 @@
   (timbre/info "shutdown complete!"))
 
 (def app
-  (-> (routes
+  (-> (apply routes
         home-routes
         api-routes
         ; (wrap-routes home-routes middleware/wrap-csrf)
         ; (wrap-routes api-routes middleware/wrap-csrf)
-        base-routes)
+        base-routes
+        (rl/load-plugin-routes))
       middleware/wrap-base))
 
 (defn simple-app [request]

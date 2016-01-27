@@ -1,11 +1,18 @@
 # yetibot.core change log
 
+## 0.3.10
+
+- support serving web routes in plugins. Namespaces should match:
+
+  ```
+  #"^.*plugins\.routes.*"
+  ```
+
+  And each namespace must have a symbol `routes` that contains the routes.
+
 ## 0.3.9
 
 - reduce logging
-
-## 0.3.9
-
 - upgrade data.xml to 0.0.8
 - error and exit if config is missing; [#532](https://github.com/devth/yetibot/issues/532)
 
