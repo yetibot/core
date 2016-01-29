@@ -174,11 +174,10 @@
   (let [active? (= "active" (:presence e))
         id (:user e)
         source (select-keys (base-chat-source) [:adapter])]
-    (log/debug id "presence change active?=" active?)
+    #_(log/trace id "presence change active?=" active?)
     (users/update-user source id {:active? active?})))
 
 (defn on-presence-change [e]
-  (log/debug "presence changed" e)
   (handle-presence-change e))
 
 (defn on-manual-presence-change [e]
