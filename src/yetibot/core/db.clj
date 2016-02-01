@@ -10,7 +10,7 @@
 (def db-ns-pattern #"(yetibot|plugins).*\.db\..+")
 
 (defn schemas []
-  (let [nss (find-namespaces db-ns-pattern)]
+  (let [nss (set (find-namespaces db-ns-pattern))]
     (apply require nss)
     (for [n nss :when (ns-resolve n 'schema)]
       (deref (ns-resolve n 'schema)))))
