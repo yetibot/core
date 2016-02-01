@@ -84,6 +84,7 @@
                  [environ "1.0.0"]
                  ; retry
                  [robert/bruce "0.8.0"]
+                 [com.cemerick/url "0.1.1"]
 
                  ; web/ring
                  [ring/ring-json "0.3.1"]
