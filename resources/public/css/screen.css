@@ -46,7 +46,7 @@ div.home {
   opacity: 1;
 }
 
-a {
+.home a {
   border: 0;
   text-decoration: none;
   color: inherit;
