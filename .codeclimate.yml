@@ -1,0 +1,15 @@
+---
+engines:
+  csslint:
+    enabled: true
+  duplication:
+    enabled: true
+    config:
+      languages:
+      - clojure
+  fixme:
+    enabled: true
+  kibit:
+    enabled: true
+exclude_paths:
+  - target/
