@@ -1,5 +1,20 @@
 # yetibot.core change log
 
+## 0.3.13
+
+- fix global anchor styles
+- configure CodeClimate
+- upgrade minor versions of some of the outdated deps to latest:
+  - [cheshire "5.5.0"]
+  - [environ "1.0.2"]
+  - [http-kit "2.1.19"]
+  - [org.clojure/core.cache "0.6.4"]
+  - [org.clojure/core.memoize "0.5.8"]
+  - [org.clojure/java.classpath "0.2.3"]
+  - [org.clojure/tools.namespace "0.2.11"]
+  - [org.clojure/tools.nrepl "0.2.12"]
+  - [org.clojure/tools.trace "0.7.9"]
+
 ## 0.3.12
 
 - add `url` command to post Yetibot's configured web address
