@@ -34,6 +34,12 @@
   (load-minimal-with-db)
   (ai/start))
 
+(defn start-web
+  []
+  (config/reload-config)
+  (load-minimal-with-db)
+  (web/start-web-server))
+
 (defn start-offline
   "Offline repl-driven dev mode"
   []

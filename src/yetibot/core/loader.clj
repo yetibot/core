@@ -25,6 +25,7 @@
 (defn load-ns [arg]
   (info "Loading" arg)
   (future (try (require arg :reload)
+               arg
                (catch Exception e
                  (warn "WARNING: problem requiring" arg "hook:" (.getMessage e))
                  (st/print-stack-trace (st/root-cause e) 15)))))

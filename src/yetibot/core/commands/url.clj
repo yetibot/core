@@ -9,10 +9,8 @@
 
 (defn yetibot-url
   "Given a path build a fully qualified URL"
-  [path]
-  (-> (url (config)
-           path)
-      str))
+  [& paths]
+  (str (apply url (config) paths)))
 
 (defn url-cmd
   "url # get Yetibot's configured web address"

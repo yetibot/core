@@ -1,5 +1,13 @@
 # yetibot.core change log
 
+## 0.3.12
+
+- add `url` command to post Yetibot's configured web address
+- load routes from plugins for matching namespaces
+- simplify web view and style
+- ensure discovered db schemas are unique
+- reduce Slack logging
+
 ## 0.3.11
 
 - fix botched 0.3.10 release due to compiler error

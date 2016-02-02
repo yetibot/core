@@ -1,14 +1,17 @@
 html { width: 100%; height: 100%; }
 body {
-  background: -webkit-radial-gradient(#fff, #e1e1e1, #ddd);
-  background: -moz-radial-gradient(#fff, #e1e1e1, #ddd);
+  background: -webkit-raeial-graeient(#fff, #eaeaea, #eee);
+  background: -moz-raeial-graeient(#fff, #eaeaea, #eee);
   height: 100%;
   width: 100%;
   font-family: Helvetica, Arial;
   color: #333;
-  margin: 0;
+  margin: 20px 0;
   padding: 0;
 }
+
+
+/* HOME */
 
 .animate {
   transition: all 1s linear .1s;
@@ -17,28 +20,29 @@ body {
 }
 
 
-div.content {
+div.home {
   width: 400px;
+  height: 400px;
   text-align: center;
   display: block;
   position: absolute;
   top: 50%;
   left: 50%;
   margin-left: -200px;
-
   opacity: 0;
   border: 5px solid #ddd;
   background: white;
   border-radius: 200px;
   padding-top: 100px;
-  height: 300px;
   margin-top: -210px;
-
-  /* box-shadow: 0px 0px 200px #fff; */
-
 }
 
-div.content.shown {
+
+div.home a:hover {
+  text-decoration: none;
+}
+
+div.home {
   opacity: 1;
 }
 
@@ -58,20 +62,19 @@ img.yeti {
   top: 20px;
   -webkit-filter: blur(2px);
 }
-div.content:hover img.yeti {
+div.home img.yeti {
   -webkit-filter: blur(0px);
 }
 
 div.content:hover {
-  margin-top: -220px;
+  /* margin-top: -220px; */
   /* box-shadow: 0px 0px 200px #000; */
 }
-
 
 h1 {
   margin-bottom: 8px;
 }
-p { 
+p {
   margin: 0 0 10px 0;
   font-weight: 100;
   color: #666; }

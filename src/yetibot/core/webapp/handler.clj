@@ -53,33 +53,23 @@
   ; (stop-nrepl)
   (timbre/info "shutdown complete!"))
 
-(def app
-  (-> (apply routes
-        home-routes
-        api-routes
-        ; (wrap-routes home-routes middleware/wrap-csrf)
-        ; (wrap-routes api-routes middleware/wrap-csrf)
-        base-routes
-        (rl/load-plugin-routes))
-      middleware/wrap-base))
+(defn app []
+  (let [plugin-routes (vec (rl/load-plugin-routes))
+        ; base-routes needs to be very last because it contains not-found
+        last-routes (conj plugin-routes base-routes)]
+    (-> (apply routes
+               home-routes
+               api-routes
+               last-routes)
+        middleware/wrap-base)))
 
-(defn simple-app [request]
-  {:status 200
-   :headers {"Content-Type" "text/plain"}
-   :body "Hello World"})
+;; base-routes
 
 (defn start-web-server []
   (init)
-  ; (run-jetty #'simple-app {:join? false :daemon? true :port 3100})
-  (reset! web-server (run-server #'app {:join? false :daemon? true :port 3000})))
+  (reset! web-server (run-server (app) {:join? false :daemon? true :port 3000})))
 
 (defn stop-web-server []
   (when-not (nil? @web-server)
     (@web-server :timeout 100)
     (reset! web-server nil)))
-
-  ; (web-server/serve
-  ;   app
-  ;   {:port 3000
-  ;    :init init
-  ;    :destroy destroy})

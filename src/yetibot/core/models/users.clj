@@ -61,12 +61,7 @@
            {user-key (merge user {:rooms #{chat-source}})})))
 
 (defn update-user [source id attrs]
-  (info "update-user \n"
-        source
-        \newline
-        id
-        \newline
-        attrs)
+  (info "update-user" source id attrs)
   (let [user-key {:adapter (:adapter source) :id id}]
     ; ensure user exists
     (or (get @users user-key)
