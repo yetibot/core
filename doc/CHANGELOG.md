@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.3.14
+
+- add tentacles dependency
+
 ## 0.3.13
 
 - fix global anchor styles

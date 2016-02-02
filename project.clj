@@ -43,6 +43,9 @@
                  [http.async.client "0.5.2" :exclusions [[org.slf4j/slf4j-api]
                                                          [io.netty/netty]]]
 
+                 ; github
+                 [tentacles "0.5.1" :exclusions [[org.clojure/clojure]]]
+
                  ; email
                  [com.draines/postal "1.9.0"]
                  [clojure-mail "0.1.4"]
