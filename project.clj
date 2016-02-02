@@ -16,12 +16,12 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
                  [org.clojure/data.json "0.2.6"]
-                 [org.clojure/tools.nrepl "0.2.11"]
-                 [org.clojure/tools.trace "0.7.6"]
-                 [org.clojure/java.classpath "0.2.0"]
-                 [org.clojure/core.cache "0.6.3"]
-                 [org.clojure/tools.namespace "0.2.2"]
-                 [org.clojure/core.memoize "0.5.6"]
+                 [org.clojure/tools.nrepl "0.2.12"]
+                 [org.clojure/tools.trace "0.7.9"]
+                 [org.clojure/java.classpath "0.2.3"]
+                 [org.clojure/core.cache "0.6.4"]
+                 [org.clojure/tools.namespace "0.2.11"]
+                 [org.clojure/core.memoize "0.5.8"]
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.1"]
@@ -71,7 +71,7 @@
 
                  ; json parsing / schema
                  [com.bigml/closchema "0.1.8"]
-                 [cheshire "5.0.1"]
+                 [cheshire "5.5.0"]
 
                  ; utils
                  [clj-stacktrace "0.2.8"]
@@ -81,7 +81,7 @@
                  [rate-gate "1.3.1"]
                  [overtone/at-at "1.0.0"]
                  [inflections "0.7.3"]
-                 [environ "1.0.0"]
+                 [environ "1.0.2"]
                  ; retry
                  [robert/bruce "0.8.0"]
                  [com.cemerick/url "0.1.1"]
@@ -91,7 +91,7 @@
                  [ring/ring-core "1.4.0"]
 
                  ; [ring/ring-jetty-adapter "1.4.0"]
-                 [http-kit "2.1.18"]
+                 [http-kit "2.1.19"]
 
                  ; [ring-server "0.4.0"]
                  ; [info.sunng/ring-jetty9-adapter "0.8.4"]
