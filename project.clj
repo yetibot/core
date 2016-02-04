@@ -92,6 +92,8 @@
                  ; web/ring
                  [ring/ring-json "0.3.1"]
                  [ring/ring-core "1.4.0"]
+                 ;; [ring-logger "0.7.5"]
+                 [ring-logger-timbre "0.7.5"]
 
                  ; [ring/ring-jetty-adapter "1.4.0"]
                  [http-kit "2.1.19"]
