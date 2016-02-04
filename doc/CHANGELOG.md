@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.3.15
+
+- add logging to web requests
+
 ## 0.3.14
 
 - add tentacles dependency
