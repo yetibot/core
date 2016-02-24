@@ -2,7 +2,7 @@
   (:require
     [yetibot.core.adapters.adapter :refer [active-adapters uuid]]
     [taoensso.timbre :refer [debug info warn error]]
-    [yetibot.core.config :as config]
+    [yetibot.core.config-mutable :as config]
     [clojure.string :as s]))
 
 (def config-path [:yetibot :room])
@@ -39,7 +39,7 @@
   "Takes a fn to apply to current value of a setting for a given room"
   [uuid room f]
   (config/apply-config (conj config-path uuid room) f)
-  (config/reload-config))
+  (config/reload-config!))
 
 (defn update-settings
   "Updates or creates new setting k = v for a given room"

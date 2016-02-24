@@ -75,6 +75,7 @@
                  ; json parsing / schema
                  [com.bigml/closchema "0.1.8"]
                  [cheshire "5.5.0"]
+                 [prismatic/schema "1.1.0"]
 
                  ; utils
                  [clj-stacktrace "0.2.8"]
@@ -85,6 +86,8 @@
                  [overtone/at-at "1.0.0"]
                  [inflections "0.7.3"]
                  [environ "1.0.2"]
+                 [lein-environ "1.0.2"]
+                 [dec "1.0.1"]
                  ; retry
                  [robert/bruce "0.8.0"]
                  [com.cemerick/url "0.1.1"]
