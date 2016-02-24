@@ -5,6 +5,7 @@
     [robert.bruce :refer [try-try-again] :as rb]
     [gniazdo.core :as ws]
     [clojure.string :as s]
+    [schema.core :as sch]
     [yetibot.core.interpreter :refer [*chat-source*]]
     [yetibot.core.models.users :as users]
     [yetibot.core.util.http :refer [html-decode]]
@@ -16,8 +17,8 @@
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
     [taoensso.timbre :as log :refer [info warn error]]
-    [yetibot.core.config :refer [update-config get-config config-for-ns
-                                 reload-config conf-valid? apply-config]]
+    [yetibot.core.config-mutable :refer [update-config get-config 
+                                         apply-config]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure *target* *adapter*]]
@@ -204,7 +205,7 @@
   "Update config.edn when a room is joined or left"
   [uuid room joined?]
   (let
-    [adapters (get-config :yetibot :adapters)
+    [adapters (get-config sch/Any [:yetibot :adapters])
      instance-index (first (utl/indices #(= (:name %) uuid) adapters))
      adapter (nth adapters instance-index)
      exists? (contains? adapter :rooms)]

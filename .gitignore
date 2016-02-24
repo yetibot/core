@@ -8,5 +8,6 @@ pom.xml.asc
 /.lein-*
 /.nrepl-port
 /config
+profiles.clj
 *.iml
 .idea

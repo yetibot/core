@@ -1,10 +1,10 @@
-(ns yetibot.core.test.config
+(ns yetibot.core.test.config-mutable
   (:require
-    [yetibot.core.config :refer :all]
+    [yetibot.core.config-mutable :refer :all]
     [clojure.test :refer :all]))
 
 (defn wrap [f]
-  (reload-config)
+  (reload-config!)
   (let [original-config @@#'yetibot.core.config/config]
     ;; run all the tests!!!
     (f)
@@ -24,7 +24,7 @@
     (update-config :yetibot :foo :bar "baz")
     (is (= "baz" (get-config :yetibot :foo :bar)))
     ;; re-read from disk
-    (reload-config)
+    (reload-config!)
     (is (= "baz" (get-config :yetibot :foo :bar)))))
 
 (deftest test-apply-config
