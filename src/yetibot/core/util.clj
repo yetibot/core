@@ -51,9 +51,9 @@
     (str s " " arg)))
 
 (defn indices
-    "Indices of elements of a collection matching pred"
-    [pred coll]
-    (keep-indexed #(when (pred %2) %1) coll))
+  "Indices of elements of a collection matching pred"
+  [pred coll]
+  (keep-indexed #(when (pred %2) %1) coll))
 
 ;;; collection parsing
 

@@ -1,5 +1,16 @@
 # yetibot.core change log
 
+## 0.4.0
+
+- Refactor configuration:
+  It was getting quite unweidly and inconsistent with somewhat arbitrary
+  hierarchies.
+  - Separate out the mutable parts (e.g. room config) from actual immutable
+    configuration.
+  - Use [Environ](https://github.com/weavejester/environ) for immutable config
+    config itself to use.
+  - Continue using `yetibot.core.config` for mutable parts
+
 ## 0.3.17
 
 - Listen to Slack edit events and re-execute command

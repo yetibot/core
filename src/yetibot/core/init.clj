@@ -4,7 +4,7 @@
     [yetibot.core.adapters.init :as ai]
     [clojure.stacktrace :refer [print-stack-trace]]
     [clojure.tools.nrepl.server :refer [start-server stop-server]]
-    [yetibot.core.config :as config]
+    [yetibot.core.config-mutable :as mconfig]
     [yetibot.core.db :as db]
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.logging :as logging]
@@ -19,7 +19,7 @@
 
 (defn -main [& args]
   ;; only continue if able to load config
-  (if-let [c (config/reload-config!)]
+  (if-let [c (mconfig/reload-config!)]
     (do
       (welcome-message)
       (start-server :port 6789)

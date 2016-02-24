@@ -1,5 +1,6 @@
 (ns yetibot.core.adapters.irc
   (:require
+    [schema.core :as s]
     [clojure.set :refer [difference union intersection]]
     [yetibot.core.adapters.adapter :as a]
     [taoensso.timbre :as log :refer [info]]
@@ -9,8 +10,7 @@
      [connection :as irc-conn]]
     [yetibot.core.models.users :as users]
     [clojure.string :refer [split-lines join]]
-    [yetibot.core.config :refer [update-config get-config config-for-ns
-                                 reload-config]]
+    [yetibot.core.config-mutable :as mconfig]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure send-msg-for-each
                                *target* *adapter*] :as chat]
@@ -70,12 +70,16 @@
    split it and send one for each"
   [a p] (send-msg-for-each (prepare-paste p)))
 
+(def channels-schema #{s/Str})
+
+;; todo: refactor rooms config for IRC
+
 (defn reload-and-reset-config
   "Reloads config from disk, then uses config-idx to lookup the correct config
    map for this instance and resets the config atom with it."
   [{:keys [config config-idx]}]
-  (reload-config)
-  (let [new-conf (apply get-config (config-path config-idx))]
+  (mconfig/reload-config!)
+  (let [new-conf (mconfig/get-config  (config-path config-idx))]
     (info "reloaded config, now:" new-conf)
     (reset! config new-conf)))
 
@@ -84,7 +88,7 @@
    of function will be used to set the new rooms config"
   [adapter f]
   (log/info "rooms config path is" (rooms-config-path adapter))
-  (apply update-config (conj (rooms-config-path adapter) (f (rooms adapter))))
+  (apply mconfig/update-config (conj (rooms-config-path adapter) (f (rooms adapter))))
   (reload-and-reset-config adapter))
 
 (defn add-room-to-config [a room]

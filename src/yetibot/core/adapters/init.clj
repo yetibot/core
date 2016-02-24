@@ -1,17 +1,33 @@
 (ns yetibot.core.adapters.init
   "Manages the lifecycle of adapters"
   (:require
+    [schema.core :as s]
     [yetibot.core.adapters.slack :as slack]
     [yetibot.core.adapters.irc :as irc]
     [taoensso.timbre :as log :refer [info warn error]]
     [taoensso.timbre :as log :refer [info warn error]]
     [clojure.stacktrace :refer [print-stack-trace]]
     [yetibot.core.adapters.adapter :as a]
-    [yetibot.core.config :refer [update-config get-config config-for-ns
-                                 reload-config conf-valid?]]
+    [yetibot.core.config :refer [get-config conf-valid?]]
     [yetibot.core.adapters.irc :as irc]))
 
-(defn adapters-config [] (get-config :yetibot :adapters))
+(def adapters-schema
+  [{:name s/Str
+    :type s/Str
+    ;; different types of adapters require different keys - make them optional
+    ;; Slack
+    (s/optional-key :token) s/Str
+    ;; IRC
+    (s/optional-key :host) s/Str
+    (s/optional-key :port) s/Str
+    (s/optional-key :username) s/Str
+    (s/optional-key :password) s/Str}])
+
+(defn adapters-config []
+  (let [c (get-config adapters-schema [:yetibot :adapters])]
+    (if (:error c)
+      (throw (ex-info "Invalid adapters config" c))
+      (:value c))))
 
 (defn report-ex [f n]
   (try
@@ -20,9 +36,8 @@
     (catch Exception e
       (warn "Error on" n (with-out-str (print-stack-trace e))))))
 
-
 (defn make-adapter [idx config]
-  (condp = (:type config)
+  (condp = (keyword (:type config))
     :slack (slack/make-slack idx config)
     :irc (irc/make-irc idx config)
     (throw (ex-info (str "Unknown adapter type " (:type config)) config))))
