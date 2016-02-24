@@ -1,6 +1,6 @@
 (ns yetibot.core.db
   (:require
-    [yetibot.core.config :refer [get-config conf-valid?]]
+    [yetibot.core.config :refer [get-config]]
     [yetibot.core.loader :refer [find-namespaces]]
     [datomico.db :as db]
     [datomico.core :as dc]
@@ -15,13 +15,16 @@
     (for [n nss :when (ns-resolve n 'schema)]
       (deref (ns-resolve n 'schema)))))
 
+(def default-url "datomic:mem://yetibot")
+
+(defn config []
+  {:url (or (:value (get-config String [:yetibot :db :datomic :url]))
+            default-url)})
+
 (defn start [& [opts]]
-  (if (conf-valid? (get-config :yetibot :db))
-    (do
-      (info "☐ Loading Datomic schemas at" (:datomic-url (get-config :yetibot :db)))
-      (dc/start (merge opts {:uri (:datomic-url (get-config :yetibot :db))
-                             :schemas (filter identity (schemas))}))
-      (info "☑ Datomic connected"))
-    (warn ":datomic-url is not configured, unable to connect.")))
+  (info "☐ Loading Datomic schemas at" (:url (config)))
+  (dc/start (merge opts {:uri (:url (config))
+                         :schemas (filter identity (schemas))}))
+  (info "☑ Datomic connected"))
 
 (def repl-start (partial start {:dynamic-vars true}))

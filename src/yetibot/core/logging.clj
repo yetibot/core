@@ -1,5 +1,6 @@
 (ns yetibot.core.logging
   (:require
+    [schema.core :as s]
     [yetibot.core.config :refer [get-config]]
     [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.db.log :as log]
@@ -8,10 +9,16 @@
      :as timbre
      :refer [trace debug info warn error fatal spy with-log-level]]))
 
-(timbre/set-level! (get-config :yetibot :logging :log-level))
+(def config-schema String)
 
-; (timbre/set-config! [:appenders :spit :enabled?] true)
-; (timbre/set-config! [:shared-appender-config :spit-filename] "/var/log/yetibot/yetibot.log")
+(defn log-level []
+  (let [v (get-config config-schema [:yetibot :log :level])]
+    (if (:error v)
+      ;; default config level
+      :warn
+      (keyword (:value v)))))
+
+(timbre/set-level! (log-level))
 
 ;; rolling log files
 (timbre/set-config! [:appenders :rolling]
@@ -25,7 +32,7 @@
     (log/create (select-keys args [:level :prefix :message]))))
 
 (defn start []
-  ; log to datomic
+  ; log to datomic - disabled
   #_(timbre/set-config!
       [:appenders :datomic]
       {:doc       "Datomic logger"
@@ -33,5 +40,4 @@
        :enabled?  true
        :async?    false
        :limit-per-msecs nil ; No rate limit
-       :fn #'log-to-db})
-  )
+       :fn #'log-to-db}))

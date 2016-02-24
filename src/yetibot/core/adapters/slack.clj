@@ -16,8 +16,6 @@
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
     [taoensso.timbre :as log :refer [info warn error]]
-    [yetibot.core.config :refer [update-config get-config config-for-ns
-                                 reload-config conf-valid?]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure *target* *adapter*]]))

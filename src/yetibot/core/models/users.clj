@@ -1,7 +1,6 @@
 (ns yetibot.core.models.users
   (:require
     [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.config :refer [config-for-ns]]
     [clj-time.core :refer [now]]))
 
 (def config {:active-threshold-milliseconds (* 15 60 1000)})

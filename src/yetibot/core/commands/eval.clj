@@ -1,12 +1,13 @@
 (ns yetibot.core.commands.eval
   (:require
+    [schema.core :as s]
     [clojure.repl :refer :all]
     [clojure.pprint :refer [pprint]]
-    [yetibot.core.config :refer [config-for-ns]]
+    [yetibot.core.config :refer [get-config]]
     [yetibot.core.hooks :refer [cmd-hook]]
     [clojure.string :refer [split]]))
 
-(def ^:private privs (:privs (config-for-ns)))
+(defn- privs [] (get-config [s/Str] [:yetibot :eval :priv]))
 
 (defn- user-is-allowed? [user]
   (boolean (some #{(:id user)} privs)))
