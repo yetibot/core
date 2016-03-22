@@ -236,6 +236,16 @@
 (cmd-hook #"count"
           _ count-cmd)
 
+; sum
+(defn sum-cmd
+  "sum <list> # sum the items in <list>"
+  {:yb/cat #{:util}}
+  [{items :opts}]
+  (reduce + (map (comp read-string str) (ensure-items-collection items))))
+
+(cmd-hook #"sum"
+          _ sum-cmd)
+
 ; sort
 (defn sort-cmd
   "sort <list> # sort a list"
