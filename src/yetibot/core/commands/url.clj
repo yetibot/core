@@ -15,7 +15,7 @@
 (defn url-cmd
   "url # get Yetibot's configured web address"
   [_]
-  (config))
+  (:value (config)))
 
 (cmd-hook #"url"
   _ url-cmd)

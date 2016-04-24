@@ -88,7 +88,7 @@
    of function will be used to set the new rooms config"
   [adapter f]
   (log/info "rooms config path is" (rooms-config-path adapter))
-  (apply mconfig/update-config (conj (rooms-config-path adapter) (f (rooms adapter))))
+  (mconfig/update-config! (rooms-config-path adapter) (f (rooms adapter)))
   (reload-and-reset-config adapter))
 
 (defn add-room-to-config [a room]
