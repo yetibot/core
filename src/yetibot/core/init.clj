@@ -29,5 +29,5 @@
       (ai/start)
       (load-commands-and-observers))
     (do
-      (error "Yetibot failed to start: please ensure config is in place at" config/config-path " and that it is well-formed (see the log above for details)")
+      (error "Yetibot failed to start: please ensure config is in place at" mconfig/config-path " and that it is well-formed (see the log above for details)")
       (shutdown-agents))))

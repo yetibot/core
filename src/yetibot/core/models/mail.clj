@@ -24,7 +24,8 @@
 ;; TODO - move into start
 (when (configured?)
   (def store (gen-store))
-  (auth! (:user (config)) (:pass (config))))
+  (let [{:keys user pass} (:value (config))]
+  (auth! user pass))
 
 (def pool (mk-pool))
 (def poll-interval (* 1000 60))
