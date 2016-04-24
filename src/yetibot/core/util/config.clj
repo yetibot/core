@@ -27,6 +27,7 @@
         {:value value}
         (catch Exception e
           ;; invalid against schema
+          (warn e)
           {:error :invalid
            :message (str value " does not validate against schema: " (pr-str schema))
            :schema schema}))

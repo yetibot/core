@@ -8,15 +8,26 @@
     [clojure.edn :as edn]
     [clojure.string :refer [blank? split]]))
 
-(def config-path (.getAbsolutePath (as-file "config/config.edn")))
+(def default-config {:yetibot {}})
 
-(defn config-exists? [] (.exists (as-file config-path)))
+(def config-path (.getAbsolutePath (as-file "config/config-mutable.edn")))
+
+(defn config-exists? [path] (.exists (as-file path)))
 
 (defonce ^:private config (atom {}))
 
-(defn- load-edn! [path]
+(defn- load-edn!
+  "Attempts to load edn from `config-path`. If no file exists, a new file will
+   be written with the value of `default-config`."
+  [path]
   (try
-    (edn/read-string (slurp path))
+    (if (config-exists? path)
+      (edn/read-string (slurp path))
+      (do
+        (info "Config does not exist at"
+              path " - writing default config:" default-config)
+        (spit path default-config)
+        default-config))
     (catch Exception e
       (error "Failed loading config: " e)
       nil)))
@@ -30,33 +41,39 @@
      (when new-conf (info "☑ Config loaded"))
      new-conf)))
 
-(defn write-config! []
-  (if (config-exists?)
-    (spit config-path (with-out-str (pprint @config)))
-    (warn config-path "file doesn't exist, skipped write")))
+(defn write-config! [path]
+  (if (config-exists? path)
+    (spit path (with-out-str (pprint @config)))
+    (warn path "file doesn't exist, skipped write")))
 
 (def apply-config-lock (Object.))
 
-(defn apply-config
+(defn apply-config!
   "Takes a function to apply to the current value of a config at path"
-  [path f]
-  (locking apply-config-lock
-    (swap! config update-in path f)
-    (write-config!)))
+  ([path f] (apply-config! config-path path f))
+  ([file-path path f]
+   (locking apply-config-lock
+     (swap! config update-in path f)
+     (write-config! file-path))))
 
-(defn update-config
+(defn update-config!
   "Updates the config data structure and write it to disk."
-  [& path-and-val]
-  (let [path (butlast path-and-val)
-        value (last path-and-val)]
-    (apply-config path (constantly value))))
+  ([path value] (update-config! config-path path value))
+  ([file-path path value]
+   (apply-config! file-path path (constantly value))))
 
-(defn remove-config
+(def remove-config-lock (Object.))
+
+(defn remove-config!
   "Remove config at path and write it to disk."
-  [& fullpath]
-  (let [path (butlast fullpath)
-        k (last fullpath)]
-    (swap! config update-in path dissoc k))
-  (write-config!))
+  ([fullpath] (remove-config! config-path fullpath))
+  ([file-path fullpath]
+   (locking remove-config-lock
+     (let [path (butlast fullpath)
+           k (last fullpath)]
+       (swap! config update-in path dissoc k))
+     (write-config! file-path))))
 
-(def get-config (partial uc/get-config @config))
+(defn get-config
+  [schema path]
+  (uc/get-config @config schema path))

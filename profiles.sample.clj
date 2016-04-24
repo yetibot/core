@@ -58,7 +58,7 @@
    :yetibot-jira-projects-0-key "FOO"
    :yetibot-jira-projects-0-default-version-id "42"
    :yetibot-jira-default-issue-type-id "3"
-   :yetibot-jira-sub-task-issue-type-id "27"
+   :yetibot-jira-subtask-issue-type-id "27"
    :yetibot-jira-default-project-key "Optional"
 
    ;; s3

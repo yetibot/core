@@ -12,7 +12,7 @@
 (def error-message "Failed to send 💩")
 (def no-messages "No new messages.")
 
-(defn config [] (merge (model/config) {:ssl true}))
+(defn config [] (merge (:value (model/config)) {:ssl true}))
 
 (defn encode-images [content]
   (s/replace content #"(\S+)(.jpg|.png|.gif)" #(format "<img src='%s'>" (first %))))
