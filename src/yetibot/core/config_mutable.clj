@@ -10,7 +10,7 @@
 
 (def default-config {:yetibot {}})
 
-(def config-path (.getAbsolutePath (as-file "config/config-mutable.edn")))
+(def config-path (.getAbsolutePath (as-file "config/yetibot.edn")))
 
 (defn config-exists? [path] (.exists (as-file path)))
 

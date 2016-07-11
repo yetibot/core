@@ -1,3 +1,13 @@
+;; Use this file as a sample profiles.clj for Yetibot configuraration.
+;;
+;; It defines a dev profile, but you may want to share much of the configuration
+;; between dev and prod, using Composite Profiles, optionally overriding
+;; specific differences between dev and prod:
+;; https://github.com/technomancy/leiningen/blob/master/doc/PROFILES.md#composite-profiles
+;;
+;; Config is loaded using `environ:` https://github.com/weavejester/environ
+;; And exploded into nested maps using `dec`: https://github.com/devth/dec
+
 {:dev
  {:env
   {:yetibot-log-level "debug"
@@ -19,7 +29,7 @@
    ;; the changed uuid).
    ;;
    ;; Each config map must have:
-   ;; - a :type key with value :slack or :irc
+   ;; - a :type key with value "slack" or "irc"
    ;; - a :name key with a unique value (i.e. uuid)"
    ;;
    ;; Example configuring 3 adapters: 2 Slacks and 1 IRC:
@@ -27,15 +37,15 @@
    :yetibot-adapters-0-type "slack"
    :yetibot-adapters-0-token "xoxb-111111111111111111111111111111111111"
 
-   ;; :yetibot-adapters-1-name "kubernetes-slack"
-   ;; :yetibot-adapters-1-type "slack"
-   ;; :yetibot-adapters-1-token "xoxb-9999999999999999"
+   :yetibot-adapters-1-name "kubernetes-slack"
+   :yetibot-adapters-1-type "slack"
+   :yetibot-adapters-1-token "xoxb-9999999999999999"
 
-   ;; :yetibot-adapters-2-name "freenode-irc"
-   ;; :yetibot-adapters-2-type "irc"
-   ;; :yetibot-adapters-2-host "freenode.net"
-   ;; :yetibot-adapters-2-port "9600"
-   ;; :yetibot-adapters-2-username "yetibot"
+   :yetibot-adapters-2-name "freenode-irc"
+   :yetibot-adapters-2-type "irc"
+   :yetibot-adapters-2-host "freenode.net"
+   :yetibot-adapters-2-port "9600"
+   :yetibot-adapters-2-username "yetibot"
 
    ;; Listens on port 3000 but this may be different for you if you (e.g. if you
    ;; use a load balancer or map ports in Docker).
@@ -48,7 +58,7 @@
    :yetibot-github-token ""
    :yetibot-github-org-0 ""
    :yetibot-github-org-1 ""
-   ;; :endpoint is optional: only specify if using GitHub enterprise.
+   ;; :endpoint is optional: only specify if using GitHub Enterprise.
    :yetibot-github-endpoint ""
 
    ;; `jira`
@@ -87,6 +97,7 @@
    ;; INFOs
    ;;
 
+   ;; `ebay`
    :yetibot-ebay-appid ""
 
    ;; `twitter`: stream tweets from followers and followed topics directly into
@@ -98,21 +109,17 @@
    ;; ISO 639-1 code: http://en.wikipedia.org/wiki/List-of-ISO-639-1-codes
    :yetibot-twitter-search-lang "en"
 
-   ;; `image` - falback to bing if Google fails
+   ;; `image` - falback to Bing if Google fails
    :yetibot-bing-search-key ""
 
    ;; `jen` - Jenkins
-   ;; Multiple Jenkins instances can be configured. They can also be configured
-   ;; at runtime, which writes to this config file. Only one `default-job` is
-   ;; supported if multiple are specified, the first one wins.
+   ;; Jenkins instances config are mutable, and are therefore not defined in
+   ;; this config. Instead, add them at runtime. See `!help jen` for more info.
+
+   ;; How long to cache Jenkins jobs from each instance before refreshing
    :yetibot-jenkins-cache-ttl "3600000"
-   :yetibot-jenkins-instances-0-name ""
-   :yetibot-jenkins-instances-0-uri ""
-   :yetibot-jenkins-instances-0-default-job ""
-   ;; If your Jenkins doesn't require auth, set user and api-key to some
-   ;; non-blank value in order to pass the configuration check.
-   :yetibot-jenkins-instances-0-user ""
-   :yetibot-jenkins-instances-0-api-key ""
+   ;; Default job across all instances, used by `!jen build`
+   :yetibot-jenkins-default-job ""
 
    ;; Set of Strings: Slack IDs or IRC users (which have ~ prefixes) of users who
    ;; can use the yetibot `eval` command.

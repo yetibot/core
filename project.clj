@@ -5,11 +5,10 @@
   :scm {:name "git" :url "https://github.com/devth/yetibot.core.git"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :lein-release {:deploy-via :clojars}
   :deploy-repositories [["releases" :clojars]]
   :repl-options {:init-ns yetibot.core.repl
                  :timeout 120000
-                 :welcome (println "Welcome to the yetibot development repl!")}
+                 :welcome (println "Welcome to the Yetibot development repl!")}
   ; :aot [yetibot.core.init]
   :main yetibot.core.init
   :profiles {:test {:resource-paths ["test/resources"]}}
