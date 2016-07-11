@@ -11,6 +11,8 @@
     and [dec](https://github.com/devth/dec) to explode flat config into nested
     maps
   - Use `yetibot.core.config-mutable` for mutable parts
+  - Use [schema](https://github.com/plumatic/schema) to validate the expected
+    shape of config when obtaining via `get-config`
 
 ## 0.3.17
 
