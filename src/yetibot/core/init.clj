@@ -14,14 +14,14 @@
     [yetibot.core.logo :refer [logo]])
   (:gen-class))
 
-(defn welcome-message []
+(defn welcome-message! []
   (println logo))
 
 (defn -main [& args]
   ;; only continue if able to load config
   (if-let [c (mconfig/reload-config!)]
     (do
-      (welcome-message)
+      (welcome-message!)
       (start-server :port 6789)
       (web/start-web-server)
       (db/start)
