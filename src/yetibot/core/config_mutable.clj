@@ -10,7 +10,7 @@
 
 (def default-config {:yetibot {}})
 
-(def config-path (.getAbsolutePath (as-file "config/yetibot.edn")))
+(def config-path (.getAbsolutePath (as-file "yetibot-config.edn")))
 
 (defn config-exists? [path] (.exists (as-file path)))
 
@@ -24,8 +24,7 @@
     (if (config-exists? path)
       (edn/read-string (slurp path))
       (do
-        (info "Config does not exist at"
-              path " - writing default config:" default-config)
+        (info "Config does not exist at" path " - writing default config:" default-config)
         (spit path default-config)
         default-config))
     (catch Exception e
