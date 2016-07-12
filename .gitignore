@@ -8,6 +8,7 @@ pom.xml.asc
 /.lein-*
 /.nrepl-port
 /config
+yetibot-config.edn
 profiles.clj
 *.iml
 .idea
