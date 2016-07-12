@@ -17,11 +17,10 @@ Yetibot supports both immutable and mutable configuration.
   - Datomic URI
   - etc.
 
-- **Mutable config source** is an `edn` file stored at `config/yetibot.edn`.
+- **Mutable config source** is an `edn` file stored at `./yetibot-config.edn`.
   Yetibot reads and writes to this file at runtime. Only a small subset of
   commands need mutable config:
 
-  - Jenkins (add and remove Jenkins instances at runtime)
   - IRC channels
   - Room settings
 
