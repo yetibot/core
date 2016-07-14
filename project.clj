@@ -63,7 +63,7 @@
                  [evaljs "0.1.2"]
 
                  ; ssh
-                 [clj-ssh "0.4.0"]
+                 [clj-ssh "0.5.14"]
 
                  ; dynamic dependency reloading / adding
                  [com.cemerick/pomegranate "0.3.0"]
