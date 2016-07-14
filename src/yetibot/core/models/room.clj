@@ -25,9 +25,10 @@
 (defn settings-by-uuid
   "Returns the full settings map for an adapter given the adapter's uuid."
   [uuid]
-  (config/get-config sch/Any (conj config-path uuid)))
+  (:value (config/get-config sch/Any (conj config-path uuid))))
 
 (defn settings-for-room [uuid room]
+  (info "settings for room" uuid room)
   (merge-on-defaults (get (settings-by-uuid uuid) room {})))
 
 (defn settings-for-chat-source
