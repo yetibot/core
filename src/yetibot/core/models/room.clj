@@ -1,5 +1,6 @@
 (ns yetibot.core.models.room
   (:require
+    [schema.core :as sch]
     [yetibot.core.adapters.adapter :refer [active-adapters uuid]]
     [taoensso.timbre :refer [debug info warn error]]
     [yetibot.core.config-mutable :as config]
@@ -24,7 +25,7 @@
 (defn settings-by-uuid
   "Returns the full settings map for an adapter given the adapter's uuid."
   [uuid]
-  (config/get-config {} (conj config-path uuid)))
+  (config/get-config sch/Any (conj config-path uuid)))
 
 (defn settings-for-room [uuid room]
   (merge-on-defaults (get (settings-by-uuid uuid) room {})))
