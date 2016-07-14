@@ -13,6 +13,7 @@
   - Use `yetibot.core.config-mutable` for mutable parts
   - Use [schema](https://github.com/plumatic/schema) to validate the expected
     shape of config when obtaining via `get-config`
+- Moved the ssh command out of yetibot and into yetibot.core
 
 ## 0.3.17
 
