@@ -5,7 +5,7 @@
     [schema.core :as s]
     [clojure.test :refer :all]))
 
-(def test-config-path "config/test-config-mutable.edn")
+(def test-config-path "test-config-mutable.edn")
 
 (defn wrap [f]
   ;; ensure config exists
