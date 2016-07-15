@@ -51,7 +51,9 @@
 
                  ; chat protocols
                  [clj-campfire "2.2.0"]
+
                  [irclj "0.5.0-alpha4"]
+
                  [org.julienxx/clj-slack "0.5.2.1"]
                  [devth/slack-rtm "0.1.0"]
 
