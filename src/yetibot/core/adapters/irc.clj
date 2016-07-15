@@ -181,8 +181,10 @@
   (reset!
     conn
     (irc/connect
-      (:host config) (read-string (or (:port config) "6667")) (:username config)
-      :ssl? (:ssl? config)
+      (:host config)
+      (read-string (or (:port config) "6667"))
+      (:username config)
+      :ssl? (boolean (:ssl? config))
       :callbacks (callbacks a))))
 
 (defn join-or-part-with-current-channels
@@ -212,8 +214,8 @@
   [{:keys [mutable-config config config-idx conn] :as adapter}]
   (binding [*adapter* adapter]
     (info "starting IRC with" config-idx config)
-    (connect adapter)
     (reload-and-reset-config! adapter)
+    (connect adapter)
     (join-or-part-with-current-channels adapter)))
 
 (defn stop
