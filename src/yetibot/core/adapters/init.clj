@@ -20,6 +20,7 @@
     ;; IRC
     (s/optional-key :host) s/Str
     (s/optional-key :port) s/Str
+    (s/optional-key :ssl?) s/Str
     (s/optional-key :username) s/Str
     (s/optional-key :password) s/Str}])
 
