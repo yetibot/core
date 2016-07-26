@@ -5,7 +5,6 @@
     [yetibot.core.adapters.slack :as slack]
     [yetibot.core.adapters.irc :as irc]
     [taoensso.timbre :as log :refer [info warn error]]
-    [taoensso.timbre :as log :refer [info warn error]]
     [clojure.stacktrace :refer [print-stack-trace]]
     [yetibot.core.adapters.adapter :as a]
     [yetibot.core.config :refer [get-config conf-valid?]]
@@ -28,6 +27,7 @@
   (let [c (get-config adapters-schema [:yetibot :adapters])]
     (if (:error c)
       (throw (ex-info "Invalid adapters config" c))
+      (warn c)
       (:value c))))
 
 (defn report-ex [f n]
