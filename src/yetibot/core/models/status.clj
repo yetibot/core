@@ -14,7 +14,6 @@
     [yetibot.core.util.time :as t]
     [yetibot.core.interpreter]))
 
-
 ;;;; write
 
 (defn add-status [{:keys [id]} chat-source st]
