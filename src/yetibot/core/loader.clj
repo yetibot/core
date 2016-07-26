@@ -2,6 +2,7 @@
   (:require
     [taoensso.timbre :refer [info warn error]]
     [clojure.stacktrace :as st]
+    [yetibot.core.hooks]
     [clojure.tools.namespace.find :as ns]
     [clojure.java.classpath :as cp]))
 
