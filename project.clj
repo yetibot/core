@@ -82,7 +82,7 @@
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.2.1"]
                  [robert/hooke "1.3.0"]
-                 [clj-time "0.11.0"] ; includes joda-time
+                 [clj-time "0.12.0"] ; includes joda-time
                  [rate-gate "1.3.1"]
                  [overtone/at-at "1.0.0"]
                  [inflections "0.7.3"]
