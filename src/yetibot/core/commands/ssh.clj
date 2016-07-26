@@ -3,7 +3,7 @@
     [schema.core :as sch]
     [clojure.string :as s]
     [taoensso.timbre :refer [info warn error]]
-    [clj-ssh.ssh :refer :all]
+    [clj-ssh.ssh :refer [ssh ssh-agent add-identity session with-connection]]
     [yetibot.core.hooks :refer [cmd-hook]]
     [yetibot.core.config :refer [get-config]]))
 
