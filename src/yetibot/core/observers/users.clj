@@ -2,7 +2,6 @@
   (:require
     [taoensso.timbre :as log]
     [yetibot.core.models.users :as users]
-    [yetibot.core.adapters.campfire :as cf]
     [yetibot.core.hooks :refer [obs-hook]]
     [yetibot.core.chat :refer [chat-data-structure]]))
 
