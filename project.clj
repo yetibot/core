@@ -45,8 +45,8 @@
                  [tentacles "0.5.1" :exclusions [[org.clojure/clojure]]]
 
                  ; email
-                 [com.draines/postal "1.9.0"]
-                 [clojure-mail "0.1.4"]
+                 [com.draines/postal "2.0.1"]
+                 [clojure-mail "0.1.6"]
 
                  ; chat protocols
                  [irclj "0.5.0-alpha4"]
