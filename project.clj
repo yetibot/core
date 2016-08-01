@@ -99,8 +99,7 @@
                  ; [ring-server "0.4.0"]
                  ; [info.sunng/ring-jetty9-adapter "0.8.4"]
 
-
-                 [ring/ring-defaults "0.1.5"]
+                 [ring/ring-defaults "0.2.1"]
                  [ring/ring-session-timeout "0.1.0"]
 
                  [metosin/ring-middleware-format "0.6.0"]
