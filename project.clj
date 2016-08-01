@@ -50,8 +50,8 @@
 
                  ; chat protocols
                  [irclj "0.5.0-alpha4"]
-                 [org.julienxx/clj-slack "0.5.2.1"]
-                 [devth/slack-rtm "0.1.0"]
+                 [org.julienxx/clj-slack "0.5.4"]
+                 [slack-rtm "0.1.3"]
 
                  ; database
                  [com.datomic/datomic-free "0.9.5302" :exclusions [joda-time]]
@@ -76,7 +76,7 @@
 
                  ; utils
                  [clj-stacktrace "0.2.8"]
-                 [clj-fuzzy "0.2.1"]
+                 [clj-fuzzy "0.3.1"]
                  [robert/hooke "1.3.0"]
                  [clj-time "0.12.0"] ; includes joda-time
                  [rate-gate "1.3.1"]
