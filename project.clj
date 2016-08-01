@@ -13,7 +13,7 @@
   :main yetibot.core.init
   :profiles {:test {:resource-paths ["test/resources"]}}
   :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
+                 [org.clojure/core.async "0.2.385"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.nrepl "0.2.12"]
                  [org.clojure/tools.trace "0.7.9"]
