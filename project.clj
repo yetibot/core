@@ -30,7 +30,7 @@
                  [org.apache.commons/commons-lang3 "3.1"]
 
                  ; logging
-                 [devth/timbre "3.3.1"]
+                 [com.taoensso/timbre "4.7.0"]
 
                  ; parsing
                  [instaparse "1.4.1"]
