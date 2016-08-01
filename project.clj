@@ -13,7 +13,7 @@
   :main yetibot.core.init
   :plugins [[lein-environ "1.0.3"]]
   :profiles {:test {:resource-paths ["test/resources"]}}
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.385"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.nrepl "0.2.12"]
@@ -102,7 +102,7 @@
                  [ring/ring-defaults "0.2.1"]
                  [ring/ring-session-timeout "0.1.0"]
 
-                 [metosin/ring-middleware-format "0.6.0"]
+                 [metosin/ring-middleware-format "0.6.0" :exclusions [clj-stacktrace]]
                  [metosin/ring-http-response "0.8.0"]
 
                  ; web
