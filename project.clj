@@ -39,10 +39,7 @@
                  ; [rhizome "0.1.9"]
 
                  ; http
-                 [clj-http "0.7.7"]
-                 [http.async.client "0.5.2" :exclusions [[org.slf4j/slf4j-api]
-                                                         [io.netty/netty]]]
-
+                 [clj-http "3.1.0"]
 
                  ; github
                  [tentacles "0.5.1" :exclusions [[org.clojure/clojure]]]
