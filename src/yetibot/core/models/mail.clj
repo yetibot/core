@@ -7,7 +7,7 @@
     [inflections.core :refer [pluralize]]
     [yetibot.core.config :refer [get-config]]
     [clojure-mail
-     [core :refer :all]
+     [core :as mail]
      [message :as msg]]))
 
 (def mail-schema
@@ -23,9 +23,8 @@
 
 ;; TODO - move into start
 (when (configured?)
-  (def store (gen-store))
   (let [{:keys [user pass]} (:value (config))]
-    (auth! user pass)))
+    (def store (mail/store user pass))))
 
 (def pool (mk-pool))
 (def poll-interval (* 1000 60))
@@ -52,9 +51,9 @@
         (fmt-messages messages)))
 
 (defn fetch-unread-mail []
-  (let [messages (unread-messages folder)]
+  (let [messages (mail/unread-messages folder)]
     (when-not (empty? messages)
-      (mark-all-read folder)
+      (mail/mark-all-read folder)
       (fmt-you-have-mail messages))))
 
 (defn fetch-and-announce-unread-mail []
