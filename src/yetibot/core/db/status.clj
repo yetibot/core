@@ -1,4 +1,5 @@
 (ns yetibot.core.db.status
+  (:refer-clojure :exclude [update])
   (:require
     [datomico.core :as dc]
     [datomico.db :refer [q]]))
