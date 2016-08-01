@@ -18,7 +18,7 @@
                  [org.clojure/tools.nrepl "0.2.12"]
                  [org.clojure/tools.trace "0.7.9"]
                  [org.clojure/java.classpath "0.2.3"]
-                 [org.clojure/core.cache "0.6.4"]
+                 [org.clojure/core.cache "0.6.5"]
                  [org.clojure/tools.namespace "0.2.11"]
                  [org.clojure/core.memoize "0.5.8"]
                  [org.clojure/core.match "0.3.0-alpha4"]
