@@ -1,4 +1,5 @@
 (ns yetibot.core.models.history
+  (:refer-clojure :exclude [update])
   (:require
     [yetibot.core.db.history :refer :all]
     [clojure.string :refer [join split]]
