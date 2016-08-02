@@ -12,7 +12,13 @@
   ; :aot [yetibot.core.init]
   :main yetibot.core.init
   :plugins [[lein-environ "1.0.3"]]
-  :profiles {:test {:resource-paths ["test/resources"]}}
+  :profiles {:test
+             {:resource-paths ["test/resources"]
+              :env {:yetibot-adapters-0-name "freenode-irc"
+                    :yetibot-adapters-0-type "irc"
+                    :yetibot-adapters-0-host "irc.freenode.net"
+                    :yetibot-adapters-0-port "6667"
+                    :yetibot-adapters-0-username "yetibot"}}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.385"]
                  [org.clojure/data.json "0.2.6"]
