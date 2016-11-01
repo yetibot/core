@@ -184,6 +184,16 @@
 (cmd-hook ["unwords" #"^unwords$"]
           _ unwords)
 
+; flatten
+(defn flatten-cmd
+  "flatten <nested list> # completely flattens a nested data struture after splitting on newlines"
+  {:yb/cat #{:util}}
+  [{args :args opts :opts}]
+  (->> (ensure-items-collection opts)
+       flatten
+       (map s/split-lines)
+       flatten))
+
 ; letters
 (defn letters
   "letters <string> # turn <string> into a sequence of individual letters"
@@ -385,6 +395,7 @@
   {:yb/cat #{:util}}
   [{:keys [opts args]}]
   (pr-str (or opts args)))
+
 
 (cmd-hook #"raw"
           _ raw-cmd)

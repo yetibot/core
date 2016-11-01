@@ -42,3 +42,18 @@
   (is (= (grep-cmd {:match (re-find #"-C\s+(\d+)\s+(.+)" "-C 1 baz")
                     :opts ["foo" "bar" "baz"]})
          '("bar" "baz"))))
+
+(deftest flatten-test
+  (testing "Simple case"
+    (is (= (flatten-cmd {:opts ["1" "2" "3"]})
+           ["1" "2" "3"])))
+  (testing "Simple nested case"
+    (is (= (flatten-cmd {:opts [["1" "2" "3"]]})
+          ["1" "2" "3"])))
+  (testing "Simple case with newlines"
+    (is (= (flatten-cmd {:opts [(str 1 \newline 2 \newline 3 \newline)]})
+          ["1" "2" "3"])))
+  (testing "Nested case with newlines"
+    (is (= (flatten-cmd {:opts [[[(str 1 \newline 2 \newline 3 \newline)]]]})
+           ["1" "2" "3"]))))
+
