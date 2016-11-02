@@ -27,7 +27,6 @@
   (let [c (get-config adapters-schema [:yetibot :adapters])]
     (if (:error c)
       (throw (ex-info "Invalid adapters config" c))
-      (warn c)
       (:value c))))
 
 (defn report-ex [f n]
