@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.3.17
+
+- Listen to Slack edit events and re-execute command
+  [devth/yetibot.core#483](https://github.com/devth/yetibot/issues/483) by
+  @LeonmanRolls
+
 ## 0.3.15
 
 - add logging to web requests
