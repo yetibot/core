@@ -128,6 +128,18 @@
         user-model (users/get-user cs (:user e))]
     (handle-raw cs user-model :leave nil)))
 
+(defn on-message-changed [{:keys [channel] {:keys [user text]} :message} config]
+  (log/info "message changed")
+  (let [[chan-name entity] (entity-with-name-by-id config {:channel channel
+                                                           :user user})
+        cs (chat-source chan-name)
+        user-model (users/get-user cs user)]
+    (binding [*target* channel]
+      (handle-raw cs
+                  user-model
+                  :message
+                  (unencode-message text)))))
+
 (defn on-message [conn config event]
   (log/info "message" event)
   (log/info "platform-name" (a/platform-name *adapter*))
@@ -136,6 +148,7 @@
     (condp = subtype
       "channel_join" (on-channel-join event)
       "channel_leave" (on-channel-leave event)
+      "message_changed" (on-message-changed event config)
       ; do nothing if we don't understand
       nil)
     ; don't listen to yetibot's own messages
