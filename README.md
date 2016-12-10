@@ -16,6 +16,12 @@ https://github.com/devth/yetibot
 
 [<img src="http://clojars.org/yetibot.core/latest-version.svg" />](https://clojars.org/yetibot.core)
 
+## Changes in 0.4.0
+
+0.4.0 decomplects mutable and immutable configuration in a
+non-backward-compatible way. Please see [CONFIGURATION](doc/CONFIGURATION.md)
+docs and port your existing config to the new structure.
+
 ## Usage
 
 You can depend on this library to build your own yetibot plugins.

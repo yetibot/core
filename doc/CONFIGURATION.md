@@ -1,25 +1,31 @@
 # Configuration
 
-See [profiles.sample.clj](profiles.sample.clj) for an example of configuring
-Yetibot.
+See [profiles.sample.clj](profiles.sample.clj) or
+[config.sample.edn](config.sample.edn) for examples of configuring Yetibot;
+these are equivalent and both immutable.
 
 ## Modes
 
 Yetibot supports both immutable and mutable configuration.
 
 - **Immutable config sources** include both `profiles.clj` and environmental
-  variables (i.e. any source that `environ` can pull from, as all `environ`
-  config is immutable). The majority of configurable sub-systems use immutable
-  config as they do not need to change very often. Examples include:
+  variables via `environ` or loading EDN from a file by specifying a
+  `CONFIG_PATH` env var. If `CONFIG_PATH` is not specified Yetibot will attempt
+  to load all config using `environ`.
+
+  The majority of configurable sub-systems use immutable config as they do not
+  need to change very often. Examples include:
 
   - Chat adapters
   - Twitter credentials
   - Datomic URI
   - etc.
 
-- **Mutable config source** is an `edn` file stored at `./yetibot-config.edn`.
-  Yetibot reads and writes to this file at runtime. Only a small subset of
-  commands need mutable config:
+- **Mutable config source** is an `edn` file stored at `./yetibot-config.edn` by
+  default. `CONFIG_MUTABLE` can optionally be defined to specify a custom
+  location.  Yetibot reads and writes to this file at runtime.
+
+  A much smaller subset of commands need mutable config:
 
   - IRC channels
   - Room settings
@@ -34,3 +40,7 @@ On the other hand, the benefits of immutability are well-known. Explicitly
 separating out the small amount of mutable config from the majority of immutable
 config lets us maximize immutability benefits and minimize negative affects of
 mutability in our system.
+
+In the future we may move all mutable config to the database. The only reason
+not to is because when using the default in-memory database all customizations
+would be lost upon restart.
