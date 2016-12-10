@@ -120,6 +120,16 @@
    :yetibot-jenkins-cache-ttl "3600000"
    ;; Default job across all instances, used by `!jen build`
    :yetibot-jenkins-default-job ""
+   :yetibot-jenkins-instances-0-name "yetibot"
+   :yetibot-jenkins-instances-0-uri "http://yetibot/"
+   :yetibot-jenkins-instances-0-default-job "default-job-name"
+   ;; If your Jenkins doesn't require auth, set user and api-key to some
+   ;; non-blank value in order to pass the configuration check.
+   :yetibot-jenkins-instances-0-user "jenkins-user"
+   :yetibot-jenkins-instances-0-apikey "abc"
+   ;; additional instances can be configured by bumping the index
+   :yetibot-jenkins-instances-1-name "yetibot.core"
+   :yetibot-jenkins-instances-1-uri "http://yetibot.core/"
 
    ;; Set of Strings: Slack IDs or IRC users (which have ~ prefixes) of users who
    ;; can use the yetibot `eval` command.

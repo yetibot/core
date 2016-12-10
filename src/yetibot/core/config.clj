@@ -12,10 +12,16 @@
 
 (def config-prefix "yetibot")
 
-(defn config-from-env []
-  (explode (into {} (filter (fn [[k v]] (.startsWith (name k) "yetibot")) env))))
+(defn config-from-env-or-file
+  "If a `CONFIG_PATH` env var is specified, load config from it.
+   Otherwise, load config from env and explode it into nested maps."
+  []
+  (if-let [path (env :config-path)]
+    (uc/load-edn! path)
+    (explode
+      (into {} (filter (fn [[k v]] (.startsWith (name k) "yetibot")) env)))))
 
-(defonce ^:private config (atom (config-from-env)))
+(defonce ^:private config (atom (config-from-env-or-file)))
 
 (def get-config (partial uc/get-config @config))
 
