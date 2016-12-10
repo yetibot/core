@@ -9,6 +9,7 @@ pom.xml.asc
 /.nrepl-port
 /config
 yetibot-config.edn
+config-mutable.edn
 profiles.clj
 *.iml
 .idea

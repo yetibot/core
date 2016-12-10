@@ -1,5 +1,6 @@
 (ns yetibot.core.test.config-mutable
   (:require
+    [yetibot.core.util.config :as uc]
     [clojure.java.io :refer [delete-file]]
     [yetibot.core.config-mutable :refer :all]
     [schema.core :as s]
@@ -22,7 +23,7 @@
   (is (not (nil? (get-config {} [:yetibot])))))
 
 (deftest test-update-config
-  (is (config-exists? test-config-path))
+  (is (uc/config-exists? test-config-path))
   (update-config! test-config-path [:yetibot :foo :bar] "baz")
   (is (= "baz" (:value (get-config String [:yetibot :foo :bar]))))
   ;; re-read from disk
