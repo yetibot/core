@@ -2,7 +2,7 @@
   (:require
     [yetibot.core.schema :as ys]
     [schema.core :as sc]
-    [overtone.at-at :refer [at mk-pool every stop show-schedule]]
+    [overtone.at-at :refer [mk-pool every stop show-schedule]]
     [clojure.string :as s]
     [inflections.core :refer [pluralize]]
     [yetibot.core.config :refer [get-config]]
