@@ -52,7 +52,7 @@
 
                  ; email
                  [com.draines/postal "2.0.1"]
-                 [clojure-mail "0.1.6"]
+                 [io.forward/clojure-mail "1.0.5"]
 
                  ; chat protocols
                  [irclj "0.5.0-alpha4"]
@@ -69,9 +69,6 @@
                  ; ssh
                  [clj-ssh "0.5.14"]
 
-                 ; dynamic dependency reloading / adding
-                 [com.cemerick/pomegranate "0.3.1"]
-
                  ; wordnik dictionary
                  [clj-wordnik "0.1.0-alpha1"]
 
@@ -84,7 +81,7 @@
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.3.1"]
                  [robert/hooke "1.3.0"]
-                 [clj-time "0.12.0"] ; includes joda-time
+                 [clj-time "0.12.2"] ; includes joda-time
                  [rate-gate "1.3.1"]
                  [overtone/at-at "1.2.0"]
                  [inflections "0.12.2"]
