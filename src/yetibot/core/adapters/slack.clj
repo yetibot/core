@@ -17,10 +17,11 @@
     [slack-rtm.core :as slack]
     [taoensso.timbre :as log :refer [info warn error]]
     [yetibot.core.config :refer [update-config get-config config-for-ns
-                                 reload-config conf-valid?]]
+                                 reload-config conf-valid? apply-config]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
-                               chat-data-structure *target* *adapter*]]))
+                               chat-data-structure *target* *adapter*]]
+    [yetibot.core.util :as utl]))
 
 (def channel-cache-ttl 60000)
 
@@ -114,6 +115,8 @@
            [(:name e) e])
       (throw (ex-info "unknown entity type" event)))))
 
+
+
 ;; events
 
 (defn on-channel-join [e]
@@ -197,13 +200,37 @@
   (log/debug "manual presence changed" e)
   (handle-presence-change e))
 
+(defn room-persist-edn
+  "Update config.edn when a room is joined or left"
+  [uuid room joined?]
+  (let
+    [adapters (get-config :yetibot :adapters)
+     instance-index (first (utl/indices #(= (:name %) uuid) adapters))
+     adapter (nth adapters instance-index)
+     exists? (contains? adapter :rooms)]
+
+    (cond
+      joined? (if exists?
+                (apply-config
+                  [:yetibot :adapters instance-index :rooms]
+                  (fn [x] (conj x room)))
+                (apply-config
+                  [:yetibot :adapters instance-index]
+                  (fn [x] (assoc x :rooms #{room}))))
+
+      :left (when exists?
+              (apply-config
+                [:yetibot :adapters instance-index :rooms]
+                (fn [x] (disj x room)))))))
+
 (defn on-channel-joined
   "Fires when yetibot gets invited and joins a channel or group"
   [e]
   (log/debug "channel joined" e)
   (let [c (:channel e)
-        cs (chat-source (:id c))
+        {:keys [uuid room] :as cs} (chat-source (:id c))
         user-ids (:members c)]
+    (room-persist-edn uuid room true)
     (log/debug "adding chat source" cs "for users" user-ids)
     (dorun (map #(users/add-chat-source-to-user cs %) user-ids))))
 
@@ -212,8 +239,9 @@
   [e]
   (log/debug "channel left" e)
   (let [c (:channel e)
-        cs (chat-source c)
+        {:keys [uuid room] :as cs} (chat-source c)
         users-in-chan (users/get-users cs)]
+    (room-persist-edn uuid room false)
     (log/debug "remove users from" cs (map :id users-in-chan))
     (dorun (map (fn [u] (users/remove-user cs (:id u))) users-in-chan))))
 
