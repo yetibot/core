@@ -11,7 +11,9 @@ Yetibot supports both immutable and mutable configuration.
 - **Immutable config sources** include both `profiles.clj` and environmental
   variables via `environ` or loading EDN from a file by specifying a
   `CONFIG_PATH` env var. If `CONFIG_PATH` is not specified Yetibot will attempt
-  to load all config using `environ`.
+  to load all config using `environ`. Providing config via multiple methods
+  makes it compatible with 12-factor configuration and simple usage in container
+  environments while still retaining the ease of of use of the edn file option.
 
   The majority of configurable sub-systems use immutable config as they do not
   need to change very often. Examples include:
