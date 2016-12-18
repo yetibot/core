@@ -97,6 +97,10 @@
    ;; INFOs
    ;;
 
+  ;; `google`
+  :google-api-key ""
+  :google-custom-search-engine-id ""
+
    ;; `ebay`
    :yetibot-ebay-appid ""
 
