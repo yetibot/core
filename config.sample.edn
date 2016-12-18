@@ -2,6 +2,8 @@
  {:features {:github {:user "", :token ""}},
   :wolfram {:appid ""},
   :github {:endpoint "", :org ["" ""], :token ""},
+  :google {:api {:key ""}
+           :custom {:search {:engine {:id ""}}}}
   :db {:datomic {:url "datomic:mem://yetibot"}},
   :twitter {:search {:lang "en"},
             :consumer {:secret "", :key ""},
@@ -34,7 +36,7 @@
   :ebay {:appid ""},
   :giphy {:key ""},
   :core {:version "0.4.0-SNAPSHOT"},
-  :weather {:wunderground {:key "", :default {:zip ""}}},
+  :weather {:wunderground {:key "" :default {:zip ""}}},
   :access {:token "a6a614188ac9d06601b5a93e435e446496aa4f61"},
   :jenkins {:cache {:ttl "3600000"},
             :default {:job ""}
