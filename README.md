@@ -1,6 +1,6 @@
 # yetibot.core
 [![Build Status](https://travis-ci.org/devth/yetibot.core.svg?branch=master)](https://travis-ci.org/devth/yetibot.core)
-[![CrossClj](https://crossclj.info/doc/yetibot.core/latest/index.html)](https://img.shields.io/badge/CrossClj%20Docs-yetibot.core-blue.svg)
+[![CrossClj](https://img.shields.io/badge/CrossClj%20Docs-yetibot.core-blue.svg)](https://crossclj.info/doc/yetibot.core/latest/index.html)
 
 > NB: The build is not passing because of a [parsing
 > bug](https://github.com/devth/yetibot/issues/423) having to do with nested
