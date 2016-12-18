@@ -3,7 +3,8 @@
   :wolfram {:appid ""},
   :github {:endpoint "", :org ["" ""], :token ""},
   :google {:api {:key ""}
-           :custom {:search {:engine {:id ""}}}}
+           :custom {:search {:engine {:id ""}}}
+           :options {:safe "high"}}
   :db {:datomic {:url "datomic:mem://yetibot"}},
   :twitter {:search {:lang "en"},
             :consumer {:secret "", :key ""},

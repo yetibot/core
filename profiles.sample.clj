@@ -98,8 +98,9 @@
    ;;
 
   ;; `google`
-  :google-api-key ""
-  :google-custom-search-engine-id ""
+  :yetibot-google-api-key ""
+  :yetibot-google-custom-search-engine-id ""
+  :yetibot-google-options-safe "high"
 
    ;; `ebay`
    :yetibot-ebay-appid ""
