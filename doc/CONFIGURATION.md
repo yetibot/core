@@ -1,7 +1,7 @@
 # Configuration
 
-See [profiles.sample.clj](profiles.sample.clj) or
-[config.sample.edn](config.sample.edn) for examples of configuring Yetibot;
+See [profiles.sample.clj](../profiles.sample.clj) or
+[config.sample.edn](../config.sample.edn) for examples of configuring Yetibot;
 these are equivalent and both immutable.
 
 ## Modes
