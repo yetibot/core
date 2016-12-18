@@ -17,8 +17,7 @@
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
     [taoensso.timbre :as log :refer [info warn error]]
-    [yetibot.core.config-mutable :refer [update-config get-config 
-                                         apply-config]]
+    [yetibot.core.config-mutable :refer [get-config apply-config!]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure *target* *adapter*]]
@@ -204,25 +203,16 @@
 (defn room-persist-edn
   "Update config.edn when a room is joined or left"
   [uuid room joined?]
-  (let
-    [adapters (get-config sch/Any [:yetibot :adapters])
-     instance-index (first (utl/indices #(= (:name %) uuid) adapters))
-     adapter (nth adapters instance-index)
-     exists? (contains? adapter :rooms)]
-
-    (cond
-      joined? (if exists?
-                (apply-config
-                  [:yetibot :adapters instance-index :rooms]
-                  (fn [x] (conj x room)))
-                (apply-config
-                  [:yetibot :adapters instance-index]
-                  (fn [x] (assoc x :rooms #{room}))))
-
-      :left (when exists?
-              (apply-config
-                [:yetibot :adapters instance-index :rooms]
-                (fn [x] (disj x room)))))))
+  (if joined?
+    ;; add
+    (apply-config!
+      [:yetibot :adapters uuid :rooms]
+      (fn [x] (conj room)))
+    ;; remove
+    (apply-config!
+      [:yetibot :adapters "uuid" :rooms]
+      (fn [x]
+        (disj (set x) "foo")))))
 
 (defn on-channel-joined
   "Fires when yetibot gets invited and joins a channel or group"
