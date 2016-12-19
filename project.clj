@@ -37,7 +37,7 @@
                  [org.apache.commons/commons-lang3 "3.4"]
 
                  ; logging
-                 [com.taoensso/timbre "4.7.3"]
+                 [com.taoensso/timbre "4.8.0"]
 
                  ; parsing
                  [instaparse "1.4.2"]
