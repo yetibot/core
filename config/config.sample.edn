@@ -27,8 +27,9 @@
               :token "xoxb-9999999999999999"}
              {:type "irc",
               :username "yetibot",
-              :host "freenode.net",
-              :port "9600",
+              :host "chat.freenode.net",
+              :port "7070",
+              :ssl "true",
               :name "freenode-irc"}],
   :ssh {:groups
         [{:user "",
