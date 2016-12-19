@@ -45,8 +45,9 @@
 
    :yetibot-adapters-2-name "freenode-irc"
    :yetibot-adapters-2-type "irc"
-   :yetibot-adapters-2-host "freenode.net"
-   :yetibot-adapters-2-port "9600"
+   :yetibot-adapters-2-host "chat.freenode.net"
+   :yetibot-adapters-2-port "7070"
+   :yetibot-adapters-2-ssl "true"
    :yetibot-adapters-2-username "yetibot"
 
    ;; Listens on port 3000 but this may be different for you if you (e.g. if you

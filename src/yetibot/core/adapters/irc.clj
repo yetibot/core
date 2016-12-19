@@ -183,7 +183,7 @@
       (:host config)
       (read-string (or (:port config) "6667"))
       (:username config)
-      :ssl? (boolean (:ssl? config))
+      :ssl? (boolean (:ssl config))
       :callbacks (callbacks a))))
 
 (defn join-or-part-with-current-channels
