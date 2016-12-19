@@ -1,4 +1,5 @@
 (ns yetibot.core.models.status
+  (:refer-clojure :exclude [update])
   (:require
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.db.status :refer :all]

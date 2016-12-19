@@ -1,4 +1,5 @@
 (ns yetibot.core.db.log
+  (:refer-clojure :exclude [update])
   (:require [datomico.core :as dc]
             [datomico.action :refer [all where raw-where]]))
 
