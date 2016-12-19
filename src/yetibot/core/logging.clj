@@ -19,15 +19,22 @@
       :warn
       (keyword (:value v)))))
 
+(defn rolling-appender-enabled?
+  "Rolling appender is enabled by default. Disable it by setting enabled=false"
+  []
+  (let [v (get-config String [:yetibot :log :rolling :enabled])]
+    (if-let [enabled (:value v)]
+      (not= enabled "false")
+      true)))
+
 (defn start []
-
-  (timbre/set-config!
-    {:level (log-level)
-     :appenders
-     ;; stdout
-     {:println (println-appender {:stream :auto})
-      ;; rolling log files
-      :rolling-appender (rolling-appender {:path "/var/log/yetibot/yetibot.log"
-                                           :pattern :daily})}})
-
-  )
+  (if (rolling-appender-enabled?)
+    (timbre/set-config!
+      {:level (log-level)
+       :appenders
+       ;; stdout
+       {:println (println-appender {:stream :auto})
+        ;; rolling log files
+        :rolling-appender (rolling-appender 
+                            {:path "/var/log/yetibot/yetibot.log"
+                             :pattern :daily})}})))
