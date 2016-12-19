@@ -97,10 +97,10 @@
    ;; INFOs
    ;;
 
-  ;; `google`
-  :yetibot-google-api-key ""
-  :yetibot-google-custom-search-engine-id ""
-  :yetibot-google-options-safe "high"
+   ;; `google`
+   :yetibot-google-api-key ""
+   :yetibot-google-custom-search-engine-id ""
+   :yetibot-google-options-safe "high"
 
    ;; `ebay`
    :yetibot-ebay-appid ""
