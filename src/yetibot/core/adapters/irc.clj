@@ -90,15 +90,14 @@
    of function will be used to set the new rooms config"
   [adapter f]
   (log/info "rooms config path is" (rooms-config-path adapter)
-            (f (rooms adapter))
-            )
+            (f (rooms adapter)))
   (mconfig/update-config! (rooms-config-path adapter) (f (rooms adapter)))
   (reload-and-reset-config! adapter))
 
 (defn add-room-to-config [a room]
   (log/info "add room" room "to irc config")
   (log/info
-    (set-rooms-config a #(conj % room))))
+    (set-rooms-config a #(set (conj % room)))))
 
 (defn remove-room-from-config [a room]
   (log/info "remove room from irc config")

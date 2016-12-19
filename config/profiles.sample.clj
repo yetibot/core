@@ -34,6 +34,7 @@
    ;; - a :name key with a unique value (i.e. uuid)"
    ;;
    ;; Example configuring 3 adapters: 2 Slacks and 1 IRC:
+
    :yetibot-adapters-0-name "team-slack"
    :yetibot-adapters-0-type "slack"
    :yetibot-adapters-0-token "xoxb-111111111111111111111111111111111111"
