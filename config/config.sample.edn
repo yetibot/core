@@ -1,3 +1,5 @@
+;; sample of immutable Yetibot configuration
+;; this is equivalent to profiles.sample.clj
 {:yetibot
  {:features {:github {:user "", :token ""}},
   :wolfram {:appid ""},

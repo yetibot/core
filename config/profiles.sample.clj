@@ -1,4 +1,5 @@
-;; Use this file as a sample profiles.clj for Yetibot configuraration.
+;; Sample profiles.clj for Yetibot configuraration.
+;; equivalent to config.sample.edn
 ;;
 ;; It defines a dev profile, but you may want to share much of the configuration
 ;; between dev and prod, using Composite Profiles, optionally overriding

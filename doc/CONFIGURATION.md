@@ -1,7 +1,7 @@
 # Configuration
 
-See [profiles.sample.clj](../profiles.sample.clj) or
-[config.sample.edn](../config.sample.edn) for examples of configuring Yetibot;
+See [profiles.sample.clj](../config/profiles.sample.clj) or
+[config.sample.edn](../config/config.sample.edn) for examples of configuring Yetibot;
 these are equivalent and both immutable.
 
 ## Modes
@@ -23,11 +23,11 @@ Yetibot supports both immutable and mutable configuration.
   - Datomic URI
   - etc.
 
-- **Mutable config source** is an `edn` file stored at `./yetibot-config.edn` by
+- **Mutable config source** is an `edn` file stored at `./config/mutable.edn` by
   default. `CONFIG_MUTABLE` can optionally be defined to specify a custom
-  location.  Yetibot reads and writes to this file at runtime.
+  location. Yetibot reads and writes to this file at runtime.
 
-  A much smaller subset of commands need mutable config:
+  A much smaller subset of commands need mutable config, e.g.:
 
   - IRC channels
   - Room settings

@@ -11,7 +11,7 @@
 (defn config-path []
   (if-let [path (env :config-mutable)]
     path
-    (.getAbsolutePath (as-file "config-mutable.edn"))))
+    (.getAbsolutePath (as-file "config/mutable.edn"))))
 
 (defonce ^:private config (atom {}))
 
