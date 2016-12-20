@@ -28,13 +28,13 @@
       true)))
 
 (defn start []
-  (if (rolling-appender-enabled?)
-    (timbre/set-config!
-      {:level (log-level)
-       :appenders
-       ;; stdout
-       {:println (println-appender {:stream :auto})
-        ;; rolling log files
-        :rolling-appender (rolling-appender 
-                            {:path "/var/log/yetibot/yetibot.log"
-                             :pattern :daily})}})))
+  (timbre/set-config!
+    {:level (log-level)
+     :appenders
+     ;; stdout
+     {:println (println-appender {:stream :auto})
+      ;; rolling log files
+      :rolling-appender (rolling-appender
+                          {:enabled? (rolling-appender-enabled?)
+                           :path "/var/log/yetibot/yetibot.log"
+                           :pattern :daily})}}))
