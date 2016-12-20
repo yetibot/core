@@ -14,11 +14,10 @@
   :plugins [[lein-environ "1.0.3"]]
   :profiles {:test
              {:resource-paths ["test/resources"]
-              :env {:yetibot-adapters-0-name "freenode-irc"
-                    :yetibot-adapters-0-type "irc"
-                    :yetibot-adapters-0-host "irc.freenode.net"
-                    :yetibot-adapters-0-port "6667"
-                    :yetibot-adapters-0-username "yetibot"}}}
+              :env {:yetibot-adapters-freenode-type "irc"
+                    :yetibot-adapters-freenode-host "irc.freenode.net"
+                    :yetibot-adapters-freenode-port "6667"
+                    :yetibot-adapters-freenode-username "yetibot-test"}}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.385"]
                  [org.clojure/data.json "0.2.6"]
