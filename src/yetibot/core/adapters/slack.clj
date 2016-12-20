@@ -298,7 +298,7 @@
 
 ;; adapter impl
 
-(defrecord Slack [config config-idx conn]
+(defrecord Slack [config conn]
   a/Adapter
 
   (a/uuid [_] (:name config))
@@ -322,5 +322,5 @@
   (a/start [adapter] (start adapter conn config)))
 
 (defn make-slack
-  [idx config]
-  (->Slack config idx (atom nil)))
+  [config]
+  (->Slack config (atom nil)))

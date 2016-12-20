@@ -1,6 +1,8 @@
 (ns yetibot.core.adapters.adapter
   "Defines the Adapater protocol for chat adapters and keeps track of instances.
-   All chat sources must implement it.")
+   All chat sources must implement it."
+  (:require
+    [taoensso.timbre :as log :refer [info debug warn error]]))
 
 (defprotocol Adapter
 
@@ -37,7 +39,8 @@
 (defn register-adapter!
   "- adapter is an implmentor of the Adapter protocol
    - config-uuid is a uuid of the config that was used to create the adapter"
-  [adapter config-uuid]
-  (swap! adapters assoc config-uuid adapter))
+  [uuid adapter]
+  (swap! adapters assoc uuid adapter)
+  (debug "Registered" uuid "-" (pr-str adapter)))
 
 (defn active-adapters [] (vals @adapters))

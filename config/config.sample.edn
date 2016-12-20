@@ -1,5 +1,7 @@
-;; sample of immutable Yetibot configuration
-;; this is equivalent to profiles.sample.clj
+;; Sample of immutable Yetibot configuration.
+;; This is equivalent to profiles.sample.clj.
+;; Keys must not have "-" in them in order to remain compatible with multiple
+;; forms of configuration.
 {:yetibot
  {:features {:github {:user "", :token ""}},
   :wolfram {:appid ""},
@@ -19,18 +21,15 @@
          :subtask {:issue {:type {:id "27"}}},
          :domain "",
          :password ""},
-  :adapters [{:name "team-slack",
-              :type "slack",
-              :token "xoxb-111111111111111111111111111111111111"}
-             {:name "kubernetes-slack",
-              :type "slack",
-              :token "xoxb-9999999999999999"}
-             {:type "irc",
-              :username "yetibot",
-              :host "chat.freenode.net",
-              :port "7070",
-              :ssl "true",
-              :name "freenode-irc"}],
+  :adapters {:myteam {:type "slack",
+                      :token "xoxb-111111111111111111111111111111111111"}
+             :k8s {:type "slack",
+                   :token "xoxb-9999999999999999"}
+             :freenode {:type "irc",
+                        :username "yetibot",
+                        :host "chat.freenode.net",
+                        :port "7070",
+                        :ssl "true"}},
   :ssh {:groups
         [{:user "",
           :servers [{:host "", :name ""} {:host "", :name ""}],

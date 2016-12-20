@@ -210,9 +210,9 @@
 
 (defn start
   "Join and fetch all users with WHO <channel>"
-  [{:keys [mutable-config config config-idx conn] :as adapter}]
+  [{:keys [mutable-config config conn] :as adapter}]
   (binding [*adapter* adapter]
-    (info "starting IRC with" config-idx config)
+    (info "starting IRC with" config)
     (reload-and-reset-config! adapter)
     (connect adapter)
     (join-or-part-with-current-channels adapter)))
@@ -223,7 +223,7 @@
   (when @conn (irc/kill @conn))
   (reset! conn nil))
 
-(defrecord IRC [config mutable-config current-channels config-idx conn]
+(defrecord IRC [config mutable-config current-channels conn]
 
   ; config
   ; Holds the immutable configuration for a single IRC Adapter instance.
@@ -237,10 +237,6 @@
   ; Atom holding the set of current channels that Yetibot is listening on. This
   ; is necessary to track in addition to mutable config in order to diff
   ; channels when modifying config to know which ones to part or join.
-
-  ; config-idx
-  ; This index is the location at which the config map for this Adapter instance
-  ; lives.
 
   ; conn
   ; An atom that holds the IRC connection
@@ -268,5 +264,5 @@
   (a/start [adapter] (start adapter)))
 
 (defn make-irc
-  [idx config]
-  (->IRC config (atom {}) (atom #{}) idx (atom nil)))
+  [config]
+  (->IRC config (atom {}) (atom #{}) (atom nil)))

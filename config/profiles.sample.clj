@@ -23,32 +23,22 @@
    ;; Yetibot can listen on multiple instances of each adapters type. Current
    ;; adapter types are Slack and IRC.
    ;;
-   ;; :name is used as a uuid so it must be unique to this Yetibot. The uuid is
-   ;; used by the API to post messages to the correct instance, and also used to
-   ;; store room configuration for each adapter config. If you change it, all your
-   ;; room configuration will be lost (unless you manually update the config with
-   ;; the changed uuid).
-   ;;
    ;; Each config map must have:
+   ;; - a unique key (i.e. uuid)"
    ;; - a :type key with value "slack" or "irc"
-   ;; - a :name key with a unique value (i.e. uuid)"
    ;;
    ;; Example configuring 3 adapters: 2 Slacks and 1 IRC:
+   :yetibot-adapters-myteam-type "slack"
+   :yetibot-adapters-myteam-token "xoxb-111111111111111111111111111111111111"
 
-   :yetibot-adapters-0-name "team-slack"
-   :yetibot-adapters-0-type "slack"
-   :yetibot-adapters-0-token "xoxb-111111111111111111111111111111111111"
+   :yetibot-adapters-k8s-type "slack"
+   :yetibot-adapters-k8s-token "xoxb-k8s-slack-9999999999999999"
 
-   :yetibot-adapters-1-name "kubernetes-slack"
-   :yetibot-adapters-1-type "slack"
-   :yetibot-adapters-1-token "xoxb-9999999999999999"
-
-   :yetibot-adapters-2-name "freenode-irc"
-   :yetibot-adapters-2-type "irc"
-   :yetibot-adapters-2-host "chat.freenode.net"
-   :yetibot-adapters-2-port "7070"
-   :yetibot-adapters-2-ssl "true"
-   :yetibot-adapters-2-username "yetibot"
+   :yetibot-adapters-freenode-type "irc"
+   :yetibot-adapters-freenode-host "chat.freenode.net"
+   :yetibot-adapters-freenode-port "7070"
+   :yetibot-adapters-freenode-ssl "true"
+   :yetibot-adapters-freenode-username "yetibot"
 
    ;; Listens on port 3000 but this may be different for you if you (e.g. if you
    ;; use a load balancer or map ports in Docker).
