@@ -13,7 +13,7 @@
 (def config-schema String)
 
 (defn log-level []
-  (let [v (get-config config-schema [:yetibot :log :level])]
+  (let [v (get-config config-schema [:log :level])]
     (if (:error v)
       ;; default config level
       :warn
@@ -22,7 +22,7 @@
 (defn rolling-appender-enabled?
   "Rolling appender is enabled by default. Disable it by setting enabled=false"
   []
-  (let [v (get-config String [:yetibot :log :rolling :enabled])]
+  (let [v (get-config String [:log :rolling :enabled])]
     (if-let [enabled (:value v)]
       (not= enabled "false")
       true)))

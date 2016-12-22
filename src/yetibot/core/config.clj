@@ -10,22 +10,29 @@
     [clojure.pprint :refer [pprint]]
     [clojure.string :refer [blank? split]]))
 
-(def config-prefix "yetibot")
+(def config-prefixes [:yb :yetibot])
+
+(defn merge-possible-prefixes
+  "Given a config map merge any possible allowed yb prefixes"
+  [m]
+  (->> (select-keys m config-prefixes)
+       vals
+       (reduce merge)))
 
 (defn config-from-env-or-file
   "If a `CONFIG_PATH` env var is specified, load config from it.
    Otherwise, load config from env and explode it into nested maps."
   []
-  (if-let [path (env :config-path)]
-    (uc/load-edn! path)
-    (explode
-      (into {} (filter (fn [[k v]] (.startsWith (name k) "yetibot")) env)))))
+  (merge-possible-prefixes
+    (if-let [path (env :config-path)]
+      (uc/load-edn! path)
+      (explode
+        (into {} (filter (fn [[k v]]
+                           (some
+                             (fn [prefix] (.startsWith (name k) (name prefix)))
+                             config-prefixes))
+                         env))))))
 
 (defonce ^:private config (atom (config-from-env-or-file)))
 
 (def get-config (partial uc/get-config @config))
-
-(defn conf-valid?
-  "Ensure all values are not blank"
-  [c]
-  (and c (every? (complement (comp blank? str)) (vals c))))

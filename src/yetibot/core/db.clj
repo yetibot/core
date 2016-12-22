@@ -18,7 +18,7 @@
 (def default-url "datomic:mem://yetibot")
 
 (defn config []
-  {:url (or (:value (get-config String [:yetibot :db :datomic :url]))
+  {:url (or (:value (get-config String [:db :datomic :url]))
             default-url)})
 
 (defn start [& [opts]]

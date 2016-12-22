@@ -5,7 +5,7 @@
     [cemerick.url :refer [url]]
     [yetibot.core.hooks :refer [cmd-hook]]))
 
-(defn config [] (get-config String [:yetibot :url]))
+(defn config [] (get-config String [:url]))
 
 (defn yetibot-url
   "Given a path build a fully qualified URL"

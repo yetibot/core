@@ -7,7 +7,7 @@
     [taoensso.timbre :as log :refer [info debug warn error]]
     [clojure.stacktrace :refer [print-stack-trace]]
     [yetibot.core.adapters.adapter :as a]
-    [yetibot.core.config :refer [get-config conf-valid?]]
+    [yetibot.core.config :refer [get-config]]
     [yetibot.core.adapters.irc :as irc]))
 
 (def adapters-schema
@@ -23,7 +23,7 @@
               (s/optional-key :password) s/Str}})
 
 (defn adapters-config []
-  (let [c (get-config adapters-schema [:yetibot :adapters])]
+  (let [c (get-config adapters-schema [:adapters])]
     (if (:error c)
       (throw (ex-info "Invalid adapters config" c))
       (:value c))))

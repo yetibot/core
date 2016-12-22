@@ -9,7 +9,7 @@
 
 (def schema {:groups [sch/Any]})
 
-(def ^:private config (:value (get-config schema [:yetibot :ssh])))
+(def ^:private config (:value (get-config schema [:ssh])))
 
 (def ^:private servers-by-key
   (->>

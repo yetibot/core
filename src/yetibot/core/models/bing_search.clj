@@ -2,14 +2,13 @@
   (:require
     [schema.core :as s]
     [yetibot.core.config :refer [get-config]]
-    [yetibot.core.util :refer [make-config conf-valid?]]
     [yetibot.core.util.http :refer [get-json map-to-query-string]]))
 
-(defn config [] (get-config {:key s/Str} [:yetibot :bing :search]))
+(defn config [] (get-config {:key s/Str} [:bing :search]))
 
 (defn auth [] {:user "user" :password (-> (config) :value :key)})
 
-(defn configured? [] (conf-valid? (config)))
+(defn configured? [] (contains? (config) :value))
 
 (def endpoint "https://api.datamarket.azure.com/Bing/Search/Image")
 

@@ -4,6 +4,21 @@ See [profiles.sample.clj](../config/profiles.sample.clj) or
 [config.sample.edn](../config/config.sample.edn) for examples of configuring Yetibot;
 these are equivalent and both immutable.
 
+## Rationale
+
+It's useful to change the configuration of a system at runtime in certain
+situtations. It would be burdensome to have to login to a system where Yetibot
+runs, change config and restart Yetibot.
+
+On the other hand, the benefits of immutability are well-known. Explicitly
+separating out the small amount of mutable config from the majority of immutable
+config lets us maximize immutability benefits and minimize negative affects of
+mutability in our system.
+
+In the future we may move all mutable config to the database. The only reason
+not to is because when using the default in-memory database all customizations
+would be lost upon restart.
+
 ## Modes
 
 Yetibot supports both immutable and mutable configuration.
@@ -32,17 +47,43 @@ Yetibot supports both immutable and mutable configuration.
   - IRC channels
   - Room settings
 
-## Rationale
+## Prefixes
 
-It's useful to change the configuration of a system at runtime in certain
-situtations. It would be burdensome to have to login to a system where Yetibot
-runs, change config and restart Yetibot.
+All immutable config, regardless of the source can be prefixed with either `yb`
+or `yetibot`. Examples:
 
-On the other hand, the benefits of immutability are well-known. Explicitly
-separating out the small amount of mutable config from the majority of immutable
-config lets us maximize immutability benefits and minimize negative affects of
-mutability in our system.
+### edn
 
-In the future we may move all mutable config to the database. The only reason
-not to is because when using the default in-memory database all customizations
-would be lost upon restart.
+```clojure
+{:yetibot {:log {:level "debug"}}}
+```
+
+```clojure
+{:yb {:url "yetibot.com"}}
+```
+
+### Profile
+
+```clojure
+{:prod
+ {:env
+  {:yb-twitter-consumer-key "foo"}}}
+```
+
+### Environment
+
+```bash
+YB_GIPHY_KEY="123"
+```
+
+### Merged result
+
+If you for some strange reason decided to configure Yetibot through all
+available means demonstrated above, the merged config data structure would be:
+
+```clojure
+{:log {:level "debug"}
+ :url "yetibot.com"
+ :twitter {:consumer {:key "foo"}}
+ :giphy {:key "123"}}
+```

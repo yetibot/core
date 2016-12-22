@@ -17,7 +17,7 @@
    :from ys/non-empty-str
    (sc/optional-key :bcc) sc/Str})
 
-(defn config [] (get-config mail-schema [:yetibot :mail]))
+(defn config [] (get-config mail-schema [:mail]))
 
 (defn configured? [] (nil? (:error (config))))
 

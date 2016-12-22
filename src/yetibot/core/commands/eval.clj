@@ -7,7 +7,7 @@
     [yetibot.core.hooks :refer [cmd-hook]]
     [clojure.string :refer [split]]))
 
-(defn- privs [] (:value (get-config [s/Str] [:yetibot :eval :priv])))
+(defn- privs [] (:value (get-config [s/Str] [:eval :priv])))
 
 (defn- user-is-allowed? [user]
   (boolean (some #{(:id user)} privs)))

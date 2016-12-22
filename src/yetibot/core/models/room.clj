@@ -6,7 +6,7 @@
     [yetibot.core.config-mutable :as config]
     [clojure.string :as s]))
 
-(def config-path [:yetibot :room])
+(def config-path [:room])
 
 (def cat-settings-key :disabled-categories)
 
