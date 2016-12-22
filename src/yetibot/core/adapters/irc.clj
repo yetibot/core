@@ -180,9 +180,9 @@
   (reset!
     conn
     (irc/connect
-      (:host config)
+      (or (:host config) "irc.freenode.net")
       (read-string (or (:port config) "6667"))
-      (:username config)
+      (or (:username config) (str "yetibot_" (rand-int 1000)))
       :ssl? (boolean (:ssl config))
       :callbacks (callbacks a))))
 
