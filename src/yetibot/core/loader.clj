@@ -1,6 +1,6 @@
 (ns yetibot.core.loader
   (:require
-    [taoensso.timbre :refer [info warn error]]
+    [taoensso.timbre :refer [debug info warn error]]
     [clojure.stacktrace :as st]
     [yetibot.core.hooks]
     [clojure.tools.namespace.find :as ns]
@@ -24,7 +24,7 @@
     #"^yetibot\.(.(?!(core)))*"))
 
 (defn load-ns [arg]
-  (info "Loading" arg)
+  (debug "Loading" arg)
   (try (require arg :reload)
        arg
        (catch Exception e
@@ -36,7 +36,9 @@
    namespaces and return the seq of matched namespaces."
   [ns-patterns]
   (let [nss (flatten (map find-namespaces ns-patterns))]
+    (info "☐ Loading" (count nss) " namespaces...")
     (dorun (map load-ns nss))
+    (info "☑ Loaded" (count nss) " namespaces")
     nss))
 
 (defn load-commands []
