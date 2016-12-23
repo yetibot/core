@@ -36,9 +36,9 @@
    namespaces and return the seq of matched namespaces."
   [ns-patterns]
   (let [nss (flatten (map find-namespaces ns-patterns))]
-    (info "☐ Loading" (count nss) " namespaces...")
+    (info "☐ Loading" (count nss) "namespaces matching" ns-patterns)
     (dorun (map load-ns nss))
-    (info "☑ Loaded" (count nss) " namespaces")
+    (info "☑ Loaded" (count nss) "namespaces matching" ns-patterns)
     nss))
 
 (defn load-commands []
