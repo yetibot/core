@@ -1,11 +1,12 @@
 (ns yetibot.core.models.room
   (:require
+    [schema.core :as sch]
     [yetibot.core.adapters.adapter :refer [active-adapters uuid]]
     [taoensso.timbre :refer [debug info warn error]]
-    [yetibot.core.config :as config]
+    [yetibot.core.config-mutable :as config]
     [clojure.string :as s]))
 
-(def config-path [:yetibot :room])
+(def config-path [:room])
 
 (def cat-settings-key :disabled-categories)
 
@@ -24,9 +25,10 @@
 (defn settings-by-uuid
   "Returns the full settings map for an adapter given the adapter's uuid."
   [uuid]
-  (apply config/get-config (conj config-path uuid)))
+  (:value (config/get-config sch/Any (conj config-path uuid))))
 
 (defn settings-for-room [uuid room]
+  (info "settings for room" uuid room)
   (merge-on-defaults (get (settings-by-uuid uuid) room {})))
 
 (defn settings-for-chat-source
@@ -38,8 +40,8 @@
 (defn apply-settings
   "Takes a fn to apply to current value of a setting for a given room"
   [uuid room f]
-  (config/apply-config (conj config-path uuid room) f)
-  (config/reload-config))
+  (config/apply-config! (conj config-path uuid room) f)
+  (config/reload-config!))
 
 (defn update-settings
   "Updates or creates new setting k = v for a given room"

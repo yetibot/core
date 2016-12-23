@@ -1,82 +1,38 @@
 (ns yetibot.core.config
-  "Config is stored in an edn file. The config data structure maps to the
-   namespaces of the code that depends on the config."
+  "Config is made available via [environ](https://github.com/weavejester/environ).
+   See yetibot.core.config-mutable for configuration that can be changed at 
+   runtime, such as which channels to join on IRC."
   (:require
-    [clojure.java.io :refer [as-file]]
+    [yetibot.core.util.config :as uc]
+    [dec :refer [explode]]
+    [environ.core :refer [env]]
     [taoensso.timbre :refer [info warn error]]
     [clojure.pprint :refer [pprint]]
-    [clojure.edn :as edn]
     [clojure.string :refer [blank? split]]))
 
+(def config-prefixes [:yb :yetibot])
 
-;; TODO: is there a Clojure lens lib that could make accessing and getting
-;; updates from config easier and more idiomatic?
+(defn merge-possible-prefixes
+  "Given a config map merge any possible allowed yb prefixes"
+  [m]
+  (->> (select-keys m config-prefixes)
+       vals
+       (reduce merge)))
 
-(def config-path (.getAbsolutePath (as-file "config/config.edn")))
+(defn config-from-env-or-file
+  "If a `CONFIG_PATH` env var is specified, load config from it.
+   Otherwise, load config from env and explode it into nested maps."
+  []
+  (merge-possible-prefixes
+    (if-let [path (env :config-path)]
+      (uc/load-edn! path)
+      (explode
+        (into {} (filter (fn [[k v]]
+                           (some
+                             (fn [prefix] (.startsWith (name k) (name prefix)))
+                             config-prefixes))
+                         env))))))
 
-(defn config-exists? [] (.exists (as-file config-path)))
+(defonce ^:private config (atom (config-from-env-or-file)))
 
-(defonce ^:private config (atom nil))
-
-(defn- load-edn! [path]
-  (try
-    (edn/read-string (slurp path))
-    (catch Exception e
-      (error "Failed loading config: " e)
-      nil)))
-
-(defn reload-config!
-  ([] (reload-config! config-path))
-  ([path]
-   (info "☐ Try loading config at" path)
-   (let [new-conf (load-edn! path)]
-     (reset! config new-conf)
-     (when new-conf (info "☑ Config loaded"))
-     new-conf)))
-
-; backward compat
-(def reload-config #'reload-config!)
-
-(defn get-config
-  [& path]
-  (let [path (if (coll? path) path [path])]
-    (get-in @config path)))
-
-(defn write-config! []
-  (if (config-exists?)
-    (spit config-path (with-out-str (pprint @config)))
-    (warn config-path "file doesn't exist, skipped write")))
-
-(def apply-config-lock (Object.))
-
-(defn apply-config
-  "Takes a function to apply to the current value of a config at path"
-  [path f]
-  (locking apply-config-lock
-    (swap! config update-in path f)
-    (write-config!)))
-
-(defn update-config
-  "Updates the config data structure and write it to disk."
-  [& path-and-val]
-  (let [path (butlast path-and-val)
-        value (last path-and-val)]
-    (apply-config path (constantly value))))
-
-(defn remove-config
-  "Remove config at path and write it to disk."
-  [& fullpath]
-  (let [path (butlast fullpath)
-        k (last fullpath)]
-    (swap! config update-in path dissoc k))
-  (write-config!))
-
-
-(defn config-for-ns []
-  (apply get-config (map keyword (split (str *ns*) #"\."))))
-
-(defn conf-valid?
-  ([] (conf-valid? (config-for-ns)))
-  ([c]
-   (and c
-        (every? (complement (comp blank? str)) (vals c)))))
+(def get-config (partial uc/get-config @config))

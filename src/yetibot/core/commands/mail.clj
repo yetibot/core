@@ -5,7 +5,6 @@
     [clojure.string :as s]
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.models.mail :as model :refer [fetch-unread-mail]]
-    [yetibot.core.config :refer [config-for-ns]]
     [yetibot.core.hooks :refer [cmd-hook]]))
 
 (def default-subject "A friendly message from YetiBot")
@@ -13,7 +12,7 @@
 (def error-message "Failed to send 💩")
 (def no-messages "No new messages.")
 
-(def config (merge model/config {:ssl true}))
+(defn config [] (merge (:value (model/config)) {:ssl true}))
 
 (defn encode-images [content]
   (s/replace content #"(\S+)(.jpg|.png|.gif)" #(format "<img src='%s'>" (first %))))
@@ -30,17 +29,17 @@
     [{:type "text/html; charset=utf-8" :content (-> content encode-images encode-newlines)}]))
 
 (defn send-mail
-  ([to subject body opts] (send-mail to subject body opts (:bcc config)))
+  ([to subject body opts] (send-mail to subject body opts (:bcc (config))))
   ([to subject body opts bcc]
    (info "send-mail with " to subject body opts bcc)
    (let [res (postal/send-message
                (with-meta
-                 {:from (:from config)
+                 {:from (:from (config))
                   :to to
                   :bcc (s/split bcc #",")
                   :subject subject
                   :body (build-body body opts)}
-                 config))]
+                 (config)))]
      (if (= "messages sent" (:message res))
        success-message
        error-message))))
@@ -68,7 +67,7 @@
   {:yb/cat #{:util}}
   [_] (or (fetch-unread-mail) no-messages))
 
-(if model/configured?
+(if (model/configured?)
   (cmd-hook #"mail"
             #"fetch" fetch-cmd
             #"(.+) \/ (.+) \/ (.*)" send-body-and-subject

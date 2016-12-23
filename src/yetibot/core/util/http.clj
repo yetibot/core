@@ -1,7 +1,8 @@
 (ns yetibot.core.util.http
   (:require
     [yetibot.core.util.format :refer [limit-and-trim-string-lines]]
-    [http.async.client :as client]
+    ;; [http.async.client :as client]
+    [clj-http.client :as client]
     [taoensso.timbre :refer [info warn error]]
     [clojure.string :as s]
     [clojure.xml :as xml]
@@ -10,18 +11,19 @@
 
 
 ; synchronous api call helpers
-(defmacro with-client [uri verb-fn auth & body]
-  `(with-open [~'client (client/create-client)]
-     (let [~'response (~verb-fn ~'client ~uri :auth ~auth)]
-       ~@body)))
+
+;; (defmacro with-client [uri verb-fn auth & body]
+;;   `(with-open [~'client (client/create-client)]
+;;      (let [~'response (~verb-fn ~'client ~uri :auth ~auth)]
+;;        ~@body)))
 
 (defn fetch
   ([uri] (fetch uri {:user "" :password ""})) ; default empty user/pass
-  ([uri auth] (fetch uri client/GET auth)) ; default GET
+  ([uri auth] (fetch uri client/get auth)) ; default GET
   ([uri verb-fn auth]
-   (with-client uri verb-fn auth
-                (client/await response)
-                (client/string response))))
+   (:body (verb-fn
+            uri
+            {:basic-auth [(:user auth) (:password auth)]}))))
 
 (defn get-json [& args]
   (let [raw (apply fetch args)]

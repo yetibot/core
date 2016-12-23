@@ -5,6 +5,7 @@
     [robert.bruce :refer [try-try-again] :as rb]
     [gniazdo.core :as ws]
     [clojure.string :as s]
+    [schema.core :as sch]
     [yetibot.core.interpreter :refer [*chat-source*]]
     [yetibot.core.models.users :as users]
     [yetibot.core.util.http :refer [html-decode]]
@@ -16,8 +17,7 @@
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
     [taoensso.timbre :as log :refer [info warn error]]
-    [yetibot.core.config :refer [update-config get-config config-for-ns
-                                 reload-config conf-valid? apply-config]]
+    [yetibot.core.config-mutable :refer [get-config apply-config!]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure *target* *adapter*]]
@@ -190,7 +190,6 @@
   (let [active? (= "active" (:presence e))
         id (:user e)
         source (select-keys (base-chat-source) [:adapter])]
-    #_(log/trace id "presence change active?=" active?)
     (users/update-user source id {:active? active?})))
 
 (defn on-presence-change [e]
@@ -203,25 +202,16 @@
 (defn room-persist-edn
   "Update config.edn when a room is joined or left"
   [uuid room joined?]
-  (let
-    [adapters (get-config :yetibot :adapters)
-     instance-index (first (utl/indices #(= (:name %) uuid) adapters))
-     adapter (nth adapters instance-index)
-     exists? (contains? adapter :rooms)]
-
-    (cond
-      joined? (if exists?
-                (apply-config
-                  [:yetibot :adapters instance-index :rooms]
-                  (fn [x] (conj x room)))
-                (apply-config
-                  [:yetibot :adapters instance-index]
-                  (fn [x] (assoc x :rooms #{room}))))
-
-      :left (when exists?
-              (apply-config
-                [:yetibot :adapters instance-index :rooms]
-                (fn [x] (disj x room)))))))
+  (if joined?
+    ;; add
+    (apply-config!
+      [:yetibot :adapters uuid :rooms]
+      (fn [x] (conj room)))
+    ;; remove
+    (apply-config!
+      [:yetibot :adapters "uuid" :rooms]
+      (fn [x]
+        (disj (set x) "foo")))))
 
 (defn on-channel-joined
   "Fires when yetibot gets invited and joins a channel or group"
@@ -307,7 +297,7 @@
 
 ;; adapter impl
 
-(defrecord Slack [config config-idx conn]
+(defrecord Slack [config conn]
   a/Adapter
 
   (a/uuid [_] (:name config))
@@ -331,5 +321,5 @@
   (a/start [adapter] (start adapter conn config)))
 
 (defn make-slack
-  [idx config]
-  (->Slack config idx (atom nil)))
+  [config]
+  (->Slack config (atom nil)))

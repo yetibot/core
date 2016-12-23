@@ -2,7 +2,7 @@
   (:require
     [yetibot.core.adapters.adapter :as a]
     [yetibot.core.models.room :as room]
-    [taoensso.timbre :refer [debug info warn error]]
+    [taoensso.timbre :refer [debug trace info warn error]]
     [yetibot.core.util.format :as fmt]))
 
 (def ^:dynamic *adapter-uuid*

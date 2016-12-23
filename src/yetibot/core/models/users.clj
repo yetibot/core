@@ -1,7 +1,6 @@
 (ns yetibot.core.models.users
   (:require
-    [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.config :refer [config-for-ns]]
+    [taoensso.timbre :refer [info debug warn error]]
     [clj-time.core :refer [now]]))
 
 (def config {:active-threshold-milliseconds (* 15 60 1000)})
@@ -61,7 +60,7 @@
            {user-key (merge user {:rooms #{chat-source}})})))
 
 (defn update-user [source id attrs]
-  (info "update-user" source id attrs)
+  (debug "update-user" source id attrs)
   (let [user-key {:adapter (:adapter source) :id id}]
     ; ensure user exists
     (or (get @users user-key)

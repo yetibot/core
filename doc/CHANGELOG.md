@@ -1,5 +1,22 @@
 # yetibot.core change log
 
+## 0.4.0
+
+- Refactor configuration:
+  It was getting quite unweidly and inconsistent with somewhat arbitrary
+  hierarchies.
+  - Separate out the mutable parts (e.g. IRC room config) from actual immutable
+    configuration.
+  - Use [Environ](https://github.com/weavejester/environ) for immutable config
+    and [dec](https://github.com/devth/dec) to explode flat config into nested
+    maps
+  - Use `yetibot.core.config-mutable` for mutable parts
+  - Use [schema](https://github.com/plumatic/schema) to validate the expected
+    shape of config when obtaining via `get-config`
+- Moved the ssh command out of yetibot and into yetibot.core
+- Upgraded to Clojure 1.8.0
+- Upgraded many dependencies
+
 ## 0.3.17
 
 - Listen to Slack edit events and re-execute command

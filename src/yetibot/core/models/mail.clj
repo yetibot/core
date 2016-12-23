@@ -1,18 +1,30 @@
 (ns yetibot.core.models.mail
-  (:require [overtone.at-at :refer [at mk-pool every stop show-schedule]]
-            [clojure.string :as s]
-            [inflections.core :refer [pluralize]]
-            [yetibot.core.config :refer [config-for-ns conf-valid?]]
-            [clojure-mail [core :refer :all]
-                          [message :as msg]]))
+  (:require
+    [yetibot.core.schema :as ys]
+    [schema.core :as sc]
+    [overtone.at-at :refer [mk-pool every stop show-schedule]]
+    [clojure.string :as s]
+    [inflections.core :refer [pluralize]]
+    [yetibot.core.config :refer [get-config]]
+    [clojure-mail
+     [core :as mail]
+     [message :as msg]]))
 
-(def config (config-for-ns))
-(def configured? (conf-valid?))
+(def mail-schema
+  {:host ys/non-empty-str
+   :user ys/non-empty-str
+   :pass ys/non-empty-str
+   :from ys/non-empty-str
+   (sc/optional-key :bcc) sc/Str})
 
-(when (conf-valid?)
-  (def store (gen-store))
-  (auth! (:user config) (:pass config)))
+(defn config [] (get-config mail-schema [:mail]))
 
+(defn configured? [] (nil? (:error (config))))
+
+;; TODO - move into start
+(when (configured?)
+  (let [{:keys [user pass]} (:value (config))]
+    (def store (mail/store user pass))))
 
 (def pool (mk-pool))
 (def poll-interval (* 1000 60))
@@ -39,9 +51,9 @@
         (fmt-messages messages)))
 
 (defn fetch-unread-mail []
-  (let [messages (unread-messages folder)]
+  (let [messages (mail/unread-messages folder)]
     (when-not (empty? messages)
-      (mark-all-read folder)
+      (mail/mark-all-read folder)
       (fmt-you-have-mail messages))))
 
 (defn fetch-and-announce-unread-mail []

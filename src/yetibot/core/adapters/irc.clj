@@ -1,16 +1,17 @@
 (ns yetibot.core.adapters.irc
   (:require
+    [schema.core :as s]
     [clojure.set :refer [difference union intersection]]
     [yetibot.core.adapters.adapter :as a]
-    [taoensso.timbre :as log :refer [info]]
+    [taoensso.timbre :as log :refer [info debug]]
     [rate-gate.core :refer [rate-limit]]
     [irclj
      [core :as irc]
      [connection :as irc-conn]]
     [yetibot.core.models.users :as users]
     [clojure.string :refer [split-lines join]]
-    [yetibot.core.config :refer [update-config get-config config-for-ns
-                                 reload-config]]
+    [yetibot.core.config :as config]
+    [yetibot.core.config-mutable :as mconfig]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure send-msg-for-each
                                *target* *adapter*] :as chat]
@@ -19,13 +20,13 @@
 
 (declare join-or-part-with-current-channels connect start)
 
-(defn rooms [a] (set (:rooms @(:config a))))
+(defn rooms [{:keys [current-channels] :as a}] @current-channels)
 
-(defn config-path [config-idx]
-  [:yetibot :adapters config-idx])
+(defn config-path [adapter]
+ [:yetibot :irc (a/uuid adapter)])
 
-(defn rooms-config-path [{:keys [config-idx]}]
-  (conj (config-path config-idx) :rooms))
+(defn rooms-config-path [adapter]
+  (conj (config-path adapter) :rooms))
 
 (def wait-before-reconnect 30000)
 
@@ -70,31 +71,37 @@
    split it and send one for each"
   [a p] (send-msg-for-each (prepare-paste p)))
 
-(defn reload-and-reset-config
-  "Reloads config from disk, then uses config-idx to lookup the correct config
+(def channels-schema #{s/Str})
+
+(def mutable-config-schema {:rooms #{s/Str}})
+
+(defn reload-and-reset-config!
+  "Reloads config from disk, then uses adapter uuid to lookup the correct config
    map for this instance and resets the config atom with it."
-  [{:keys [config config-idx]}]
-  (reload-config)
-  (let [new-conf (apply get-config (config-path config-idx))]
+  [{:keys [mutable-config] :as a}]
+  (mconfig/reload-config!)
+  (let [new-conf (:value (mconfig/get-config
+                           mutable-config-schema (config-path a)))]
     (info "reloaded config, now:" new-conf)
-    (reset! config new-conf)))
+    (reset! mutable-config new-conf)))
 
 (defn set-rooms-config
   "Accepts a function that will be passed the current rooms config. Return value
    of function will be used to set the new rooms config"
   [adapter f]
-  (log/info "rooms config path is" (rooms-config-path adapter))
-  (apply update-config (conj (rooms-config-path adapter) (f (rooms adapter))))
-  (reload-and-reset-config adapter))
+  (log/info "rooms config path is" (rooms-config-path adapter)
+            (f (rooms adapter)))
+  (mconfig/update-config! (rooms-config-path adapter) (f (rooms adapter)))
+  (reload-and-reset-config! adapter))
 
 (defn add-room-to-config [a room]
   (log/info "add room" room "to irc config")
   (log/info
-    (set-rooms-config a #(conj % room))))
+    (set-rooms-config a #(set (conj % room)))))
 
-(defn remove-room-from-config [room]
+(defn remove-room-from-config [a room]
   (log/info "remove room from irc config")
-  (set-rooms-config (comp set (partial filter #(not= % room)))))
+  (set-rooms-config a (comp set (partial filter #(not= % room)))))
 
 (defn join-room [a room]
   (add-room-to-config a room)
@@ -102,7 +109,7 @@
   (str "Joined " room))
 
 (defn leave-room [a room]
-  (remove-room-from-config room)
+  (remove-room-from-config a room)
   (join-or-part-with-current-channels a)
   (str "Left " room))
 
@@ -170,19 +177,31 @@
           [k (partial v adapter)])))
 
 (defn connect [{:keys [config conn] :as a}]
-  (reset!
-    conn
-    (irc/connect
-      (:host @config) (read-string (or (:port @config) "6667")) (:username @config)
-      :ssl? (:ssl? @config)
-      :callbacks (callbacks a))))
+  (let [username (or (:username config) (str "yetibot_" (rand-int 1000)))
+        host (or (:host config) "irc.freenode.net")
+        port (read-string (or (:port config) "6667"))
+        ssl? (boolean (:ssl config))]
+    (info "Connecting to IRC"
+          {:host host :port port :ssl? ssl? :username username})
+    (reset!
+      conn
+      (irc/connect host port username
+                   :ssl? ssl?
+                   :callbacks (callbacks a)))))
 
-(defn join-or-part-with-current-channels [{:keys [conn channels] :as adapter}]
-  (info @channels)
-  (let [chs (rooms adapter)
-        to-part (difference @channels chs)
-        to-join (difference chs @channels)]
-    (reset! channels (rooms adapter))
+(defn join-or-part-with-current-channels
+  "Determine the diff between current-channels and configured channels to
+   determine which to join and part. After resolving the diff, set
+   current-channels equal to configured rooms."
+  [{:keys [conn mutable-config current-channels] :as adapter}]
+  (let [configured-rooms (:rooms @mutable-config)
+        to-part (difference @current-channels configured-rooms)
+        to-join (difference configured-rooms @current-channels)]
+    (info "configured-rooms" configured-rooms)
+    (debug "channels" @current-channels)
+    (debug "to-part" to-part)
+    (debug "to-join" to-join)
+    (reset! current-channels configured-rooms)
     (doall (map #(irc/join @conn %) to-join))
     (doall (map #(irc/part @conn %) to-part))
     (fetch-users adapter)))
@@ -194,9 +213,10 @@
 
 (defn start
   "Join and fetch all users with WHO <channel>"
-  [{:keys [config config-idx conn] :as adapter}]
+  [{:keys [mutable-config config conn] :as adapter}]
   (binding [*adapter* adapter]
-    (info "starting IRC with" config-idx @config)
+    (info "starting IRC with" config)
+    (reload-and-reset-config! adapter)
     (connect adapter)
     (join-or-part-with-current-channels adapter)))
 
@@ -206,26 +226,27 @@
   (when @conn (irc/kill @conn))
   (reset! conn nil))
 
-(defrecord IRC [config config-idx conn channels]
+(defrecord IRC [config mutable-config current-channels conn]
 
   ; config
-  ; Once bound it represents an atom that holds the configuration for a single
-  ; IRC Adapter instance. It must be an atom because IRC config stores rooms,
-  ; which change when yetibot leaves or joins a room.
+  ; Holds the immutable configuration for a single IRC Adapter instance.
 
-  ; config-idx
-  ; Because IRC needs to keep track of which channels the bot joins itself, we
-  ; store a :rooms vector in the config map and need to be able to write back to
-  ; it whenever Yetibot is instructed to leave or join a channel. This index is
-  ; the location at which the config map for this Adapter instance lives.
+  ; mutable-config
+  ; Loaded from disk in start. It stores the IRC channels that Yetibot should
+  ; join on startup. When Yetibot is commanded to join or leave channels,
+  ; mutable-config is updated and persisted to disk.
 
-  ; conn is an atom that holds the IRC connection
+  ; current-channels
+  ; Atom holding the set of current channels that Yetibot is listening on. This
+  ; is necessary to track in addition to mutable config in order to diff
+  ; channels when modifying config to know which ones to part or join.
 
-  ; channels is an atom that holds the current channels yb is in
+  ; conn
+  ; An atom that holds the IRC connection
 
   a/Adapter
 
-  (a/uuid [_] (:name @config))
+  (a/uuid [_] (:name config))
 
   (a/platform-name [_] "IRC")
 
@@ -246,5 +267,5 @@
   (a/start [adapter] (start adapter)))
 
 (defn make-irc
-  [idx config]
-  (->IRC (atom config) idx (atom nil) (atom #{})))
+  [config]
+  (->IRC config (atom {}) (atom #{}) (atom nil)))

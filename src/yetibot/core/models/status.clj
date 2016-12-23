@@ -12,8 +12,8 @@
                    ago hours days weeks years months]]]
     [yetibot.core.models.users :refer [get-user]]
     [yetibot.core.util.time :as t]
-    [yetibot.core.interpreter]))
-
+    [yetibot.core.interpreter])
+  (:refer-clojure :exclude [update]))
 
 ;;;; write
 
