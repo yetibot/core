@@ -3,7 +3,7 @@
     [schema.core :as s]
     [clojure.set :refer [difference union intersection]]
     [yetibot.core.adapters.adapter :as a]
-    [taoensso.timbre :as log :refer [info]]
+    [taoensso.timbre :as log :refer [info debug]]
     [rate-gate.core :refer [rate-limit]]
     [irclj
      [core :as irc]
@@ -177,14 +177,17 @@
           [k (partial v adapter)])))
 
 (defn connect [{:keys [config conn] :as a}]
-  (reset!
-    conn
-    (irc/connect
-      (or (:host config) "irc.freenode.net")
-      (read-string (or (:port config) "6667"))
-      (or (:username config) (str "yetibot_" (rand-int 1000)))
-      :ssl? (boolean (:ssl config))
-      :callbacks (callbacks a))))
+  (let [username (or (:username config) (str "yetibot_" (rand-int 1000)))
+        host (or (:host config) "irc.freenode.net")
+        port (read-string (or (:port config) "6667"))
+        ssl? (boolean (:ssl config))]
+    (info "Connecting to IRC"
+          {:host host :port port :ssl? ssl? :username username})
+    (reset!
+      conn
+      (irc/connect host port username
+                   :ssl? ssl?
+                   :callbacks (callbacks a)))))
 
 (defn join-or-part-with-current-channels
   "Determine the diff between current-channels and configured channels to
@@ -195,9 +198,9 @@
         to-part (difference @current-channels configured-rooms)
         to-join (difference configured-rooms @current-channels)]
     (info "configured-rooms" configured-rooms)
-    (info "channels" @current-channels)
-    (info "to-part" to-part)
-    (info "to-join" to-join)
+    (debug "channels" @current-channels)
+    (debug "to-part" to-part)
+    (debug "to-join" to-join)
     (reset! current-channels configured-rooms)
     (doall (map #(irc/join @conn %) to-join))
     (doall (map #(irc/part @conn %) to-part))
