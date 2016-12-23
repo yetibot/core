@@ -16,7 +16,7 @@
   (let [v (get-config config-schema [:log :level])]
     (if (:error v)
       ;; default config level
-      :warn
+      :info
       (keyword (:value v)))))
 
 (defn rolling-appender-enabled?
