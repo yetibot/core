@@ -16,6 +16,8 @@ https://github.com/devth/yetibot
 
 [<img src="http://clojars.org/yetibot.core/latest-version.svg" />](https://clojars.org/yetibot.core)
 
+[CHANGELOG](doc/CHANGELOG)
+
 ## Changes in 0.4.0
 
 0.4.0 decomplects mutable and immutable configuration in a
