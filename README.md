@@ -2,10 +2,6 @@
 [![Build Status](https://travis-ci.org/devth/yetibot.core.svg?branch=master)](https://travis-ci.org/devth/yetibot.core)
 [![CrossClj](https://img.shields.io/badge/CrossClj%20Docs-yetibot.core-blue.svg)](https://crossclj.info/doc/yetibot.core/latest/index.html)
 
-> NB: The build is not passing because of a [parsing
-> bug](https://github.com/devth/yetibot/issues/423) having to do with nested
-> parenthesis.
-
 Core yetibot utilities, extracted for shared use among yetibot and its various
 plugins. yetibot.core is not meant to be run standalone, but instead used as a
 dependency from another project that provides config and optionally other
