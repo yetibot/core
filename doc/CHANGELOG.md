@@ -2,6 +2,10 @@
 
 ## 0.4.0
 
+- Fix fn airity bug in IRC where multi-line messages would error
+
+## 0.4.0
+
 - Refactor configuration:
   It was getting quite unweidly and inconsistent with somewhat arbitrary
   hierarchies.
