@@ -43,7 +43,9 @@
       (log/info "send message to channel" *target*)
       (try
         (if (> (count msg) irc-max-message-length)
-          (doall (map send-msg (split-msg-into-irc-max-length-chunks msg)))
+          (doall (map
+                   (partial send-msg adapter)
+                   (split-msg-into-irc-max-length-chunks msg)))
           (irc/message @conn *target* msg))
         (catch java.net.SocketException e
           ; it must have disconnect, try reconnecting again
