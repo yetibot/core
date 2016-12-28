@@ -34,6 +34,18 @@
      :user "U11111111"
      :text "!echo hi"}))
 
+(deftest unencode-message-test
+  (testing "Only a URL"
+    (is (= "https://imgflip.com"
+           (unencode-message "<https://imgflip.com>"))))
+  (testing "URL with text after"
+    (is (= "https://imgflip.com .base-img[src!=''] src"
+           (unencode-message "<https://imgflip.com> .base-img[src!=''] src"))))
+  (testing "URL with text surrounding"
+    (is (= "Why does slack surround URLs with cruft? Jerk. https://imgflip.com .base-img[src!=''] src"
+           (unencode-message "Why does slack surround URLs with cruft? Jerk. <https://imgflip.com> .base-img[src!=''] src")))))
+
+
 (deftest rooms-for-last-config
   (comment
     (binding [*config* (last (slack-configs))]

@@ -93,6 +93,7 @@
   [body]
   (-> body
     (s/replace #"\<(.+)\|(.+)\>" "$2")
+    (s/replace #"\<(.+)>" "$1")
     html-decode))
 
 

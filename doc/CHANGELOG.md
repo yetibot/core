@@ -1,6 +1,12 @@
 # yetibot.core change log
 
-## 0.4.0
+## 0.4.2
+
+- Improve Slack url unencoding and add tests. Before it only properly unencoded
+  urls like `<Google|http://google.com>`. Now it also unencodes
+  `<https://www.google.com/>`.
+
+## 0.4.1
 
 - Fix fn airity bug in IRC where multi-line messages would error
 
