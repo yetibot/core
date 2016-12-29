@@ -43,7 +43,10 @@
            (unencode-message "<https://imgflip.com> .base-img[src!=''] src"))))
   (testing "URL with text surrounding"
     (is (= "Why does slack surround URLs with cruft? Jerk. https://imgflip.com .base-img[src!=''] src"
-           (unencode-message "Why does slack surround URLs with cruft? Jerk. <https://imgflip.com> .base-img[src!=''] src")))))
+           (unencode-message "Why does slack surround URLs with cruft? Jerk. <https://imgflip.com> .base-img[src!=''] src"))))
+  (testing "Mutliple urls"
+    (is (= "Foo https://imgflip.com bar https://www.google.com"
+           (unencode-message "Foo <https://imgflip.com> bar <https://www.google.com>")))))
 
 
 (deftest rooms-for-last-config

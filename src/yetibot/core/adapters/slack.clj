@@ -92,10 +92,9 @@
    it for now. Replaces <X|Y> with Y."
   [body]
   (-> body
-    (s/replace #"\<(.+)\|(.+)\>" "$2")
-    (s/replace #"\<(.+)>" "$1")
+    (s/replace #"\<(.+)\|(\S+)\>" "$2")
+    (s/replace #"\<(\S+)>" "$1")
     html-decode))
-
 
 (defn entity-with-name-by-id
   "Takes a message event and translates a channel ID, group ID, or user id from
