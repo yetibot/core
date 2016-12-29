@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.3
+
+- Decode slack url encodings when there are multiple urls in a message -
+  [#603](https://github.com/devth/yetibot/issues/603)
+
 ## 0.4.2
 
 - Improve Slack url unencoding and add tests. Before it only properly unencoded
