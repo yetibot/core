@@ -9,7 +9,7 @@
 (defn layout [page-title & content]
   (html5
     [:head
-     [:title (title page-title)]
+     [:title (title "")]
      [:link {:rel "icon", :type "image/png", :href "/favicon-32x32.png", :sizes "32x32"}]
      [:link {:rel "icon", :type "image/png", :href "/favicon-16x16.png", :sizes "16x16"}]
      [:script {:type "text/javascript" :src "https://code.jquery.com/jquery-1.12.0.min.js" }]

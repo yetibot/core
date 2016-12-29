@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.4
+
+- Update images to new Yetibot design
+
 ## 0.4.3
 
 - Decode slack url encodings when there are multiple urls in a message -

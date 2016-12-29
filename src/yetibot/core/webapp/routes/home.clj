@@ -10,11 +10,10 @@
 (defn home-page []
   (common/layout
     "Home"
-    [:div.home.animate
-     (link-to "http://github.com/devth/yetibot"
+    [:div.home
+     (link-to "http://yetibot.com"
               (image {:class "yeti"} "/img/yeti.png")
-              [:h1 "yetibot"]
-              [:p version])]))
+              [:h1.version version])]))
 
   ; (layout/render
   ;   "home.html" {:docs (-> "docs/docs.md" io/resource slurp)}))
