@@ -11,5 +11,8 @@ engines:
     enabled: true
   kibit:
     enabled: true
+ratings:
+  paths:
+    - "**.clj"
 exclude_paths:
   - target/
