@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.5
+
+- Allow creating observers for specific user patterns -
+  [#605](https://github.com/devth/yetibot/issues/605)
+
 ## 0.4.4
 
 - Update images to new Yetibot design
