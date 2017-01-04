@@ -9,6 +9,7 @@
 (def schema (dc/build-schema model-ns
                              [[:user-id :string]
                               [:pattern :string]
+                              [:user-pattern :string]
                               [:event-type :string]
                               [:cmd :string]]))
 

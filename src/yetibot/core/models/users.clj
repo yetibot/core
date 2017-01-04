@@ -29,7 +29,7 @@
          mention-name username] ; mention name breaks pure-text representation of user
      (merge user-info {:username username
                        :name username ; alias for backward compat
-                       :mention-name mention-name
+                       :mention-name mention-name ; for display
                        :active? active?
                        :id id
                        :last-active (now)}))))

@@ -22,6 +22,7 @@
                  [org.clojure/core.async "0.2.385"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.nrepl "0.2.12"]
+                 [org.clojure/tools.cli "0.3.5"]
                  [org.clojure/tools.trace "0.7.9"]
                  [org.clojure/java.classpath "0.2.3"]
                  [org.clojure/core.cache "0.6.5"]
