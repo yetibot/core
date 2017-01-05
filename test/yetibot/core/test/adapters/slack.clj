@@ -49,15 +49,15 @@
            (unencode-message "Foo <https://imgflip.com> bar <https://www.google.com>")))))
 
 (deftest adapters-tests
+  (comment
+    (def adapter (first (a/active-adapters)))
 
-  (def adapter (first (a/active-adapters)))
+    (history adapter "G1QD1DNG2")
 
-  (history adapter "G1QD1DNG2")
+    (binding [chat/*target* "D0HFDJHA4"]
+      (a/send-msg adapter "hi"))
 
-  (binding [chat/*target* "D0HFDJHA4"]
-    (a/send-msg adapter "hi"))
-
-  (react adapter "balloon" "D0HFDJHA4"))
+    (react adapter "balloon" "D0HFDJHA4")))
 
 
 (deftest rooms-for-last-config
