@@ -1,7 +1,7 @@
 (ns yetibot.core.hooks
   (:require
     [clojure.set :refer [difference intersection]]
-    [taoensso.timbre :refer [debug info warn error]]
+    [taoensso.timbre :refer [trace debug info warn error]]
     [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.handler]
     [clojure.string :as s]
@@ -134,8 +134,7 @@
     #'yetibot.core.handler/handle-raw
     (let [event-types (set event-types)]
       (fn [callback chat-source user event-type body]
-        (debug "Observed"
-               (pr-str (map pr-str [chat-source user event-type body])))
+        (debug "observed" (pr-str (map pr-str [chat-source user event-type body])))
         (when (contains? event-types event-type)
           (with-fresh-db
             (observer {:chat-source chat-source

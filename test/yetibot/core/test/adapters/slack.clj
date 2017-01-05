@@ -15,8 +15,8 @@
 
 (defn slack-configs []
   (filter
-    (fn [c] (= :slack (:type c)))
-    (ai/adapters-config)))
+    (fn [c] (= "slack" (:type c)))
+    (vals (ai/adapters-config))))
 
 
 (def config (slack-config (last (slack-configs))))
@@ -47,6 +47,17 @@
   (testing "Mutliple urls"
     (is (= "Foo https://imgflip.com bar https://www.google.com"
            (unencode-message "Foo <https://imgflip.com> bar <https://www.google.com>")))))
+
+(deftest adapters-tests
+
+  (def adapter (first (a/active-adapters)))
+
+  (history adapter "G1QD1DNG2")
+
+  (binding [chat/*target* "D0HFDJHA4"]
+    (a/send-msg adapter "hi"))
+
+  (react adapter "balloon" "D0HFDJHA4"))
 
 
 (deftest rooms-for-last-config

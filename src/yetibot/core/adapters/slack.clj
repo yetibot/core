@@ -11,12 +11,14 @@
     [yetibot.core.util.http :refer [html-decode]]
     [clj-slack
      [users :as slack-users]
+     [im :as im]
      [chat :as slack-chat]
      [channels :as channels]
      [groups :as groups]
+     [reactions :as reactions]
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
-    [taoensso.timbre :as log :refer [info warn error]]
+    [taoensso.timbre :as log :refer [debug info warn error]]
     [yetibot.core.config-mutable :refer [get-config apply-config!]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
@@ -166,9 +168,9 @@
                       :message
                       (unencode-message (:text event))))))))
 
-(defn on-hello [event] (log/info "hello" event))
+(defn on-hello [event] (log/debug "hello" event))
 
-(defn on-connect [e] (log/info "connect" e))
+(defn on-connect [e] (log/debug "connected"))
 
 (declare restart)
 
@@ -294,6 +296,35 @@
   (binding [*adapter* adapter]
     (info "adapter" adapter "starting up with config" config)
     (restart conn config)))
+
+(defn history
+  "chan-id can be the ID of a:
+   - channel
+   - group
+   - direct message
+   Retrieve history from the correct corresponding API."
+  [adapter chan-id]
+  (let [c (slack-config (:config adapter))]
+    (condp = (first chan-id)
+      ;; direct message - lookup the user
+      \D (im/history c chan-id)
+      ;; channel
+      \C (channels/history c chan-id)
+      ;; group
+      \G (groups/history c chan-id)
+      (throw (ex-info "unknown entity type" chan-id)))))
+
+(defn react [adapter emoji channel]
+  (let [c (slack-config (:config adapter))
+        conn (:conn adapter)
+        yb-id (:id (self conn))
+        hist (history adapter channel)
+        non-yb-non-cmd (->> (:messages hist)
+                            (filter #(not= yb-id (:user %)))
+                            (filter #(not (s/starts-with? (:text %) "!"))))
+        msg (first non-yb-non-cmd)
+        ts (:ts msg)]
+    (reactions/add c emoji {:channel channel :timestamp ts})))
 
 ;; adapter impl
 

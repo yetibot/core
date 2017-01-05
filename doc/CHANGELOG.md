@@ -3,6 +3,7 @@
 ## 0.4.6
 
 - Add `nil` command (moved from Yetibot)
+- Add `react` command for Slack reactions
 
 ## 0.4.5
 

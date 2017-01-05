@@ -3,7 +3,7 @@
   (:require
     [clojure.set :refer [difference intersection]]
     [yetibot.core.models.room :as room]
-    [taoensso.timbre :refer [info warn error]]
+    [taoensso.timbre :refer [debug info warn error]]
     [yetibot.core.util :refer [psuedo-format]]
     [yetibot.core.util.format :refer [to-coll-if-contains-newlines]]))
 
@@ -46,7 +46,7 @@
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra
    :opts"
   [acc [cmd-with-args & next-cmds]]
-  ;; (info "pipe-cmds" acc cmd-with-args next-cmds)
+  (debug "pipe-cmds" *chat-source* acc cmd-with-args next-cmds)
   (let [extra {:raw (:value acc)
                :settings (:settings acc)
                :skip-next-n (:skip-next-n acc)

@@ -1,12 +1,12 @@
 (ns yetibot.core.observers.history
   (:require
-    [taoensso.timbre :refer [info warn error]]
+    [taoensso.timbre :refer [trace info warn error]]
     [yetibot.core.models.history :as h]
     [yetibot.core.hooks :refer [obs-hook]]))
 
 (defn history-observer
   [event-info]
-  (info "history obs" event-info)
+  (trace "history obs" event-info)
   (let [{:keys [adapter room]} (:chat-source event-info)]
     (h/add {:chat-source-adapter adapter
             :chat-source-room room

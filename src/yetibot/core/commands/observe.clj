@@ -2,12 +2,13 @@
   (:require
     [clojure.string :as s :refer [split trim]]
     [clojure.tools.cli :refer [parse-opts]]
-    [taoensso.timbre :refer [info warn error]]
+    [taoensso.timbre :refer [debug info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.db.observe :as model]
     [yetibot.core.handler :refer [handle-unparsed-expr all-event-types]]
     [yetibot.core.hooks :refer [cmd-hook obs-hook]]
     [yetibot.core.util :refer [is-command?]]
+    [yetibot.core.interpreter :refer [*chat-source*]]
     [yetibot.core.models.help :as help]
     [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.util.format :refer [remove-surrounding-quotes]]))
@@ -35,6 +36,7 @@
   (let [observers (model/find-all)
         body (:body event-info)
         user (:user event-info)
+        chat-source (:chat-source event-info)
         username (:username user)]
     (when-not (is-command? body) ;; ignore commands
       ;; check all known observers from the db to see if any fired
@@ -47,11 +49,10 @@
               match? (and event-type-matches?
                           user-match?
                           (re-find (re-pattern (:pattern observer)) body))]
-          (prn user-pattern)
           (when match?
-            (chat-data-structure
-              (handle-unparsed-expr
-                (format "echo %s | %s" body (:cmd observer))))))))))
+            (let [expr (format "echo %s | %s" body (:cmd observer))]
+              (debug "expr:" expr)
+              (chat-data-structure (handle-unparsed-expr chat-source user expr)))))))))
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
 
