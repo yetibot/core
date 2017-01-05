@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.6
+
+- Add `nil` command (moved from Yetibot)
+
 ## 0.4.5
 
 - Allow creating observers for specific user patterns -
