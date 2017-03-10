@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.7
+
+- Fix error when attempting to create mutable config on startup but the `config`
+  dir doesn't exist by using `make-parents` to ensure the dir exists.
+
 ## 0.4.6
 
 - Add `nil` command (moved from Yetibot)
