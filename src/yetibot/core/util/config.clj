@@ -1,6 +1,7 @@
 (ns yetibot.core.util.config
   (:require
-    [taoensso.timbre :refer [trace info warn error]]
+    [clojure.java.io :refer [make-parents]]
+    [taoensso.timbre :refer [color-str trace info warn error]]
     [clojure.java.io :refer [as-file]]
     [clojure.edn :as edn]
     [schema.core :as s]))
@@ -20,7 +21,8 @@
     (if (config-exists? path)
       (edn/read-string (slurp path))
       (do
-        (info "Config does not exist at" path " - writing default config:" default-config)
+        (warn "Config does not exist at" (color-str :blue path) " - writing default config:" default-config)
+        (make-parents path)
         (spit path default-config)
         default-config))
     (catch Exception e
