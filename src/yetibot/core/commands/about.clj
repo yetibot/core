@@ -5,7 +5,8 @@
   "about # about Yetibot"
   {:yb/cat #{:info}}
   [& _]
-  ["Yetibot is a chat bot written in Clojure;"
+  ["https://github.com/devth/yetibot/raw/master/img/yetibot_final.png?raw=true"
+   "Yetibot is a chat bot written in Clojure;"
    "it wants to make your life easier;"
    "it wants you to have fun."
    "http://yetibot.com"])
