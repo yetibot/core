@@ -53,9 +53,9 @@
        (filter #(command? (-> % second second second)))))
 
 (defn has-command-prefix?
-  "Returns true if body has an command matching the prefix !"
-  [body]
-  (re-find #"^\!(.+)" body))
+  "Returns true if body has an command matching the prefix"
+  ([body] (re-find #"^\!(.+)" body))
+  ([body prefix] (re-find (re-pattern (str "^\\" prefix "(.+)")) body)))
 
 (defn handle-raw
   "No-op handler for optional hooks.

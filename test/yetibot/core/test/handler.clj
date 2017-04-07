@@ -35,13 +35,23 @@
     (is (= multi-str
         (handle-unparsed-expr (str "echo " multi-str))))))
 
-(deftest test-is-a-command
+(deftest test-is-a-command-with-default-prefix
   (let [body "!command arg1 arg2"]
     (is (has-command-prefix? body))))
 
-(deftest test-is-not-a-command
+(deftest test-is-not-a-command-with-default-prefix
   (let [body "command arg1 arg2"]
     (is (not (has-command-prefix? body)))))
+
+(deftest test-is-a-command-with-configured-prefix
+  (let [prefix "?"
+        body (str prefix "command arg1 arg2")]
+    (is (has-command-prefix? body prefix))))
+
+(deftest test-is-not-a-command-with-configured-prefix
+  (let [prefix "?"
+        body "|command arg1 arg2"]
+    (is (not (has-command-prefix? body prefix)))))
 
 ;; this freezes!
 #_(handle-unparsed-expr "echo Action ansible.command completed.
