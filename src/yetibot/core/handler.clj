@@ -52,7 +52,9 @@
        ; ensure prefix is actually a command
        (filter #(command? (-> % second second second)))))
 
-(defn has-command-prefix? [body]
+(defn has-command-prefix?
+  "Returns true if body has an command matching the prefix !"
+  [body]
   (re-find #"^\!(.+)" body))
 
 (defn handle-raw
