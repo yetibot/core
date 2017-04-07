@@ -13,6 +13,10 @@
  {:env
   {:yetibot-log-level "debug"
 
+   ;; By default Yetibot uses the ! prefix to match commands.
+   ;; You can use this configuration to customize the prefix used by Yetibot
+   :yetibot-command-prefix ","
+
    ;; By default Yetibot runs an in-memory Datomic database, which will dissapear
    ;; on shutdown. Point it to your own running transactor if you'd like
    ;; persistent history and other features (e.g. aliases, statuses).
