@@ -52,6 +52,9 @@
        ; ensure prefix is actually a command
        (filter #(command? (-> % second second second)))))
 
+(defn has-command-prefix? [body]
+  (re-find #"^\!(.+)" body))
+
 (defn handle-raw
   "No-op handler for optional hooks.
    Expected event-types are:
@@ -68,7 +71,7 @@
       (when-let [parsed-cmds
                  (or
                    ; if it starts with a command prefix (!) it's a command
-                   (when-let [[_ body] (re-find #"^\!(.+)" body)]
+                   (when-let [[_ body] (has-command-prefix? body)]
                      [(parser body)])
                    ; otherwise, check to see if there are embedded commands
                    (embedded-cmds body))]
