@@ -10,7 +10,9 @@
     [yetibot.core.interpreter :as interp]
     [clojure.string :refer [join]]
     [yetibot.core.models.help :as help]
-    [clojure.stacktrace :as st]))
+    [clojure.stacktrace :as st]
+    [yetibot.core.config :refer [get-config]]
+    [schema.core :as sch]))
 
 (defn handle-unparsed-expr
   "Top-level entry point for parsing and evaluation of commands"
@@ -54,8 +56,12 @@
 
 (defn has-command-prefix?
   "Returns true if body has an command matching the prefix"
-  ([body] (re-find #"^\!(.+)" body))
-  ([body prefix] (re-find (re-pattern (str "^\\" prefix "(.+)")) body)))
+  ([body]
+    (re-find #"^\!(.+)" body))
+  ([body prefix] 
+    (re-find (re-pattern (str "^\\" prefix "(.+)")) body)))
+
+(def ^:private config-prefix (:value (get-config sch/Str [:command :prefix])))
 
 (defn handle-raw
   "No-op handler for optional hooks.
@@ -73,7 +79,9 @@
       (when-let [parsed-cmds
                  (or
                    ; if it starts with a command prefix (!) it's a command
-                   (when-let [[_ body] (has-command-prefix? body)]
+                   (when-let [[_ body] (if (nil? config-prefix)
+                                           (has-command-prefix? body)
+                                           (has-command-prefix? body config-prefix))]
                      [(parser body)])
                    ; otherwise, check to see if there are embedded commands
                    (embedded-cmds body))]
