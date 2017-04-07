@@ -54,11 +54,11 @@
        ; ensure prefix is actually a command
        (filter #(command? (-> % second second second)))))
 
-(defn has-command-prefix?
+(defn extract-command
   "Returns true if body has an command matching the prefix"
   ([body]
     (re-find #"^\!(.+)" body))
-  ([body prefix] 
+  ([body prefix]
     (re-find (re-pattern (str "^\\" prefix "(.+)")) body)))
 
 (def ^:private config-prefix (:value (get-config sch/Str [:command :prefix])))
@@ -80,8 +80,8 @@
                  (or
                    ; if it starts with a command prefix (!) it's a command
                    (when-let [[_ body] (if (nil? config-prefix)
-                                           (has-command-prefix? body)
-                                           (has-command-prefix? body config-prefix))]
+                                           (extract-command body)
+                                           (extract-command body config-prefix))]
                      [(parser body)])
                    ; otherwise, check to see if there are embedded commands
                    (embedded-cmds body))]
