@@ -10,7 +10,9 @@
     [yetibot.core.interpreter :as interp]
     [clojure.string :refer [join]]
     [yetibot.core.models.help :as help]
-    [clojure.stacktrace :as st]))
+    [clojure.stacktrace :as st]
+    [yetibot.core.config :refer [get-config]]
+    [schema.core :as sch]))
 
 (defn handle-unparsed-expr
   "Top-level entry point for parsing and evaluation of commands"
@@ -52,6 +54,14 @@
        ; ensure prefix is actually a command
        (filter #(command? (-> % second second second)))))
 
+(defn extract-command
+  "Returns the body if it has the command structure with the prefix, otherwise nil"
+  [body prefix]
+    (re-find (re-pattern (str "^\\" prefix "(.+)")) body))
+
+(def ^:private config-prefix
+  (or (:value (get-config sch/Str [:command :prefix])) "!"))
+
 (defn handle-raw
   "No-op handler for optional hooks.
    Expected event-types are:
@@ -68,7 +78,7 @@
       (when-let [parsed-cmds
                  (or
                    ; if it starts with a command prefix (!) it's a command
-                   (when-let [[_ body] (re-find #"^\!(.+)" body)]
+                   (when-let [[_ body] (extract-command body config-prefix)]
                      [(parser body)])
                    ; otherwise, check to see if there are embedded commands
                    (embedded-cmds body))]
