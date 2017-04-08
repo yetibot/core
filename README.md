@@ -12,7 +12,7 @@ https://github.com/devth/yetibot
 
 [<img src="http://clojars.org/yetibot.core/latest-version.svg" />](https://clojars.org/yetibot.core)
 
-- [CHANGELOG](doc/CHANGELOG)
+- [CHANGELOG](doc/CHANGELOG.md)
 - [Docs](doc/)
 
 ## Changes in 0.4.0
