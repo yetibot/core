@@ -35,20 +35,12 @@
     (is (= multi-str
         (handle-unparsed-expr (str "echo " multi-str))))))
 
-(deftest test-is-a-command-with-default-prefix
-  (let [body "!command arg1 arg2"]
-    (is (= (extract-command body) ["!command arg1 arg2" "command arg1 arg2"]))))
-
-(deftest test-is-not-a-command-with-default-prefix
-  (let [body "command arg1 arg2"]
-    (is (nil? (extract-command body)))))
-
-(deftest test-is-a-command-with-configured-prefix
+(deftest test-is-a-command
   (let [prefix "?"
         body (str prefix "command arg1 arg2")]
     (is (= (extract-command body prefix) ["?command arg1 arg2" "command arg1 arg2"]))))
 
-(deftest test-is-not-a-command-with-configured-prefix
+(deftest test-is-not-a-command
   (let [prefix "?"
         body "|command arg1 arg2"]
     (is (nil? (extract-command body prefix)))))

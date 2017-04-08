@@ -56,12 +56,11 @@
 
 (defn extract-command
   "Returns true if body has an command matching the prefix"
-  ([body]
-    (re-find #"^\!(.+)" body))
-  ([body prefix]
-    (re-find (re-pattern (str "^\\" prefix "(.+)")) body)))
+  [body prefix]
+    (re-find (re-pattern (str "^\\" prefix "(.+)")) body))
 
-(def ^:private config-prefix (:value (get-config sch/Str [:command :prefix])))
+(def ^:private config-prefix
+  (or (:value (get-config sch/Str [:command :prefix])) "!"))
 
 (defn handle-raw
   "No-op handler for optional hooks.
@@ -79,9 +78,7 @@
       (when-let [parsed-cmds
                  (or
                    ; if it starts with a command prefix (!) it's a command
-                   (when-let [[_ body] (if (nil? config-prefix)
-                                           (extract-command body)
-                                           (extract-command body config-prefix))]
+                   (when-let [[_ body] (extract-command body config-prefix)]
                      [(parser body)])
                    ; otherwise, check to see if there are embedded commands
                    (embedded-cmds body))]
