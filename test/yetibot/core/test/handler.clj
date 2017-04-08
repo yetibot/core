@@ -37,21 +37,21 @@
 
 (deftest test-is-a-command-with-default-prefix
   (let [body "!command arg1 arg2"]
-    (is (extract-command body))))
+    (is (= (extract-command body) ["!command arg1 arg2" "command arg1 arg2"]))))
 
 (deftest test-is-not-a-command-with-default-prefix
   (let [body "command arg1 arg2"]
-    (is (not (extract-command body)))))
+    (is (nil? (extract-command body)))))
 
 (deftest test-is-a-command-with-configured-prefix
   (let [prefix "?"
         body (str prefix "command arg1 arg2")]
-    (is (extract-command body prefix))))
+    (is (= (extract-command body prefix) ["?command arg1 arg2" "command arg1 arg2"]))))
 
 (deftest test-is-not-a-command-with-configured-prefix
   (let [prefix "?"
         body "|command arg1 arg2"]
-    (is (not (extract-command body prefix)))))
+    (is (nil? (extract-command body prefix)))))
 
 ;; this freezes!
 #_(handle-unparsed-expr "echo Action ansible.command completed.
