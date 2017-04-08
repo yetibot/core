@@ -55,7 +55,7 @@
        (filter #(command? (-> % second second second)))))
 
 (defn extract-command
-  "Returns true if body has an command matching the prefix"
+  "Returns the body if it has the command structure with the prefix, otherwise nil"
   [body prefix]
     (re-find (re-pattern (str "^\\" prefix "(.+)")) body))
 
