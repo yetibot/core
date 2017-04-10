@@ -134,7 +134,7 @@
     #'yetibot.core.handler/handle-raw
     (let [event-types (set event-types)]
       (fn [callback chat-source user event-type body]
-        (debug "observed" (pr-str (map pr-str [chat-source user event-type body])))
+        #_(debug "observed" (pr-str (map pr-str [chat-source user event-type body])))
         (when (contains? event-types event-type)
           (with-fresh-db
             (observer {:chat-source chat-source

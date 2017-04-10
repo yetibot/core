@@ -165,9 +165,18 @@
   [adapter irc event]
   (let [users (-> @irc :channels vals first :users)]))
 
-(defn callbacks [adapter]
+(defn callbacks
+  "Build a map of event handlers, with the adapter partially applied to each
+   handler.
+
+   Note: even though the handlers get the adapter as their first arg, some of
+   the functions they call still rely on *adapter* to be correctly bound. Fix
+   this! https://github.com/devth/yetibot.core/issues/25
+
+   As a hack, we can re-bind here."
+  [adapter]
   (into {}
-        (for [[k v]
+        (for [[event-name event-handler]
               {:privmsg #'handle-message
                :raw-log #'handle-raw-log
                :part #'handle-part
@@ -176,7 +185,12 @@
                :invite #'handle-invite
                :366 #'handle-end-of-names
                :352 #'handle-who-reply}]
-          [k (partial v adapter)])))
+          [event-name
+           ;; these are the args passed from irclj event fire
+           (fn [& event-args]
+             ;; the hack. gross 😭
+             (binding [*adapter* adapter]
+               (apply (partial event-handler adapter) event-args)))])))
 
 (defn connect [{:keys [config conn] :as a}]
   (let [username (or (:username config) (str "yetibot_" (rand-int 1000)))
@@ -218,6 +232,7 @@
   [{:keys [mutable-config config conn] :as adapter}]
   (binding [*adapter* adapter]
     (info "starting IRC with" config)
+    (info "*adapter* is" (log/color-str :blue (pr-str *adapter*)))
     (reload-and-reset-config! adapter)
     (connect adapter)
     (join-or-part-with-current-channels adapter)))

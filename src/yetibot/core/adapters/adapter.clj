@@ -44,3 +44,12 @@
   (debug "Registered" uuid "-" (pr-str adapter)))
 
 (defn active-adapters [] (vals @adapters))
+
+(comment
+  ;; play with adapters here
+
+  (-> (active-adapters)
+      first
+      (platform-name))
+
+  )

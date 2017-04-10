@@ -50,6 +50,10 @@
   (web/stop-web-server)
   (ai/stop))
 
+(defn reset []
+  (stop)
+  (start))
+
 (defn load-all []
   (future
     (load-commands-and-observers)))
