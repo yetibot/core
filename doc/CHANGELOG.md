@@ -1,5 +1,18 @@
 # yetibot.core change log
 
+## 0.4.9
+
+- Bind *adapter* inside each IRC event handler. This was preventing the IRC
+  adapter from functioning.
+- Allow custom prefix. ([#23](https://github.com/devth/yetibot.core/pull/23),
+  [@dawsonfi](https://github.com/dawsonfi))
+
+## 0.4.8
+
+- Add Yetibot image to about command.
+  ([#22](https://github.com/devth/yetibot.core/pull/22),
+  [jkieberk](https://github.com/jkieberk)
+
 ## 0.4.7
 
 - Fix error when attempting to create mutable config on startup but the `config`
@@ -166,6 +179,7 @@
   [config-sample.edn](https://github.com/devth/yetibot/blob/master/config/config-sample.edn) for details.
 
 - Refactored room settings. Arbitrary config can now be set on a room, e.g.
+
   ```
   !room set jira-project YETI
   ```
