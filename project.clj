@@ -18,8 +18,8 @@
                     :yb-adapters-freenode-host "irc.freenode.net"
                     :yb-adapters-freenode-port "6667"
                     :yb-adapters-freenode-username "yetibot-test"}}}
-  :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/core.async "0.2.385"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha15"]
+                 [org.clojure/core.async "0.3.442"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.nrepl "0.2.12"]
                  [org.clojure/tools.cli "0.3.5"]
@@ -111,7 +111,7 @@
                  ; web
                  [selmer "1.0.7"]
                  [compojure "1.5.1"]
-                 [prone "1.1.1"]
+                 [prone "1.1.4"]
                  [hiccup "1.0.5"]
                  ; [markdown-clj "0.9.66"]
 
