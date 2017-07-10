@@ -33,6 +33,8 @@
                  [org.clojure/data.zip "0.1.2"]
                  [org.clojure/java.jdbc "0.6.1"]
 
+                 [stylefruits/gniazdo-jsr356 "1.0.0"]
+
                  ; DurationFormatUtils for uptime
                  [org.apache.commons/commons-lang3 "3.4"]
 
@@ -115,4 +117,5 @@
                  [hiccup "1.0.5"]
                  ; [markdown-clj "0.9.66"]
 
+                 [slack-rtm "0.1.3" :exclusions [[stylefruits/gniazdo]]]
                  ])
