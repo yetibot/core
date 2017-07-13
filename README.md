@@ -1,14 +1,15 @@
 # yetibot.core
-[![Build Status](https://travis-ci.org/devth/yetibot.core.svg?branch=master)](https://travis-ci.org/devth/yetibot.core)
+
+[![Build Status](https://travis-ci.org/yetibot/yetibot.core.svg?branch=master)](https://travis-ci.org/yetibot/yetibot.core)
 [![CrossClj](https://img.shields.io/badge/CrossClj%20Docs-yetibot.core-blue.svg)](https://crossclj.info/doc/yetibot.core/latest/index.html)
 
-Core yetibot utilities, extracted for shared use among yetibot and its various
+Core Yetibot utilities, extracted for shared use among Yetibot and its various
 plugins. yetibot.core is not meant to be run standalone, but instead used as a
 dependency from another project that provides config and optionally other
-yetibot plugins, private or public.
+Yetibot plugins, private or public.
 
-The main yetibot commands live at:
-https://github.com/devth/yetibot
+The majority of Yetibot commands live in the [main Yetibot
+repo](https://github.com/yetibot/yetibot).
 
 [<img src="http://clojars.org/yetibot.core/latest-version.svg" />](https://clojars.org/yetibot.core)
 
@@ -23,7 +24,7 @@ docs and port your existing config to the new structure.
 
 ## Usage
 
-You can depend on this library to build your own yetibot plugins.
+You can depend on this library to build your own Yetibot plugins.
 Building your own commands is dead simple. Here's an example command that
 adds two numbers:
 
@@ -39,9 +40,8 @@ adds two numbers:
           #"(\d+)\s+(\d+)" add-cmd)
 ```
 
-See yetibot's own [commands](https://github.com/devth/yetibot/tree/master/src/yetibot/commands)
+See Yetibot's own [commands](https://github.com/devth/yetibot/tree/master/src/yetibot/commands)
 for more complex and diverse examples.
-
 
 ## Docs
 
@@ -52,10 +52,10 @@ for more complex and diverse examples.
 
 ## Change Log
 
-View the [change log](doc/CHANGELOG.md).
+View the [CHANGELOG](doc/CHANGELOG.md).
 
 ## License
 
-Copyright © 2013–2016 Trevor C. Hartman
+Copyright © 2013–2017 Trevor C. Hartman
 
 Distributed under the Eclipse Public License version 1.0.
