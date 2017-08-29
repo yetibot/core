@@ -86,6 +86,9 @@
    ;;  `giphy`
    :yetibot-giphy-key ""
 
+   ;; the default command to fall back to if no other commands match
+   :yetibot-default-command "giphy"
+
    ;; `meme`
    :yetibot-imgflip-username ""
    :yetibot-imgflip-password ""
@@ -110,9 +113,6 @@
    :yetibot-twitter-secret ""
    ;; ISO 639-1 code: http://en.wikipedia.org/wiki/List-of-ISO-639-1-codes
    :yetibot-twitter-search-lang "en"
-
-   ;; `image` - falback to Bing if Google fails
-   :yetibot-bing-search-key ""
 
    ;; `jen` - Jenkins
    ;; Jenkins instances config are mutable, and are therefore not defined in

@@ -34,7 +34,6 @@
         [{:user "",
           :servers [{:host "", :name ""} {:host "", :name ""}],
           :key "path-to-key"}]},
-  :bing {:search {:key ""}},
   :url "http://localhost:3000",
   :ebay {:appid ""},
   :giphy {:key ""},
@@ -42,6 +41,8 @@
   :weather {:wunderground {:key "" :default {:zip ""}}},
   :access {:token "a6a614188ac9d06601b5a93e435e446496aa4f61"},
   :command {:prefix ""}
+  ;; the default command to fall back to if no other commands match
+  :default {:command "giphy"}
   :jenkins {:cache {:ttl "3600000"},
             :default {:job ""}
             :instances

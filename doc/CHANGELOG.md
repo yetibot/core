@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.10
+
+- Upgrade all the outdated deps
+- Add support for a configurable default command and remove broken Bing and
+  Google Image Search commands
+
 ## 0.4.9
 
 - Bind *adapter* inside each IRC event handler. This was preventing the IRC
