@@ -12,7 +12,8 @@
   ; :aot [yetibot.core.init]
   :main yetibot.core.init
   :plugins [[lein-environ "1.0.3"]]
-  :profiles {:test
+  :profiles {:dev {:plugins [[venantius/ultra "0.5.1"]]}
+             :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"
                     :yb-adapters-freenode-host "irc.freenode.net"
@@ -92,6 +93,7 @@
                  ; retry
                  [robert/bruce "0.8.0"]
                  [com.cemerick/url "0.1.1"]
+                 [io.aviso/pretty "0.1.34"] ; pretty stacktraces
 
                  ; web/ring
                  [ring/ring-json "0.4.0"]

@@ -389,7 +389,7 @@
 (cmd-hook #"vals"
           _ vals-cmd)
 
-; raw
+;; raw
 (defn raw-cmd
   "raw <coll> # output a string representation of the raw collection"
   {:yb/cat #{:util}}
@@ -399,3 +399,11 @@
 
 (cmd-hook #"raw"
           _ raw-cmd)
+
+;; data
+(defn data-cmd
+  "data <previous-command-output> # show the data from the previous command"
+  {:yb/cat #{:util}}
+  [{:keys [data]}]
+  ;; TODO
+  )
