@@ -57,16 +57,15 @@
             ;; the result of a commad handler can either be:
             ;; - the literal value itself
             ;; - a map containing a :value key and an optional :data key
-            {value :result/value
-             data :result/data
-             :as command-result}
+            command-result
             (apply
               handle-cmd
               ;; determine whether to pass args to handle command as an :opts
               ;; collection or as a single value, depending on whether previous
               ;; value looks like a collection
               (if (coll? possible-opts)
-                [cmd-with-args (conj extra {:opts possible-opts})]
+                [cmd-with-args (conj extra {:opts possible-opts
+                                            :data previous-data})]
                 ;; value is the previous primitive output from the last
                 ;; command. the first time around value is empty so just use
                 ;; the raw cmd-with-args
@@ -75,6 +74,11 @@
                    ; next time apply psuedo-format to support %s substitution
                    (psuedo-format cmd-with-args previous-value))
                  extra]))
+
+            {value :result/value
+             data :result/data} (when (map? command-result)
+                                  command-result)
+
             ]
 
         (if (and (map? command-result) value)

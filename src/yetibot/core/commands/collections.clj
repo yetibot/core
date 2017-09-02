@@ -1,5 +1,6 @@
 (ns yetibot.core.commands.collections
   (:require
+    [clojure.pprint :refer [pprint]]
     [yetibot.core.interpreter :refer [handle-cmd]]
     [taoensso.timbre :refer [info warn error]]
     [clojure.string :as s]
@@ -398,12 +399,16 @@
 
 
 (cmd-hook #"raw"
-          _ raw-cmd)
+  _ raw-cmd)
 
 ;; data
 (defn data-cmd
   "data <previous-command-output> # show the data from the previous command"
   {:yb/cat #{:util}}
   [{:keys [data]}]
-  ;; TODO
-  )
+  (if data
+    (with-out-str (pprint data))
+    "There is no `data` from the previous command 🤔"))
+
+(cmd-hook #"data"
+  _ data-cmd)
