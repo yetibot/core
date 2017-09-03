@@ -5,14 +5,19 @@
 
 (def config {:active-threshold-milliseconds (* 15 60 1000)})
 
-(defonce ^{:private true
-          :doc
-  "key: {:adapter adapter, :id user-id
-  value: user with keys: adapter, username, id, active?,
-  last-active, rooms e.g.
-  {:adapter :slack :id 1} {:adapter :slack, :username \"yetibot\", :id 1,
-     :active? true, :last-active <DateTime>,
-     :rooms #{{:adapter :slack :room \"C123\"}}}"}
+(defonce
+  ^{:private true
+    :doc
+    "key is a map like: {:adapter adapter, :id user-id}
+     value is a user with keys:
+       adapter, username, id, active?, last-active, rooms
+
+     e.g.:
+
+     {:adapter :slack :id 1}
+     {:adapter :slack, :username \"yetibot\", :id 1,
+      :active? true, :last-active <DateTime>,
+      :rooms #{{:adapter :slack :room \"C123\"}}}"}
   users (atom {}))
 
 (defn create-user
@@ -62,14 +67,14 @@
 (defn update-user [source id attrs]
   (debug "update-user" source id attrs)
   (let [user-key {:adapter (:adapter source) :id id}]
-    ; ensure user exists
-    (or (get @users user-key)
-        ; the user might not exist if an event came through for a channel that
-        ; yetibot wasn't in, since yetibot only builds user models for users it
-        ; can listen to in the channels that it's in.
-        (throw
-          (ex-info (str "User " user-key " doesn't exist")
-                   {:causes user-key})))
+    ;; ensure user exists
+    (when-not (get @users user-key)
+      ;; the user might not exist if an event came through for a channel that
+      ;; yetibot wasn't in, since yetibot only builds user models for users it
+      ;; can listen to in the channels that it's in.
+      (throw
+        (ex-info (str "User " user-key " doesn't exist")
+                 {:causes user-key})))
     (swap! users update-in [user-key] merge attrs)))
 
 (defn remove-user

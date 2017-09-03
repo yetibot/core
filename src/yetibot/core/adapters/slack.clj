@@ -18,7 +18,7 @@
      [reactions :as reactions]
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
-    [taoensso.timbre :as log :refer [debug info warn error]]
+    [taoensso.timbre :as timbre :refer [debug info warn error]]
     [yetibot.core.config-mutable :refer [get-config apply-config!]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
@@ -122,19 +122,19 @@
 ;; events
 
 (defn on-channel-join [e]
-  (log/info "channel join" e)
+  (timbre/info "channel join" e)
   (let [cs (chat-source (:channel e))
         user-model (users/get-user cs (:user e))]
     (handle-raw cs user-model :enter nil)))
 
 (defn on-channel-leave [e]
-  (log/info "channel leave" e)
+  (timbre/info "channel leave" e)
   (let [cs (chat-source (:channel e))
         user-model (users/get-user cs (:user e))]
     (handle-raw cs user-model :leave nil)))
 
 (defn on-message-changed [{:keys [channel] {:keys [user text]} :message} config]
-  (log/info "message changed")
+  (timbre/info "message changed")
   (let [[chan-name entity] (entity-with-name-by-id config {:channel channel
                                                            :user user})
         cs (chat-source chan-name)
@@ -146,8 +146,8 @@
                   (unencode-message text)))))
 
 (defn on-message [conn config event]
-  (log/info "message" event)
-  (log/info "platform-name" (a/platform-name *adapter*))
+  (timbre/info "message" event)
+  (timbre/info "platform-name" (a/platform-name *adapter*))
   (if-let [subtype (:subtype event)]
     ; handle the subtype
     (condp = subtype
@@ -168,37 +168,39 @@
                       :message
                       (unencode-message (:text event))))))))
 
-(defn on-hello [event] (log/debug "hello" event))
+(defn on-hello [event] (timbre/debug "Hello, you are connected to Slack" event))
 
-(defn on-connect [e] (log/debug "connected"))
+(defn on-connect [e] (timbre/debug "connected"))
 
 (declare restart)
 
 (defn on-close [conn config status]
-  (log/info "close" (:name config) status)
+  (timbre/info "close" (:name config) status)
   (when (not= (:reason status) "Shutdown")
     (try-try-again
       {:decay 1.1 :sleep 5000 :tries 500}
       (fn []
-        (log/info "attempt no. " rb/*try* " to rereconnect to slack")
-        (when rb/*error* (log/info "previous attempt errored:" rb/*error*))
-        (when rb/*last-try* (log/warn "this is the last attempt"))
+        (timbre/info "attempt no." rb/*try* " to rereconnect to slack")
+        (when rb/*error* (timbre/info "previous attempt errored:" rb/*error*))
+        (when rb/*last-try* (timbre/warn "this is the last attempt"))
         (restart conn config)))))
 
 (defn on-error [exception]
-  (log/error "error" exception))
+  (timbre/error "error" exception))
 
 (defn handle-presence-change [e]
   (let [active? (= "active" (:presence e))
         id (:user e)
         source (select-keys (base-chat-source) [:adapter])]
+    (when active?
+      (debug "User is active:" (pr-str e)))
     (users/update-user source id {:active? active?})))
 
 (defn on-presence-change [e]
   (handle-presence-change e))
 
 (defn on-manual-presence-change [e]
-  (log/debug "manual presence changed" e)
+  (timbre/debug "manual presence changed" e)
   (handle-presence-change e))
 
 (defn room-persist-edn
@@ -218,23 +220,23 @@
 (defn on-channel-joined
   "Fires when yetibot gets invited and joins a channel or group"
   [e]
-  (log/debug "channel joined" e)
+  (timbre/debug "channel joined" e)
   (let [c (:channel e)
         {:keys [uuid room] :as cs} (chat-source (:id c))
         user-ids (:members c)]
     (room-persist-edn uuid room true)
-    (log/debug "adding chat source" cs "for users" user-ids)
+    (timbre/debug "adding chat source" cs "for users" user-ids)
     (dorun (map #(users/add-chat-source-to-user cs %) user-ids))))
 
 (defn on-channel-left
   "Fires when yetibot gets kicked from a channel or group"
   [e]
-  (log/debug "channel left" e)
+  (timbre/debug "channel left" e)
   (let [c (:channel e)
         {:keys [uuid room] :as cs} (chat-source c)
         users-in-chan (users/get-users cs)]
     (room-persist-edn uuid room false)
-    (log/debug "remove users from" cs (map :id users-in-chan))
+    (timbre/debug "remove users from" cs (map :id users-in-chan))
     (dorun (map (fn [u] (users/remove-user cs (:id u))) users-in-chan))))
 
 ;; users
@@ -243,33 +245,37 @@
   (filter #((-> % :members set) user-id) chans-or-grps))
 
 (defn reset-users-from-conn [conn]
+  (debug (timbre/color-str :blue "reset-users-from-conn"))
   (let [groups (-> @conn :start :groups)
         channels (-> @conn :start :channels)
         users (-> @conn :start :users)]
-    (dorun
-      (map
-        (fn [{:keys [id] :as user}]
-          (let [filter-for-user (partial filter-chans-or-grps-containing-user id)
-                ; determine which channels and groups the user is in
-                chans-or-grps-for-user (concat (filter-for-user channels)
-                                               (filter-for-user groups))
-                active? (= "active" (:presence user))
-                ; turn the list of chans-or-grps-for-user into a list of chat sources
-                chat-sources (set (map (comp chat-source chan-or-group-name) chans-or-grps-for-user))
-                ; create a user model
-                user-model (users/create-user (:name user) active? (assoc user :mention-name (str "<@" (:id user) ">")))]
-            (if (empty? chat-sources)
-              (users/add-user-without-room (:adapter (base-chat-source)) user-model)
-              (dorun
-                ; for each chat source add a user individually
-                (map (fn [cs] (users/add-user cs user-model)) chat-sources)))))
-        users))))
+    (run!
+      (fn [{:keys [id] :as user}]
+        (let [filter-for-user (partial filter-chans-or-grps-containing-user id)
+              ; determine which channels and groups the user is in
+              chans-or-grps-for-user (concat (filter-for-user channels)
+                                             (filter-for-user groups))
+              active? (= "active" (:presence user))
+              ; turn the list of chans-or-grps-for-user into a list of chat sources
+              chat-sources (set (map (comp chat-source chan-or-group-name)
+                                     chans-or-grps-for-user))
+              ; create a user model
+              user-model (users/create-user
+                           (:name user) active?
+                           (assoc user :mention-name
+                                  (str "<@" (:id user) ">")))]
+          (if (empty? chat-sources)
+            (users/add-user-without-room
+              (:adapter (base-chat-source)) user-model)
+            ;; for each chat source add a user individually
+            (run! (fn [cs] (users/add-user cs user-model)) chat-sources))))
+      users)))
 
 ;; lifecycle
 
 (defn stop [conn]
   (when @conn
-    (log/info "Closing" @conn)
+    (timbre/info "Closing" @conn)
     (slack/send-event (:dispatcher @conn) :close))
   (reset! conn nil))
 
@@ -277,18 +283,18 @@
   "conn is a reference to an atom.
    config is a map"
   [conn config]
-  (reset! conn (slack/connect (slack-config config)
-                              :on-connect on-connect
-                              :on-error on-error
-                              :on-close (partial on-close conn config)
-                              :presence_change on-presence-change
-                              :channel_joined on-channel-joined
-                              :group_joined on-channel-joined
-                              :channel_left on-channel-left
-                              :group_left on-channel-left
-                              :manual_presence_change on-manual-presence-change
-                              :message (partial on-message conn config)
-                              :hello on-hello))
+  (reset! conn (slack/start (slack-config config)
+                            :on-connect on-connect
+                            :on-error on-error
+                            :on-close (partial on-close conn config)
+                            :presence_change on-presence-change
+                            :channel_joined on-channel-joined
+                            :group_joined on-channel-joined
+                            :channel_left on-channel-left
+                            :group_left on-channel-left
+                            :manual_presence_change on-manual-presence-change
+                            :message (partial on-message conn config)
+                            :hello on-hello))
   (reset-users-from-conn conn))
 
 (defn start [adapter conn config]
@@ -341,9 +347,14 @@
 
   (a/send-msg [_ msg] (send-msg config msg))
 
-  (a/join [_ room] (str "Slack bots such as myself can't join rooms on their own. Use /invite @yetibot from the channel you'd like me to join instead. ✌️"))
+  (a/join [_ room]
+    (str
+      "Slack bots such as myself can't join rooms on their own. Use /invite "
+      "@yetibot from the channel you'd like me to join instead.✌️"))
 
-  (a/leave [_ room] (str "Slack bots such as myself can't leave rooms on their own. Use /kick @yetibot from the channel you'd like me to leave instead. 👊"))
+  (a/leave [_ room]
+    (str "Slack bots such as myself can't leave rooms on their own. Use /kick "
+         "@yetibot from the channel you'd like me to leave instead. 👊"))
 
   (a/chat-source [_ room] (chat-source room))
 
