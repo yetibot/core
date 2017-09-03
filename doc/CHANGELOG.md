@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.11 (Unreleased)
+
+- Support passing extra data across pipes -
+  [#28](https://github.com/yetibot/yetibot.core/pull/28)
+
 ## 0.4.10
 
 - Upgrade all the outdated deps
