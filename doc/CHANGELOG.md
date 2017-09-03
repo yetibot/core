@@ -4,6 +4,8 @@
 
 - Support passing extra data across pipes -
   [#28](https://github.com/yetibot/yetibot.core/pull/28)
+- Fix errors on Slack startup -
+  [#680](https://github.com/yetibot/yetibot/issues/680)
 
 ## 0.4.10
 
