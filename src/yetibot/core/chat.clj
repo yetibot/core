@@ -87,8 +87,7 @@
   [d]
   (when-not (:suppress (meta d))
     (let [[formatted flattened] (fmt/format-data-structure d)]
-      (debug "formatted is" formatted)
-      (debug "flattened is" flattened)
+      (debug "formatted:" (pr-str formatted))
       (cond
         ; send each item in the coll as a separate message if it contains images and
         ; the total length of the collection is less than 20
@@ -104,8 +103,6 @@
 ;   (doseq [n @active-chat-namespaces]
 ;     (when-let [send-to-all (deref (ns-resolve n 'send-to-all))]
 ;       (send-to-all msg))))
-
-
 
 (defn all-rooms []
   "Return a collections of vectors containing:

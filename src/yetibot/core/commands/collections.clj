@@ -1,8 +1,11 @@
 (ns yetibot.core.commands.collections
   (:require
+    [clojure.pprint :refer [pprint]]
+    [cheshire.core :as json]
     [yetibot.core.interpreter :refer [handle-cmd]]
-    [taoensso.timbre :refer [info warn error]]
+    [taoensso.timbre :as timbre :refer [info warn error]]
     [clojure.string :as s]
+    [json-path :as jp]
     [yetibot.core.hooks :refer [cmd-hook]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.util.format :refer [format-exception-log]]
@@ -370,6 +373,8 @@
   "keys <map> # return the keys from <map>"
   {:yb/cat #{:util}}
   [{items :opts}]
+  (timbre/debug (timbre/color-str :blue "keys")
+                (timbre/color-str :green (pr-str items)))
   (if (map? items)
     (keys items)
     (split-kvs-with first items)))
@@ -389,7 +394,7 @@
 (cmd-hook #"vals"
           _ vals-cmd)
 
-; raw
+;; raw
 (defn raw-cmd
   "raw <coll> # output a string representation of the raw collection"
   {:yb/cat #{:util}}
@@ -398,4 +403,38 @@
 
 
 (cmd-hook #"raw"
-          _ raw-cmd)
+  _ raw-cmd)
+
+;; data
+
+(defn extract-data-cmd
+  "data <path> # extract data from the previous command with json-path syntax"
+  {:yb/cat #{:util}}
+  [{path :match
+    :keys [args data]}]
+  (info (timbre/color-str :blue "extra-data-cmd") path \newline
+        (timbre/color-str :blue (pr-str data)))
+  (if data
+    (jp/at-path path data)
+    "There is no `data` from the previous command 🤔"))
+
+(defn show-data-cmd
+  "data show # pretty print data from the previous command"
+  {:yb/cat #{:util}}
+  [{:keys [data]}]
+  (if data
+    (with-out-str (pprint data))
+    "There is no `data` from the previous command 🤔"))
+
+(defn data-cmd
+  "data # return the raw data output from the previous command"
+  {:yb/cat #{:util}}
+  [{:keys [data]}]
+  (if data
+    data
+    "There is no `data` from the previous command 🤔"))
+
+(cmd-hook #"data"
+  #"show" show-data-cmd
+  #".+" extract-data-cmd
+  _ data-cmd)
