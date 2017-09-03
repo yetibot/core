@@ -17,7 +17,7 @@
       "it wants to make your life easier;"
       \newline
       "it wants you to have fun.")
-    :about/author "Trevor Hartman"}
+    :about/author "@devth"}
    :result/value
    ["https://github.com/devth/yetibot/raw/master/img/yetibot_final.png?raw=true"
     "Yetibot is a chat bot written in Clojure;"

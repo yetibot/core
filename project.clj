@@ -80,6 +80,11 @@
                  [cheshire "5.8.0"]
                  [prismatic/schema "1.1.6"]
 
+                 ;; use fork until PR is merged with support for namespaced
+                 ;; keywords:
+                 ;; https://github.com/gga/json-path/pull/12
+                 [devth/json-path "1.0.1-SNAPSHOT"]
+
                  ; utils
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.4.0"]

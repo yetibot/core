@@ -37,6 +37,10 @@
         {previous-value :value
          previous-data :data} acc
         possible-opts (to-coll-if-contains-newlines previous-value)]
+
+    (debug "previous value" (pr-str previous-value))
+    (debug "previous data" (pr-str previous-data))
+
     (if (> @(:skip-next-n acc) 0)
       (do
         (swap! (:skip-next-n acc) dec)
