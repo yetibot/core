@@ -67,7 +67,10 @@
 
 (defn start-web-server []
   (init)
-  (reset! web-server (run-server (app) {:join? false :daemon? true :port 3000})))
+  (let [port (or (env :port) 3000)]
+    (timbre/info "Starting web server on port" port)
+    (reset! web-server
+            (run-server (app) {:join? false :daemon? true :port port}))))
 
 (defn stop-web-server []
   (when-not (nil? @web-server)

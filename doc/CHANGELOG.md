@@ -1,6 +1,11 @@
 # yetibot.core change log
 
-## 0.4.11 (Unreleased)
+## 0.4.12
+
+- Run the web server on port specified by environment variable `PORT` defaulting
+  to 3000 if not specified
+
+## 0.4.11
 
 - Support passing extra data across pipes -
   [#28](https://github.com/yetibot/yetibot.core/pull/28)
