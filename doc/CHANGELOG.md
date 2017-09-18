@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.13
+
+- Fix reading string port from the environment as an integer
+
 ## 0.4.12
 
 - Run the web server on port specified by environment variable `PORT` defaulting
