@@ -1,4 +1,4 @@
-(defproject yetibot.core "0.4.13-SNAPSHOT"
+(defproject yetibot.core "0.4.13"
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/yetibot/yetibot.core"
@@ -83,7 +83,7 @@
                  ;; use fork until PR is merged with support for namespaced
                  ;; keywords:
                  ;; https://github.com/gga/json-path/pull/12
-                 [devth/json-path "1.0.1-SNAPSHOT"]
+                 [json-path "1.0.1"]
 
                  ; utils
                  [clj-stacktrace "0.2.8"]
