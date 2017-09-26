@@ -9,7 +9,10 @@
   },
   "scripts": {
     "test": "npm test",
-    "start": "webpack-dev-server"
+    "start": "webpack-dev-server",
+    "dev": "webpack-dev-server --hot",
+    "build": "webpack",
+    "build_prod": "webpack -p"
   },
   "repository": {
     "type": "git",
@@ -33,9 +36,11 @@
     "node-sass": "^4.5.3",
     "sass-loader": "^6.0.6",
     "style-loader": "^0.18.2",
-    "webpack": "^3.6.0"
+    "webpack": "^3.6.0",
+    "webpack-dev-server": "^2.8.2"
   },
   "dependencies": {
+    "bulma": "^0.5.3",
     "react": "^15.6.1",
     "react-dom": "^15.6.1"
   }
