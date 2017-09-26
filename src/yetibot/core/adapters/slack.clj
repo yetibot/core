@@ -91,9 +91,16 @@
   "Slack gets fancy with URL detection, channel names, user mentions, as
    described in https://api.slack.com/docs/formatting. This can break support
    for things where YB is expecting a URL (e.g. configuring Jenkins), so strip
-   it for now. Replaces <X|Y> with Y."
+   it for now. Replaces <X|Y> with Y.
+
+   Secondly, as of 2017ish first half, it Slack started mysteriously encoding
+   @here and @channel as <!here> and <!channel>. Wat. Decode that noise.
+
+   <!here> becomes @here
+   <!channel> becomes @channel"
   [body]
   (-> body
+    (s/replace  #"\<\!(here|channel)\>" "@$1")
     (s/replace #"\<(.+)\|(\S+)\>" "$2")
     (s/replace #"\<(\S+)>" "$1")
     html-decode))

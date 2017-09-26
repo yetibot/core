@@ -71,16 +71,16 @@
    :sound
    :kick"
   [chat-source user event-type body]
-  ; only :message has a body
+  ;; only :message has a body
   (go
     (when body
-      ; see if it looks like a command
+      ;; see if it looks like a command
       (when-let [parsed-cmds
                  (or
-                   ; if it starts with a command prefix (!) it's a command
+                   ;; if it starts with a command prefix (!) it's a command
                    (when-let [[_ body] (extract-command body config-prefix)]
                      [(parser body)])
-                   ; otherwise, check to see if there are embedded commands
+                   ;; otherwise, check to see if there are embedded commands
                    (embedded-cmds body))]
         (with-fresh-db
           (doall

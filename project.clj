@@ -12,7 +12,9 @@
   ; :aot [yetibot.core.init]
   :main yetibot.core.init
   :plugins [[lein-environ "1.0.3"]]
-  :profiles {:dev {:plugins [[venantius/ultra "0.5.1"]]}
+  :profiles {:profiles/dev {}
+             :dev [:profiles/dev
+                   {:plugins [[venantius/ultra "0.5.1"]]}]
              :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"

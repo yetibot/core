@@ -1,5 +1,6 @@
 (ns yetibot.core.test.adapters.slack
   (:require
+    [clojure.string :as s]
     [yetibot.core.adapters.adapter :as a]
     [yetibot.core.adapters.init :as ai]
     [yetibot.core.adapters.slack :refer :all]
@@ -46,7 +47,14 @@
            (unencode-message "Why does slack surround URLs with cruft? Jerk. <https://imgflip.com> .base-img[src!=''] src"))))
   (testing "Mutliple urls"
     (is (= "Foo https://imgflip.com bar https://www.google.com"
-           (unencode-message "Foo <https://imgflip.com> bar <https://www.google.com>")))))
+           (unencode-message "Foo <https://imgflip.com> bar <https://www.google.com>"))))
+  (testing "Replace Slack's weird @channel and @here encodings"
+    (is (= (unencode-message "<!here> Slaaaaaaaaaaaaaaack")
+           "@here Slaaaaaaaaaaaaaaack")
+        "why slack? whyyyyy?")
+    (is (= (unencode-message "<!channel> also")
+           "@channel also")
+        "just provide the raw text people")))
 
 (deftest adapters-tests
   (comment

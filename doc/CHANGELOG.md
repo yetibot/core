@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.14
+
+- Use default port of 3003
+- Fix encoding of @here and @channel in Slack
+
 ## 0.4.13
 
 - Fix reading string port from the environment as an integer

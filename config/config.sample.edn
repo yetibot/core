@@ -34,7 +34,7 @@
         [{:user "",
           :servers [{:host "", :name ""} {:host "", :name ""}],
           :key "path-to-key"}]},
-  :url "http://localhost:3000",
+  :url "http://localhost:3003",
   :ebay {:appid ""},
   :giphy {:key ""},
   :core {:version "0.4.0-SNAPSHOT"},
