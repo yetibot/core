@@ -12,3 +12,5 @@ pom.xml.asc
 profiles.clj
 *.iml
 .idea
+browser
+node_modules
