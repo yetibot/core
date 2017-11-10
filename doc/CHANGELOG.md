@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.15
+
+- Prevent IPV6 issues with nrepl start-server
+
 ## 0.4.14
 
 - Use default port of 3003
