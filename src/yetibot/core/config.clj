@@ -19,6 +19,16 @@
        vals
        (reduce merge)))
 
+
+(defn prefixed-env-vars
+  "Return a map of all env vars with known prefixes"
+  []
+  (into {} (filter (fn [[k v]]
+                     (some
+                       (fn [prefix] (.startsWith (name k) (name prefix)))
+                       config-prefixes))
+                   env)))
+
 (defn config-from-env-or-file
   "If a `CONFIG_PATH` env var is specified, load config from it.
    Otherwise, load config from env and explode it into nested maps."
@@ -26,12 +36,9 @@
   (merge-possible-prefixes
     (if-let [path (env :config-path)]
       (uc/load-edn! path)
-      (explode
-        (into {} (filter (fn [[k v]]
-                           (some
-                             (fn [prefix] (.startsWith (name k) (name prefix)))
-                             config-prefixes))
-                         env))))))
+      (let [env-vars (prefixed-env-vars)]
+        (info "Extracting config from:" \newline (with-out-str (pprint env-vars)))
+        (explode env-vars)))))
 
 (defonce ^:private config (atom (config-from-env-or-file)))
 
