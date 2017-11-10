@@ -57,6 +57,8 @@
 (defonce hook (obs-hook all-event-types #'obs-handler))
 
 (defn wire-observer
+  "Simply acknowledges that the observe was created or replaced. The wiring is
+   done implicitly in obs-handler which pulls observers out of the db."
   [{:keys [event-type pattern cmd user]}]
   (let [existing (lookup pattern)
         re (re-pattern pattern)]
