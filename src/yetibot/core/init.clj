@@ -22,7 +22,9 @@
   (if-let [c (mconfig/reload-config!)]
     (do
       (welcome-message!)
-      (start-server :port 6789)
+      ;; Note: if you don't set :bind it defaults to :: which may not work if it
+      ;; resolves to an IPV6 stack and you're running in Docker
+      (start-server :port 6789 :bind "localhost")
       (web/start-web-server)
       (db/start)
       (logging/start)
