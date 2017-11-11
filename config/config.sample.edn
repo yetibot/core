@@ -51,7 +51,7 @@
               :default {:job "default-job-name"}}
              {:name "yetibot.core"
               :uri "http://yetibot.core/"}]},
-  :endpoint "http://yetibot.decideit.org",
+  :endpoint "http://my-yetibot.com",
   :log {:level "debug"},
   :s3 {:secret {:key ""},
        :access {:key ""}},
