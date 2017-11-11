@@ -37,10 +37,8 @@
   :url "http://localhost:3003",
   :ebay {:appid ""},
   :giphy {:key ""},
-  :core {:version "0.4.0-SNAPSHOT"},
   :weather {:wunderground {:key "" :default {:zip ""}}},
-  :access {:token "a6a614188ac9d06601b5a93e435e446496aa4f61"},
-  :command {:prefix ""}
+  :command {:prefix "!"}
   ;; the default command to fall back to if no other commands match
   :default {:command "giphy"}
   :jenkins {:cache {:ttl "3600000"},
