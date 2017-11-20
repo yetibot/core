@@ -10,6 +10,7 @@
                              [[:user-id :string]
                               [:pattern :string]
                               [:user-pattern :string]
+                              [:channel-pattern :string]
                               [:event-type :string]
                               [:cmd :string]]))
 
