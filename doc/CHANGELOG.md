@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.16 (Unreleased)
+
+- Room specific observers -
+  [#29](https://github.com/yetibot/yetibot.core/pull/29)
+
 ## 0.4.15
 
 - Prevent IPV6 issues with nrepl start-server
