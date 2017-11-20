@@ -2,7 +2,7 @@
   (:require
     [clojure.string :as s :refer [split trim]]
     [clojure.tools.cli :refer [parse-opts]]
-    [taoensso.timbre :refer [debug info warn error]]
+    [taoensso.timbre :refer [color-str debug info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.db.observe :as model]
     [yetibot.core.handler :refer [handle-unparsed-expr all-event-types]]
@@ -19,6 +19,9 @@
     :default "message"
     :validate [#(contains? all-event-types (keyword %))
                (str "Must be one of: " (s/join ", " (map name all-event-types)))]]
+   ["-c" "--channel-pattern CHANNEL"
+    "Channel(s) to fire this observer on. Accepts a regex that may match more
+     than one channel"]
    ["-u" "--user-pattern USER" "Username pattern to trigger observer for"]])
 
 (defn lookup [pattern] (model/find-first {:pattern pattern}))
@@ -32,32 +35,42 @@
 
 ;; Use a single obs-hook to monitor all dynamic observers. That way when it's
 ;; removed from the database, it won't be checked here either.
-(defn obs-handler [event-info]
+(defn obs-handler [{:keys [body user chat-source event-type] :as event-info}]
   (let [observers (model/find-all)
-        body (:body event-info)
-        user (:user event-info)
-        chat-source (:chat-source event-info)
+        channel (:room chat-source)
         username (:username user)]
     (when-not (is-command? body) ;; ignore commands
+      ;; (info "obs-handler" (color-str :blue event-info))
       ;; check all known observers from the db to see if any fired
       (doseq [observer observers]
         (let [event-type-matches? (= (:event-type event-info)
                                      (keyword (:event-type observer)))
-              user-pattern (:user-pattern observer)
+
+              {:keys [user-pattern channel-pattern pattern cmd]}
+              observer
+
               user-match? (or (nil? user-pattern)
                               (re-find (re-pattern user-pattern) username))
+
+              channel-match? (or (nil? channel-pattern)
+                                 (re-find (re-pattern channel-pattern) channel))
+
               match? (and event-type-matches?
                           user-match?
-                          (re-find (re-pattern (:pattern observer)) body))]
+                          channel-match?
+                          (re-find (re-pattern pattern) body))]
           (when match?
-            (let [expr (format "echo %s | %s" body (:cmd observer))]
+            (let [expr (format "echo %s | %s" body cmd)]
               (debug "expr:" expr)
               (chat-data-structure (handle-unparsed-expr chat-source user expr)))))))))
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
 
 (defn wire-observer
-  [{:keys [event-type pattern cmd user]}]
+  "Simply acknowledges that the observe was created or replaced. The wiring is
+   done implicitly in obs-handler which pulls observers out of the db."
+  [{:keys [event-type pattern cmd user] :as observer}]
+  (debug "wire-observer" (color-str :blue observer))
   (let [existing (lookup pattern)
         re (re-pattern pattern)]
     (if existing
@@ -69,8 +82,7 @@
   (parse-opts (map trim (split opts-str #" ")) cli-options))
 
 (defn observe-cmd
-  "observe [-e event-type] [-u user-pattern] <pattern> = <cmd> # create an
-   observer for <pattern>.
+  "observe [-e event-type] [-u user-pattern] [-c channel-pattern] <pattern> = <cmd>
 
    When a match occurs, it'll be passed via normal pipe-semantics to <cmd>, e.g.
    echo <matched-text> | <cmd>. <cmd> may contain a piped expression, but it
@@ -81,6 +93,9 @@
 
    [user-pattern] is an optional regex pattern. When specified, it creates an
    observer that only fires for a specific user or users that match the pattern.
+
+   [channel-pattern] is an optional regex pattern. When specified it creates an
+   observer that only fires for matching channel names.
 
    Examples:
    1. Generate a meme when appropriate
@@ -95,26 +110,31 @@
   (let [parsed-opts (parse-observe-opts opts-str)]
     (if-let [parse-errs (:errors parsed-opts)]
       (s/join " " parse-errs)
-      (let [event-type (-> parsed-opts :options :event-type)
-            user-pattern (-> parsed-opts :options :user-pattern)
+      (let [{:keys [event-type user-pattern channel-pattern]}
+            (:options parsed-opts)
+
             pattern (->> parsed-opts :arguments (s/join " "))
+
             obs-info (cond-> {:user-id (:id user)
                               :event-type event-type
                               :pattern pattern
                               :cmd (remove-surrounding-quotes cmd)}
-                       user-pattern (assoc :user-pattern user-pattern))]
-        (info "create observer" (pr-str obs-info))
+                       user-pattern (assoc :user-pattern user-pattern)
+                       channel-pattern (assoc :channel-pattern channel-pattern))]
+        (info "create observer" (color-str :blue (pr-str obs-info)))
         ((comp wire-observer add-observer) obs-info)))))
 
 (defn list-observers
   "observe # list observers"
   {:yb/cat #{:util}}
   [_]
-  (map (fn [{:keys [user-pattern event-type pattern cmd]}]
+  (map (fn [{:keys [user-pattern channel-pattern event-type pattern cmd]}]
          (str
            pattern ": " cmd " "
            "[event type: " event-type "] "
-           (when user-pattern (str "[user pattern: " user-pattern "]"))))
+           (when user-pattern (str "[user pattern: " user-pattern "]"))
+           (when channel-pattern
+             (str "[channel pattern: " channel-pattern "]"))))
        (model/find-all)))
 
 (defn remove-observers
