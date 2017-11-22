@@ -4,6 +4,7 @@
 
 - Room specific observers -
   [#29](https://github.com/yetibot/yetibot.core/pull/29)
+- Enable enter and leave observers
 
 ## 0.4.15
 
