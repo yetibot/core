@@ -2,7 +2,7 @@
   (:require
     [yetibot.core.adapters.adapter :as a]
     [yetibot.core.models.room :as room]
-    [taoensso.timbre :refer [debug trace info warn error]]
+    [taoensso.timbre :refer [color-str debug trace info warn error]]
     [yetibot.core.util.format :as fmt]))
 
 (def ^:dynamic *adapter-uuid*
@@ -85,6 +85,12 @@
    If `d` is a nested data structure, it will attempt to recursively flatten
    or merge (if it's a map)."
   [d]
+  (debug "chat-data-structure"
+         \newline
+         (color-str :green (pr-str d))
+         \newline
+         (color-str :blue (pr-str *target*))
+         )
   (when-not (:suppress (meta d))
     (let [[formatted flattened] (fmt/format-data-structure d)]
       (debug "formatted:" (pr-str formatted))

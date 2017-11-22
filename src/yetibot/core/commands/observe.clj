@@ -36,6 +36,7 @@
 ;; Use a single obs-hook to monitor all dynamic observers. That way when it's
 ;; removed from the database, it won't be checked here either.
 (defn obs-handler [{:keys [body user chat-source event-type] :as event-info}]
+  (info "obs-handler" (color-str :blue event-info))
   (let [observers (model/find-all)
         channel (:room chat-source)
         username (:username user)]
@@ -55,14 +56,31 @@
               channel-match? (or (nil? channel-pattern)
                                  (re-find (re-pattern channel-pattern) channel))
 
+              ;; when matching on a :message event match against the body. when
+              ;; matching on any other event types, match on the username
+              body-or-username (if (= :message event-type) body username)
+
+              _ (info "body-or-username" body-or-username)
+
               match? (and event-type-matches?
                           user-match?
                           channel-match?
-                          (re-find (re-pattern pattern) body))]
+                          (or (s/blank? pattern)
+                              (re-find (re-pattern pattern) body-or-username)))]
           (when match?
-            (let [expr (format "echo %s | %s" body cmd)]
+            (let [expr (format "echo %s | %s" body-or-username cmd)]
               (debug "expr:" expr)
-              (chat-data-structure (handle-unparsed-expr chat-source user expr)))))))))
+
+              (debug "obs handle-unparsed-expr"
+                     (pr-str (handle-unparsed-expr
+                               chat-source user expr)))
+
+              (debug "chat source is" (color-str :blue (pr-str chat-source)))
+              (debug "user" (color-str :blue (pr-str user)))
+
+              (chat-data-structure (handle-unparsed-expr chat-source user expr)) 
+
+              )))))))
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
 
@@ -82,7 +100,8 @@
   (parse-opts (map trim (split opts-str #" ")) cli-options))
 
 (defn observe-cmd
-  "observe [-e event-type] [-u user-pattern] [-c channel-pattern] <pattern> = <cmd>
+  "observe [-e event-type] [-u user-pattern] [-c channel-pattern] <pattern> = <cmd> # create an observer
+
 
    When a match occurs, it'll be passed via normal pipe-semantics to <cmd>, e.g.
    echo <matched-text> | <cmd>. <cmd> may contain a piped expression, but it
@@ -128,14 +147,20 @@
   "observe # list observers"
   {:yb/cat #{:util}}
   [_]
-  (map (fn [{:keys [user-pattern channel-pattern event-type pattern cmd]}]
-         (str
-           pattern ": " cmd " "
-           "[event type: " event-type "] "
-           (when user-pattern (str "[user pattern: " user-pattern "]"))
-           (when channel-pattern
-             (str "[channel pattern: " channel-pattern "]"))))
-       (model/find-all)))
+  (if-let [observers (seq (model/find-all))]
+    (map (fn [{:keys [user-pattern channel-pattern event-type pattern cmd]}]
+           (debug "pattern" (pr-str pattern))
+           (str
+             (if-not (s/blank? pattern)
+               pattern
+               (str "[any pattern]"))
+             ": " cmd " "
+             "[event type: " event-type "] "
+             (when user-pattern (str "[user pattern: " user-pattern "]"))
+             (when channel-pattern
+               (str "[channel pattern: " channel-pattern "]"))))
+         observers)
+    "No observers have been defined yet 🤔"))
 
 (defn remove-observers
   "observe remove <pattern> # remove observer by pattern"

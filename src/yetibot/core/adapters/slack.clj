@@ -18,7 +18,7 @@
      [reactions :as reactions]
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
-    [taoensso.timbre :as timbre :refer [debug info warn error]]
+    [taoensso.timbre :as timbre :refer [color-str debug info warn error]]
     [yetibot.core.config-mutable :refer [get-config apply-config!]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
@@ -128,17 +128,19 @@
 
 ;; events
 
-(defn on-channel-join [e]
-  (timbre/info "channel join" e)
+(defn on-channel-join [{:keys [channel] :as e}]
   (let [cs (chat-source (:channel e))
         user-model (users/get-user cs (:user e))]
-    (handle-raw cs user-model :enter nil)))
+    (binding [*target* channel]
+      (timbre/info "channel join" (color-str :blue (pr-str cs)))
+      (handle-raw cs user-model :enter nil))))
 
-(defn on-channel-leave [e]
+(defn on-channel-leave [{:keys [channel] :as e}]
   (timbre/info "channel leave" e)
   (let [cs (chat-source (:channel e))
         user-model (users/get-user cs (:user e))]
-    (handle-raw cs user-model :leave nil)))
+    (binding [*target* channel]
+      (handle-raw cs user-model :leave nil))))
 
 (defn on-message-changed [{:keys [channel] {:keys [user text]} :message} config]
   (timbre/info "message changed")

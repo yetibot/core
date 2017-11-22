@@ -133,14 +133,16 @@
     (binding [*target* chan]
       (handle-raw (chat-source chan) user :message (:text info)))))
 
-(defn handle-part [a _ info]
-  (handle-raw (chat-source (:target info))
-              (create-user info) :leave nil))
+(defn handle-part [a _ {:keys [target] :as info}]
+  (binding [*target* target]
+    (handle-raw (chat-source target)
+                (create-user info) :leave nil)))
 
-(defn handle-join [a _ info]
+(defn handle-join [a _ {:keys [target] :as info}]
   (log/debug "handle-join" info)
-  (handle-raw (chat-source (:target info))
-              (create-user info) :enter nil))
+  (binding [*target* target]
+    (handle-raw (chat-source (:target info))
+                (create-user info) :enter nil)))
 
 (defn handle-nick [a _ info]
   (let [[nick] (:params info)
