@@ -1,5 +1,6 @@
 (ns yetibot.core.adapters.slack
   (:require
+    [clojure.pprint :refer [pprint]]
     [clojure.core.memoize :as memo]
     [yetibot.core.adapters.adapter :as a]
     [robert.bruce :refer [try-try-again] :as rb]
@@ -125,21 +126,22 @@
       (throw (ex-info "unknown entity type" event)))))
 
 
-
 ;; events
 
-(defn on-channel-join [{:keys [channel] :as e}]
-  (let [cs (chat-source (:channel e))
+(defn on-channel-join [{:keys [channel] :as e} config]
+  (let [[chan-name entity] (entity-with-name-by-id config {:channel channel})
+        cs (chat-source chan-name)
         user-model (users/get-user cs (:user e))]
     (binding [*target* channel]
-      (timbre/info "channel join" (color-str :blue (pr-str cs)))
+      (timbre/info "channel join" (color-str :blue (with-out-str (pprint cs))))
       (handle-raw cs user-model :enter nil))))
 
-(defn on-channel-leave [{:keys [channel] :as e}]
-  (timbre/info "channel leave" e)
-  (let [cs (chat-source (:channel e))
+(defn on-channel-leave [{:keys [channel] :as e} config]
+  (let [[chan-name entity] (entity-with-name-by-id config {:channel channel})
+        cs (chat-source chan-name)
         user-model (users/get-user cs (:user e))]
     (binding [*target* channel]
+      (timbre/info "channel leave" e)
       (handle-raw cs user-model :leave nil))))
 
 (defn on-message-changed [{:keys [channel] {:keys [user text]} :message} config]
@@ -160,8 +162,8 @@
   (if-let [subtype (:subtype event)]
     ; handle the subtype
     (condp = subtype
-      "channel_join" (on-channel-join event)
-      "channel_leave" (on-channel-leave event)
+      "channel_join" (on-channel-join event config)
+      "channel_leave" (on-channel-leave event config)
       "message_changed" (on-message-changed event config)
       ; do nothing if we don't understand
       nil)
@@ -183,9 +185,13 @@
 
 (declare restart)
 
-(defn on-close [conn config status]
+;; See https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent for the full
+;; list of status codes on a close event
+(def status-normal-close 1000)
+
+(defn on-close [conn config {:keys [status-code] :as status}]
   (timbre/info "close" (:name config) status)
-  (when (not= (:reason status) "Shutdown")
+  (when (not= status-normal-close status-code)
     (try-try-again
       {:decay 1.1 :sleep 5000 :tries 500}
       (fn []

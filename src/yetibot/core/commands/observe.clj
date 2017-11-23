@@ -1,8 +1,10 @@
 (ns yetibot.core.commands.observe
   (:require
+    [datomico.core :as dc]
+    [selmer.parser :refer [render]]
     [clojure.string :as s :refer [split trim]]
     [clojure.tools.cli :refer [parse-opts]]
-    [taoensso.timbre :refer [color-str debug info warn error]]
+    [taoensso.timbre :refer [color-str debug trace info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.db.observe :as model]
     [yetibot.core.handler :refer [handle-unparsed-expr all-event-types]]
@@ -60,26 +62,32 @@
               ;; matching on any other event types, match on the username
               body-or-username (if (= :message event-type) body username)
 
-              _ (info "body-or-username" body-or-username)
-
               match? (and event-type-matches?
                           user-match?
                           channel-match?
                           (or (s/blank? pattern)
                               (re-find (re-pattern pattern) body-or-username)))]
+
+          (trace "observer" (pr-str
+                              {:match? match?
+                               :user-match? user-match?
+                               :channel-match? channel-match?
+                               :channel channel
+                               :blank-pattern? (s/blank? pattern)}))
+
           (when match?
-            (let [expr (format "echo %s | %s" body-or-username cmd)]
-              (debug "expr:" expr)
-
-              (debug "obs handle-unparsed-expr"
-                     (pr-str (handle-unparsed-expr
-                               chat-source user expr)))
-
-              (debug "chat source is" (color-str :blue (pr-str chat-source)))
-              (debug "user" (color-str :blue (pr-str user)))
-
-              (chat-data-structure (handle-unparsed-expr chat-source user expr)) 
-
+            (let [rendered-cmd (render cmd {:username username
+                                            :channel channel})
+                  expr (if body
+                         ;; older / existing behavior for piping matched message
+                         ;; into the observer's command
+                         (format "echo %s | %s" body rendered-cmd)
+                         ;; new behavior for non-message type observers uses
+                         ;; template rendering to access the username and
+                         ;; channel name with no explicit piping behavior
+                         rendered-cmd)]
+              (info "obs expr" expr)
+              (chat-data-structure (handle-unparsed-expr chat-source user expr))
               )))))))
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
@@ -101,7 +109,6 @@
 
 (defn observe-cmd
   "observe [-e event-type] [-u user-pattern] [-c channel-pattern] <pattern> = <cmd> # create an observer
-
 
    When a match occurs, it'll be passed via normal pipe-semantics to <cmd>, e.g.
    echo <matched-text> | <cmd>. <cmd> may contain a piped expression, but it
@@ -148,14 +155,13 @@
   {:yb/cat #{:util}}
   [_]
   (if-let [observers (seq (model/find-all))]
-    (map (fn [{:keys [user-pattern channel-pattern event-type pattern cmd]}]
+    (map (fn [{:keys [id user-pattern channel-pattern event-type pattern cmd]}]
            (debug "pattern" (pr-str pattern))
            (str
-             (if-not (s/blank? pattern)
-               pattern
-               (str "[any pattern]"))
+             (if-not (s/blank? pattern) pattern (str "[any pattern]"))
              ": " cmd " "
              "[event type: " event-type "] "
+             "[id " id "] "
              (when user-pattern (str "[user pattern: " user-pattern "]"))
              (when channel-pattern
                (str "[channel pattern: " channel-pattern "]"))))
@@ -165,16 +171,19 @@
 (defn remove-observers
   "observe remove <pattern> # remove observer by pattern"
   {:yb/cat #{:util}}
-  [{[_ pattern] :match}]
-  (model/delete-all {:pattern pattern})
-  (format "observer `%s` removed" pattern))
+  [{[_ pattern-or-id] :match}]
+  (let [pattern-or-id (read-string pattern-or-id)]
+    (if (number? pattern-or-id)
+      (dc/delete pattern-or-id)
+      (model/delete-all {:pattern pattern-or-id}))
+    (format "observer `%s` removed" pattern-or-id)))
 
 (defn load-observers []
   (dorun (map wire-observer (model/find-all))))
 
 (defonce loader (future (with-fresh-db (load-observers))))
 
-(cmd-hook ["observe" #"^observer*$"]
+(cmd-hook ["observe" #"^obs(erver*)*$"]
   #"^(list)*$" list-observers
   #"remove\s+(\S+)" remove-observers
   #"(.+)\=\s*(.+)" observe-cmd)

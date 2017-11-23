@@ -7,7 +7,7 @@
     [yetibot.core.hooks :refer [cmd-hook suppress]]))
 
 (defn reply-to-cmd
-  "replyto <target> # send Yetibot's response to a target other than the current channel. IRC only for now"
+  "replyto <target> # send Yetibot's response to a target other than the current channel."
   {:yb/cat #{:util}}
   [{:keys [match chat-source] :as extra}]
   (let [[_ target args] match]
