@@ -2,9 +2,27 @@
 
 ## 0.4.16 (Unreleased)
 
+This release focuses on observer power ups 💪
+
 - Room specific observers -
   [#29](https://github.com/yetibot/yetibot.core/pull/29)
 - Enable enter and leave observers
+- Enable template access to channel name and username in observers
+  [#694](https://github.com/yetibot/yetibot/issues/694)
+
+Examples:
+
+1. Welcome users to the `#general` channel when they join:
+
+   ```
+   !obs -eenter -cgeneral = echo welcome to #general, {{username}}!
+   ```
+
+1. Send a user a private message when they join the `#dev` channel:
+
+   ```
+   !obs -eenter -cdev = "echo hi {{username}} welcome to #dev! | replyto {{username}}"
+   ```
 
 ## 0.4.15
 
