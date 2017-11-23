@@ -30,9 +30,8 @@
 
 (defn add-observer
   [observer-info]
-  (if-let [existing (lookup (:pattern observer-info))]
-    (model/update (:id existing) observer-info)
-    (model/create observer-info))
+  ;; always create - don't attempt to update
+  (model/create observer-info)
   observer-info)
 
 ;; Use a single obs-hook to monitor all dynamic observers. That way when it's
@@ -99,9 +98,7 @@
   (debug "wire-observer" (color-str :blue observer))
   (let [existing (lookup pattern)
         re (re-pattern pattern)]
-    (if existing
-      (format "Replaced existing observer %s = %s" pattern (:cmd existing))
-      (format "%s observer created" pattern))))
+    (format "%s observer created" pattern)))
 
 (defn parse-observe-opts
   [opts-str]
