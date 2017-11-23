@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## 0.4.16 (Unreleased)
+## 0.4.16
 
 This release focuses on observer power ups 💪
 
