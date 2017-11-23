@@ -24,6 +24,12 @@ Examples:
    !obs -eenter -cdev = "echo hi {{username}} welcome to #dev! | replyto {{username}}"
    ```
 
+It also works for `leave` events:
+
+```
+!obs -eleave -cdev = "echo hi {{username}} welcome to #dev! | replyto {{username}}"
+```
+
 ## 0.4.15
 
 - Prevent IPV6 issues with nrepl start-server
