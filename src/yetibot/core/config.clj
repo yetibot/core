@@ -37,7 +37,6 @@
     (if-let [path (env :config-path)]
       (uc/load-edn! path)
       (let [env-vars (prefixed-env-vars)]
-        (info "Extracting config from:" \newline (with-out-str (pprint env-vars)))
         (explode env-vars)))))
 
 (defonce ^:private config (atom (config-from-env-or-file)))

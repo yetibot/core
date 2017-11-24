@@ -34,7 +34,8 @@
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.2"]
-                 [org.clojure/java.jdbc "0.7.0"]
+                 [org.clojure/java.jdbc "0.7.3"]
+                 [org.postgresql/postgresql "42.1.4"]
 
                  [stylefruits/gniazdo-jsr356 "1.0.0"]
 
@@ -65,6 +66,7 @@
                  [slack-rtm "0.1.6"]
 
                  ; database
+                 ;; TODO remove
                  [com.datomic/datomic-free "0.9.5561.56" :exclusions [joda-time]]
                  [datomico "0.2.0"]
 
@@ -88,6 +90,7 @@
                  [json-path "1.0.1"]
 
                  ; utils
+                 [funcool/cuerdas "2.0.4"]
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.4.0"]
                  [robert/hooke "1.3.0"]

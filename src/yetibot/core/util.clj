@@ -15,13 +15,6 @@
 (defn map-to-strs [m]
   (map (fn [[k v]] (str (name k) ": " v)) m))
 
-(defmacro with-fresh-db
-  [& body]
-  `(when (bound? #'db/*uri*)
-     (binding [db/*connection* (api/connect db/*uri*)]
-       (with-latest-database
-         ~@body))))
-
 (def env
   (let [e (into {} (System/getenv))]
     (zipmap (map keyword (keys e)) (vals e))))

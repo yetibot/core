@@ -2,7 +2,6 @@
   (:require
     [clojure.set :refer [difference intersection]]
     [taoensso.timbre :refer [color-str trace debug info warn error]]
-    [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.handler]
     [clojure.string :as s]
     [yetibot.core.models.room :as r]
@@ -137,9 +136,8 @@
         ;; (debug "observed"
         ;;        (color-str :blue (map pr-str [chat-source user event-type body])))
         (when (contains? event-types event-type)
-          (with-fresh-db
-            (observer {:chat-source chat-source
-                       :event-type event-type
-                       :user user
-                       :body body})))
+          (observer {:chat-source chat-source
+                     :event-type event-type
+                     :user user
+                     :body body}))
         (callback chat-source user event-type body)))))

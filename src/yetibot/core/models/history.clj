@@ -8,7 +8,6 @@
     [datomico.core :as dc]
     [datomic.api :as d]
     [datomico.db :refer [q] :as db]
-    [yetibot.core.util :refer [with-fresh-db]]
     [datomico.action :refer [all where raw-where]]))
 
 ;;;; read
@@ -87,9 +86,6 @@
 
 ;; scratch space to experiment
 (comment
-  (with-fresh-db
-    db/*db*
-    )
   d/seek-datoms
   d/since
   )

@@ -1,17 +1,41 @@
 (ns yetibot.core.db.observe
-  (:refer-clojure :exclude [update])
-  (:require [datomico.core :as dc]
-            [datomico.db :refer [q]]
-            [datomico.action :refer [all where raw-where]]))
+  (:require
+    [cuerdas.core :refer [kebab snake]]
+    [clojure.java.jdbc :as sql]
+    [yetibot.core.db.util :refer [config qualified-table-name]]))
 
-(def model-ns :observe)
+(def schema
+  {:schema/table "observer"
+   :schema/specs [[:id :serial "PRIMARY KEY"]
+                  [:user-id :text "NOT NULL"]
+                  [:pattern :text]
+                  [:user-pattern :text]
+                  [:channel-pattern :text]
+                  [:event-type :text]
+                  [:cmd :text "NOT NULL"]]})
 
-(def schema (dc/build-schema model-ns
-                             [[:user-id :string]
-                              [:pattern :string]
-                              [:user-pattern :string]
-                              [:channel-pattern :string]
-                              [:event-type :string]
-                              [:cmd :string]]))
+(defn create-obs
+  [entity]
+  (sql/with-db-connection [db-conn (:url (config))]
+    (sql/insert!
+      db-conn
+      (qualified-table-name (:schema/table schema))
+      entity
+      {:entities snake})))
 
-(dc/create-model-fns model-ns)
+(defn delete-obs
+  [id]
+  (sql/with-db-connection [db-conn (:url (config))]
+    (sql/delete!
+      db-conn
+      (qualified-table-name (:schema/table schema))
+      ["id = ?" id])))
+
+(defn find-all-obs
+  []
+  (sql/with-db-connection [db-conn (:url (config))]
+    (sql/query
+      db-conn
+      [(str "SELECT * FROM "
+            (qualified-table-name (:schema/table schema)))]
+      {:identifiers kebab})))

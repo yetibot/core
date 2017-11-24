@@ -1,6 +1,5 @@
 (ns yetibot.core.commands.status
   (:require
-    [yetibot.core.util :refer [with-fresh-db]]
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.models.status :as model]
     [clj-time [core :refer [ago minutes hours days weeks years months]]]
@@ -33,7 +32,7 @@
   (let [str-chat-source (pr-str chat-source)]
     (info "add status in" str-chat-source ":" match)
     (model/add-status user str-chat-source match)
-    (with-fresh-db (show-status args))))
+    (show-status args)))
 
 (cmd-hook #"status"
           #"since (.+) (minutes*|hours*|days*|weeks*|months*)( ago)*" show-status-since

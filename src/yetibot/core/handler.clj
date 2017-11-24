@@ -1,7 +1,6 @@
 (ns yetibot.core.handler
   (:require
     [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.util.format :refer [to-coll-if-contains-newlines format-exception-log]]
     [yetibot.core.parser :refer [parse-and-eval transformer parser]]
     [clojure.core.match :refer [match]]
@@ -82,17 +81,16 @@
                      [(parser body)])
                    ;; otherwise, check to see if there are embedded commands
                    (embedded-cmds body))]
-        (with-fresh-db
-          (doall
-            (map
-              #(try
-                 (->> %
-                      (handle-parsed-expr chat-source user)
-                      chat-data-structure)
-                 (catch Throwable ex
-                   (error "error handling expression:" body
-                          (format-exception-log ex))
-                   (chat-data-structure (format exception-format ex))))
-              parsed-cmds)))))))
+        (doall
+          (map
+            #(try
+               (->> %
+                    (handle-parsed-expr chat-source user)
+                    chat-data-structure)
+               (catch Throwable ex
+                 (error "error handling expression:" body
+                        (format-exception-log ex))
+                 (chat-data-structure (format exception-format ex))))
+            parsed-cmds))))))
 
 (defn cmd-reader [& args] (handle-unparsed-expr (join " " args)))

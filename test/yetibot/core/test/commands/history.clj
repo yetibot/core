@@ -7,7 +7,7 @@
 
 ;; we need a database, so load config and start the db
 (reload-config!)
-(db/repl-start)
+(db/start)
 
 (history-cmd {:chat-source {:adapter :test :room "foo"}
               :next-cmds ["scount"]

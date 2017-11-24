@@ -9,7 +9,7 @@
 
 ;; we need a database
 ;; (reload-config!)
-(db/repl-start)
+(db/start)
 
 ;; normal query for all records in history
 (comment

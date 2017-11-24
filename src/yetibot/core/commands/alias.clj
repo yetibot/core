@@ -4,7 +4,6 @@
     [clojure.string :as s]
     [yetibot.core.util.format :refer [pseudo-format-n *subst-prefix*
                                       remove-surrounding-quotes]]
-    [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [yetibot.core.util.format :refer [format-n]]
     [yetibot.core.models.help :as help]
@@ -91,7 +90,7 @@
   (cmd-unhook cmd)
   (format "alias %s removed" cmd))
 
-(defonce loader (future (with-fresh-db (load-aliases))))
+(defonce loader (future (load-aliases)))
 
 (cmd-hook #"alias"
           #"^$" list-aliases
