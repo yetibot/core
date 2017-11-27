@@ -1,15 +1,21 @@
 (ns yetibot.core.db.alias
-  (:refer-clojure :exclude [update])
-  (:require [datomico.core :as dc]
-            [datomico.db :refer [q]]
-            [datomico.action :refer [all where raw-where]]))
+  (:require
+    [yetibot.core.db.util :as db.util]))
 
 (def model-ns :alias)
 
-(def schema (dc/build-schema model-ns
-                             [[:userid :string] ; user-id was a long and can't be changed
-                              [:cmd-name :string]
-                              [:cmd :string]
-                              [:alias-cmd :string]]))
+(def schema {:schema/table "alias"
+             :schema/specs [[:id :serial "PRIMARY KEY"]
+                            [:user-id :text "NOT NULL"]
+                            [:cmd-name :text "NOT NULL"]
+                            [:cmd :text "NOT NULL"]]})
 
-(dc/create-model-fns model-ns)
+(def create (partial db.util/create (:schema/table schema)))
+
+(def delete (partial db.util/delete (:schema/table schema)))
+
+(def find-all (partial db.util/find-all (:schema/table schema)))
+
+(def find-where (partial db.util/find-where (:schema/table schema)))
+
+(def update-where (partial db.util/update-where (:schema/table schema)))

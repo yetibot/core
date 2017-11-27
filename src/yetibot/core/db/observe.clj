@@ -1,8 +1,6 @@
 (ns yetibot.core.db.observe
   (:require
-    [cuerdas.core :refer [kebab snake]]
-    [clojure.java.jdbc :as sql]
-    [yetibot.core.db.util :refer [config qualified-table-name]]))
+    [yetibot.core.db.util :as db.util]))
 
 (def schema
   {:schema/table "observer"
@@ -14,28 +12,8 @@
                   [:event-type :text]
                   [:cmd :text "NOT NULL"]]})
 
-(defn create-obs
-  [entity]
-  (sql/with-db-connection [db-conn (:url (config))]
-    (sql/insert!
-      db-conn
-      (qualified-table-name (:schema/table schema))
-      entity
-      {:entities snake})))
+(def create (partial db.util/create (:schema/table schema)))
 
-(defn delete-obs
-  [id]
-  (sql/with-db-connection [db-conn (:url (config))]
-    (sql/delete!
-      db-conn
-      (qualified-table-name (:schema/table schema))
-      ["id = ?" id])))
+(def delete (partial db.util/delete (:schema/table schema)))
 
-(defn find-all-obs
-  []
-  (sql/with-db-connection [db-conn (:url (config))]
-    (sql/query
-      db-conn
-      [(str "SELECT * FROM "
-            (qualified-table-name (:schema/table schema)))]
-      {:identifiers kebab})))
+(def find-all (partial db.util/find-all (:schema/table schema)))

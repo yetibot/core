@@ -28,7 +28,7 @@
   "Qualify the table-name with a prefix and idempotently create it"
   [table-name table-specs]
   (let [qualified-table (qualified-table-name table-name)]
-    (info "Create" qualified-table)
+    (info "Idempotently create table" qualified-table)
     (sql/db-do-commands
       (:url (config))
       (sql/create-table-ddl qualified-table table-specs

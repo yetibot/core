@@ -19,7 +19,8 @@
             expr (pseudo-format-n cmd args)]
         (handle-unparsed-expr expr)))))
 
-(defn- existing-alias [cmd-name] (model/find-first {:cmd-name cmd-name}))
+(defn- existing-alias [cmd-name]
+  (first (model/find-where {:cmd-name cmd-name})))
 
 (defn- cleaned-cmd-name [a-name]
   ; allow spaces in a-name, even though we just grab the first word to use as
@@ -41,15 +42,18 @@
               _ cmd-fn)
     ; manually add docs since the meta on cmd-fn is lost in cmd-hook
     (help/add-docs cmd-name [docstring])
+    (info "wire-alias" existing-alias)
     (if existing-alias
       (format "Replaced existing alias %s. Was `%s`" cmd-name (:cmd existing-alias))
       (format "%s alias created" cmd-name))))
 
-(defn add-alias [{:keys [cmd-name cmd userid] :as alias-info}]
-  (let [new-alias-map {:userid userid :cmd-name cmd-name :cmd cmd}]
+;; TODO next: models need a find-first and an update helper
+(defn add-alias [{:keys [cmd-name cmd user-id] :as alias-info}]
+  (let [new-alias-map {:user-id user-id :cmd-name cmd-name :cmd cmd}]
     (info "adding alias with" new-alias-map)
-    (if-let [existing (existing-alias cmd-name)]
-      (model/update (:id existing) new-alias-map)
+    (info "existing" (existing-alias cmd-name))
+    (if-let [{:keys [id] :as existing} (existing-alias cmd-name)]
+      (model/update-where {:id id} new-alias-map)
       (model/create new-alias-map)))
   alias-info)
 
@@ -68,10 +72,17 @@
   [{[_ a-name a-cmd] :match user :user}]
   (info "create alias" a-name a-cmd "user:" user)
   (let [cmd-name (cleaned-cmd-name a-name)
-        cmd (remove-surrounding-quotes a-cmd)]
+        cmd (remove-surrounding-quotes a-cmd)
+        alias-map {:user-id (:username user) :cmd-name cmd-name :cmd cmd}
+        ;; get wire-alias response before `add-alias` to determine whether it
+        ;; was updated or created
+        response (wire-alias alias-map)
+        ]
     (if (built-in? cmd-name)
       (str "Can not alias existing built-in command " a-name)
-      ((comp wire-alias add-alias) {:userid (:id user) :cmd-name cmd-name :cmd cmd}))))
+      (do
+        (add-alias alias-map)
+        response))))
 
 (defn list-aliases
   "alias # show existing aliases"
@@ -86,9 +97,12 @@
   "alias remove <alias> # remove alias by name"
   {:yb/cat #{:util}}
   [{[_ cmd] :match}]
-  (model/delete-all {:cmd-name cmd})
-  (cmd-unhook cmd)
-  (format "alias %s removed" cmd))
+  (if-let [{:keys [id]} (existing-alias cmd)]
+    (do
+      (model/delete id)
+      (cmd-unhook cmd)
+      (format "Alias %s removed" cmd))
+    (format "Could not find alias %s." cmd)))
 
 (defonce loader (future (load-aliases)))
 

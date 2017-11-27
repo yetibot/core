@@ -27,14 +27,14 @@
 (defn add-observer
   [observer-info]
   ;; always create - don't attempt to update
-  (model/create-obs observer-info)
+  (model/create observer-info)
   observer-info)
 
 ;; Use a single obs-hook to monitor all dynamic observers. That way when it's
 ;; removed from the database, it won't be checked here either.
 (defn obs-handler [{:keys [body user chat-source event-type] :as event-info}]
   (info "obs-handler" (color-str :blue event-info))
-  (let [observers (model/find-all-obs)
+  (let [observers (model/find-all)
         channel (:room chat-source)
         username (:username user)]
     (when-not (is-command? body) ;; ignore commands
@@ -161,7 +161,7 @@
   "observe # list observers"
   {:yb/cat #{:util}}
   [& _]
-  (if-let [observers (seq (model/find-all-obs))]
+  (if-let [observers (seq (model/find-all))]
     (map format-observer observers)
     "No observers have been defined yet 🤔"))
 
@@ -170,7 +170,7 @@
   {:yb/cat #{:util}}
   [{[_ id] :match}]
   (let [id (read-string id)
-        [status] (model/delete-obs id)]
+        [status] (model/delete id)]
     (if (zero? status)
       (into
         [(format "Could not remove observer %s. Are you sure it exists?" id)
@@ -179,7 +179,7 @@
       (format "Observer `%s` removed" id))))
 
 (defn load-observers []
-  (dorun (map wire-observer (model/find-all-obs))))
+  (dorun (map wire-observer (model/find-all))))
 
 (defonce loader (future (load-observers)))
 
