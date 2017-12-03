@@ -8,9 +8,7 @@
   [event-info]
   (trace "history obs" event-info)
   (let [{:keys [adapter room]} (:chat-source event-info)]
-
-    ;; TODO re-enable history obs
-    #_(h/add {:chat-source-adapter adapter
+    (h/add {:chat-source-adapter adapter
             :chat-source-room room
             :user-id (-> event-info :user :id str)
             :user-name (-> event-info :user :mention-name str)

@@ -9,23 +9,22 @@
 (reload-config!)
 (db/start)
 
-(history-cmd {:chat-source {:adapter :test :room "foo"}
+(def chat-source {:adapter :test :room "foo"})
+
+(history-cmd {:chat-source chat-source
               :next-cmds ["scount"]
               :skip-next-n (atom 0)})
 
-(def f (partial h/filter-chat-source :test "foo"))
+(history-for-cmd-sequence ["count"] chat-source)
 
-(history-for-cmd-sequence ["count"] f)
+(history-for-cmd-sequence ["random"] chat-source)
 
-(history-for-cmd-sequence ["random"] f)
+(history-for-cmd-sequence ["tail 3"] chat-source)
 
-(history-for-cmd-sequence ["tail 3"] f)
+(history-for-cmd-sequence ["head 3"] chat-source)
 
-(history-for-cmd-sequence ["head 3"] f)
+(history-for-cmd-sequence ["head"] chat-source)
 
-(history-for-cmd-sequence ["head"] f)
+(history-for-cmd-sequence ["tail"] chat-source)
 
-(history-for-cmd-sequence ["tail"] f)
-
-(history-for-cmd-sequence ["grep 3$"] f)
-
+(history-for-cmd-sequence ["grep 3$"] chat-source)
