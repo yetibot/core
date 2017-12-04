@@ -47,7 +47,6 @@
       (format "Replaced existing alias %s. Was `%s`" cmd-name (:cmd existing-alias))
       (format "%s alias created" cmd-name))))
 
-;; TODO next: models need a find-first and an update helper
 (defn add-alias [{:keys [cmd-name cmd user-id] :as alias-info}]
   (let [new-alias-map {:user-id user-id :cmd-name cmd-name :cmd cmd}]
     (info "adding alias with" new-alias-map)
