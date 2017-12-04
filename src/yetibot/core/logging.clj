@@ -2,7 +2,6 @@
   (:require
     [schema.core :as s]
     [yetibot.core.config :refer [get-config]]
-    [yetibot.core.db.log :as log]
     [taoensso.timbre.appenders.3rd-party.rolling :refer [rolling-appender]]
     [taoensso.timbre.appenders.core :refer [println-appender]]
     [taoensso.timbre
