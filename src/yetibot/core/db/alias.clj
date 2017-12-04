@@ -8,7 +8,8 @@
              :schema/specs [[:id :serial "PRIMARY KEY"]
                             [:user-id :text "NOT NULL"]
                             [:cmd-name :text "NOT NULL"]
-                            [:cmd :text "NOT NULL"]]})
+                            [:cmd :text "NOT NULL"]
+                            [:created-at :timestamp "NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')"]]})
 
 (def create (partial db.util/create (:schema/table schema)))
 

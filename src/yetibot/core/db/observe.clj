@@ -10,7 +10,8 @@
                   [:user-pattern :text]
                   [:channel-pattern :text]
                   [:event-type :text]
-                  [:cmd :text "NOT NULL"]]})
+                  [:cmd :text "NOT NULL"]
+                  [:created-at :timestamp "NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')"]]})
 
 (def create (partial db.util/create (:schema/table schema)))
 
