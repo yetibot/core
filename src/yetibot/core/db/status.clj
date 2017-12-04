@@ -6,14 +6,11 @@
 
 (def schema
   {:schema/table "status"
-   :schema/specs [[:id :serial "PRIMARY KEY"]
-                  [:user-id :text]
-                  [:chat-source-adapter :text]
-                  [:chat-source-room :text]
-                  [:status :text]
-                  [:created-at :timestamp
-                   "NOT NULL"
-                   "DEFAULT CURRENT_TIMESTAMP"]]})
+   :schema/specs (into [[:user-id :text]
+                        [:chat-source-adapter :text]
+                        [:chat-source-room :text]
+                        [:status :text]]
+                       (db.util/default-fields))})
 
 (def create (partial db.util/create (:schema/table schema)))
 

@@ -12,6 +12,12 @@
 
 (def default-table-prefix "yetibot_")
 
+(defn default-fields
+  "All tables get these fields by default"
+  []
+  [[:id :serial "PRIMARY KEY"]
+   [:created-at :timestamp "NOT NULL" "DEFAULT CURRENT_TIMESTAMP"]])
+
 (defn config []
   (or (:value (get-config config-shape [:db]))
       {:url default-db-url

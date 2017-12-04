@@ -4,15 +4,13 @@
 
 (def schema
   {:schema/table "history"
-   :schema/specs [[:id :serial "PRIMARY KEY"]
-                  [:chat-source-adapter :text]
-                  [:chat-source-room :text]
-                  [:user-id :text]
-                  [:user-name :text]
-                  [:body :text]
-                  [:is-command :boolean]
-                  [:created-at :timestamp
-                   "NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')"]]})
+   :schema/specs (into [[:chat-source-adapter :text]
+                        [:chat-source-room :text]
+                        [:user-id :text]
+                        [:user-name :text]
+                        [:body :text]
+                        [:is-command :boolean]]
+                       (db.util/default-fields))})
 
 (def create (partial db.util/create (:schema/table schema)))
 

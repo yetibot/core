@@ -4,14 +4,13 @@
 
 (def schema
   {:schema/table "observer"
-   :schema/specs [[:id :serial "PRIMARY KEY"]
-                  [:user-id :text "NOT NULL"]
-                  [:pattern :text]
-                  [:user-pattern :text]
-                  [:channel-pattern :text]
-                  [:event-type :text]
-                  [:cmd :text "NOT NULL"]
-                  [:created-at :timestamp "NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')"]]})
+   :schema/specs (into [[:user-id :text "NOT NULL"]
+                        [:pattern :text]
+                        [:user-pattern :text]
+                        [:channel-pattern :text]
+                        [:event-type :text]
+                        [:cmd :text "NOT NULL"]]
+                       (db.util/default-fields))})
 
 (def create (partial db.util/create (:schema/table schema)))
 
