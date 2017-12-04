@@ -65,12 +65,12 @@
    or a normal chat. Useful for `that` commands."
   ([chat-source cmd?] (last-chat-for-room chat-source cmd? 1))
   ([{:keys [adapter room]} cmd? history-count]
-   (first (query {:limit/clause history-count
-                  :order/clause "created_at DESC"
-                  :where/map
-                  {:is-command cmd?
-                   :chat-source-adapter (pr-str adapter)
-                   :chat-source-room room}}))))
+   (query {:limit/clause history-count
+           :order/clause "created_at DESC"
+           :where/map
+           {:is-command cmd?
+            :chat-source-adapter (pr-str adapter)
+            :chat-source-room room}})))
 
 ;; Note: these aren't currently used. If the eventually are, we should figure
 ;; out a relationally algebraic way to compose in order to avoid querying all
