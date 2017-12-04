@@ -86,12 +86,6 @@
           sql-query
           {:identifiers kebab})))))
 
-;; this function becomes unnecessary
-(defn find-where
-  [table where-map]
-  (let [[where-clause where-args] (transform-where-map where-map)]
-    (query table {:where/clause where-clause :where/args where-args})))
-
 (defn update-where
   [table where-map attrs]
   (let [[where-keys where-args] (transform-where-map where-map)]

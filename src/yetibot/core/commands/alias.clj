@@ -20,7 +20,7 @@
         (handle-unparsed-expr expr)))))
 
 (defn- existing-alias [cmd-name]
-  (first (model/find-where {:cmd-name cmd-name})))
+  (first (model/query {:where/map {:cmd-name cmd-name}})))
 
 (defn- cleaned-cmd-name [a-name]
   ; allow spaces in a-name, even though we just grab the first word to use as
