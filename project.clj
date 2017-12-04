@@ -65,11 +65,6 @@
                  [org.julienxx/clj-slack "0.5.5"]
                  [slack-rtm "0.1.6"]
 
-                 ; database
-                 ;; TODO remove
-                 [com.datomic/datomic-free "0.9.5561.56" :exclusions [joda-time]]
-                 [datomico "0.2.0"]
-
                  ; javascript evaluation
                  [evaljs "0.1.2"]
 

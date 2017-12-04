@@ -5,10 +5,6 @@
     [clojure.pprint :refer [pprint]]
     [clojure.java.jdbc :as sql]
     [yetibot.core.loader :refer [find-namespaces]]
-    [datomico.db :as db]
-    [datomico.core :as dc]
-    [datomic.api :as api]
-    [schema.core :as sch]
     [taoensso.timbre :refer [info warn error]]))
 
 (def db-ns-pattern #"(yetibot|plugins).*\.db\..+")

@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.17 (Unreleased)
+
+- Migrate from Datomic to Postgres
+
 ## 0.4.16
 
 This release focuses on observer power ups 💪

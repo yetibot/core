@@ -1,7 +1,5 @@
 (ns yetibot.core.util
   (:require
-    [datomico.db :as db :refer [with-latest-database]]
-    [datomic.api :as api]
     [clojure.string :as s]
     [robert.hooke :as rh]
     [clojure.stacktrace :as st]

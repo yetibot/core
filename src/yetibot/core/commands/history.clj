@@ -31,9 +31,9 @@
 
 ;; `history` can look ahead at next command to see if there's a head/tail, count
 ;; or grep or possibly another collection operation so it can consume that
-;; command and build it into the datomic query instead of obtaining all history
-;; then performing operations on it in memory. And if no search operation is
-;; provided, history can return only the latest 30 results
+;; command and push it down into the database instead of obtaining all history
+;; then performing operations on it in memory. If no search operation is
+;; provided, history will return only the latest 30 results.
 (defn history-cmd
   "history # show chat history"
   {:yb/cat #{:util}}

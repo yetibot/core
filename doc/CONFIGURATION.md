@@ -35,7 +35,7 @@ Yetibot supports both immutable and mutable configuration.
 
   - Chat adapters
   - Twitter credentials
-  - Datomic URI
+  - Postgres connection string
   - etc.
 
 - **Mutable config source** is an `edn` file stored at `./config/mutable.edn` by
