@@ -2,8 +2,6 @@
   (:require
     [yetibot.core.db.util :as db.util]))
 
-(def model-ns :alias)
-
 (def schema {:schema/table "alias"
              :schema/specs (into [[:user-id :text "NOT NULL"]
                                   [:cmd-name :text "NOT NULL"]
