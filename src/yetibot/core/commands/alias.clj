@@ -1,5 +1,6 @@
 (ns yetibot.core.commands.alias
   (:require
+    [clojure.set :refer [difference]]
     [taoensso.timbre :refer [info warn error]]
     [clojure.string :as s]
     [yetibot.core.util.format :refer [pseudo-format-n *subst-prefix*
@@ -61,25 +62,26 @@
     (dorun (map wire-alias alias-cmds))))
 
 (defn- built-in? [cmd]
-  (let [as (model/find-all)]
-    (and (not ((set (map :cmd-name as)) cmd))
-         ((set (keys (help/get-docs))) cmd))))
+  ;; subtract known aliases from every command registered in `help`
+  ((difference
+    (set (keys (help/get-docs)))
+    (set (map :cmd-name (model/find-all))))
+   ;; if the command is in the resulting set it's a built-in
+   cmd))
 
 (defn create-alias
   "alias <alias> = \"<cmd>\" # alias a cmd, where <cmd> is a normal command expression. Note the use of quotes, which treats the right-hand side as a literal allowing the use of pipes. Use $s as a placeholder for all args, or $n (where n is a 1-based index of which arg) as a placeholder for a specific arg."
   {:yb/cat #{:util}}
   [{[_ a-name a-cmd] :match user :user}]
   (info "create alias" a-name a-cmd "user:" user)
-  (let [cmd-name (cleaned-cmd-name a-name)
-        cmd (remove-surrounding-quotes a-cmd)
-        alias-map {:user-id (:username user) :cmd-name cmd-name :cmd cmd}
-        ;; get wire-alias response before `add-alias` to determine whether it
-        ;; was updated or created
-        response (wire-alias alias-map)
-        ]
+  (let [cmd-name (cleaned-cmd-name a-name)]
     (if (built-in? cmd-name)
       (str "Can not alias existing built-in command " a-name)
-      (do
+      (let [cmd (remove-surrounding-quotes a-cmd)
+            alias-map {:user-id (:username user) :cmd-name cmd-name :cmd cmd}
+            ;; get wire-alias response before `add-alias` to determine whether
+            ;; it was updated or created
+            response (wire-alias alias-map)]
         (add-alias alias-map)
         response))))
 
