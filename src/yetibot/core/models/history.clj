@@ -91,6 +91,20 @@
              :chat-source-adapter (pr-str adapter)
              :chat-source-room room}}))
 
+(defn items-for-user
+  "Ordered by most recent. Used by the `!` command.
+   Filters out all `!` commands to prevent infinite recursion."
+  [{:keys [chat-source user cmd? limit]}]
+  (let [{:keys [adapter room]} chat-source
+        limit (or limit 1)]
+    (reverse
+      (query
+          {:where/clause (str "chat_source_adapter=? AND chat_source_room=?"
+                              " AND is_command=? AND body NOT LIKE '!!%'")
+           :where/args  [(pr-str adapter) room cmd?]
+           :limit/clause limit
+           :order/clause "created_at DESC"}))))
+
 ;;;; formatting
 
 (defn format-entity [{:keys [user-name body] :as e}]
