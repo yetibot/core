@@ -1,12 +1,14 @@
 (ns yetibot.core.db.util
   (:require
+    [schema.core :as sch]
     [clojure.string :refer [join]]
     [cuerdas.core :refer [kebab snake]]
     [clojure.java.jdbc :as sql]
     [taoensso.timbre :refer [debug info color-str]]
     [yetibot.core.config :refer [get-config]]))
 
-(def config-shape {:url String :table {:prefix String}})
+(def config-shape {:url String
+                   (sch/optional-key :table) {:prefix String}})
 
 (def default-db-url "postgresql://localhost:5432/yetibot")
 
@@ -19,9 +21,11 @@
    [:created-at :timestamp "NOT NULL" "DEFAULT CURRENT_TIMESTAMP"]])
 
 (defn config []
-  (or (:value (get-config config-shape [:db]))
-      {:url default-db-url
-       :table {:prefix default-table-prefix}}))
+  (merge
+    ;; default
+    {:url default-db-url
+     :table {:prefix default-table-prefix}}
+    (:value (get-config config-shape [:db]))))
 
 (defn qualified-table-name
   [table-name]
