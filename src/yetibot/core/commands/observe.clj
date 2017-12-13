@@ -117,6 +117,11 @@
    echo <matched-text> | <cmd>. <cmd> may contain a piped expression, but it
    must be quoted.
 
+   Template variables are available in the <cmd> RHS:
+
+     {{channel}} - the channel that the observer triggered in
+     {{username}} - the username of the user that triggered the observer
+
    [event-type] is optional. If omitted, it will default to `message`. Valid
    event types are: `message`, `leave`, `enter`, `sound`, `kick`.
 
