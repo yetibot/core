@@ -1,4 +1,4 @@
-(defproject yetibot.core "0.4.17-SNAPSHOT"
+(defproject yetibot.core "0.4.17-alpha4-SNAPSHOT"
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/yetibot/yetibot.core"
@@ -34,7 +34,8 @@
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.2"]
-                 [org.clojure/java.jdbc "0.7.0"]
+                 [org.clojure/java.jdbc "0.7.3"]
+                 [org.postgresql/postgresql "42.1.4"]
 
                  [stylefruits/gniazdo-jsr356 "1.0.0"]
 
@@ -64,10 +65,6 @@
                  [org.julienxx/clj-slack "0.5.5"]
                  [slack-rtm "0.1.6"]
 
-                 ; database
-                 [com.datomic/datomic-free "0.9.5561.56" :exclusions [joda-time]]
-                 [datomico "0.2.0"]
-
                  ; javascript evaluation
                  [evaljs "0.1.2"]
 
@@ -88,6 +85,7 @@
                  [json-path "1.0.1"]
 
                  ; utils
+                 [funcool/cuerdas "2.0.4"]
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.4.0"]
                  [robert/hooke "1.3.0"]

@@ -1,7 +1,5 @@
 (ns yetibot.core.util
   (:require
-    [datomico.db :as db :refer [with-latest-database]]
-    [datomic.api :as api]
     [clojure.string :as s]
     [robert.hooke :as rh]
     [clojure.stacktrace :as st]
@@ -14,13 +12,6 @@
 
 (defn map-to-strs [m]
   (map (fn [[k v]] (str (name k) ": " v)) m))
-
-(defmacro with-fresh-db
-  [& body]
-  `(when (bound? #'db/*uri*)
-     (binding [db/*connection* (api/connect db/*uri*)]
-       (with-latest-database
-         ~@body))))
 
 (def env
   (let [e (into {} (System/getenv))]

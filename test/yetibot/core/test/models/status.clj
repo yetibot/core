@@ -9,11 +9,15 @@
                    default-time-zone now time-zone-for-id date-time utc
                    ago days weeks years months]]]))
 
-; helpers
+;; helpers
+
 (defn- n-days-ago [n] (-> n days ago))
+
 (defn- status-map-for-n-days-ago [n]
   {:timestamp (n-days-ago n)
    :status (str "days ago: " n)})
+
 (defn- flat-status-map-n-days-ago [n]
   ((juxt :timestamp :status) (status-map-for-n-days-ago n)))
+
 (defn- u [id] {:name (str id) :id id}) ;; user stub

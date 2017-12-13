@@ -25,7 +25,7 @@
   (require 'yetibot.core.observers.users :reload))
 
 (defn load-minimal-with-db []
-  (db/repl-start)
+  (db/start)
   (load-minimal))
 
 (defn start

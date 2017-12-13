@@ -9,7 +9,8 @@
   :google {:api {:key ""}
            :custom {:search {:engine {:id ""}}}
            :options {:safe "high"}}
-  :db {:datomic {:url "datomic:mem://yetibot"}},
+  :db {:url "postgresql://localhost:5432/yetibot"
+       :table {:prefix "yetibot_"}},
   :twitter {:search {:lang "en"},
             :consumer {:secret "", :key ""},
             :secret "",

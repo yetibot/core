@@ -1,10 +1,10 @@
 (ns yetibot.core.commands.alias
   (:require
+    [clojure.set :refer [difference]]
     [taoensso.timbre :refer [info warn error]]
     [clojure.string :as s]
     [yetibot.core.util.format :refer [pseudo-format-n *subst-prefix*
                                       remove-surrounding-quotes]]
-    [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [yetibot.core.util.format :refer [format-n]]
     [yetibot.core.models.help :as help]
@@ -20,7 +20,8 @@
             expr (pseudo-format-n cmd args)]
         (handle-unparsed-expr expr)))))
 
-(defn- existing-alias [cmd-name] (model/find-first {:cmd-name cmd-name}))
+(defn- existing-alias [cmd-name]
+  (first (model/query {:where/map {:cmd-name cmd-name}})))
 
 (defn- cleaned-cmd-name [a-name]
   ; allow spaces in a-name, even though we just grab the first word to use as
@@ -42,15 +43,17 @@
               _ cmd-fn)
     ; manually add docs since the meta on cmd-fn is lost in cmd-hook
     (help/add-docs cmd-name [docstring])
+    (info "wire-alias" existing-alias)
     (if existing-alias
       (format "Replaced existing alias %s. Was `%s`" cmd-name (:cmd existing-alias))
       (format "%s alias created" cmd-name))))
 
-(defn add-alias [{:keys [cmd-name cmd userid] :as alias-info}]
-  (let [new-alias-map {:userid userid :cmd-name cmd-name :cmd cmd}]
+(defn add-alias [{:keys [cmd-name cmd user-id] :as alias-info}]
+  (let [new-alias-map {:user-id user-id :cmd-name cmd-name :cmd cmd}]
     (info "adding alias with" new-alias-map)
-    (if-let [existing (existing-alias cmd-name)]
-      (model/update (:id existing) new-alias-map)
+    (info "existing" (existing-alias cmd-name))
+    (if-let [{:keys [id] :as existing} (existing-alias cmd-name)]
+      (model/update-where {:id id} new-alias-map)
       (model/create new-alias-map)))
   alias-info)
 
@@ -59,20 +62,28 @@
     (dorun (map wire-alias alias-cmds))))
 
 (defn- built-in? [cmd]
-  (let [as (model/find-all)]
-    (and (not ((set (map :cmd-name as)) cmd))
-         ((set (keys (help/get-docs))) cmd))))
+  ;; subtract known aliases from every command registered in `help`
+  ((difference
+    (set (keys (help/get-docs)))
+    (set (map :cmd-name (model/find-all))))
+   ;; if the command is in the resulting set it's a built-in
+   cmd))
 
 (defn create-alias
   "alias <alias> = \"<cmd>\" # alias a cmd, where <cmd> is a normal command expression. Note the use of quotes, which treats the right-hand side as a literal allowing the use of pipes. Use $s as a placeholder for all args, or $n (where n is a 1-based index of which arg) as a placeholder for a specific arg."
   {:yb/cat #{:util}}
   [{[_ a-name a-cmd] :match user :user}]
   (info "create alias" a-name a-cmd "user:" user)
-  (let [cmd-name (cleaned-cmd-name a-name)
-        cmd (remove-surrounding-quotes a-cmd)]
+  (let [cmd-name (cleaned-cmd-name a-name)]
     (if (built-in? cmd-name)
       (str "Can not alias existing built-in command " a-name)
-      ((comp wire-alias add-alias) {:userid (:id user) :cmd-name cmd-name :cmd cmd}))))
+      (let [cmd (remove-surrounding-quotes a-cmd)
+            alias-map {:user-id (:username user) :cmd-name cmd-name :cmd cmd}
+            ;; get wire-alias response before `add-alias` to determine whether
+            ;; it was updated or created
+            response (wire-alias alias-map)]
+        (add-alias alias-map)
+        response))))
 
 (defn list-aliases
   "alias # show existing aliases"
@@ -87,11 +98,14 @@
   "alias remove <alias> # remove alias by name"
   {:yb/cat #{:util}}
   [{[_ cmd] :match}]
-  (model/delete-all {:cmd-name cmd})
-  (cmd-unhook cmd)
-  (format "alias %s removed" cmd))
+  (if-let [{:keys [id]} (existing-alias cmd)]
+    (do
+      (model/delete id)
+      (cmd-unhook cmd)
+      (format "Alias %s removed" cmd))
+    (format "Could not find alias %s." cmd)))
 
-(defonce loader (future (with-fresh-db (load-aliases))))
+(defonce loader (future (load-aliases)))
 
 (cmd-hook #"alias"
           #"^$" list-aliases

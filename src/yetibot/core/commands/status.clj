@@ -1,6 +1,5 @@
 (ns yetibot.core.commands.status
   (:require
-    [yetibot.core.util :refer [with-fresh-db]]
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.models.status :as model]
     [clj-time [core :refer [ago minutes hours days weeks years months]]]
@@ -13,7 +12,7 @@
   "status # show statuses in the last 8 hours"
   {:yb/cat #{:util :info}}
   [{:keys [chat-source]}]
-  (model/format-sts (model/status-since (pr-str chat-source) (-> 8 hours ago))))
+  (model/format-sts (model/status-since chat-source (-> 8 hours ago))))
 
 (defn show-status-since
   "status since <n> <minutes|hours|days|weeks|months> ago # show status since a given time"
@@ -23,17 +22,20 @@
         unit-fn (ns-resolve 'clj-time.core (symbol unit))
         n (read-string n)]
     (if (number? n)
-      (model/format-sts (model/status-since (pr-str chat-source) (-> n unit-fn ago)))
+      (model/format-sts (model/status-since chat-source (-> n unit-fn ago)))
       (str n " is not a number"))))
 
 (defn set-status
   "status <message> # update your status"
   {:yb/cat #{:util :info}}
   [{:keys [match chat-source user] :as args}]
-  (let [str-chat-source (pr-str chat-source)]
-    (info "add status in" str-chat-source ":" match)
-    (model/add-status user str-chat-source match)
-    (with-fresh-db (show-status args))))
+  (let [{:keys [adapter room]} chat-source]
+    (model/add-status
+      {:chat-source-adapter adapter
+       :chat-source-room room
+       :user-id (:id user)
+       :status match})
+    (show-status args)))
 
 (cmd-hook #"status"
           #"since (.+) (minutes*|hours*|days*|weeks*|months*)( ago)*" show-status-since

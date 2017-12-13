@@ -1,18 +1,23 @@
 (ns yetibot.core.db.history
-  (:refer-clojure :exclude [update])
-  (:require [datomico.core :as dc]
-            [datomico.action :refer [all where raw-where]]))
+  (:require
+    [yetibot.core.db.util :as db.util]))
 
+(def schema
+  {:schema/table "history"
+   :schema/specs (into [[:chat-source-adapter :text]
+                        [:chat-source-room :text]
+                        [:user-id :text]
+                        [:user-name :text]
+                        [:body :text]
+                        [:is-command :boolean]]
+                       (db.util/default-fields))})
 
-;;;; schema
+(def create (partial db.util/create (:schema/table schema)))
 
-(def model-namespace :history)
+(def delete (partial db.util/delete (:schema/table schema)))
 
-(def schema (dc/build-schema model-namespace
-                             [[:chat-source-adapter :keyword]
-                              [:chat-source-room :string]
-                              [:user-id :string]
-                              [:user-name :string]
-                              [:body :string]]))
+(def find-all (partial db.util/find-all (:schema/table schema)))
 
-(dc/create-model-fns model-namespace)
+(def query (partial db.util/query (:schema/table schema)))
+
+(def update-where (partial db.util/update-where (:schema/table schema)))

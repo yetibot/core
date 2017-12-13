@@ -1,17 +1,19 @@
 (ns yetibot.core.db.observe
-  (:refer-clojure :exclude [update])
-  (:require [datomico.core :as dc]
-            [datomico.db :refer [q]]
-            [datomico.action :refer [all where raw-where]]))
+  (:require
+    [yetibot.core.db.util :as db.util]))
 
-(def model-ns :observe)
+(def schema
+  {:schema/table "observer"
+   :schema/specs (into [[:user-id :text "NOT NULL"]
+                        [:pattern :text]
+                        [:user-pattern :text]
+                        [:channel-pattern :text]
+                        [:event-type :text]
+                        [:cmd :text "NOT NULL"]]
+                       (db.util/default-fields))})
 
-(def schema (dc/build-schema model-ns
-                             [[:user-id :string]
-                              [:pattern :string]
-                              [:user-pattern :string]
-                              [:channel-pattern :string]
-                              [:event-type :string]
-                              [:cmd :string]]))
+(def create (partial db.util/create (:schema/table schema)))
 
-(dc/create-model-fns model-ns)
+(def delete (partial db.util/delete (:schema/table schema)))
+
+(def find-all (partial db.util/find-all (:schema/table schema)))

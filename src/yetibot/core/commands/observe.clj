@@ -1,6 +1,5 @@
 (ns yetibot.core.commands.observe
   (:require
-    [datomico.core :as dc]
     [selmer.parser :refer [render]]
     [clojure.string :as s :refer [split trim]]
     [clojure.tools.cli :refer [parse-opts]]
@@ -12,7 +11,6 @@
     [yetibot.core.util :refer [is-command?]]
     [yetibot.core.interpreter :refer [*chat-source*]]
     [yetibot.core.models.help :as help]
-    [yetibot.core.util :refer [with-fresh-db]]
     [yetibot.core.util.format :refer [remove-surrounding-quotes]]))
 
 (def cli-options
@@ -25,8 +23,6 @@
     "Channel(s) to fire this observer on. Accepts a regex that may match more
      than one channel"]
    ["-u" "--user-pattern USER" "Username pattern to trigger observer for"]])
-
-(defn lookup [pattern] (model/find-first {:pattern pattern}))
 
 (defn add-observer
   [observer-info]
@@ -91,14 +87,24 @@
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
 
+(defn format-observer
+  [{:keys [id user-id user-pattern channel-pattern event-type pattern cmd]}]
+  (str
+    (if-not (s/blank? pattern) pattern (str "[any pattern]"))
+    ": " cmd " "
+    "[event type: " event-type "] "
+    (when id (str "[id " id "] "))
+    (when user-pattern (str "[user pattern: " user-pattern "]"))
+    (when channel-pattern
+      (str "[channel pattern: " channel-pattern "]"))
+    (when user-id (str "[created by " user-id "]"))))
+
 (defn wire-observer
   "Simply acknowledges that the observe was created or replaced. The wiring is
    done implicitly in obs-handler which pulls observers out of the db."
-  [{:keys [event-type pattern cmd user] :as observer}]
+  [observer]
   (debug "wire-observer" (color-str :blue observer))
-  (let [existing (lookup pattern)
-        re (re-pattern pattern)]
-    (format "%s observer created" pattern)))
+  (format "Created observer %s" (format-observer observer)))
 
 (defn parse-observe-opts
   [opts-str]
@@ -130,15 +136,19 @@
    Observers can be easily abused. Use them with caution & restraint 🙏."
   {:yb/cat #{:util}}
   [{[_ opts-str cmd] :match user :user}]
+
+  (info "observer user" (pr-str user))
   (let [parsed-opts (parse-observe-opts opts-str)]
     (if-let [parse-errs (:errors parsed-opts)]
       (s/join " " parse-errs)
       (let [{:keys [event-type user-pattern channel-pattern]}
             (:options parsed-opts)
 
-            pattern (->> parsed-opts :arguments (s/join " "))
+            pattern (if-let [args (->> parsed-opts :arguments seq)]
+                      (s/join " " args)
+                      nil)
 
-            obs-info (cond-> {:user-id (:id user)
+            obs-info (cond-> {:user-id (:username user)
                               :event-type event-type
                               :pattern pattern
                               :cmd (remove-surrounding-quotes cmd)}
@@ -150,35 +160,28 @@
 (defn list-observers
   "observe # list observers"
   {:yb/cat #{:util}}
-  [_]
+  [& _]
   (if-let [observers (seq (model/find-all))]
-    (map (fn [{:keys [id user-pattern channel-pattern event-type pattern cmd]}]
-           (debug "pattern" (pr-str pattern))
-           (str
-             (if-not (s/blank? pattern) pattern (str "[any pattern]"))
-             ": " cmd " "
-             "[event type: " event-type "] "
-             "[id " id "] "
-             (when user-pattern (str "[user pattern: " user-pattern "]"))
-             (when channel-pattern
-               (str "[channel pattern: " channel-pattern "]"))))
-         observers)
+    (map format-observer observers)
     "No observers have been defined yet 🤔"))
 
 (defn remove-observers
-  "observe remove <pattern> # remove observer by pattern"
+  "observe remove <id> # remove observer by id"
   {:yb/cat #{:util}}
-  [{[_ pattern-or-id] :match}]
-  (let [pattern-or-id (read-string pattern-or-id)]
-    (if (number? pattern-or-id)
-      (dc/delete pattern-or-id)
-      (model/delete-all {:pattern pattern-or-id}))
-    (format "observer `%s` removed" pattern-or-id)))
+  [{[_ id] :match}]
+  (let [id (read-string id)
+        [status] (model/delete id)]
+    (if (zero? status)
+      (into
+        [(format "Could not remove observer %s. Are you sure it exists?" id)
+         ""]
+        (list-observers))
+      (format "Observer `%s` removed" id))))
 
 (defn load-observers []
   (dorun (map wire-observer (model/find-all))))
 
-(defonce loader (future (with-fresh-db (load-observers))))
+(defonce loader (future (load-observers)))
 
 (cmd-hook ["observe" #"^obs(erver*)*$"]
   #"^(list)*$" list-observers

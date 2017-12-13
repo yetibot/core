@@ -1,5 +1,15 @@
 language: clojure
 lein: lein
-script: lein test
 jdk:
   - oraclejdk8
+
+before_script:
+  - psql -c 'create database yetibot;' -U postgres
+
+env:
+  - YETIBOT_DB_URL="postgresql://postgres@localhost:5432/yetibot"
+
+script: lein test
+
+services:
+  - postgresql

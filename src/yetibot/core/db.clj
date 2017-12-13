@@ -1,30 +1,41 @@
 (ns yetibot.core.db
   (:require
-    [yetibot.core.config :refer [get-config]]
+    [cuerdas.core :refer [snake]]
+    [yetibot.core.db.util :refer [config qualified-table-name]]
+    [clojure.pprint :refer [pprint]]
+    [clojure.java.jdbc :as sql]
     [yetibot.core.loader :refer [find-namespaces]]
-    [datomico.db :as db]
-    [datomico.core :as dc]
-    [datomic.api :as api]
     [taoensso.timbre :refer [info warn error]]))
 
 (def db-ns-pattern #"(yetibot|plugins).*\.db\..+")
 
+;; TODO use clojure.spec
+(defn valid-schema-map? [schema]
+  (and (:schema/table schema) (:schema/specs schema)))
+
 (defn schemas []
   (let [nss (set (find-namespaces db-ns-pattern))]
     (apply require nss)
-    (for [n nss :when (ns-resolve n 'schema)]
+    (for [n nss :when (and (ns-resolve n 'schema)
+                           (valid-schema-map? @(ns-resolve n 'schema)))]
       (deref (ns-resolve n 'schema)))))
 
-(def default-url "datomic:mem://yetibot")
+(defn idempotent-create-table!
+  "Qualify the table-name with a prefix and idempotently create it"
+  [table-name table-specs]
+  (let [qualified-table (qualified-table-name table-name)]
+    (info "Idempotently create table" qualified-table)
+    (sql/db-do-commands
+      (:url (config))
+      (sql/create-table-ddl qualified-table table-specs
+                            {:entities snake :conditional? true}))))
 
-(defn config []
-  {:url (or (:value (get-config String [:db :datomic :url]))
-            default-url)})
-
-(defn start [& [opts]]
-  (info "☐ Loading Datomic schemas at" (:url (config)))
-  (dc/start (merge opts {:uri (:url (config))
-                         :schemas (filter identity (schemas))}))
-  (info "☑ Datomic connected"))
-
-(def repl-start (partial start {:dynamic-vars true}))
+(defn start []
+  (info "☐ Loading db schemas against" (:url (config)))
+  (let [schemas-to-migrate (filter identity (schemas))]
+    (info "Schemas" (with-out-str (pprint schemas-to-migrate)))
+    (run!
+      (fn [{:keys [schema/table schema/specs]}]
+        (idempotent-create-table! table specs))
+      schemas-to-migrate)
+    (info "☑ Database loaded")))
