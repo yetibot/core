@@ -21,7 +21,7 @@
                                (read-string (first args)))
                              1)]
     (condp = next-cmd
-      "count" (h/count-entities chat-source)
+      "count" (str (h/count-entities chat-source))
       "head" (h/format-all (h/head chat-source possible-int-arg))
       "tail" (h/format-all (h/tail chat-source possible-int-arg))
       "random" (h/format-all (h/random chat-source))
