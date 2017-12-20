@@ -6,6 +6,8 @@
   [#690](https://github.com/yetibot/yetibot/issues/690)
 - Run custom observer handlers in a separate thread and never spew an exception
   - [#448](https://github.com/yetibot/yetibot/issues/448)
+- Allow `nil` to suppress output -
+  [#618](https://github.com/yetibot/yetibot/issues/618)
 
 ## 0.4.17
 
