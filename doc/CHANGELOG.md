@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.19
+
+- Upgrade to Clojure 1.9
+
 ## 0.4.18
 
 - Allow env-based config to override individual values of edn-based config -
