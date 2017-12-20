@@ -71,19 +71,25 @@
                                :blank-pattern? (s/blank? pattern)}))
 
           (when match?
-            (let [rendered-cmd (render cmd {:username username
-                                            :channel channel})
-                  expr (if body
-                         ;; older / existing behavior for piping matched message
-                         ;; into the observer's command
-                         (format "echo %s | %s" body rendered-cmd)
-                         ;; new behavior for non-message type observers uses
-                         ;; template rendering to access the username and
-                         ;; channel name with no explicit piping behavior
-                         rendered-cmd)]
-              (info "obs expr" expr)
-              (chat-data-structure (handle-unparsed-expr chat-source user expr))
-              )))))))
+            (future
+              (let [rendered-cmd (render cmd {:username username
+                                              :channel channel})
+                    expr (if body
+                           ;; older / existing behavior for piping matched message
+                           ;; into the observer's command
+                           (format "echo %s | %s" body rendered-cmd)
+                           ;; new behavior for non-message type observers uses
+                           ;; template rendering to access the username and
+                           ;; channel name with no explicit piping behavior
+                           rendered-cmd)
+                    result (try
+                             (handle-unparsed-expr chat-source user expr)
+                             (catch Throwable e
+                               (info "Error handling observer" expr e)
+                               nil))]
+                (when result
+                  (info "obs expr" expr)
+                  (chat-data-structure result))))))))))
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
 
