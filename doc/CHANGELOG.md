@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## 0.4.17 (Unreleased)
+## 0.4.17
 
 - Migrate from Datomic to Postgres
 - Move `!` and `that` into yetibot.core
