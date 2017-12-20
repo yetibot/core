@@ -1,7 +1,7 @@
 (ns yetibot.core.util.config
   (:require
     [clojure.java.io :refer [make-parents]]
-    [taoensso.timbre :refer [color-str trace info warn error]]
+    [taoensso.timbre :refer [color-str trace debug info warn error]]
     [clojure.java.io :refer [as-file]]
     [clojure.edn :as edn]
     [schema.core :as s]))
@@ -14,12 +14,20 @@
 (defn config-exists? [path] (.exists (as-file path)))
 
 (defn load-edn!
+  [path]
+  (try
+    (edn/read-string (slurp path))
+    (catch Exception e
+      (debug "No config found at" (pr-str path))
+      nil)))
+
+(defn load-or-create-edn!
   "Attempts to load edn from `config-path`. If no file exists, a new file will
    be written with the value of `default-config`."
   [path]
   (try
     (if (config-exists? path)
-      (edn/read-string (slurp path))
+      (load-edn! path)
       (do
         (warn "Config does not exist at" (color-str :blue path) " - writing default config:" default-config)
         (make-parents path)

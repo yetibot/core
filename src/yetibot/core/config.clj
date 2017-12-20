@@ -12,6 +12,8 @@
 
 (def config-prefixes [:yb :yetibot])
 
+(def config-path (or (env :config-path) "config/config.edn"))
+
 (defn merge-possible-prefixes
   "Given a config map merge any possible allowed yb prefixes"
   [m]
@@ -33,11 +35,10 @@
   "If a `CONFIG_PATH` env var is specified, load config from it.
    Otherwise, load config from env and explode it into nested maps."
   []
-  (merge-possible-prefixes
-    (if-let [path (env :config-path)]
-      (uc/load-edn! path)
-      (let [env-vars (prefixed-env-vars)]
-        (explode env-vars)))))
+  (merge
+    (merge-possible-prefixes (uc/load-edn! config-path))
+    (let [env-vars (prefixed-env-vars)]
+      (merge-possible-prefixes (explode env-vars)))))
 
 (defonce ^:private config (atom (config-from-env-or-file)))
 

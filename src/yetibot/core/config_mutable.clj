@@ -19,7 +19,7 @@
   ([] (reload-config! (config-path)))
   ([path]
    (info "☐ Try loading config at" path)
-   (let [new-conf (uc/load-edn! path)]
+   (let [new-conf (uc/load-or-create-edn! path)]
      (reset! config new-conf)
      (when new-conf (info "☑ Config loaded"))
      new-conf)))

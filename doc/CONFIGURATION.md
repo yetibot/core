@@ -1,13 +1,20 @@
 # Configuration
 
+Yetibot can be fully configured either by environment variables, a config EDN
+file, or both. When both are specified, environment variables take precedence;
+that is, they override any values set by EDN.
+
 See [profiles.sample.clj](../config/profiles.sample.clj) or
-[config.sample.edn](../config/config.sample.edn) for examples of configuring Yetibot;
-these are equivalent and both immutable.
+[config.sample.edn](../config/config.sample.edn) for examples of configuring
+Yetibot. These are equivalent and both immutable.
 
 ## Rationale
 
+Yetibot supports both immutable and mutable configuration, for configuring
+different parts of the system.
+
 It's useful to change the configuration of a system at runtime in certain
-situtations. It would be burdensome to have to login to a system where Yetibot
+situations. It would be burdensome to have to login to a system where Yetibot
 runs, change config and restart Yetibot.
 
 On the other hand, the benefits of immutability are well-known. Explicitly
@@ -15,20 +22,20 @@ separating out the small amount of mutable config from the majority of immutable
 config lets us maximize immutability benefits and minimize negative affects of
 mutability in our system.
 
-In the future we may move all mutable config to the database. The only reason
-not to is because when using the default in-memory database all customizations
-would be lost upon restart.
+NB: In the future we may move all mutable configuration to the database.
 
 ## Modes
 
-Yetibot supports both immutable and mutable configuration.
-
 - **Immutable config sources** include both `profiles.clj` and environmental
-  variables via `environ` or loading EDN from a file by specifying a
-  `CONFIG_PATH` env var. If `CONFIG_PATH` is not specified Yetibot will attempt
-  to load all config using `environ`. Providing config via multiple methods
+  variables via `environ` or loading EDN from a file at `config/config.edn`
+  (this can be overridden with by specifying a `CONFIG_PATH` env var)
+
+  Any config specified in an EDN file will be overridden by values provided by
+  `environ`.
+
+  Providing config via multiple methods
   makes it compatible with 12-factor configuration and simple usage in container
-  environments while still retaining the ease of of use of the edn file option.
+  environments while still retaining the ease of of use of the EDN file option.
 
   The majority of configurable sub-systems use immutable config as they do not
   need to change very often. Examples include:
@@ -38,9 +45,10 @@ Yetibot supports both immutable and mutable configuration.
   - Postgres connection string
   - etc.
 
-- **Mutable config source** is an `edn` file stored at `./config/mutable.edn` by
+- **Mutable config source** is an EDN file stored at `./config/mutable.edn` by
   default. `CONFIG_MUTABLE` can optionally be defined to specify a custom
-  location. Yetibot reads and writes to this file at runtime.
+  location. Yetibot reads and writes to this file at runtime, so it should not
+  be modified by hand while Yetibot is running.
 
   A much smaller subset of commands need mutable config, e.g.:
 
@@ -78,8 +86,8 @@ YB_GIPHY_KEY="123"
 
 ### Merged result
 
-If you for some strange reason decided to configure Yetibot through all
-available means demonstrated above, the merged config data structure would be:
+If you decided to configure Yetibot through all available means demonstrated
+above, the merged config data structure would be:
 
 ```clojure
 {:log {:level "debug"}
@@ -87,3 +95,6 @@ available means demonstrated above, the merged config data structure would be:
  :twitter {:consumer {:key "foo"}}
  :giphy {:key "123"}}
 ```
+
+Note how environment variables are exploded into nested maps, powered by
+[dec](github.com/devth/dec).

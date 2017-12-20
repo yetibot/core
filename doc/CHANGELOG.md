@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.18
+
+- Allow env-based config to override individual values of edn-based config -
+  [#690](https://github.com/yetibot/yetibot/issues/690)
+
 ## 0.4.17
 
 - Migrate from Datomic to Postgres
