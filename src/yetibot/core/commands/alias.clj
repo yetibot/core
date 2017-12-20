@@ -73,17 +73,20 @@
   "alias <alias> = \"<cmd>\" # alias a cmd, where <cmd> is a normal command expression. Note the use of quotes, which treats the right-hand side as a literal allowing the use of pipes. Use $s as a placeholder for all args, or $n (where n is a 1-based index of which arg) as a placeholder for a specific arg."
   {:yb/cat #{:util}}
   [{[_ a-name a-cmd] :match user :user}]
-  (info "create alias" a-name a-cmd "user:" user)
-  (let [cmd-name (cleaned-cmd-name a-name)]
-    (if (built-in? cmd-name)
-      (str "Can not alias existing built-in command " a-name)
-      (let [cmd (remove-surrounding-quotes a-cmd)
-            alias-map {:user-id (:username user) :cmd-name cmd-name :cmd cmd}
-            ;; get wire-alias response before `add-alias` to determine whether
-            ;; it was updated or created
-            response (wire-alias alias-map)]
-        (add-alias alias-map)
-        response))))
+  (if user
+    (let [cmd-name (cleaned-cmd-name a-name)]
+      (info "create alias" a-name a-cmd "user:" user)
+      (if (built-in? cmd-name)
+        (str "Can not alias existing built-in command " a-name)
+        (let [cmd (remove-surrounding-quotes a-cmd)
+              alias-map {:user-id (:username user) :cmd-name cmd-name :cmd cmd}
+              ;; get wire-alias response before `add-alias` to determine whether
+              ;; it was updated or created
+              response (wire-alias alias-map)]
+          (add-alias alias-map)
+          response)))
+    (str "Oops, I don't know who you are 😱. This is probably a bug:
+          Yetibot should know who everyone is.")))
 
 (defn list-aliases
   "alias # show existing aliases"

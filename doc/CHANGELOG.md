@@ -8,6 +8,8 @@
   - [#448](https://github.com/yetibot/yetibot/issues/448)
 - Allow `nil` to suppress output -
   [#618](https://github.com/yetibot/yetibot/issues/618)
+- Detect nil user ID when a user tries to create an alias -
+  [#667](https://github.com/yetibot/yetibot/issues/667)
 
 ## 0.4.17
 
