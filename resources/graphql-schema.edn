@@ -1,0 +1,8 @@
+{:objects {:adapter {:fields {:name {:type String}}}}
+
+ :queries {:eval {:type String
+                  :args {:expr {:type String}}
+                  :resolve :eval}
+
+           :adapters {:type (list :adapter)
+                      :resolve :adapters}}}
