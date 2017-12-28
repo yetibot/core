@@ -22,16 +22,16 @@
                     :yb-adapters-freenode-port "6667"
                     :yb-adapters-freenode-username "yetibot-test"}}}
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojure/core.async "0.3.443"]
+                 [org.clojure/core.async "0.3.465"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.nrepl "0.2.13"]
                  [org.clojure/tools.cli "0.3.5"]
                  [org.clojure/tools.trace "0.7.9"]
+                 [org.clojure/tools.namespace "0.2.11"]
                  [org.clojure/java.classpath "0.2.3"]
                  [org.clojure/core.cache "0.6.5"]
-                 [org.clojure/tools.namespace "0.2.11"]
                  [org.clojure/core.memoize "0.5.9"]
-                 [org.clojure/core.match "0.3.0-alpha4"]
+                 [org.clojure/core.match "0.3.0-alpha5"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.2"]
                  [org.clojure/java.jdbc "0.7.3"]
@@ -58,7 +58,8 @@
 
                  ; email
                  [com.draines/postal "2.0.2"]
-                 [io.forward/clojure-mail "1.0.7"]
+                 [io.forward/clojure-mail "1.0.7" :exclusions [medley]]
+                 [medley "1.0.0"]
 
                  ; chat protocols
                  [irclj "0.5.0-alpha4"]
@@ -87,7 +88,7 @@
                  ; utils
                  [funcool/cuerdas "2.0.4"]
                  [clj-stacktrace "0.2.8"]
-                 [clj-fuzzy "0.4.0"]
+                 [clj-fuzzy "0.4.1"]
                  [robert/hooke "1.3.0"]
                  [clj-time "0.14.0"] ; includes joda-time
                  [rate-gate "1.3.1"]

@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.20
+
+- Upgrade deps to fix warnings after Clojure 1.9 upgrade
+
 ## 0.4.19
 
 - Upgrade to Clojure 1.9
