@@ -294,7 +294,7 @@ It also works for `leave` events:
 
 - Disalbed AOT
 
-### 0.2.0
+## 0.2.0
 
 - Add support for per-room settings (new data structure in config). Format:
 
