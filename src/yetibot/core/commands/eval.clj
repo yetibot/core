@@ -10,7 +10,7 @@
 (defn- privs [] (:value (get-config [s/Str] [:eval :priv])))
 
 (defn- user-is-allowed? [user]
-  (boolean (some #{(:id user)} privs)))
+  ((set (privs)) (:id user)))
 
 (defn eval-cmd
   "eval <form> # evaluate the <form> data structure in Yetibot's context"

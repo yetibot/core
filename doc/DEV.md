@@ -4,6 +4,15 @@
 
 ## Working on the dashboard
 
+### TypeScript and Relay
+
+```bash
+brew install node # or use nvm if you want
+npm install -g typescript
+```
+
+### React Redux prototype (not used)
+
 The dashboard is built with React and Redux. Because these tools are native to
 the NodeJS ecosystem, I didn't attempt to wire it into `lein`. Instead I use the
 canonical tools - in this case `yarn` - to run a webpack dev server with hot
