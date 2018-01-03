@@ -3,6 +3,8 @@
 ## 0.4.20
 
 - Upgrade deps to fix warnings after Clojure 1.9 upgrade
+- Fix eval - [#645](https://github.com/yetibot/yetibot.core/pull/32) by
+  [@cvic](https://github.com/cvic)
 
 ## 0.4.19
 
