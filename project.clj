@@ -79,10 +79,6 @@
                  [com.bigml/closchema "0.1.8"]
                  [cheshire "5.8.0"]
                  [prismatic/schema "1.1.6"]
-
-                 ;; use fork until PR is merged with support for namespaced
-                 ;; keywords:
-                 ;; https://github.com/gga/json-path/pull/12
                  [json-path "1.0.1"]
 
                  ; utils
