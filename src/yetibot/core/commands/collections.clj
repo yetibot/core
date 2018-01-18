@@ -202,7 +202,7 @@
   "letters <string> # turn <string> into a sequence of individual letters"
   {:yb/cat #{:util}}
   [{args :args}]
-  (seq args))
+  (map str (seq args)))
 
 (cmd-hook ["letters" #"^letters$"]
           _ letters)
