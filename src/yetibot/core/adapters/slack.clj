@@ -156,17 +156,18 @@
                   :message
                   (unencode-message text)))))
 
-(defn on-message [conn config event]
+(defn on-message [conn config {:keys [subtype] :as event}]
   (timbre/info "message" event)
-  (timbre/info "platform-name" (a/platform-name *adapter*))
-  (if-let [subtype (:subtype event)]
-    ; handle the subtype
-    (condp = subtype
-      "channel_join" (on-channel-join event config)
-      "channel_leave" (on-channel-leave event config)
-      "message_changed" (on-message-changed event config)
-      ; do nothing if we don't understand
-      nil)
+  (if (and (not= "bot_mesage" subtype) subtype)
+    (do
+      (info "event subtype" subtype)
+      ; handle the subtype
+      (condp = subtype
+        "channel_join" (on-channel-join event config)
+        "channel_leave" (on-channel-leave event config)
+        "message_changed" (on-message-changed event config)
+        ; do nothing if we don't understand
+        (info "Don't know how to handle message subtype" subtype)))
     ; don't listen to yetibot's own messages
     (when (not= (:id (self conn)) (:user event))
       (let [chan-id (:channel event)
