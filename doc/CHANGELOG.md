@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.23
+
+- Change `YETIBOT_CONFIG_DISABLED` to `YETIBOT_ENV_CONFIG_DISABLED`
+
 ## 0.4.22
 
 - Add support to ignore all env-based config if `YETIBOT_CONFIG_DISABLED` is set

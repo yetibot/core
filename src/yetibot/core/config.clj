@@ -12,7 +12,7 @@
 
 (def config-prefixes [:yb :yetibot])
 
-(def config-from-env-disabled? (env :yetibot-config-disabled))
+(def config-from-env-disabled? (env :yetibot-env-config-disabled))
 
 (def config-path (or (env :config-path) "config/config.edn"))
 
