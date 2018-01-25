@@ -27,11 +27,12 @@ NB: In the future we may move all mutable configuration to the database.
 ## Modes
 
 - **Immutable config sources** include both `profiles.clj` and environmental
-  variables via `environ` or loading EDN from a file at `config/config.edn`
+  variables via `environ` and loading EDN from a file at `config/config.edn`
   (this can be overridden with by specifying a `CONFIG_PATH` env var)
 
   Any config specified in an EDN file will be overridden by values provided by
-  `environ`.
+  `environ`. Environment config can be explicitly ignored by setting an
+  environment variable `YETIBOT_CONFIG_DISABLED=true`.
 
   Providing config via multiple methods
   makes it compatible with 12-factor configuration and simple usage in container

@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.22
+
+- Add support to ignore all env-based config if `YETIBOT_CONFIG_DISABLED` is set
+  to a value
+
 ## 0.4.21
 
 - Listen to `bot_message` event subtypes in Slack
