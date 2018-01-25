@@ -41,9 +41,10 @@
   []
   (merge
     (merge-possible-prefixes (uc/load-edn! config-path))
-    (when-not config-from-env-disabled?
+    (if-not config-from-env-disabled?
       (let [env-vars (prefixed-env-vars)]
-        (merge-possible-prefixes (explode env-vars))))))
+        (merge-possible-prefixes (explode env-vars)))
+      (info "Configuration from environment is disabled"))))
 
 (defonce ^:private config (atom (config-from-env-or-file)))
 
