@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.21
+
+- Listen to `bot_message` event subtypes in Slack
+
 ## 0.4.20
 
 - Upgrade deps to fix warnings after Clojure 1.9 upgrade
