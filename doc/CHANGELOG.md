@@ -2,7 +2,8 @@
 
 ## 0.4.23
 
-- Change `YETIBOT_CONFIG_DISABLED` to `YETIBOT_ENV_CONFIG_DISABLED`
+- Change `YETIBOT_CONFIG_DISABLED` to `YETIBOT_ENV_CONFIG_DISABLED` and log when
+  it's disabled
 
 ## 0.4.22
 
