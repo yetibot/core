@@ -98,4 +98,4 @@ above, the merged config data structure would be:
 ```
 
 Note how environment variables are exploded into nested maps, powered by
-[dec](github.com/devth/dec).
+[dec](https://github.com/devth/dec).
