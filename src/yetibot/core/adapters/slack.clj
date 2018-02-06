@@ -261,10 +261,11 @@
   (filter #((-> % :members set) user-id) chans-or-grps))
 
 (defn reset-users-from-conn [conn]
-  (debug (timbre/color-str :blue "reset-users-from-conn"))
   (let [groups (-> @conn :start :groups)
         channels (-> @conn :start :channels)
         users (-> @conn :start :users)]
+    (debug (timbre/color-str :blue "reset-users-from-conn")
+           (pr-str (count users)))
     (run!
       (fn [{:keys [id] :as user}]
         (let [filter-for-user (partial filter-chans-or-grps-containing-user id)

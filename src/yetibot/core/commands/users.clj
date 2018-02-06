@@ -12,12 +12,6 @@
   (log/info "show users for" chat-source)
   (map :mention-name (users/get-users chat-source)))
 
-; (defn reset
-;   "users reset # reset the user list for the current room"
-;   [_]
-;   (users/reset-users)
-;   "Users list reset complete")
-
 (cmd-hook #"users"
           ; #"reset" reset
           #"^$" show-users)

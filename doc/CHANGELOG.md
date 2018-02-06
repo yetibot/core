@@ -1,5 +1,12 @@
 # yetibot.core change log
 
+## 0.4.24
+
+- `users` now lists all users in a room, regardless of whether they are active
+  or not. This is due to Slack's [Changes to
+  presence](https://api.slack.com/changelog/2018-01-presence-present-and-future#happens)
+  that makes it much harder to listen for `presence_change` events.
+
 ## 0.4.23
 
 - Change `YETIBOT_CONFIG_DISABLED` to `YETIBOT_ENV_CONFIG_DISABLED` and log when

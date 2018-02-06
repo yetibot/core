@@ -89,11 +89,11 @@
     (swap! users update-in [user-key :rooms] conj chat-source)))
 
 (defn get-users
-  "Returns active users for a given chat source"
+  "Returns users for a given chat source"
   [source]
   (->> @users
        vals
-       (filter (fn [u] (and (:active? u) (:rooms u) ((:rooms u) source))))))
+       (filter (fn [u] (and (:rooms u) ((:rooms u) source))))))
 
 (defn get-user [source id]
   (@users {:adapter (:adapter source) :id id}))
