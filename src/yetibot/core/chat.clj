@@ -5,6 +5,10 @@
     [taoensso.timbre :refer [color-str debug trace info warn error]]
     [yetibot.core.util.format :as fmt]))
 
+(def ^:dynamic *thread-ts*
+  "The thread_ts value from Slack. Only applies to Slack"
+  nil)
+
 (def ^:dynamic *adapter-uuid*
   "Dynamically set the uuid of an adapter in order to dynamically bind *adapter*
    when it otherwise would not have been bound, such as when an API call is used

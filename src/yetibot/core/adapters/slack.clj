@@ -23,7 +23,7 @@
     [yetibot.core.config-mutable :refer [get-config apply-config!]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
-                               chat-data-structure *target* *adapter*]]
+                               chat-data-structure *thread-ts* *target* *adapter*]]
     [yetibot.core.util :as utl]))
 
 (def channel-cache-ttl 60000)
@@ -76,9 +76,13 @@
     (map #(str "#" (:name %)) (channels-in config))))
 
 (defn send-msg [config msg]
+  (debug "send-msg" *target* *thread-ts*)
   (slack-chat/post-message
     (slack-config config) *target* msg
-    {:unfurl_media "true" :as_user "true"}))
+    (merge
+      {:unfurl_media "true" :as_user "true"}
+      (when *thread-ts*
+        {:thread_ts *thread-ts*}))))
 
 (defn send-paste [config msg]
   (slack-chat/post-message
@@ -169,16 +173,18 @@
         ; do nothing if we don't understand
         (info "Don't know how to handle message subtype" subtype)))
     ; don't listen to yetibot's own messages
-    (when (not= (:id (self conn)) (:user event))
-      (let [chan-id (:channel event)
+    (if (not= (:id (self conn)) (:user event))
+      (let [{chan-id :channel thread-ts :thread_ts} event
             [chan-name entity] (entity-with-name-by-id config event)
             cs (chat-source chan-name)
             user-model (users/get-user cs (:user event))]
-        (binding [*target* chan-id]
+        (binding [*thread-ts* thread-ts
+                  *target* chan-id]
           (handle-raw cs
                       user-model
                       :message
-                      (unencode-message (:text event))))))))
+                      (unencode-message (:text event)))))
+      (debug "Ignoring message from Yetibot" (:user event)))))
 
 (defn on-hello [event] (timbre/debug "Hello, you are connected to Slack" event))
 
