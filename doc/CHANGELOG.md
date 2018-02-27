@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.25
+
+- Reply to threads in Slack
+
 ## 0.4.24
 
 - `users` now lists all users in a room, regardless of whether they are active
