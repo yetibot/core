@@ -94,8 +94,8 @@
    for things where YB is expecting a URL (e.g. configuring Jenkins), so strip
    it for now. Replaces <X|Y> with Y.
 
-   Secondly, as of 2017ish first half, it Slack started mysteriously encoding
-   @here and @channel as <!here> and <!channel>. Wat. Decode that noise.
+   Secondly, as of 2017ish first half, Slack started mysteriously encoding
+   @here and @channel as <!here> and <!channel>. Wat. DECODE THAT NOISE.
 
    <!here> becomes @here
    <!channel> becomes @channel"
@@ -312,6 +312,8 @@
                             :manual_presence_change on-manual-presence-change
                             :message (partial on-message conn config)
                             :hello on-hello))
+
+  (info "Slack self is" (pr-str (self conn)))
   (reset-users-from-conn conn))
 
 (defn start [adapter conn config]

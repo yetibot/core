@@ -14,14 +14,15 @@
 ; use a few non-network commands for dev
 (defn load-minimal []
   (require 'yetibot.core.commands.about :reload)
+  (require 'yetibot.core.commands.collections :reload)
+  (require 'yetibot.core.commands.default-command :reload)
   (require 'yetibot.core.commands.echo :reload)
   (require 'yetibot.core.commands.help :reload)
-  (require 'yetibot.core.commands.default-command :reload)
-  (require 'yetibot.core.commands.room :reload)
-  (require 'yetibot.core.observers.history :reload)
   (require 'yetibot.core.commands.history :reload)
+  (require 'yetibot.core.commands.room :reload)
   (require 'yetibot.core.commands.users :reload)
-  (require 'yetibot.core.commands.collections :reload)
+  (require 'yetibot.core.commands.that :reload)
+  (require 'yetibot.core.observers.history :reload)
   (require 'yetibot.core.observers.users :reload))
 
 (defn load-minimal-with-db []
