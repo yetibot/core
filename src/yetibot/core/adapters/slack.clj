@@ -76,7 +76,10 @@
     (map #(str "#" (:name %)) (channels-in config))))
 
 (defn send-msg [config msg]
-  (debug "send-msg" *target* *thread-ts*)
+  (debug "send-msg"
+         (color-str :blue (pr-str config))
+         {:target *target*
+          :thread-ts *thread-ts*})
   (slack-chat/post-message
     (slack-config config) *target* msg
     (merge
@@ -176,6 +179,9 @@
     (if (not= (:id (self conn)) (:user event))
       (let [{chan-id :channel thread-ts :thread_ts} event
             [chan-name entity] (entity-with-name-by-id config event)
+            ;; TODO we probably need to switch to chan-id when building the
+            ;; Slack chat-source since they are moving away from being able to
+            ;; use user names as IDs
             cs (chat-source chan-name)
             user-model (users/get-user cs (:user event))]
         (binding [*thread-ts* thread-ts

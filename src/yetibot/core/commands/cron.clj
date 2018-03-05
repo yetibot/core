@@ -14,6 +14,9 @@
 
 ;; use a single, initially-empty hara scheduler then add/remove tasks to it as
 ;; needed
+;; Note: may want to consider a separate scheduler per Adapter instance. That
+;; way you can pause/resume the scheduler only for your Adapter (vs all of
+;; them).
 (defonce scheduler (cron/scheduler {}))
 
 (defn id-to-task-id [id] (str "task-" id))
@@ -84,19 +87,24 @@
     user :user
     {:keys [uuid room] :as chat-source} :chat-source}]
 
-  ;; TODO validate `cron-schedule` before persisting
-  (let [cmd-no-quotes (remove-surrounding-quotes cmd)
-        entity {:chat-source-adapter (pr-str uuid)
-                :chat-source-room room
-                :user-id (:id user)
-                :schedule cron-schedule
-                :cmd cmd-no-quotes}
-        ;; need to merge the original back in because create returns an entity
-        ;; with snake case and we want kebab case.
-        [cron-entity] (db/create entity)
-        kebab-cron-entity (merge cron-entity entity)]
-    (wire-cron! kebab-cron-entity)
-    (str "Cron item created. " (format-cron-entity kebab-cron-entity))))
+  ;; validate `cron-schedule` before persisting
+  ;; Note: tab/valid-tab? makes very weak gaurantees
+  (if (tab/valid-tab? cron-schedule)
+    (let [cmd-no-quotes (remove-surrounding-quotes cmd)
+          entity {:chat-source-adapter (pr-str uuid)
+                  :chat-source-room room
+                  :user-id (:id user)
+                  :schedule cron-schedule
+                  :cmd cmd-no-quotes}
+          ;; need to merge the original back in because create returns an entity
+          ;; with snake case and we want kebab case.
+          [cron-entity] (db/create entity)
+          kebab-cron-entity (merge cron-entity entity)]
+      (wire-cron! kebab-cron-entity)
+      (str "Cron item created. " (format-cron-entity kebab-cron-entity)))
+    (str "Invalid cron format `" cron-schedule "`. "
+         "See http://docs.caudate.me/hara/hara-io-scheduler.html#schedule"
+         " for docs. ")))
 
 (defn explain-cron-cmd
   "cron explain <schedule> # extract and label the components of <schedule>"
@@ -120,8 +128,9 @@
 
 (defn list-cmd
   "cron list # list the configured cron tasks"
-  [_]
-  (map format-cron-entity (db/find-all)))
+  [{{:keys [uuid room]} :chat-source}]
+  (map format-cron-entity
+       (db/query {:where/map {:chat-source-adapter (pr-str uuid)}})))
 
 (defn remove-cmd
   "cron remove <task-id> # remove a task by id"
