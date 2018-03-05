@@ -2,6 +2,7 @@
 
 ## 0.4.26
 
+- Accurately record history using adapter UUID instead of type
 - Add `cron` command! -
   [yetibot/yetibot#150](https://github.com/yetibot/yetibot/issues/150)
 
