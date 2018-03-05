@@ -88,7 +88,11 @@
                  [robert/hooke "1.3.0"]
                  [clj-time "0.14.0"] ; includes joda-time
                  [rate-gate "1.3.1"]
+                 ; scheduling used for mail. could be replaced by
+                 ; hara.io.scheduler
                  [overtone/at-at "1.2.0"]
+                 ; scheduling to support `cron` command
+                 [zcaudate/hara.io.scheduler "2.8.2"]
                  [inflections "0.13.0"]
                  [environ "1.1.0"]
                  [dec "1.0.1"]

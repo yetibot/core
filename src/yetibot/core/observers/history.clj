@@ -7,8 +7,8 @@
 (defn history-observer
   [event-info]
   (trace "history obs" event-info)
-  (let [{:keys [adapter room]} (:chat-source event-info)]
-    (h/add {:chat-source-adapter adapter
+  (let [{:keys [adapter room uuid]} (:chat-source event-info)]
+    (h/add {:chat-source-adapter uuid
             :chat-source-room room
             :user-id (-> event-info :user :id str)
             :user-name (-> event-info :user :mention-name str)
