@@ -25,6 +25,8 @@
   [table-name table-specs]
   (let [qualified-table (qualified-table-name table-name)]
     (info "Idempotently create table" qualified-table)
+    ;; Note: idempotence checking is very simplistic. It does not add columns if
+    ;; the schema changed but already exists. TODO: make it better.
     (sql/db-do-commands
       (:url (config))
       (sql/create-table-ddl qualified-table table-specs

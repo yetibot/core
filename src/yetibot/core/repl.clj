@@ -32,6 +32,7 @@
 (defn start
   "Load a minimal set of commands, start the database and connect to chat adapters"
   []
+  (logging/start)
   (mconfig/reload-config!)
   (web/start-web-server)
   (load-minimal-with-db)
