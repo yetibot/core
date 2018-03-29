@@ -21,22 +21,6 @@
   (route/resources "/")
   (route/not-found "Not Found"))
 
-; (defn start-nrepl
-;   "Start a network repl for debugging when the :repl-port is set in the environment."
-;   []
-;   (when-let [port (env :repl-port)]
-;     (try
-;       (reset! nrepl-server (nrepl/start-server :port port))
-;       (timbre/info "nREPL server started on port" port)
-;       (catch Throwable t
-;         (timbre/error "failed to start nREPL" t)))))
-
-; (defn stop-nrepl []
-;   (when-let [server @nrepl-server]
-;     (nrepl/stop-server server)))
-
-
-
 (defn init
   "init will be called once on startup"
   []
@@ -55,6 +39,15 @@
   ; (stop-nrepl)
   (timbre/info "shutdown complete!"))
 
+(defn wrap-cors
+  "Allow requests from all origins"
+  [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (update-in response
+                 [:headers "Access-Control-Allow-Origin"]
+                 (fn [_] "*")))))
+
 (defn app []
   (let [plugin-routes (vec (rl/load-plugin-routes))
         ; base-routes needs to be very last because it contains not-found
@@ -64,7 +57,9 @@
                api-routes
                graphql-routes
                last-routes)
-        middleware/wrap-base)))
+        wrap-cors
+        middleware/wrap-base
+        )))
 
 ;; base-routes
 
