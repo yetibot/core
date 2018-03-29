@@ -2,6 +2,11 @@
 
 ## 0.4.28 - 3/28/2018
 
+- Switch eval type on GraphQL endpoint to `(list String)` to support expressions
+  that return lists
+
+## 0.4.28 - 3/28/2018
+
 - Add initial GraphQL with `eval` query support. Example:
 
   ```

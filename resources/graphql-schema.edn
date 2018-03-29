@@ -1,6 +1,6 @@
 {:objects {:adapter {:fields {:name {:type String}}}}
 
- :queries {:eval {:type String
+ :queries {:eval {:type (list String)
                   :args {:expr {:type String}}
                   :resolve :eval}
 
