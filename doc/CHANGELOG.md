@@ -1,5 +1,16 @@
 # yetibot.core change log
 
+## 0.4.28 - 3/28/2018
+
+- Add initial GraphQL with `eval` query support. Example:
+
+  ```
+  {eval(expr: "echo foo | echo bar")}
+  ```
+
+- Enable `Access-Control-Allow-Origin *` header so we can hit GraphQL endpoint
+  from the docs to support interactive docs
+
 ## 0.4.27
 
 - Accurately record history using adapter UUID instead of type
