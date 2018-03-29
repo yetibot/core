@@ -119,6 +119,7 @@
                  [metosin/ring-http-response "0.9.0"]
 
                  ; web
+                 [com.walmartlabs/lacinia "0.23.0"] ;; graphql
                  [selmer "1.11.0"]
                  [compojure "1.6.0"]
                  [prone "1.1.4"]
