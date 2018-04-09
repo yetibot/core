@@ -1,5 +1,7 @@
 (ns yetibot.core.webapp.resolvers
   (:require
+    [yetibot.core.adapters.adapter :as adapter]
+    [yetibot.core.db.history :as history]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [taoensso.timbre :refer [error debug info color-str]]))
 
@@ -12,7 +14,13 @@
       [result])))
 
 (defn adapters-resolver
-  []
-  ;; return empty for now
-  []
-  )
+  [context {:keys [] :as args} value]
+  (->>
+    @adapter/adapters
+    vals
+    (map #(hash-map :uuid (name (adapter/uuid %))
+                    :platform (adapter/platform-name %)))))
+
+(defn history-resolver
+  [context {:keys [] :as args} value]
+  (take 20 (history/find-all)))

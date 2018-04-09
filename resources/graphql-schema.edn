@@ -1,8 +1,24 @@
-{:objects {:adapter {:fields {:name {:type String}}}}
+{:objects {:adapter {:fields {:uuid {:type String}
+                              :platform {:type String}}}
+
+           :history {:fields
+                     {:chat_source_adapter {:type String}
+                      :chat_source_room {:type String}
+                      :user_id {:type String}
+                      :user_name {:type String}
+                      :body {:type String}
+                      :id {:type Int}
+                      :created_at {:type String}}}}
 
  :queries {:eval {:type (list String)
                   :args {:expr {:type String}}
                   :resolve :eval}
 
            :adapters {:type (list :adapter)
-                      :resolve :adapters}}}
+                      :resolve :adapters}
+
+           :history {:type (list :history)
+                     :resolve :history
+                     :args {:chat_source_room {:type String}}}
+
+           }}

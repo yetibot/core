@@ -8,7 +8,7 @@
     [com.walmartlabs.lacinia.util :as lacina.util]
     [compojure.core :refer [defroutes POST]]
     [taoensso.timbre :refer [error debug info color-str]]
-    [yetibot.core.webapp.resolvers :refer [eval-resolver adapters-resolver]]))
+    [yetibot.core.webapp.resolvers :refer [history-resolver eval-resolver adapters-resolver]]))
 
 (defn load-schema!
   []
@@ -16,7 +16,8 @@
       slurp
       edn/read-string
       (lacina.util/attach-resolvers {:eval eval-resolver
-                                     :adapters adapters-resolver})
+                                     :adapters adapters-resolver
+                                     :history history-resolver})
       lacina.schema/compile))
 
 (def schema (delay (load-schema!)))
