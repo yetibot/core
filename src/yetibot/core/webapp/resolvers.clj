@@ -1,5 +1,6 @@
 (ns yetibot.core.webapp.resolvers
   (:require
+    [cuerdas.core :refer [kebab snake]]
     [yetibot.core.adapters.adapter :as adapter]
     [yetibot.core.db.history :as history]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
@@ -23,4 +24,4 @@
 
 (defn history-resolver
   [context {:keys [] :as args} value]
-  (take 20 (history/find-all)))
+  (take-last 20 (history/find-all {:identifiers identity})))

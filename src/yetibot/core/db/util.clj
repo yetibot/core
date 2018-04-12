@@ -49,13 +49,14 @@
       ["id = ?" id])))
 
 (defn find-all
-  [table]
-  (sql/with-db-connection [db-conn (:url (config))]
-    (sql/query
-      db-conn
-      [(str "SELECT * FROM "
-            (qualified-table-name table))]
-      {:identifiers kebab})))
+  ([table] (find-all table {}))
+  ([table {:keys [identifiers]}]
+   (sql/with-db-connection [db-conn (:url (config))]
+     (sql/query
+       db-conn
+       [(str "SELECT * FROM "
+             (qualified-table-name table))]
+       {:identifiers (or identifiers kebab)}))))
 
 (defn transform-where-map
   "Return a vector of where-keys and where-args to use in a select or update"
