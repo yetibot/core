@@ -80,6 +80,7 @@
                  extra]))
 
             {value :result/value
+             error :result/error
              data :result/data} (when (map? command-result)
                                   command-result)
 
@@ -88,6 +89,7 @@
         (if (and (map? command-result) value)
           (assoc acc
                  :value value
+                 :error error
                  :data data)
           (assoc acc :value command-result))))))
 
