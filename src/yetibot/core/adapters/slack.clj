@@ -183,13 +183,18 @@
           cs (chat-source chan-name)
           yetibot? (= (:id (self conn)) (:user event))
           user-model (assoc (users/get-user cs (:user event))
-                            :yetibot? yetibot?)]
+                            :yetibot? yetibot?)
+          body (if (s/blank? (:text event))
+                 ;; if text is blank attempt to read an attachment fallback
+                 (->> event :attachments (map :text) (s/join \newline))
+                 ;; else use the much more common `text` property
+                 (:text event))]
       (binding [*thread-ts* thread-ts
                 *target* chan-id]
         (handle-raw cs
                     user-model
                     :message
-                    (unencode-message (:text event)))))))
+                    (unencode-message body))))))
 
 (defn on-hello [event] (timbre/debug "Hello, you are connected to Slack" event))
 
