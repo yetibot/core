@@ -74,7 +74,8 @@
   [chat-source user event-type body]
   ;; only :message has a body
   (go
-    (when body
+    ;; only handle commands from non-yetibot users
+    (when (and body (not (:yetibot? user)))
       ;; see if it looks like a command
       (when-let [parsed-cmds
                  (or

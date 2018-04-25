@@ -175,22 +175,21 @@
         "message_changed" (on-message-changed event config)
         ; do nothing if we don't understand
         (info "Don't know how to handle message subtype" subtype)))
-    ; don't listen to yetibot's own messages
-    (if (not= (:id (self conn)) (:user event))
-      (let [{chan-id :channel thread-ts :thread_ts} event
-            [chan-name entity] (entity-with-name-by-id config event)
-            ;; TODO we probably need to switch to chan-id when building the
-            ;; Slack chat-source since they are moving away from being able to
-            ;; use user names as IDs
-            cs (chat-source chan-name)
-            user-model (users/get-user cs (:user event))]
-        (binding [*thread-ts* thread-ts
-                  *target* chan-id]
-          (handle-raw cs
-                      user-model
-                      :message
-                      (unencode-message (:text event)))))
-      (debug "Ignoring message from Yetibot" (:user event)))))
+    (let [{chan-id :channel thread-ts :thread_ts} event
+          [chan-name entity] (entity-with-name-by-id config event)
+          ;; TODO we probably need to switch to chan-id when building the
+          ;; Slack chat-source since they are moving away from being able to
+          ;; use user names as IDs
+          cs (chat-source chan-name)
+          yetibot? (= (:id (self conn)) (:user event))
+          user-model (assoc (users/get-user cs (:user event))
+                            :yetibot? yetibot?)]
+      (binding [*thread-ts* thread-ts
+                *target* chan-id]
+        (handle-raw cs
+                    user-model
+                    :message
+                    (unencode-message (:text event)))))))
 
 (defn on-hello [event] (timbre/debug "Hello, you are connected to Slack" event))
 
