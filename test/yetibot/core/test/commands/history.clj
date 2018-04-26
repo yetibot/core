@@ -15,16 +15,18 @@
               :next-cmds ["scount"]
               :skip-next-n (atom 0)})
 
-(history-for-cmd-sequence ["count"] chat-source)
+(def extra-where {:is-yetibot false})
 
-(history-for-cmd-sequence ["random"] chat-source)
+(history-for-cmd-sequence ["count"] chat-source extra-where)
 
-(history-for-cmd-sequence ["tail 3"] chat-source)
+(history-for-cmd-sequence ["random"] chat-source extra-where)
 
-(history-for-cmd-sequence ["head 3"] chat-source)
+(history-for-cmd-sequence ["tail 3"] chat-source extra-where)
 
-(history-for-cmd-sequence ["head"] chat-source)
+(history-for-cmd-sequence ["head 3"] chat-source extra-where)
 
-(history-for-cmd-sequence ["tail"] chat-source)
+(history-for-cmd-sequence ["head"] chat-source extra-where)
 
-(history-for-cmd-sequence ["grep 3$"] chat-source)
+(history-for-cmd-sequence ["tail"] chat-source extra-where)
+
+(history-for-cmd-sequence ["grep 3$"] chat-source extra-where)
