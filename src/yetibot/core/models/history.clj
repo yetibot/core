@@ -10,52 +10,64 @@
 ;;;; read
 
 (defn history-for-chat-source
-  [{:keys [uuid room] :as chat-source}]
-  "Retrieve a map of user to chat body"
-  (query {:where/map
-          {:chat-source-adapter (pr-str uuid)
-           :chat-source-room room}}))
+  ([chat-source] (history-for-chat-source chat-source {}))
+  ([{:keys [uuid room] :as chat-source} extra-where]
+   "Retrieve a map of user to chat body"
+   (query {:where/map
+           (merge
+             {:chat-source-adapter (pr-str uuid)
+              :chat-source-room room}
+             extra-where)})))
 
 (defn count-entities
-  [{:keys [uuid room] :as chat-source}]
+  [{:keys [uuid room] :as chat-source} extra-where]
   (-> (query
         {:where/map
-         {:chat-source-adapter (pr-str uuid)
-          :chat-source-room room}
+         (merge
+           {:chat-source-adapter (pr-str uuid)
+            :chat-source-room room}
+           extra-where)
          :select/clause "COUNT(*) as count"})
       first
       :count))
 
 (defn head
-  [{:keys [uuid room] :as chat-source} n]
+  [{:keys [uuid room] :as chat-source} n extra-where]
   (query
     {:where/map
-     {:chat-source-adapter (pr-str uuid)
-      :chat-source-room room}
+     (merge
+       {:chat-source-adapter (pr-str uuid)
+        :chat-source-room room}
+       extra-where)
      :limit/clause (str n)}))
 
 (defn tail
-  [{:keys [uuid room] :as chat-source} n]
+  [{:keys [uuid room] :as chat-source} n extra-where]
   (-> (query
         {:where/map
-         {:chat-source-adapter (pr-str uuid)
-          :chat-source-room room}
+         (merge
+           {:chat-source-adapter (pr-str uuid)
+            :chat-source-room room}
+           extra-where)
          :order/clause "created_at DESC"
          :limit/clause (str n)})
       reverse))
 
 (defn random
-  [{:keys [uuid room] :as chat-source}]
+  [{:keys [uuid room] :as chat-source} extra-where]
   (query
     {:where/map
-     {:chat-source-adapter (pr-str uuid)
-      :chat-source-room room}
+     (merge
+       {:chat-source-adapter (pr-str uuid)
+       :chat-source-room room}
+       extra-where)
      :order/clause "random()" ;; possibly slow on large tables
      :limit/clause "1"}))
 
-(defn grep [{:keys [uuid room] :as chat-source} pattern]
+(defn grep [{:keys [uuid room] :as chat-source} pattern extra-where]
   (query
-    {:where/clause (str "chat_source_adapter=? AND chat_source_room=?"
+    {:where-map extra-where
+     :where/clause (str "chat_source_adapter=? AND chat_source_room=?"
                         " AND body ~ ?")
      :where/args  [(pr-str uuid) room pattern]}))
 
@@ -69,6 +81,7 @@
            :order/clause "created_at DESC"
            :where/map
            {:is-command cmd?
+            :is-yetibot false
             :chat-source-adapter (pr-str uuid)
             :chat-source-room room}})))
 
