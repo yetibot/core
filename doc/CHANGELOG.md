@@ -1,6 +1,16 @@
 # yetibot.core change log
 
-## 0.4.28 - 3/28/2018
+## 0.4.30 - 4/26/2018
+
+- Record all Yetibot history in the database
+- Add subcommands on history to show all Yetibot history or all non-Yetibot
+  history
+- Support listening to Slack attachment style messages
+- Attempt to idempotently add columns to db tables on startup if the table
+  already exists. This allows adding columns to tables over time (but never
+  changing or deleting columns).
+
+## 0.4.29 - 3/28/2018
 
 - Switch eval type on GraphQL endpoint to `(list String)` to support expressions
   that return lists
