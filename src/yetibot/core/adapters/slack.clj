@@ -165,7 +165,8 @@
 
 (defn on-message [conn config {:keys [subtype] :as event}]
   (timbre/info "message" event)
-  (if (and (not= "bot_mesage" subtype) subtype)
+  ;; allow bot_message events to be treated as normal messages
+  (if (and (not= "bot_message" subtype) subtype)
     (do
       (info "event subtype" subtype)
       ; handle the subtype

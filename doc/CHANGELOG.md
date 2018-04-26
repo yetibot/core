@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.31 - 4/26/2018
+
+- Fix `bot_mesage` -> `bot_message` typo that was preventing bot messages from
+  being observed in Slack
+
 ## 0.4.30 - 4/26/2018
 
 - Record all Yetibot history in the database
