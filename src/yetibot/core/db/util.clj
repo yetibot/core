@@ -1,7 +1,7 @@
 (ns yetibot.core.db.util
   (:require
     [schema.core :as sch]
-    [clojure.string :refer [join]]
+    [clojure.string :refer [blank? join]]
     [cuerdas.core :refer [kebab snake]]
     [clojure.java.jdbc :as sql]
     [taoensso.timbre :refer [debug info color-str]]
@@ -60,15 +60,35 @@
 (defn transform-where-map
   "Return a vector of where-keys and where-args to use in a select or update"
   [where-map]
-  (let [where-keys (join " AND " (map (fn [[k _]] (str (snake k) "=?")) where-map))
-        where-args (vals where-map)]
-    [where-keys where-args]))
+  (if (empty? where-map)
+    ["" []]
+    (let [where-keys (join " AND " (map (fn [[k _]] (str (snake k) "=?")) where-map))
+          where-args (vals where-map)]
+      [where-keys where-args])))
+
+(defn empty-where?
+  [where]
+  (not (and where
+            (not (blank? (first where)))
+            (not (empty? (second where))))))
+
+(defn combine-wheres
+  [where1 where2]
+  (cond
+    (empty-where? where2) where1
+    (empty-where? where1) where2
+    :else (let [[w1-query w1-args] where1
+                [w2-query w2-args] where2]
+            [(str w1-query " AND " w2-query)
+             (into (vec w1-args)
+                   (vec w2-args))])))
 
 (defn query
   "Query with WHERE"
   [table {;; provide either where/map
+          ;;   or where/clause and where/args
+          ;;   or both (they will be combined)
           where-map :where/map
-          ;; or where/clause and where/args but not both
           where-clause :where/clause
           where-args :where/args
           select-clause :select/clause
@@ -76,7 +96,7 @@
           order-clause :order/clause
           limit-clause :limit/clause}]
   (let [select-clause (or select-clause "*")
-        [where-clause where-args] (if where-map
+        [where-clause where-args] (combine-wheres
                                     (transform-where-map where-map)
                                     [where-clause where-args])
 
