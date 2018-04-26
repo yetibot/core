@@ -9,6 +9,7 @@
                         [:user-id :text]
                         [:user-name :text]
                         [:body :text]
+                        [:is-yetibot :boolean "DEFAULT false"]
                         [:is-command :boolean]]
                        (db.util/default-fields))})
 
