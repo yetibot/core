@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## 0.4.32 - Unreleased
+## 0.4.32 - 5/9/2018
 
 - Add `yetibot.core.parser/unparse` to take an expression tree and unparse it
   back to the original string that produced it when parsed.
