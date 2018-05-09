@@ -132,8 +132,6 @@
    (let [config (:config a)
          {yetibot-nick :nick} @irc
          yetibot-user (construct-yetibot-from-nick yetibot-nick)
-         ;; print `irc` to see what's available
-         ;; also maybe this is a good time to spec it out :D
          user-id (:user info)
          chan (or (recognized-chan? a (:target info)) (:nick info))
          user (users/get-user (chat-source chan) user-id)]
@@ -141,16 +139,18 @@
      (binding [*target* chan]
        (handle-raw (chat-source chan) user :message (:text info) yetibot-user))))
 
-(defn handle-part [a _ {:keys [target] :as info}]
+(defn handle-part [a irc {:keys [target] :as info}]
   (binding [*target* target]
     (handle-raw (chat-source target)
-                (create-user info) :leave nil nil)))
+                (create-user info) :leave nil
+                (construct-yetibot-from-nick (:nick @irc)))))
 
-(defn handle-join [a _ {:keys [target] :as info}]
+(defn handle-join [a irc {:keys [target] :as info}]
   (log/debug "handle-join" info)
   (binding [*target* target]
     (handle-raw (chat-source (:target info))
-                (create-user info) :enter nil nil)))
+                (create-user info) :enter nil
+                (construct-yetibot-from-nick (:nick @irc)))))
 
 (defn handle-nick [a _ info]
   (let [[nick] (:params info)
