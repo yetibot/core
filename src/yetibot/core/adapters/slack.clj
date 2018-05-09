@@ -343,8 +343,7 @@
                             :manual_presence_change on-manual-presence-change
                             :message (partial on-message conn config)
                             :hello on-hello))
-
-  (info "Slack self is" (pr-str (self conn)))
+  (info "Slack (re)connected as Yetibot with id" (:id (self conn)))
   (reset-users-from-conn conn))
 
 (defn start [adapter conn config]
