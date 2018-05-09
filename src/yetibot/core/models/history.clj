@@ -1,11 +1,11 @@
 (ns yetibot.core.models.history
   (:require
-    [yetibot.core.handler :refer [extract-command]]
+    [yetibot.core.util.command :refer [extract-command]]
     [yetibot.core.db.util :refer [transform-where-map]]
     [yetibot.core.db.history :refer [create query]]
     [clojure.string :refer [join split]]
     [yetibot.core.models.users :as u]
-    [taoensso.timbre :refer [info warn error spy]]))
+    [taoensso.timbre :refer [info color-str warn error spy]]))
 
 ;;;; read
 
@@ -128,9 +128,7 @@
 
 ;;;; write
 
-(defn add [{:keys [body chat-source-adapter] :as history-item}]
-  (let [cmd? (boolean (extract-command body))]
-    (create
-      (assoc history-item
-             :is-command cmd?
-             :chat-source-adapter (pr-str chat-source-adapter)))))
+(defn add [{:keys [chat-source-adapter] :as history-item}]
+  (create
+    (assoc history-item
+           :chat-source-adapter (pr-str chat-source-adapter))))

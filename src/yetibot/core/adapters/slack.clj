@@ -58,6 +58,11 @@
   [conn]
   (-> @conn :start :self))
 
+(defn find-yetibot-user
+  [conn cs]
+  (let [yetibot-uid (:id (self conn))]
+    (users/get-user cs yetibot-uid)))
+
 ;;;;
 
 (defn chan-or-group-name
@@ -135,45 +140,51 @@
 
 ;; events
 
-(defn on-channel-join [{:keys [channel] :as e} config]
+(defn on-channel-join [{:keys [channel] :as e} conn config]
   (let [[chan-name entity] (entity-with-name-by-id config {:channel channel})
         cs (chat-source chan-name)
-        user-model (users/get-user cs (:user e))]
+        user-model (users/get-user cs (:user e))
+        yetibot-user (find-yetibot-user conn cs)]
     (binding [*target* channel]
       (timbre/info "channel join" (color-str :blue (with-out-str (pprint cs))))
-      (handle-raw cs user-model :enter nil))))
+      (handle-raw cs user-model :enter nil yetibot-user))))
 
-(defn on-channel-leave [{:keys [channel] :as e} config]
+(defn on-channel-leave [{:keys [channel] :as e} conn config]
   (let [[chan-name entity] (entity-with-name-by-id config {:channel channel})
         cs (chat-source chan-name)
-        user-model (users/get-user cs (:user e))]
+        user-model (users/get-user cs (:user e))
+        yetibot-user (find-yetibot-user conn cs)]
     (binding [*target* channel]
       (timbre/info "channel leave" e)
-      (handle-raw cs user-model :leave nil))))
+      (handle-raw cs user-model :leave nil yetibot-user))))
 
-(defn on-message-changed [{:keys [channel] {:keys [user text]} :message} config]
+(defn on-message-changed [{:keys [channel] {:keys [user text]} :message}
+                          conn config]
   (timbre/info "message changed")
   (let [[chan-name entity] (entity-with-name-by-id config {:channel channel
                                                            :user user})
         cs (chat-source chan-name)
+        yetibot-user (find-yetibot-user conn cs)
         user-model (users/get-user cs user)]
     (binding [*target* channel]
       (handle-raw cs
                   user-model
                   :message
-                  (unencode-message text)))))
+                  (unencode-message text)
+                  yetibot-user))))
 
 (defn on-message [conn config {:keys [subtype] :as event}]
-  (timbre/info "message" event)
   ;; allow bot_message events to be treated as normal messages
   (if (and (not= "bot_message" subtype) subtype)
     (do
       (info "event subtype" subtype)
       ; handle the subtype
       (condp = subtype
-        "channel_join" (on-channel-join event config)
-        "channel_leave" (on-channel-leave event config)
-        "message_changed" (on-message-changed event config)
+        "channel_join" (on-channel-join event conn config)
+        "group_join" (on-channel-join event conn config)
+        "channel_leave" (on-channel-leave event conn config)
+        "group_leave" (on-channel-leave event conn config)
+        "message_changed" (on-message-changed event conn config)
         ; do nothing if we don't understand
         (info "Don't know how to handle message subtype" subtype)))
     (let [{chan-id :channel thread-ts :thread_ts} event
@@ -182,7 +193,9 @@
           ;; Slack chat-source since they are moving away from being able to
           ;; use user names as IDs
           cs (chat-source chan-name)
-          yetibot? (= (:id (self conn)) (:user event))
+          yetibot-user (find-yetibot-user conn cs)
+          yetibot-uid (:id yetibot-user)
+          yetibot? (= yetibot-uid (:user event))
           user-model (assoc (users/get-user cs (:user event))
                             :yetibot? yetibot?)
           body (if (s/blank? (:text event))
@@ -195,7 +208,8 @@
         (handle-raw cs
                     user-model
                     :message
-                    (unencode-message body))))))
+                    (unencode-message body)
+                    yetibot-user)))))
 
 (defn on-hello [event] (timbre/debug "Hello, you are connected to Slack" event))
 

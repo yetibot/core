@@ -50,3 +50,21 @@
 
 (defn parse-and-eval [input]
   (-> input parser transformer))
+
+(defn reconstruct-pipe [cmds] (join " | " cmds))
+
+(def unparse-transformer
+  (partial
+    insta/transform
+    {:words str
+     :literal str
+     :space str
+     :parened str
+     :cmd identity
+     ;; avoid wrapping the top level :expr in a subexpression when unparsing
+     :expr (fn [& cmds] (str "$(" (reconstruct-pipe cmds)  ")"))
+     }))
+
+(defn unparse [parse-tree]
+  (let [cmds (rest parse-tree) ]
+    (reconstruct-pipe (unparse-transformer cmds))))

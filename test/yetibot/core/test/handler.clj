@@ -3,6 +3,7 @@
     [yetibot.core.parser :refer [parser]]
     [yetibot.core.handler :refer :all]
     [yetibot.core.commands.history]
+    [yetibot.core.util.command :refer [extract-command]]
     [clojure.string :as s]
     [yetibot.core.repl :refer [load-minimal]]
     [instaparse.core :as insta]
@@ -17,18 +18,9 @@
     {:adapter :test :room "foo"}
     {:id "yetitest"}
     :message
-    (str "test history: " i)))
+    (str "test history: " i)
+    {:username "yetibot" :id "123"}))
 
-;; embedded commands
-
-(deftest test-embedded-cmds
-  (is
-    (=
-     ;; temp shouldn't be included because it's not a command/alias in the test
-     ;; env
-     (embedded-cmds "`echo your temp:` wonder what the `temp 98101` is")
-     [[:expr [:cmd [:words "echo" [:space " "] "your" [:space " "] "temp:"]]]])
-    "embedded-cmds should extract a collection of embedded commands from a string"))
 
 (deftest test-newline-cmd
   (let [multi-str (s/join \newline [1 2 3])]
