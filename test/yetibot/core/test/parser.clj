@@ -119,3 +119,10 @@
   (is (=
        (parser "echo $(clj (+ 1 1))")
        [:expr [:cmd [:words "echo" [:space " "] [:expr [:cmd [:words "clj" [:space " "] "(" "+" [:space " "] "1" [:space " "] "1" ")"]]]]]])))
+
+
+(def pipes-sample "foo | bar | echo $(baz))")
+
+(deftest unparse-test
+  (testing "Ability to unparse an expression back into its original string form"
+    (is (= pipes-sample (unparse (parser pipes-sample))))))

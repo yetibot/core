@@ -1,5 +1,36 @@
 # yetibot.core change log
 
+## 0.4.32 - Unreleased
+
+- Add `yetibot.core.parser/unparse` to take an expression tree and unparse it
+  back to the original string that produced it when parsed.
+
+- Record Yetibot's output in the history table for all adapters (Slack, IRC).
+  History is now recorded directly in the `yetibot.core/handler/handle-raw`
+  function instead of the old `history-observer`, which was removed. This is
+  because `handle-raw` has all the context to create history for both users and
+  Yetibot, including the Yetibot user and a new computed `correlation-id`,
+  computed as:
+
+  ```clojure
+       (let [timestamp (System/currentTimeMillis)
+             correlation-id (str timestamp "-"
+                                 (hash [chat-source user event-type body]))]
+         ;; ...
+         )
+  ```
+
+  The `correlation-id` is stored in both the user's command (request) history
+  entry and Yetibot's evaluation (response) history entry so the two can be
+  easily correlated.
+
+  This supports [History of Yetibot output for a given command
+  #728](https://github.com/yetibot/yetibot/issues/728).
+
+- Added new `command` text column to the history table to be used to record the
+  request command that correlates with Yetibot's response. As such, this column
+  is only set on `:is-yetibot true` columns
+
 ## 0.4.31 - 4/26/2018
 
 - Fix `bot_mesage` -> `bot_message` typo that was preventing bot messages from

@@ -19,16 +19,6 @@
     :message
     (str "test history: " i)))
 
-;; embedded commands
-
-(deftest test-embedded-cmds
-  (is
-    (=
-     ;; temp shouldn't be included because it's not a command/alias in the test
-     ;; env
-     (embedded-cmds "`echo your temp:` wonder what the `temp 98101` is")
-     [[:expr [:cmd [:words "echo" [:space " "] "your" [:space " "] "temp:"]]]])
-    "embedded-cmds should extract a collection of embedded commands from a string"))
 
 (deftest test-newline-cmd
   (let [multi-str (s/join \newline [1 2 3])]

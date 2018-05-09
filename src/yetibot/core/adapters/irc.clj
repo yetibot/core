@@ -120,29 +120,37 @@
 
 (defn recognized-chan? [a chan] ((set (rooms a)) chan))
 
+(defn construct-yetibot-from-nick [nick]
+  {:username nick
+   :id (str "~" nick) })
+
 (defn handle-message
   "Recieve and handle messages from IRC. This can either be in channels yetibot
    is listening in, or it can be a private message. If yetibot does not
    recognize the :target, reply back to user with PRIVMSG."
-  [a _ info]
-  (log/info "handle message" info)
-  (let [user-id (:user info)
-        chan (or (recognized-chan? a (:target info)) (:nick info))
-        user (users/get-user (chat-source chan) user-id)]
-    (log/info "handle-message from" chan)
-    (binding [*target* chan]
-      (handle-raw (chat-source chan) user :message (:text info)))))
+   [a irc info]
+   (let [config (:config a)
+         {yetibot-nick :nick} @irc
+         yetibot-user (construct-yetibot-from-nick yetibot-nick)
+         ;; print `irc` to see what's available
+         ;; also maybe this is a good time to spec it out :D
+         user-id (:user info)
+         chan (or (recognized-chan? a (:target info)) (:nick info))
+         user (users/get-user (chat-source chan) user-id)]
+     (log/info "handle message" info "from" chan yetibot-user)
+     (binding [*target* chan]
+       (handle-raw (chat-source chan) user :message (:text info) yetibot-user))))
 
 (defn handle-part [a _ {:keys [target] :as info}]
   (binding [*target* target]
     (handle-raw (chat-source target)
-                (create-user info) :leave nil)))
+                (create-user info) :leave nil nil)))
 
 (defn handle-join [a _ {:keys [target] :as info}]
   (log/debug "handle-join" info)
   (binding [*target* target]
     (handle-raw (chat-source (:target info))
-                (create-user info) :enter nil)))
+                (create-user info) :enter nil nil)))
 
 (defn handle-nick [a _ info]
   (let [[nick] (:params info)

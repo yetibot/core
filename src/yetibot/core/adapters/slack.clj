@@ -164,7 +164,6 @@
                   (unencode-message text)))))
 
 (defn on-message [conn config {:keys [subtype] :as event}]
-  (timbre/info "message" event)
   ;; allow bot_message events to be treated as normal messages
   (if (and (not= "bot_message" subtype) subtype)
     (do
@@ -182,7 +181,9 @@
           ;; Slack chat-source since they are moving away from being able to
           ;; use user names as IDs
           cs (chat-source chan-name)
-          yetibot? (= (:id (self conn)) (:user event))
+          yetibot-uid (:id (self conn))
+          yetibot? (= yetibot-uid (:user event))
+          yetibot-user (users/get-user cs yetibot-uid)
           user-model (assoc (users/get-user cs (:user event))
                             :yetibot? yetibot?)
           body (if (s/blank? (:text event))
@@ -195,7 +196,8 @@
         (handle-raw cs
                     user-model
                     :message
-                    (unencode-message body))))))
+                    (unencode-message body)
+                    yetibot-user)))))
 
 (defn on-hello [event] (timbre/debug "Hello, you are connected to Slack" event))
 

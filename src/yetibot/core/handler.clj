@@ -1,17 +1,18 @@
 (ns yetibot.core.handler
   (:require
-    [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.util.format :refer [to-coll-if-contains-newlines format-exception-log]]
-    [yetibot.core.parser :refer [parse-and-eval transformer parser]]
-    [clojure.core.match :refer [match]]
     [clojure.core.async :refer [timeout chan go <! >! >!! <!!]]
-    [yetibot.core.chat :refer [chat-data-structure]]
-    [yetibot.core.interpreter :as interp]
-    [clojure.string :refer [join]]
-    [yetibot.core.models.help :as help]
+    [clojure.core.match :refer [match]]
     [clojure.stacktrace :as st]
-    [yetibot.core.config :refer [get-config]]
-    [schema.core :as sch]))
+    [clojure.string :refer [join]]
+    [taoensso.timbre :refer [info warn error]]
+    [yetibot.core.chat :refer [chat-data-structure]]
+    [yetibot.core.util.command :refer [command? extract-command embedded-cmds]]
+    [yetibot.core.interpreter :as interp]
+    [yetibot.core.models.history :as h]
+    [yetibot.core.parser :refer [parse-and-eval transformer parser unparse]]
+    [yetibot.core.util.format :refer [to-coll-if-contains-newlines
+                                      format-data-structure
+                                      format-exception-log]]))
 
 (defn handle-unparsed-expr
   "Top-level entry point for parsing and evaluation of commands"
@@ -37,63 +38,79 @@
 
 (def all-event-types #{:message :leave :enter :sound :kick})
 
-(defn command?
-  "Returns true if prefix matches a built-in command or alias"
-  [prefix]
-  (boolean (help/get-docs-for prefix)))
-
-(defn embedded-cmds
-  "Parse a string and only return a collection of any embedded commands instead
-   of the top level expression. Returns nil if there are none."
-  [body]
-  (->> (parser body)
-       second second rest
-       ; get expressions
-       (filter #(= :expr (first %)))
-       ; ensure prefix is actually a command
-       (filter #(command? (-> % second second second)))))
-
-(def config-prefix
-  (or (:value (get-config sch/Str [:command :prefix])) "!"))
-
-(defn extract-command
-  "Returns the body if it has the command structure with the prefix;
-   otherwise nil"
-  ([body] (extract-command body config-prefix))
-  ([body prefix]
-    (re-find (re-pattern (str "^\\" prefix "(.+)")) body)))
-
 (defn handle-raw
-  "No-op handler for optional hooks.
+  "Handler for optional hooks.
    Expected event-types are:
    :message
    :leave
    :enter
    :sound
    :kick"
-  [chat-source user event-type body]
-  ;; only :message has a body
-  (go
-    ;; only handle commands from non-yetibot users
-    (when (and body (not (:yetibot? user)))
-      ;; see if it looks like a command
-      (when-let [parsed-cmds
-                 (or
-                   ;; if it starts with a command prefix (e.g. !) it's a command
-                   (when-let [[_ body] (extract-command body config-prefix)]
-                     [(parser body)])
-                   ;; otherwise, check to see if there are embedded commands
-                   (embedded-cmds body))]
-        (doall
-          (map
-            #(try
-               (->> %
-                    (handle-parsed-expr chat-source user)
-                    chat-data-structure)
-               (catch Throwable ex
-                 (error "error handling expression:" body
-                        (format-exception-log ex))
-                 (chat-data-structure (format exception-format ex))))
-            parsed-cmds))))))
+   [{:keys [adapter room uuid] :as chat-source}
+    user event-type body yetibot-user]
+   ;; Note: only :message has a body
+
+   (info "handle-raw"
+         :chat-source chat-source
+         :user user
+         :event-type event-type
+         :body body
+         yetibot-user
+         )
+
+   (go
+     (when body
+       (let [timestamp (System/currentTimeMillis)
+             correlation-id (str timestamp "-"
+                                 (hash [chat-source user event-type body]))
+             parsed-cmds
+             (or
+               ;; if it starts with a command prefix (e.g. !) it's a command
+               (when-let [[_ body] (extract-command body)] [(parser body)])
+               ;; otherwise, check to see if there are embedded commands
+               (embedded-cmds body))
+             cmd? (boolean (seq parsed-cmds))]
+
+         ;; record the body of users' (not Yetibot) messages
+         (when-not (:yetibot? user)
+           (h/add {:chat-source-adapter uuid
+                   :chat-source-room room
+                   :correlation-id correlation-id
+                   :user-id (-> user :id str)
+                   :user-name (-> user :username str)
+                   :is-yetibot false
+                   :is-command cmd?
+                   :body body}))
+
+         ;; When the user's input was a command (or contained embedded commands)
+         ;; process those commands:
+         ;; - adding them individually to history and
+         ;; - posting them to chat
+         (when cmd?
+           (run!
+             (fn [parse-tree]
+               (try
+                 (let [original-command-str (unparse parse-tree)
+                       result (handle-parsed-expr chat-source user parse-tree)
+                       [formatted-response _] (format-data-structure result)]
+                   ;; Yetibot should record its own response in `history` table
+                   ;; before/during posting it back to the chat adapter. Then we
+                   ;; can more easily correlate request (e.g. commands from user)
+                   ;; and response (output from Yetibot)
+                   (h/add {:chat-source-adapter uuid
+                           :chat-source-room room
+                           :correlation-id correlation-id
+                           :user-id (-> yetibot-user :id str)
+                           :user-name (-> yetibot-user :username str)
+                           :is-yetibot true
+                           :is-command false
+                           :command original-command-str
+                           :body formatted-response})
+                   (chat-data-structure result))
+                 (catch Throwable ex
+                   (error "error handling expression:" body
+                          (format-exception-log ex))
+                   (chat-data-structure (format exception-format ex)))))
+             parsed-cmds))))))
 
 (defn cmd-reader [& args] (handle-unparsed-expr (join " " args)))
