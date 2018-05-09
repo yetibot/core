@@ -48,17 +48,8 @@
    :kick"
    [{:keys [adapter room uuid] :as chat-source}
     user event-type body yetibot-user]
-   ;; Note: only :message has a body
-
-   (info "handle-raw"
-         :chat-source chat-source
-         :user user
-         :event-type event-type
-         :body body
-         yetibot-user
-         )
-
    (go
+     ;; Note: only :message has a body
      (when body
        (let [timestamp (System/currentTimeMillis)
              correlation-id (str timestamp "-"
