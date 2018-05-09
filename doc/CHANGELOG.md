@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.33 - 5/9/2018
+
+- Fix `config-prefix` requires now that it moved to `yetibot.core.util.command`
+- Add `yetibot.core.test.loader` to load all observers and commands at test time
+  to find bad requires earlier on
+
 ## 0.4.32 - 5/9/2018
 
 - Add `yetibot.core.parser/unparse` to take an expression tree and unparse it
