@@ -3,6 +3,7 @@
     [yetibot.core.parser :refer [parser]]
     [yetibot.core.handler :refer :all]
     [yetibot.core.commands.history]
+    [yetibot.core.util.command :refer [extract-command]]
     [clojure.string :as s]
     [yetibot.core.repl :refer [load-minimal]]
     [instaparse.core :as insta]
@@ -17,7 +18,8 @@
     {:adapter :test :room "foo"}
     {:id "yetitest"}
     :message
-    (str "test history: " i)))
+    (str "test history: " i)
+    {:username "yetibot" :id "123"}))
 
 
 (deftest test-newline-cmd
