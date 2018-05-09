@@ -2,7 +2,8 @@
   (:require
     [clojure.string :as s]
     [yetibot.core.models.history :as h]
-    [yetibot.core.handler :refer [config-prefix handle-unparsed-expr]]
+    [yetibot.core.util.command :refer [config-prefix]]
+    [yetibot.core.handler :refer [handle-unparsed-expr]]
     [yetibot.core.hooks :refer [cmd-hook]]))
 
 (defn !-cmd

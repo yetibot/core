@@ -1,7 +1,8 @@
 (ns yetibot.core.commands.cmd
   (:require
     [yetibot.core.hooks :refer [cmd-hook]]
-    [yetibot.core.handler :refer [extract-command config-prefix handle-unparsed-expr]]))
+    [yetibot.core.util.command :refer [extract-command config-prefix]]
+    [yetibot.core.handler :refer [handle-unparsed-expr]]))
 
 (def command-pattern (re-pattern (str "^" config-prefix)))
 
