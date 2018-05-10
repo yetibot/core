@@ -33,7 +33,7 @@
         (timbre/error t)
         {:status 500
          :headers {"Content-Type" "text/html"}
-         :body (-> "templates/error.html" io/resource slurp)}))))
+         :body "500 Internal Server Error"}))))
 
 (defn wrap-dev [handler]
   (if (env :dev)

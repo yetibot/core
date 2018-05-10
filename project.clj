@@ -103,11 +103,11 @@
 
                  ; web/ring
                  [ring/ring-json "0.4.0"]
-                 [ring/ring-core "1.6.2"]
+                 [ring/ring-core "1.6.3"]
                  [ring-logger-timbre "0.7.5"]
 
                  ; [ring/ring-jetty-adapter "1.4.0"]
-                 [http-kit "2.2.0"]
+                 [http-kit "2.3.0"]
 
                  ; [ring-server "0.4.0"]
                  ; [info.sunng/ring-jetty9-adapter "0.8.4"]
@@ -119,7 +119,7 @@
                  [metosin/ring-http-response "0.9.0"]
 
                  ; web
-                 [com.walmartlabs/lacinia "0.23.0"] ;; graphql
+                 [com.walmartlabs/lacinia "0.26.0"] ;; graphql
                  [selmer "1.11.0"]
                  [compojure "1.6.0"]
                  [prone "1.1.4"]
