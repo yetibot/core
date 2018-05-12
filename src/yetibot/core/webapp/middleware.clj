@@ -7,6 +7,7 @@
             [selmer.middleware :refer [wrap-error-page]]
             [prone.middleware :refer [wrap-exceptions]]
             [ring.util.response :refer [redirect]]
+            [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.defaults :refer [site-defaults wrap-defaults]]
             [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
             [ring.middleware.session-timeout :refer [wrap-idle-session-timeout]]
@@ -54,6 +55,9 @@
       (wrap-idle-session-timeout
         {:timeout (* 60 30)
          :timeout-response (redirect "/")})
+      (wrap-cors
+        :access-control-allow-origin  [#".*"]
+        :access-control-allow-methods [:get :put :post :delete])
       wrap-formats
       wrap-with-logger
       (wrap-defaults

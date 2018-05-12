@@ -6,7 +6,7 @@
     [com.walmartlabs.lacinia :refer [execute]]
     [com.walmartlabs.lacinia.schema :as lacina.schema]
     [com.walmartlabs.lacinia.util :as lacina.util]
-    [compojure.core :refer [defroutes POST]]
+    [compojure.core :refer [defroutes POST OPTIONS]]
     [taoensso.timbre :refer [error debug info color-str]]
     [yetibot.core.webapp.resolvers :refer [history-resolver eval-resolver adapters-resolver]]))
 
@@ -28,4 +28,7 @@
   (execute @schema query nil nil))
 
 (defroutes graphql-routes
+  ;; most clients perform queries over POST but some initially query the
+  ;; endpoint via OPTIONS
+  (OPTIONS "/graphql" [] "OPTIONS")
   (POST "/graphql" [query] (json/write-str (graphql query))))

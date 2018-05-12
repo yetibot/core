@@ -39,15 +39,6 @@
   ; (stop-nrepl)
   (timbre/info "shutdown complete!"))
 
-(defn wrap-cors
-  "Allow requests from all origins"
-  [handler]
-  (fn [request]
-    (let [response (handler request)]
-      (update-in response
-                 [:headers "Access-Control-Allow-Origin"]
-                 (fn [_] "*")))))
-
 (defn app []
   (let [plugin-routes (vec (rl/load-plugin-routes))
         ; base-routes needs to be very last because it contains not-found
@@ -57,9 +48,7 @@
                api-routes
                graphql-routes
                last-routes)
-        wrap-cors
-        middleware/wrap-base
-        )))
+        middleware/wrap-base)))
 
 ;; base-routes
 
