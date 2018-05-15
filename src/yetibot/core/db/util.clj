@@ -89,13 +89,15 @@
   [table {;; provide either where/map
           ;;   or where/clause and where/args
           ;;   or both (they will be combined)
+          select-clause :select/clause
           where-map :where/map
           where-clause :where/clause
           where-args :where/args
-          select-clause :select/clause
           ;; optional
           order-clause :order/clause
-          limit-clause :limit/clause}]
+          offset-clause :offset/clause
+          limit-clause :limit/clause
+          identifiers :query/identifiers}]
   (let [select-clause (or select-clause "*")
         [where-clause where-args] (combine-wheres
                                     (transform-where-map where-map)
@@ -104,8 +106,9 @@
         sql-query (into
                     [(str "SELECT " select-clause
                           " FROM " (qualified-table-name table)
-                          " WHERE " where-clause
+                          (when where-clause " WHERE " where-clause)
                           (when order-clause (str " ORDER BY " order-clause))
+                          (when offset-clause (str " OFFSET " offset-clause))
                           (when limit-clause (str " LIMIT " limit-clause)))]
                     where-args)
         ]
@@ -115,7 +118,7 @@
         (sql/query
           db-conn
           sql-query
-          {:identifiers kebab})))))
+          {:identifiers (or identifiers kebab)})))))
 
 (defn update-where
   [table where-map attrs]

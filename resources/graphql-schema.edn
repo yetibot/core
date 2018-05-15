@@ -8,7 +8,10 @@
                       :user_name {:type String}
                       :body {:type String}
                       :is_command {:type Boolean}
+                      :is_yetibot {:type Boolean}
                       :id {:type Int}
+                      :command {:type String}
+                      :correlation_id {:type String}
                       :created_at {:type String}}}}
 
  :queries {:eval {:type (list String)
@@ -20,6 +23,11 @@
 
            :history {:type (list :history)
                      :resolve :history
-                     :args {:chat_source_room {:type String}}}
+                     :args {:limit {:type Int
+                                    :default-value 20}
+                            :offset {:type Int
+                                     :default-value 0}
+                            :chat_source_adapter {:type String}
+                            :chat_source_room {:type String}}}
 
            }}
