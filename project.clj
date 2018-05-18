@@ -86,7 +86,7 @@
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.4.1"]
                  [robert/hooke "1.3.0"]
-                 [clj-time "0.14.0"] ; includes joda-time
+                 [clj-time "0.14.4"] ; includes joda-time
                  [rate-gate "1.3.1"]
                  ; scheduling used for mail. could be replaced by
                  ; hara.io.scheduler

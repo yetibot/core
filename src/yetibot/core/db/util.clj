@@ -71,7 +71,9 @@
   [where]
   (not (and where
             (not (blank? (first where)))
-            (not (empty? (second where))))))
+            )))
+            ;; this check is too aggressive, omit
+            ;; (not (empty? (second where))))))
 
 (defn combine-wheres
   [where1 where2]
@@ -103,10 +105,12 @@
                                     (transform-where-map where-map)
                                     [where-clause where-args])
 
+        _ (info {:where-clause where-clause
+                 :where-args where-args})
         sql-query (into
                     [(str "SELECT " select-clause
                           " FROM " (qualified-table-name table)
-                          (when where-clause " WHERE " where-clause)
+                          (when-not (blank? where-clause) (str " WHERE " where-clause))
                           (when order-clause (str " ORDER BY " order-clause))
                           (when offset-clause (str " OFFSET " offset-clause))
                           (when limit-clause (str " LIMIT " limit-clause)))]

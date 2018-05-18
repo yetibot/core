@@ -12,7 +12,18 @@
                       :id {:type Int}
                       :command {:type String}
                       :correlation_id {:type String}
-                      :created_at {:type String}}}}
+                      :created_at {:type String}}}
+
+           :stats {:fields
+                   {:uptime {:type String}
+                    :adapters {:type Int}
+                    :users {:type Int}
+                    :history_count {:type Int}
+                    :history_count_today {:type Int}
+                    :command_count_today {:type Int}
+                    :command_count {:type Int}}}
+
+           }
 
  :queries {:eval {:type (list String)
                   :args {:expr {:type String}}
@@ -29,5 +40,12 @@
                                      :default-value 0}
                             :chat_source_adapter {:type String}
                             :chat_source_room {:type String}}}
+
+           :stats {:type :stats
+                   :resolve :stats
+                   :args {:timezone_offset_hours {:type Int
+                                                  ;; default UTC
+                                                  :default-value 0}
+                          }}
 
            }}

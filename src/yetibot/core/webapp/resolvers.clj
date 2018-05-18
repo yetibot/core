@@ -1,5 +1,6 @@
 (ns yetibot.core.webapp.resolvers
   (:require
+    [yetibot.core.webapp.resolvers.stats :as stats]
     [cuerdas.core :refer [kebab snake]]
     [yetibot.core.adapters.adapter :as adapter]
     [yetibot.core.db.history :as history]
@@ -30,4 +31,4 @@
                   :offset/clause offset
                   :order/clause "created_at DESC"}))
 
-  ;; (take-last 20 (history/query {:identifiers identity})))
+(def stats-resolver (partial stats/stats-resolver))

@@ -8,24 +8,30 @@
     [com.walmartlabs.lacinia.util :as lacina.util]
     [compojure.core :refer [defroutes POST OPTIONS]]
     [taoensso.timbre :refer [error debug info color-str]]
-    [yetibot.core.webapp.resolvers :refer [history-resolver eval-resolver adapters-resolver]]))
+    [yetibot.core.webapp.resolvers :as resolvers]))
 
 (defn load-schema!
   []
   (-> (io/resource "graphql-schema.edn")
       slurp
       edn/read-string
-      (lacina.util/attach-resolvers {:eval eval-resolver
-                                     :adapters adapters-resolver
-                                     :history history-resolver})
+      (lacina.util/attach-resolvers {:eval resolvers/eval-resolver
+                                     :adapters resolvers/adapters-resolver
+                                     :history resolvers/history-resolver
+                                     :stats resolvers/stats-resolver
+                                     })
       lacina.schema/compile))
 
 (def schema (delay (load-schema!)))
 
+;; In the future this may be useful for passing extra context into GraphQL
+;; resolvers
+(def context {})
+
 (defn graphql
   [query]
   (debug "graphql" query)
-  (execute @schema query nil nil))
+  (execute @schema query nil context))
 
 (defroutes graphql-routes
   ;; most clients perform queries over POST but some initially query the

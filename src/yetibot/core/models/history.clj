@@ -85,6 +85,46 @@
             :chat-source-adapter (pr-str uuid)
             :chat-source-room room}})))
 
+;; aggregations
+
+(defn history-count
+  []
+  (-> (query {:select/clause "COUNT(*) as count"})
+      first
+      :count))
+
+(defn history-count-today
+  ([] (history-count-today 0))
+  ([timezone-offset-hours]
+   (-> (query {:select/clause "COUNT(*) as count"
+               :where/clause
+               (str
+                 "created_at >= CURRENT_DATE - interval '"
+                 timezone-offset-hours " hours'")
+               :where/args []})
+       first
+       :count)))
+
+(defn command-count
+  []
+  (-> (query {:select/clause "COUNT(*) as count"
+              :where/map {:is-command true}})
+      first
+      :count))
+
+(defn command-count-today
+  ([] (command-count-today 0))
+  ([timezone-offset-hours]
+   (-> (query {:select/clause "COUNT(*) as count"
+               :where/map {:is-command true}
+               :where/clause
+               (str
+                 "created_at >= CURRENT_DATE - interval '"
+                 timezone-offset-hours " hours'")
+               :where/args []})
+       first
+       :count)))
+
 ;; Note: these aren't currently used. If the eventually are, we should figure
 ;; out a relationally algebraic way to compose in order to avoid querying all
 ;; cmd or non-cmd items for a given chat-source.
