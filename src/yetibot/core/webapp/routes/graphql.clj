@@ -1,5 +1,6 @@
 (ns yetibot.core.webapp.routes.graphql
   (:require
+    [clojure.walk :refer [keywordize-keys]]
     [clojure.edn :as edn]
     [clojure.data.json :as json]
     [clojure.java.io :as io]
@@ -29,12 +30,13 @@
 (def context {})
 
 (defn graphql
-  [query]
-  (debug "graphql" query)
-  (execute @schema query nil context))
+  [query variables]
+  (let [keyword-vars (keywordize-keys variables)]
+    (debug "graphql" {:query query :variables keyword-vars})
+    (execute @schema query keyword-vars context)))
 
 (defroutes graphql-routes
   ;; most clients perform queries over POST but some initially query the
   ;; endpoint via OPTIONS
   (OPTIONS "/graphql" [] "OPTIONS")
-  (POST "/graphql" [query] (json/write-str (graphql query))))
+  (POST "/graphql" [query variables] (json/write-str (graphql query variables))))

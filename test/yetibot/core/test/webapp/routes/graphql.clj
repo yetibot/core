@@ -5,8 +5,30 @@
 
 (deftest graphql-test
   (testing "Simple graphql query"
-    (= (-> (graphql
-             "{eval(expr: \"echo foo | echo bar\")}")
-           :data
-           first)
-       [:eval "bar foo"])))
+    (is
+      (= (-> (graphql
+               "{eval(expr: \"echo foo | echo bar\")}"
+               {})
+             :data
+             first)
+         [:eval ["bar foo"]])))
+
+  (testing "Query with Variables"
+    (is
+      (not
+        (:errors
+          (graphql
+            "query stats($timezone_offset_hours: Int!) {
+             stats(timezone_offset_hours: $timezone_offset_hours) {
+             uptime
+             adapters
+             users
+             command_count_today
+             command_count
+             history_count
+             history_count_today
+             }
+             }"
+            {"timezone_offset_hours" 6}
+            )))))
+  )
