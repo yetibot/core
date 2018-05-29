@@ -133,9 +133,12 @@
     #'yetibot.core.handler/handle-raw
     (let [event-types (set event-types)]
       (fn [callback chat-source user event-type body yetibot-user]
-        ;; (debug "observed"
-        ;;        (color-str :blue (map pr-str [chat-source user event-type body])))
-        (when (contains? event-types event-type)
+        #_(debug "observed" (:yetibot? user)
+                 (color-str :blue chat-source)
+                 user event-type body)
+        (when (and
+                (not (:yetibot? user))
+                (contains? event-types event-type))
           (observer {:chat-source chat-source
                      :event-type event-type
                      :user user
