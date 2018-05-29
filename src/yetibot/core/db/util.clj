@@ -134,3 +134,9 @@
         ;; transform attr keys to snake case
         (into {} (for [[k v] attrs] [(snake k) v]))
         (apply vector where-keys where-args)))))
+
+(defn entity-count
+  [table]
+  (-> (query table {:select/clause "COUNT(*) as count"})
+      first
+      :count))

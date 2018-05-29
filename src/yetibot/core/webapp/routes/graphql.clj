@@ -36,7 +36,4 @@
     (execute @schema query keyword-vars context)))
 
 (defroutes graphql-routes
-  ;; most clients perform queries over POST but some initially query the
-  ;; endpoint via OPTIONS
-  (OPTIONS "/graphql" [] "OPTIONS")
   (POST "/graphql" [query variables] (json/write-str (graphql query variables))))

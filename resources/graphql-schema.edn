@@ -16,12 +16,16 @@
 
            :stats {:fields
                    {:uptime {:type String}
-                    :adapters {:type Int}
-                    :users {:type Int}
+                    :adapter_count {:type Int}
+                    :user_count {:type Int}
                     :history_count {:type Int}
                     :history_count_today {:type Int}
                     :command_count_today {:type Int}
-                    :command_count {:type Int}}}
+                    :command_count {:type Int}
+                    :alias_count {:type Int}
+                    :observer_count {:type Int}
+                    :cron_count {:type Int}
+                    }}
 
            }
 
