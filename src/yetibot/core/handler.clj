@@ -4,7 +4,7 @@
     [clojure.core.match :refer [match]]
     [clojure.stacktrace :as st]
     [clojure.string :refer [join]]
-    [taoensso.timbre :refer [info warn error]]
+    [taoensso.timbre :refer [debug info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.util.command :refer [command? extract-command embedded-cmds]]
     [yetibot.core.interpreter :as interp]
@@ -46,62 +46,65 @@
    :enter
    :sound
    :kick"
-   [{:keys [adapter room uuid] :as chat-source}
-    user event-type body yetibot-user]
-   (go
-     ;; Note: only :message has a body
-     (when body
-       (let [timestamp (System/currentTimeMillis)
-             correlation-id (str timestamp "-"
-                                 (hash [chat-source user event-type body]))
-             parsed-cmds
-             (or
-               ;; if it starts with a command prefix (e.g. !) it's a command
-               (when-let [[_ body] (extract-command body)] [(parser body)])
-               ;; otherwise, check to see if there are embedded commands
-               (embedded-cmds body))
-             cmd? (boolean (seq parsed-cmds))]
+  [{:keys [adapter room uuid] :as chat-source}
+   user event-type body yetibot-user]
+  (go
+    ;; Note: only :message has a body
+    (when body
+      #_(debug "handle-raw" body user event-type)
+      (let [timestamp (System/currentTimeMillis)
+            correlation-id (str timestamp "-"
+                                (hash [chat-source user event-type body]))
+            parsed-cmds
+            (or
+              ;; if it starts with a command prefix (e.g. !) it's a command
+              (when-let [[_ body] (extract-command body)] [(parser body)])
+              ;; otherwise, check to see if there are embedded commands
+              (embedded-cmds body))
+            cmd? (boolean (seq parsed-cmds))]
 
-         ;; record the body of users' (not Yetibot) messages
-         (when-not (:yetibot? user)
-           (h/add {:chat-source-adapter uuid
-                   :chat-source-room room
-                   :correlation-id correlation-id
-                   :user-id (-> user :id str)
-                   :user-name (-> user :username str)
-                   :is-yetibot false
-                   :is-command cmd?
-                   :body body}))
+        ;; record the body of users' (not Yetibot) messages
+        (when-not (:yetibot? user)
+          (h/add {:chat-source-adapter uuid
+                  :chat-source-room room
+                  :correlation-id correlation-id
+                  :user-id (-> user :id str)
+                  :user-name (-> user :username str)
+                  :is-yetibot false
+                  :is-command cmd?
+                  :body body}))
 
-         ;; When the user's input was a command (or contained embedded commands)
-         ;; process those commands:
-         ;; - adding them individually to history and
-         ;; - posting them to chat
-         (when cmd?
-           (run!
-             (fn [parse-tree]
-               (try
-                 (let [original-command-str (unparse parse-tree)
-                       result (handle-parsed-expr chat-source user parse-tree)
-                       [formatted-response _] (format-data-structure result)]
-                   ;; Yetibot should record its own response in `history` table
-                   ;; before/during posting it back to the chat adapter. Then we
-                   ;; can more easily correlate request (e.g. commands from user)
-                   ;; and response (output from Yetibot)
-                   (h/add {:chat-source-adapter uuid
-                           :chat-source-room room
-                           :correlation-id correlation-id
-                           :user-id (-> yetibot-user :id str)
-                           :user-name (-> yetibot-user :username str)
-                           :is-yetibot true
-                           :is-command false
-                           :command original-command-str
-                           :body formatted-response})
-                   (chat-data-structure result))
-                 (catch Throwable ex
-                   (error "error handling expression:" body
-                          (format-exception-log ex))
-                   (chat-data-structure (format exception-format ex)))))
-             parsed-cmds))))))
+        ;; When:
+        ;; - the user's input was a command (or contained embedded commands)
+        ;; - and the user is not Yetibot
+        ;; process those commands:
+        ;; - adding them individually to history and
+        ;; - posting them to chat
+        (when (and cmd? (not (:yetibot? user)))
+          (run!
+            (fn [parse-tree]
+              (try
+                (let [original-command-str (unparse parse-tree)
+                      result (handle-parsed-expr chat-source user parse-tree)
+                      [formatted-response _] (format-data-structure result)]
+                  ;; Yetibot should record its own response in `history` table
+                  ;; before/during posting it back to the chat adapter. Then we
+                  ;; can more easily correlate request (e.g. commands from user)
+                  ;; and response (output from Yetibot)
+                  (h/add {:chat-source-adapter uuid
+                          :chat-source-room room
+                          :correlation-id correlation-id
+                          :user-id (-> yetibot-user :id str)
+                          :user-name (-> yetibot-user :username str)
+                          :is-yetibot true
+                          :is-command false
+                          :command original-command-str
+                          :body formatted-response})
+                  (chat-data-structure result))
+                (catch Throwable ex
+                  (error "error handling expression:" body
+                         (format-exception-log ex))
+                  (chat-data-structure (format exception-format ex)))))
+            parsed-cmds))))))
 
 (defn cmd-reader [& args] (handle-unparsed-expr (join " " args)))

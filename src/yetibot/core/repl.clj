@@ -19,6 +19,7 @@
   (require 'yetibot.core.commands.echo :reload)
   (require 'yetibot.core.commands.help :reload)
   (require 'yetibot.core.commands.history :reload)
+  (require 'yetibot.core.commands.observe :reload)
   (require 'yetibot.core.commands.room :reload)
   (require 'yetibot.core.commands.users :reload)
   (require 'yetibot.core.commands.that :reload)
@@ -34,8 +35,11 @@
   (logging/start)
   (mconfig/reload-config!)
   (web/start-web-server)
-  (load-minimal-with-db)
-  (ai/start))
+  (db/start)
+  (ai/start)
+  ;; commands should be loaded last, just like in yetibot.core.init
+  ;; otherwise multiple hooks can get registered somehow
+  (load-minimal))
 
 (defn start-web
   []
