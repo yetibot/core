@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.34 - 5/29/2018
+
+- Prevent Yetibot from triggering itself -
+  [#40](https://github.com/yetibot/yetibot.core/pull/40)
+
 ## 0.4.33 - 5/9/2018
 
 - Fix `config-prefix` requires now that it moved to `yetibot.core.util.command`
