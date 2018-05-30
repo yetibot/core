@@ -19,6 +19,7 @@
       (lacina.util/attach-resolvers {:eval resolvers/eval-resolver
                                      :adapters resolvers/adapters-resolver
                                      :history resolvers/history-resolver
+                                     :users resolvers/users-resolver
                                      :stats resolvers/stats-resolver
                                      })
       lacina.schema/compile))

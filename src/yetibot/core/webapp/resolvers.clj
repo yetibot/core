@@ -1,5 +1,6 @@
 (ns yetibot.core.webapp.resolvers
   (:require
+    [yetibot.core.models.users :as users]
     [yetibot.core.webapp.resolvers.stats :as stats]
     [cuerdas.core :refer [kebab snake]]
     [yetibot.core.adapters.adapter :as adapter]
@@ -32,3 +33,12 @@
                   :order/clause "created_at DESC"}))
 
 (def stats-resolver (partial stats/stats-resolver))
+
+(defn users-resolver
+  [context {:keys [] :as args} value]
+  (map (fn [{:keys [username active? id last-active]}]
+         {:username username
+          :is_active active?
+          :id id
+          :last_active last-active})
+       (vals @users/users)))

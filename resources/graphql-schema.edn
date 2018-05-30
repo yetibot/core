@@ -27,6 +27,12 @@
                     :cron_count {:type Int}
                     }}
 
+           :user {:fields
+                  {:username {:type String}
+                   :is_active {:type Boolean}
+                   :id {:type String}
+                   :last_active {:type String} }}
+
            }
 
  :queries {:eval {:type (list String)
@@ -44,6 +50,9 @@
                                      :default-value 0}
                             :chat_source_adapter {:type String}
                             :chat_source_room {:type String}}}
+           :users {:type (list :user)
+                   :resolve :users
+                   }
 
            :stats {:type :stats
                    :resolve :stats
