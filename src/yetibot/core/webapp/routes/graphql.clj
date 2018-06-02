@@ -21,6 +21,7 @@
                                      :history resolvers/history-resolver
                                      :users resolvers/users-resolver
                                      :stats resolvers/stats-resolver
+                                     :aliases resolvers/aliases-resolver
                                      })
       lacina.schema/compile))
 

@@ -33,6 +33,13 @@
                    :id {:type String}
                    :last_active {:type String} }}
 
+           :alias {:fields
+                   {:id {:type Int}
+                    :user_id {:type String}
+                    :cmd_name {:type String}
+                    :cmd {:type String}
+                    :created_at {:type String}}}
+
            }
 
  :queries {:eval {:type (list String)
@@ -60,5 +67,8 @@
                                                   ;; default UTC
                                                   :default-value 0}
                           }}
+
+           :aliases {:type (list :alias)
+                     :resolve :aliases}
 
            }}

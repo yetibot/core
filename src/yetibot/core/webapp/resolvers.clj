@@ -5,6 +5,7 @@
     [cuerdas.core :refer [kebab snake]]
     [yetibot.core.adapters.adapter :as adapter]
     [yetibot.core.db.history :as history]
+    [yetibot.core.db.alias :as db.alias]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [taoensso.timbre :refer [error debug info color-str]]))
 
@@ -42,3 +43,7 @@
           :id id
           :last_active last-active})
        (vals @users/users)))
+
+(defn aliases-resolver
+  [context {:keys [] :as args} value]
+  (db.alias/query {:query/identifiers identity}))
