@@ -22,6 +22,8 @@
                                      :users resolvers/users-resolver
                                      :stats resolvers/stats-resolver
                                      :aliases resolvers/aliases-resolver
+                                     :observers resolvers/observers-resolver
+                                     :crons resolvers/crons-resolver
                                      })
       lacina.schema/compile))
 

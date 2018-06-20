@@ -40,6 +40,25 @@
                     :cmd {:type String}
                     :created_at {:type String}}}
 
+           :observer {:fields
+                      {:id {:type Int}
+                       :user_id {:type String}
+                       :pattern {:type String}
+                       :user_pattern {:type String}
+                       :channel_pattern {:type String}
+                       :event_type {:type String}
+                       :cmd {:type String}
+                       :created_at {:type String}}}
+
+           :cron {:fields
+                  {:id {:type Int}
+                   :created_at {:type String}
+                   :chat_source_adapter {:type String}
+                   :chat_source_room {:type String}
+                   :user_id {:type String}
+                   :schedule {:type String}
+                   :cmd {:type String}}}
+
            }
 
  :queries {:eval {:type (list String)
@@ -70,5 +89,11 @@
 
            :aliases {:type (list :alias)
                      :resolve :aliases}
+
+           :observers {:type (list :observer)
+                       :resolve :observers}
+
+           :crons {:type (list :cron)
+                       :resolve :crons}
 
            }}

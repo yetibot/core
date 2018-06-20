@@ -6,6 +6,8 @@
     [yetibot.core.adapters.adapter :as adapter]
     [yetibot.core.db.history :as history]
     [yetibot.core.db.alias :as db.alias]
+    [yetibot.core.db.observe :as db.observe]
+    [yetibot.core.db.cron :as db.cron]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [taoensso.timbre :refer [error debug info color-str]]))
 
@@ -47,3 +49,11 @@
 (defn aliases-resolver
   [context {:keys [] :as args} value]
   (db.alias/query {:query/identifiers identity}))
+
+(defn observers-resolver
+  [context {:keys [] :as args} value]
+  (db.observe/query {:query/identifiers identity}))
+
+(defn crons-resolver
+  [context {:keys [] :as args} value]
+  (db.cron/query {:query/identifiers identity}))

@@ -18,4 +18,6 @@
 
 (def find-all (partial db.util/find-all (:schema/table schema)))
 
+(def query (partial db.util/query (:schema/table schema)))
+
 (def entity-count (partial db.util/entity-count (:schema/table schema)))
