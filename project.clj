@@ -10,8 +10,12 @@
                  :timeout 120000
                  :welcome (println "Welcome to the Yetibot development repl!")}
   ; :aot [yetibot.core.init]
+  :resource-paths ["resources"
+                   ;; yetibot-dashboard is an npm dep
+                   "node_modules/yetibot-dashboard/dist"]
   :main yetibot.core.init
-  :plugins [[lein-environ "1.0.3"]]
+  :plugins [[lein-environ "1.0.3"]
+            [lein-npm "0.6.2"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
                    {:plugins [[venantius/ultra "0.5.1"]]}]
@@ -128,4 +132,16 @@
                  ; [markdown-clj "0.9.66"]
 
                  [slack-rtm "0.1.6" :exclusions [[stylefruits/gniazdo]]]
-                 ])
+                 ]
+
+  :release-tasks [["deps"]
+                  ["vcs" "assert-committed"]
+                  ["change" "version" "leiningen.release/bump-version" "release"]
+                  ["vcs" "commit"]
+                  ["vcs" "tag"]
+                  ["deploy"]
+                  ["change" "version" "leiningen.release/bump-version"]
+                  ["vcs" "commit"]
+                  ["vcs" "push"]]
+
+  :npm {:dependencies [[yetibot-dashboard "0.2.0"]]})

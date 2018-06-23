@@ -18,7 +18,7 @@
 (defonce web-server (atom nil))
 
 (defroutes base-routes
-  (route/resources "/")
+  (route/resources "/" {:root ""})
   (route/not-found "Not Found"))
 
 (defn init
@@ -41,7 +41,7 @@
 
 (defn app []
   (let [plugin-routes (vec (rl/load-plugin-routes))
-        ; base-routes needs to be very last because it contains not-found
+        ;; base-routes needs to be very last because it contains not-found
         last-routes (conj plugin-routes base-routes)]
     (-> (apply routes
                home-routes
