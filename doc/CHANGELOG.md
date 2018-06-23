@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.35 - 6/23/2018
+
+- Massively increase GraphQL coverage to support yetibot-dashboard
+- Consume npm dep `yetibot-dashbaord` and use its JavaScript output to render
+  the dashboard and sub-routes
+
 ## 0.4.34 - 5/29/2018
 
 - Prevent Yetibot from triggering itself -
