@@ -134,8 +134,8 @@
                  [slack-rtm "0.1.6" :exclusions [[stylefruits/gniazdo]]]
                  ]
 
-  :release-tasks [["deps"]
-                  ["vcs" "assert-committed"]
+  :release-tasks [["vcs" "assert-committed"]
+                  ["deps"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["vcs" "commit"]
                   ["vcs" "tag"]
