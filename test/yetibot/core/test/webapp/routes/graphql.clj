@@ -19,15 +19,18 @@
         (:errors
           (graphql
             "query stats($timezone_offset_hours: Int!) {
-             stats(timezone_offset_hours: $timezone_offset_hours) {
-             uptime
-             adapters
-             users
-             command_count_today
-             command_count
-             history_count
-             history_count_today
-             }
+              stats(timezone_offset_hours: $timezone_offset_hours) {
+                uptime
+                adapter_count
+                user_count
+                command_count_today
+                command_count
+                history_count
+                history_count_today
+                alias_count
+                observer_count
+                cron_count
+              }
              }"
             {"timezone_offset_hours" 6}
             )))))
