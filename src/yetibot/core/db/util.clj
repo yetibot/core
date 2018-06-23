@@ -49,13 +49,14 @@
       ["id = ?" id])))
 
 (defn find-all
-  [table]
-  (sql/with-db-connection [db-conn (:url (config))]
-    (sql/query
-      db-conn
-      [(str "SELECT * FROM "
-            (qualified-table-name table))]
-      {:identifiers kebab})))
+  ([table] (find-all table {}))
+  ([table {:keys [identifiers]}]
+   (sql/with-db-connection [db-conn (:url (config))]
+     (sql/query
+       db-conn
+       [(str "SELECT * FROM "
+             (qualified-table-name table))]
+       {:identifiers (or identifiers kebab)}))))
 
 (defn transform-where-map
   "Return a vector of where-keys and where-args to use in a select or update"
@@ -70,7 +71,9 @@
   [where]
   (not (and where
             (not (blank? (first where)))
-            (not (empty? (second where))))))
+            )))
+            ;; this check is too aggressive, omit
+            ;; (not (empty? (second where))))))
 
 (defn combine-wheres
   [where1 where2]
@@ -88,23 +91,28 @@
   [table {;; provide either where/map
           ;;   or where/clause and where/args
           ;;   or both (they will be combined)
+          select-clause :select/clause
           where-map :where/map
           where-clause :where/clause
           where-args :where/args
-          select-clause :select/clause
           ;; optional
           order-clause :order/clause
-          limit-clause :limit/clause}]
+          offset-clause :offset/clause
+          limit-clause :limit/clause
+          identifiers :query/identifiers}]
   (let [select-clause (or select-clause "*")
         [where-clause where-args] (combine-wheres
                                     (transform-where-map where-map)
                                     [where-clause where-args])
 
+        _ (info {:where-clause where-clause
+                 :where-args where-args})
         sql-query (into
                     [(str "SELECT " select-clause
                           " FROM " (qualified-table-name table)
-                          " WHERE " where-clause
+                          (when-not (blank? where-clause) (str " WHERE " where-clause))
                           (when order-clause (str " ORDER BY " order-clause))
+                          (when offset-clause (str " OFFSET " offset-clause))
                           (when limit-clause (str " LIMIT " limit-clause)))]
                     where-args)
         ]
@@ -114,7 +122,7 @@
         (sql/query
           db-conn
           sql-query
-          {:identifiers kebab})))))
+          {:identifiers (or identifiers kebab)})))))
 
 (defn update-where
   [table where-map attrs]
@@ -126,3 +134,9 @@
         ;; transform attr keys to snake case
         (into {} (for [[k v] attrs] [(snake k) v]))
         (apply vector where-keys where-args)))))
+
+(defn entity-count
+  [table]
+  (-> (query table {:select/clause "COUNT(*) as count"})
+      first
+      :count))

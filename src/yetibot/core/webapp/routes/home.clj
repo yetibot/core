@@ -9,17 +9,22 @@
 
 (defn home-page []
   (common/layout
-    "Home"
-    [:div.home
-     (link-to "http://yetibot.com"
-              (image {:class "yeti"} "/img/yeti.png")
-              [:h1.version version])]))
+    "Home"))
 
   ; (layout/render
   ;   "home.html" {:docs (-> "docs/docs.md" io/resource slurp)}))
 
 (defroutes home-routes
+  ;; Yetibot dashboard handles routing client side, so point known routes to the
+  ;; "home" route:
   (GET "/" [] (home-page))
+  (GET "/adapters" [] (home-page))
+  (GET "/history" [] (home-page))
+  (GET "/users" [] (home-page))
+  (GET "/aliases" [] (home-page))
+  (GET "/observers" [] (home-page))
+  (GET "/cron" [] (home-page))
+  (GET "/repl" [] (home-page))
   #_(GET "/about" [] (about-page))
   )
 

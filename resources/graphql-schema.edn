@@ -1,8 +1,99 @@
-{:objects {:adapter {:fields {:name {:type String}}}}
+{:objects {:adapter {:fields {:uuid {:type String}
+                              :platform {:type String}}}
+
+           :history {:fields
+                     {:chat_source_adapter {:type String}
+                      :chat_source_room {:type String}
+                      :user_id {:type String}
+                      :user_name {:type String}
+                      :body {:type String}
+                      :is_command {:type Boolean}
+                      :is_yetibot {:type Boolean}
+                      :id {:type Int}
+                      :command {:type String}
+                      :correlation_id {:type String}
+                      :created_at {:type String}}}
+
+           :stats {:fields
+                   {:uptime {:type String}
+                    :adapter_count {:type Int}
+                    :user_count {:type Int}
+                    :history_count {:type Int}
+                    :history_count_today {:type Int}
+                    :command_count_today {:type Int}
+                    :command_count {:type Int}
+                    :alias_count {:type Int}
+                    :observer_count {:type Int}
+                    :cron_count {:type Int}
+                    }}
+
+           :user {:fields
+                  {:username {:type String}
+                   :is_active {:type Boolean}
+                   :id {:type String}
+                   :last_active {:type String} }}
+
+           :alias {:fields
+                   {:id {:type Int}
+                    :user_id {:type String}
+                    :cmd_name {:type String}
+                    :cmd {:type String}
+                    :created_at {:type String}}}
+
+           :observer {:fields
+                      {:id {:type Int}
+                       :user_id {:type String}
+                       :pattern {:type String}
+                       :user_pattern {:type String}
+                       :channel_pattern {:type String}
+                       :event_type {:type String}
+                       :cmd {:type String}
+                       :created_at {:type String}}}
+
+           :cron {:fields
+                  {:id {:type Int}
+                   :created_at {:type String}
+                   :chat_source_adapter {:type String}
+                   :chat_source_room {:type String}
+                   :user_id {:type String}
+                   :schedule {:type String}
+                   :cmd {:type String}}}
+
+           }
 
  :queries {:eval {:type (list String)
                   :args {:expr {:type String}}
                   :resolve :eval}
 
            :adapters {:type (list :adapter)
-                      :resolve :adapters}}}
+                      :resolve :adapters}
+
+           :history {:type (list :history)
+                     :resolve :history
+                     :args {:limit {:type Int
+                                    :default-value 20}
+                            :offset {:type Int
+                                     :default-value 0}
+                            :chat_source_adapter {:type String}
+                            :chat_source_room {:type String}}}
+           :users {:type (list :user)
+                   :resolve :users
+                   }
+
+           :stats {:type :stats
+                   :resolve :stats
+                   :args {:timezone_offset_hours {:type Int
+                                                  ;; default UTC
+                                                  :default-value 0}
+                          }}
+
+           :aliases {:type (list :alias)
+                     :resolve :aliases}
+
+           :observers {:type (list :observer)
+                       :resolve :observers}
+
+           :crons {:type (list :cron)
+                       :resolve :crons}
+
+           }}

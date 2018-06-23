@@ -8,10 +8,14 @@
 
 (defn uptime-millis [] (- (now) start-time))
 
+(defn formatted-uptime []
+  (DurationFormatUtils/formatDurationWords (uptime-millis) true true))
+
 (defn uptime-cmd
   "uptime # list uptime in milliseconds"
   {:yb/cat #{:util}}
-  [_] (DurationFormatUtils/formatDurationWords (uptime-millis) true true))
+  [_]
+  (formatted-uptime))
 
 (cmd-hook #"uptime"
           _ uptime-cmd)

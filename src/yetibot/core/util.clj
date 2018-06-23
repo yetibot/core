@@ -54,7 +54,9 @@
 (defn ensure-items-collection [items]
   {:pre [(not (nil? items))]}
   (if (coll? items)
-    items
+    (if (map? items)
+      (for [[k v] items] (str k ": " v))
+      items)
     (s/split items #"\n")))
 
 (defn ensure-items-seqential

@@ -24,4 +24,14 @@
      (db.util/combine-wheres
        (db.util/transform-where-map {:bar "baz"})
        ["" []]
-       ))))
+       )))
+
+  (testing "just where clause with no args"
+    (=
+     ["created_at >= CURRENT_DATE" []]
+     (db.util/combine-wheres
+       nil
+       ["created_at >= CURRENT_DATE" []]
+       )))
+
+  )

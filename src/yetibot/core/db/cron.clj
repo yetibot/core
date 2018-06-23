@@ -21,3 +21,4 @@
 
 (def update-where (partial db.util/update-where (:schema/table schema)))
 
+(def entity-count (partial db.util/entity-count (:schema/table schema)))

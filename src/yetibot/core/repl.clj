@@ -15,6 +15,7 @@
 (defn load-minimal []
   (require 'yetibot.core.commands.about :reload)
   (require 'yetibot.core.commands.collections :reload)
+  (require 'yetibot.core.commands.nil :reload)
   (require 'yetibot.core.commands.default-command :reload)
   (require 'yetibot.core.commands.echo :reload)
   (require 'yetibot.core.commands.help :reload)

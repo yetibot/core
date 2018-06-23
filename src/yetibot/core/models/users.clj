@@ -6,8 +6,7 @@
 (def config {:active-threshold-milliseconds (* 15 60 1000)})
 
 (defonce
-  ^{:private true
-    :doc
+  ^{:doc
     "key is a map like: {:adapter adapter, :id user-id}
      value is a user with keys:
        adapter, username, id, active?, last-active, rooms

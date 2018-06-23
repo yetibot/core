@@ -320,7 +320,6 @@
         items (-> opts ensure-items-collection ensure-items-seqential)]
     (grep-data-structure pattern items {:context (read-string n)})))
 
-
 (cmd-hook #"grep"
           #"-C\s+(\d+)\s+(.+)" grep-cmd
           _ grep-cmd)
