@@ -144,4 +144,4 @@
                   ["vcs" "commit"]
                   ["vcs" "push"]]
 
-  :npm {:dependencies [[yetibot-dashboard "0.3.0"]]})
+  :npm {:dependencies [[yetibot-dashboard "0.4.0"]]})

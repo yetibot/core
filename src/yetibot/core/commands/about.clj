@@ -6,7 +6,7 @@
   {:yb/cat #{:info}}
   [& _]
   {:result/data
-   {:about/url "http://yetibot.com"
+   {:about/url "https://yetibot.com"
     :about/name "Yetibot"
     :about/logo
     "https://github.com/devth/yetibot/raw/master/img/yetibot_final.png?raw=true"
@@ -23,7 +23,7 @@
     "Yetibot is a chat bot written in Clojure;"
     "it wants to make your life easier;"
     "it wants you to have fun."
-    "http://yetibot.com"]})
+    "https://yetibot.com"]})
 
 (cmd-hook #"about"
   _ about-cmd)

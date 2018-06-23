@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.36 - 6/23/2018
+
+- Add ability to obtain GraphQL endpoint from env
+
 ## 0.4.35 - 6/23/2018
 
 - Massively increase GraphQL coverage to support yetibot-dashboard
