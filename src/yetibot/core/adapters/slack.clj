@@ -189,10 +189,15 @@
         (info "Don't know how to handle message subtype" subtype)))
     (let [{chan-id :channel thread-ts :thread_ts} event
           [chan-name entity] (entity-with-name-by-id config event)
+          {:keys [is_channel]} entity
+          ;; _ (info "channel entity:" (pr-str entity))
+          ;; _ (info "event entity:" (color-str :red (pr-str event)))
           ;; TODO we probably need to switch to chan-id when building the
           ;; Slack chat-source since they are moving away from being able to
           ;; use user names as IDs
-          cs (chat-source chan-name)
+          cs (assoc (chat-source chan-name)
+                    :is-private (not (boolean is_channel)))
+          ;; _ (info "chat source" (color-str :green (pr-str cs)))
           yetibot-user (find-yetibot-user conn cs)
           yetibot-uid (:id yetibot-user)
           yetibot? (= yetibot-uid (:user event))

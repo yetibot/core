@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.37 - 6/24/2018
+
+- Add new `is_private` column to history table and consider a message in Slack
+  adapte private if it's either a direct message or from within a group.
+
 ## 0.4.36 - 6/23/2018
 
 - Add ability to obtain GraphQL endpoint from env

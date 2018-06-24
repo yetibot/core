@@ -26,6 +26,8 @@
                         ;;
                         [:body :text]
                         [:is-yetibot :boolean "DEFAULT false"]
+                        ;; groups and DMs are considered private
+                        [:is-private :boolean "DEFAULT false"]
                         [:is-command :boolean]]
                        (db.util/default-fields))})
 
