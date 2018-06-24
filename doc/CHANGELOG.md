@@ -3,7 +3,8 @@
 ## 0.4.37 - 6/24/2018
 
 - Add new `is_private` column to history table and consider a message in Slack
-  adapte private if it's either a direct message or from within a group.
+  adapter private if it's either a direct message or from within a group.
+- Elide `is_private` entities from history in GraphQL API
 
 ## 0.4.36 - 6/23/2018
 

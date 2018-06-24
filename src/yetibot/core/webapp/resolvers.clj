@@ -31,6 +31,7 @@
   [context {:keys [offset limit chat_source_room chat_source_adapter] :as args} value]
   (info "history resolver with args" args)
   (history/query {:query/identifiers identity
+                  :where/map {"is_private" false}
                   :limit/clause limit
                   :offset/clause offset
                   :order/clause "created_at DESC"}))
