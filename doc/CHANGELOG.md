@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.38 - 6/24/2018
+
+- Upgrade to yetibot-dashboard 0.5.0
+
 ## 0.4.37 - 6/24/2018
 
 - Add new `is_private` column to history table and consider a message in Slack
