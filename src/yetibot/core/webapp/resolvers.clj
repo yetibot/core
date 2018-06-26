@@ -28,13 +28,18 @@
                     :platform (adapter/platform-name %)))))
 
 (defn history-resolver
-  [context {:keys [offset limit chat_source_room chat_source_adapter] :as args} value]
+  [context
+   {:keys [offset limit chat_source_room chat_source_adapter commands_only] :as args}
+   value]
   (info "history resolver with args" args)
-  (history/query {:query/identifiers identity
-                  :where/map {"is_private" false}
-                  :limit/clause limit
-                  :offset/clause offset
-                  :order/clause "created_at DESC"}))
+  (let [where-map (merge {"is_private" false}
+                         (when commands_only {"is_command" true})
+                         )]
+    (history/query {:query/identifiers identity
+                    :where/map where-map
+                    :limit/clause limit
+                    :offset/clause offset
+                    :order/clause "created_at DESC"})))
 
 (def stats-resolver (partial stats/stats-resolver))
 

@@ -27,6 +27,7 @@
                                      })
       lacina.schema/compile))
 
+;; note this is not reloadable
 (def schema (delay (load-schema!)))
 
 ;; In the future this may be useful for passing extra context into GraphQL
