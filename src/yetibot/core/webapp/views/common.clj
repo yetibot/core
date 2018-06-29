@@ -1,8 +1,14 @@
 (ns yetibot.core.webapp.views.common
   (:require
+    [clojure.java.io :as io]
     [yetibot.core.commands.url :as url]
     [hiccup.page :refer [include-css include-js html5]]
     [hiccup.element :refer :all]))
+
+
+(def main-hash (delay (hash (io/resource "main.js"))))
+
+(def vendor-hash (delay (hash (io/resource "vendor.js"))))
 
 (defn title [pt] (str "Yetibot 🔥 " pt))
 
@@ -17,6 +23,8 @@
        (when url
          [:script "window.Yetibot = window.Yetibot || {};
                    window.Yetibot.url = '" url "';"])
-       [:script {:type "text/javascript" :src "/vendor.js" }]
-       [:script {:type "text/javascript" :src "/main.js" }]
+       [:script {:type "text/javascript"
+                 :src (str "/vendor.js?x=" @vendor-hash) }]
+       [:script {:type "text/javascript"
+                 :src (str "/main.js?x=" @main-hash)}]
        content])))

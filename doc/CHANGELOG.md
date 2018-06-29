@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.39 - 6/29/2018
+
+- Add cache-busting query param with the hash of vendor.js and main.js
+- Support new `search_query` param on history resolver
+- Add support for `commands_only` in history resolver
+
 ## 0.4.38 - 6/24/2018
 
 - Upgrade to yetibot-dashboard 0.5.0
