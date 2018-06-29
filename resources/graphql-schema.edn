@@ -78,7 +78,8 @@
                             :chat_source_room {:type String}
                             :commands_only {:type Boolean
                                             :default-value false}
-
+                            :search_query {:type String
+                                           :default-value nil}
                             }}
            :users {:type (list :user)
                    :resolve :users

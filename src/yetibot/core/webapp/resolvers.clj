@@ -29,17 +29,25 @@
 
 (defn history-resolver
   [context
-   {:keys [offset limit chat_source_room chat_source_adapter commands_only] :as args}
+   {:keys [offset limit chat_source_room chat_source_adapter commands_only
+           search_query]
+    :as args}
    value]
   (info "history resolver with args" args)
   (let [where-map (merge {"is_private" false}
                          (when commands_only {"is_command" true})
-                         )]
-    (history/query {:query/identifiers identity
-                    :where/map where-map
-                    :limit/clause limit
-                    :offset/clause offset
-                    :order/clause "created_at DESC"})))
+                         )
+        where-clause (when search_query
+                       {:where/clause
+                        "to_tsvector(body) @@ to_tsquery(?)"
+                        :where/args [search_query]})
+        ]
+    (history/query (merge {:query/identifiers identity
+                           :where/map where-map
+                           :limit/clause limit
+                           :offset/clause offset
+                           :order/clause "created_at DESC"}
+                          where-clause))))
 
 (def stats-resolver (partial stats/stats-resolver))
 
