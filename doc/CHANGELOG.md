@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.40 - 6/29/2018
+
+- Upgrade to `yetibot-dashboard 0.5.4`
+
 ## 0.4.39 - 6/29/2018
 
 - Add cache-busting query param with the hash of vendor.js and main.js
