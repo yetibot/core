@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.40 - 9/24/2018
+
+- Add `/healthz` endpoint [#691](https://github.com/yetibot/yetibot/issues/691)
+
 ## 0.4.39 - 6/29/2018
 
 - Upgrade to `yetibot-dashboard 0.5.4`
