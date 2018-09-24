@@ -29,6 +29,8 @@
 
   (start [_] "Start the chat adapter")
 
+  (connected? [_] "Check whether the adapter is connected or not")
+
   (stop [_] "Stop the chat adapter"))
 
 ; Instances of Adapters. If there are multiple configurations for an Adapter
@@ -51,5 +53,35 @@
   (-> (active-adapters)
       first
       (platform-name))
+
+  (-> (active-adapters)
+      first
+      connected?
+      )
+
+  (-> (active-adapters)
+      second
+      :conn
+      deref
+      deref
+      :ready?
+      deref
+      )
+
+  (-> (active-adapters)
+      first
+      (start))
+
+  (-> (active-adapters)
+      second
+      (connected?))
+
+  (-> (active-adapters)
+      second
+      (stop))
+
+  (-> (active-adapters)
+      second
+      (start))
 
   )

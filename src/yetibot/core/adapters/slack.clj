@@ -216,9 +216,12 @@
                     (unencode-message body)
                     yetibot-user)))))
 
-(defn on-hello [event] (timbre/debug "Hello, you are connected to Slack" event))
+(defn on-hello [event]
+  (timbre/debug "Hello, you are connected to Slack" event))
 
-(defn on-connect [e] (timbre/debug "connected"))
+(defn on-connect [connected? e]
+  (reset! connected? true)
+  (timbre/debug "connected"))
 
 (declare restart)
 
@@ -226,7 +229,8 @@
 ;; list of status codes on a close event
 (def status-normal-close 1000)
 
-(defn on-close [conn config {:keys [status-code] :as status}]
+(defn on-close [conn config connected? {:keys [status-code] :as status}]
+  (reset! connected? false)
   (timbre/info "close" (:name config) status)
   (when (not= status-normal-close status-code)
     (try-try-again
@@ -238,7 +242,7 @@
         (restart conn config)))))
 
 (defn on-error [exception]
-  (timbre/error "error" exception))
+  (timbre/error "error in slack" exception))
 
 (defn handle-presence-change [e]
   (let [active? (= "active" (:presence e))
@@ -335,11 +339,11 @@
 (defn restart
   "conn is a reference to an atom.
    config is a map"
-  [conn config]
+  [conn config connected?]
   (reset! conn (slack/start (slack-config config)
-                            :on-connect on-connect
+                            :on-connect (partial on-connect connected?)
                             :on-error on-error
-                            :on-close (partial on-close conn config)
+                            :on-close (partial on-close conn config connected?)
                             :presence_change on-presence-change
                             :channel_joined on-channel-joined
                             :group_joined on-channel-joined
@@ -351,11 +355,11 @@
   (info "Slack (re)connected as Yetibot with id" (:id (self conn)))
   (reset-users-from-conn conn))
 
-(defn start [adapter conn config]
+(defn start [adapter conn config connected?]
   (stop conn)
   (binding [*adapter* adapter]
     (info "adapter" adapter "starting up with config" config)
-    (restart conn config)))
+    (restart conn config connected?)))
 
 (defn history
   "chan-id can be the ID of a:
@@ -388,7 +392,7 @@
 
 ;; adapter impl
 
-(defrecord Slack [config conn]
+(defrecord Slack [config conn connected?]
   a/Adapter
 
   (a/uuid [_] (:name config))
@@ -414,8 +418,10 @@
 
   (a/stop [_] (stop conn))
 
-  (a/start [adapter] (start adapter conn config)))
+  (a/connected? [_] @connected?)
+
+  (a/start [adapter] (start adapter conn config connected?)))
 
 (defn make-slack
   [config]
-  (->Slack config (atom nil)))
+  (->Slack config (atom nil) (atom false)))

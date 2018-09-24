@@ -108,7 +108,8 @@
                  ; web/ring
                  [ring/ring-json "0.4.0"]
                  [ring/ring-core "1.6.3"]
-                 [ring-logger-timbre "0.7.5"]
+                 [ring-logger-timbre "0.7.6"]
+                 [ring.middleware.conditional "0.2.0"]
                  [ring-cors "0.1.12"]
 
                  ; [ring/ring-jetty-adapter "1.4.0"]

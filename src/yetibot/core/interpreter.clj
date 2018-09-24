@@ -4,7 +4,7 @@
     [yetibot.core.models.default-command :refer [configured-default-command]]
     [clojure.set :refer [difference intersection]]
     [yetibot.core.models.room :as room]
-    [taoensso.timbre :refer [debug info warn error]]
+    [taoensso.timbre :refer [color-str debug info warn error]]
     [yetibot.core.util :refer [psuedo-format]]
     [yetibot.core.util.format :refer [to-coll-if-contains-newlines]]))
 
@@ -58,6 +58,9 @@
             {previous-value :value
              previous-data :data} acc
 
+            _ (info "previous-value" previous-value)
+            _ (info "previous-data" previous-data)
+
             ;; the result of a commad handler can either be:
             ;; - the literal value itself
             ;; - a map containing a :value key and an optional :data key
@@ -78,6 +81,8 @@
                    ; next time apply psuedo-format to support %s substitution
                    (psuedo-format cmd-with-args previous-value))
                  extra]))
+
+            _ (info "command-result" (color-str :green (pr-str command-result)))
 
             {value :result/value
              error :result/error

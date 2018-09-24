@@ -13,6 +13,7 @@
             [ring.middleware.session-timeout :refer [wrap-idle-session-timeout]]
             [ring.middleware.session.memory :refer [memory-store]]
             [ring.middleware.format :refer [wrap-restful-format]]
+            [ring.middleware.conditional :as c :refer [if-url-doesnt-start-with]]
             [ring.logger.timbre :refer [wrap-with-logger]]))
 
 (defn wrap-servlet-context [handler]
@@ -59,7 +60,7 @@
         :access-control-allow-origin  [#".*"]
         :access-control-allow-methods [:get :put :post :delete])
       wrap-formats
-      wrap-with-logger
+      (if-url-doesnt-start-with "/healthz" wrap-with-logger)
       (wrap-defaults
         (-> site-defaults
             (assoc-in [:security :anti-forgery] false)

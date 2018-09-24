@@ -250,7 +250,7 @@
 (defn stop
   "Kill the irc conection"
   [{:keys [conn]}]
-  (when @conn (irc/kill @conn))
+  (when-let [c @conn] (irc/kill c))
   (reset! conn nil))
 
 (defrecord IRC [config mutable-config current-channels conn]
@@ -290,6 +290,8 @@
   (a/chat-source [_ room] (chat-source room))
 
   (a/stop [adapter] (stop adapter))
+
+  (a/connected? [_] (when-let [c @conn] (-> c deref :ready? deref)))
 
   (a/start [adapter] (start adapter)))
 

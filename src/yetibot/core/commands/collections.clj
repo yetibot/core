@@ -420,7 +420,8 @@
 (defn show-data-cmd
   "data show # pretty print data from the previous command"
   {:yb/cat #{:util}}
-  [{:keys [data]}]
+  [{:keys [data] :as opts}]
+  (info "show-data-cmd" (pr-str opts))
   (if data
     (with-out-str (pprint data))
     "There is no `data` from the previous command 🤔"))
