@@ -39,7 +39,7 @@
                          )
         where-clause (when search_query
                        {:where/clause
-                        "to_tsvector(body) @@ to_tsquery(?)"
+                        "to_tsvector(body) @@ plainto_tsquery(?)"
                         :where/args [search_query]})
         ]
     (history/query (merge {:query/identifiers identity
