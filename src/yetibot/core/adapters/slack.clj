@@ -239,7 +239,7 @@
         (timbre/info "attempt no." rb/*try* " to rereconnect to slack")
         (when rb/*error* (timbre/info "previous attempt errored:" rb/*error*))
         (when rb/*last-try* (timbre/warn "this is the last attempt"))
-        (restart conn config)))))
+        (restart conn config connected?)))))
 
 (defn on-error [exception]
   (timbre/error "error in slack" exception))
