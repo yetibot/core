@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.41 - 9/27/2018
+
+- Fix airity bug when trying to reconnect to Slack
+- Use `to_tsquery` instead of `to_tsquery` in history resolver search to support
+  queries with spaces
+
 ## 0.4.40 - 9/24/2018
 
 - Add `/healthz` endpoint [#691](https://github.com/yetibot/yetibot/issues/691)
