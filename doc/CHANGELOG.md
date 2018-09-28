@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## 0.4.41 - 9/27/2018
+## 0.4.41 - 9/28/2018
 
 - Upgrade to `yetibot-dashboard 0.6.0`
 - Add support for `yetibot_only` in GraphQL History resolver
