@@ -30,13 +30,13 @@
 (defn history-resolver
   [context
    {:keys [offset limit chat_source_room chat_source_adapter commands_only
-           search_query]
+           yetibot_only search_query]
     :as args}
    value]
   (info "history resolver with args" args)
   (let [where-map (merge {"is_private" false}
                          (when commands_only {"is_command" true})
-                         )
+                         (when yetibot_only {"is_yetibot" true}))
         where-clause (when search_query
                        {:where/clause
                         "to_tsvector(body) @@ plainto_tsquery(?)"

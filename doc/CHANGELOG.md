@@ -2,6 +2,8 @@
 
 ## 0.4.41 - 9/27/2018
 
+- Upgrade to `yetibot-dashboard 0.6.0`
+- Add support for `yetibot_only` in GraphQL History resolver
 - Fix airity bug when trying to reconnect to Slack
 - Use `to_tsquery` instead of `to_tsquery` in history resolver search to support
   queries with spaces
