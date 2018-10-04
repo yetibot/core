@@ -58,7 +58,7 @@
                  [clj-http "3.7.0"]
 
                  ; github
-                 [tentacles "0.5.1" :exclusions [[org.clojure/clojure]]]
+                 [irresponsible/tentacles "0.6.2"]
 
                  ; email
                  [com.draines/postal "2.0.2"]
