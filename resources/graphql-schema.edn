@@ -4,6 +4,8 @@
            :history {:fields
                      {:chat_source_adapter {:type String}
                       :chat_source_room {:type String}
+                      :user {:type :user
+                             :resolve :user}
                       :user_id {:type String}
                       :user_name {:type String}
                       :body {:type String}
@@ -59,6 +61,12 @@
                    :schedule {:type String}
                    :cmd {:type String}}}
 
+           ;; TODO list channels by adapter
+           ;; :adapter_channel
+
+           :channel {:fields
+                     {:name {:type String}}}
+
            }
 
  :queries {:eval {:type (list String)
@@ -83,9 +91,16 @@
                             :search_query {:type String
                                            :default-value nil}
                             }}
+
+           :channels {:type (list :channel)
+                      :resolve :channels}
+
            :users {:type (list :user)
-                   :resolve :users
-                   }
+                   :resolve :users}
+
+           :user {:type :user
+                  :resolve :user
+                  :args {:id {:type String}}}
 
            :stats {:type :stats
                    :resolve :stats

@@ -137,3 +137,10 @@
 ;   (do
 ;     (swap! users conj {id (get-updated-user id last_active)})
 ;     (info @users)))
+
+;; TODO use a db-specific uuid instead of adapter-specific IDs, which may
+;; collide
+
+(defn get-user-by-id [id]
+  (first
+    (filter #(= id (:id %)) (vals @users))))

@@ -20,10 +20,12 @@
                                      :adapters resolvers/adapters-resolver
                                      :history resolvers/history-resolver
                                      :users resolvers/users-resolver
+                                     :user resolvers/user-resolver
                                      :stats resolvers/stats-resolver
                                      :aliases resolvers/aliases-resolver
                                      :observers resolvers/observers-resolver
                                      :crons resolvers/crons-resolver
+                                     :channels resolvers/channels-resolver
                                      })
       lacina.schema/compile))
 

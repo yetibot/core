@@ -1,6 +1,8 @@
 (ns yetibot.core.webapp.resolvers
   (:require
     [yetibot.core.models.users :as users]
+    [yetibot.core.chat :as chat]
+    [yetibot.core.models.room :as room]
     [yetibot.core.webapp.resolvers.stats :as stats]
     [cuerdas.core :refer [kebab snake]]
     [yetibot.core.adapters.adapter :as adapter]
@@ -33,7 +35,7 @@
            yetibot_only search_query]
     :as args}
    value]
-  (info "history resolver with args" args)
+  (info "history resolver. args" args)
   (let [where-map (merge {"is_private" false}
                          (when commands_only {"is_command" true})
                          (when yetibot_only {"is_yetibot" true}))
@@ -49,6 +51,14 @@
                            :order/clause "created_at DESC"}
                           where-clause))))
 
+(defn channels-resolver
+  [context args value]
+  (mapcat
+    (fn [adapter]
+      (binding [chat/*adapter* adapter]
+        (map #(hash-map :name %) (chat/rooms))))
+    (adapter/active-adapters)))
+
 (def stats-resolver (partial stats/stats-resolver))
 
 (defn users-resolver
@@ -59,6 +69,18 @@
           :id id
           :last_active last-active})
        (vals @users/users)))
+
+(defn user-resolver
+  "Can be used as a top level resolver or as part of a nested resolution"
+  [context {:keys [id] :as args} {:keys [user_id] :as value}]
+  (let [user-id (or id user_id)]
+    (info "user-resolver" user-id)
+    (when-let [{:keys [username active? id last-active]}
+               (users/get-user-by-id user-id)]
+      {:username username
+       :is_active active?
+       :id id
+       :last_active last-active})))
 
 (defn aliases-resolver
   [context {:keys [] :as args} value]
