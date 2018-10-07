@@ -1,5 +1,12 @@
 # yetibot.core change log
 
+## 0.4.42 - Unreleased
+
+- GraphQL updates
+  - Added `user` resolver and added `user` field on `history` type
+  - Added `channels` resolver to list all channels for all adapters
+- Upgrade to `yetibot-dashboard 0.6.TODO`
+
 ## 0.4.41 - 9/28/2018
 
 - Upgrade to `yetibot-dashboard 0.6.0`
