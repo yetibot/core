@@ -6,6 +6,8 @@
   - Added `user` resolver and added `user` field on `history` type
   - Added `channels` resolver to list all channels for all adapters
 - Upgrade to `yetibot-dashboard 0.6.TODO`
+- Fix Docker Compose env var Slack example
+  [#738](https://github.com/yetibot/yetibot/pull/738) by @jcorrado
 
 ## 0.4.41 - 9/28/2018
 
