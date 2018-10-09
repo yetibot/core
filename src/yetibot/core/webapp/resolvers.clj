@@ -32,7 +32,7 @@
 (defn history-resolver
   [context
    {:keys [offset limit chat_source_room chat_source_adapter commands_only
-           yetibot_only search_query]
+           yetibot_only search_query user_filter channel_filter]
     :as args}
    value]
   (info "history resolver. args" args)
@@ -50,6 +50,13 @@
                            :offset/clause offset
                            :order/clause "created_at DESC"}
                           where-clause))))
+
+(defn history-item-resolver
+  [_ {:keys [id] :as args} _]
+  (let [where-map {"id" id}]
+    (first 
+      (history/query (merge {:query/identifiers identity
+                             :where/map where-map})))))
 
 (defn channels-resolver
   [context args value]

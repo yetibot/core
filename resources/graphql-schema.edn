@@ -62,7 +62,9 @@
                    :cmd {:type String}}}
 
            ;; TODO list channels by adapter
-           ;; :adapter_channel
+           :adapter_channel {:fields
+                             {:adapter {:type String}
+                              :channel {:type String}}}
 
            :channel {:fields
                      {:name {:type String}}}
@@ -90,7 +92,15 @@
                                            :default-value false}
                             :search_query {:type String
                                            :default-value nil}
+                            :user_filter {:type String
+                                          :default-value nil}
+                            :channel_filter {:type String
+                                             :default-value nil}
                             }}
+
+           :history_item {:type :history
+                          :resolve :history_item
+                          :args {:id {:type Int}}}
 
            :channels {:type (list :channel)
                       :resolve :channels}
