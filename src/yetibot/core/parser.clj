@@ -54,6 +54,7 @@
 (defn reconstruct-pipe [cmds] (join " | " cmds))
 
 (def unparse-transformer
+  "Takes a parse tree and turns it back i nto a string"
   (partial
     insta/transform
     {:words str

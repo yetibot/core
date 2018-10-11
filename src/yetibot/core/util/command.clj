@@ -1,9 +1,9 @@
 (ns yetibot.core.util.command
   (:require
     [schema.core :as sch]
+    [yetibot.core.config :refer [get-config]]
     [yetibot.core.models.help :as help]
-    [yetibot.core.parser :refer [parse-and-eval transformer parser]]
-    [yetibot.core.config :refer [get-config]]))
+    [yetibot.core.parser :refer [parser]]))
 
 (def config-prefix
   (or (:value (get-config sch/Str [:command :prefix])) "!"))
@@ -30,10 +30,4 @@
        (filter #(= :expr (first %)))
        ; ensure prefix is actually a command
        (filter #(command? (-> % second second second)))))
-
-(->>
-  (parser "`echo these` are the `echo embedded commands`")
-  second second rest
-  (filter #(= :expr (first %)))
-  )
 
