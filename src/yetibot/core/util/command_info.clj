@@ -27,8 +27,10 @@
    Returns a map of:
 
    :ast - the result of parsing the command
-   :sub-commmands - list of sub-commands for the top level command
-   :matched-sub-cmd - the individual sub-command that this commend matched
+   :sub-commmands - list of all sub-commands for the top level command prefix
+   :matched-sub-cmd - the single sub-command that this command actually matched
+   :match - the result of passing the command args to the sub-command regex
+            (which is how we determine `:matched-sub-cmd`)
 
    Useful for testing."
   [command & [{:keys [opts ]}]]
@@ -40,7 +42,8 @@
             [match sub-fn] (hooks/match-sub-cmds args sub-commands)]
         {:parse-tree parsed
          :sub-commands sub-commands
-         :matched-sub-cmd [match sub-fn]
+         :matched-sub-cmd sub-fn
+         :match match
          :command cmd
          :command-args args
          })
@@ -55,6 +58,12 @@
 
   (command-execution-info
     "head 2" {:opts ["one" "two" "three"]})
+
+  {:parse-tree [:expr [:cmd [:words "head" [:space " "] "2"]]]
+   :sub-commands (#"(\d+)" #'yetibot.core.commands.collections/head-n #".*" #'yetibot.core.commands.collections/head-1)
+   :matched-sub-cmd [["2" "2"] #'yetibot.core.commands.collections/head-n]
+   :command "head"
+   :command-args "2"}
 
   {:parse-tree [:expr [:cmd [:words "head" [:space " "] "2"]]]
    :sub-commands ["^head$" (#"(\d+)" #'yetibot.core.commands.collections/head-n #".*" #'yetibot.core.commands.collections/head-1)
