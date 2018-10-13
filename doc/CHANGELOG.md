@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## 0.4.42 - Unreleased
+## 0.4.42 - 10/13/2018
 
 - GraphQL updates
   - Added `user` resolver and added `user` field on `history` type
