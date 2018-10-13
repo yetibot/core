@@ -6,9 +6,12 @@
   - Added `user` resolver and added `user` field on `history` type
   - Added `channels` resolver to list all channels for all adapters
   - Added history_item` resolver to get a single history item by ID
-- Upgrade to `yetibot-dashboard 0.6.5`
-- Switch to [#41](https://github.com/yetibot/yetibot.core/pull/41)
+- Upgrade Slack libraries [#42](https://github.com/yetibot/yetibot.core/pull/42)
+  by [@cvic](https://github.com/cvic)
+- Switch to `irresponsible/tentacles` [#41](https://github.com/yetibot/yetibot.core/pull/41)
+  by [@cvic](https://github.com/cvic)
 - Enable remote nREPL on port `65432` [#44](https://github.com/yetibot/yetibot.core/pull/44)
+- Upgrade to `yetibot-dashboard 0.6.5`
 
 ## 0.4.41 - 9/28/2018
 
