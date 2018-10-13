@@ -43,6 +43,16 @@ adds two numbers:
 See Yetibot's own [commands](https://github.com/devth/yetibot/tree/master/src/yetibot/commands)
 for more complex and diverse examples.
 
+## Remote REPL
+
+Yetibot runs an embedded nREPL server on port `65432`. Connect to it via:
+
+```
+nrepl://localhost:65432
+```
+
+Or replace `localhost` with the remote network address.
+
 ## Docs
 
 - [Load Order](doc/LOADING.md)

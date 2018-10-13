@@ -14,8 +14,6 @@
     [environ.core :refer [env]]
     [clojure.tools.nrepl.server :as nrepl]))
 
-(defonce nrepl-server (atom nil))
-
 (defonce web-server (atom nil))
 
 (defroutes base-routes
@@ -25,7 +23,6 @@
 (defn init
   "init will be called once on startup"
   []
-  ; (start-nrepl)
   ;; start the expired session cleanup job
   (session/start-cleanup-job!)
   (timbre/info "=[ yetibot.webapp started successfully"
@@ -37,7 +34,6 @@
    code here"
   []
   (timbre/info "yetibot is shutting down...")
-  ; (stop-nrepl)
   (timbre/info "shutdown complete!"))
 
 (defn app []
