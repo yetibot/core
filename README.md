@@ -53,6 +53,13 @@ nrepl://localhost:65432
 
 Or replace `localhost` with the remote network address.
 
+## yetibot-dashboard
+
+`yetibot-dashboard` is an NPM module that contains static HTML/JS/CSS for the
+Yetibot dashboard. It's used by yetibot.core via `lein-npm` and served by
+yetibot.core's Ring server. A public example can be seen at
+[public.yetibot.com](https://public.yetibot.com).
+
 ## Docs
 
 - [Load Order](doc/LOADING.md)
