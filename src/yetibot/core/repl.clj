@@ -1,6 +1,7 @@
 (ns yetibot.core.repl
   "Load this namespace when working with yetibot in the REPL or during dev."
   (:require
+    [yetibot.core.init :as init]
     [yetibot.core.config-mutable :as mconfig]
     [yetibot.core.chat :as chat]
     [clojure.stacktrace :refer [print-stack-trace]]
@@ -35,6 +36,7 @@
   []
   (logging/start)
   (mconfig/reload-config!)
+  (init/start-nrepl!)
   (web/start-web-server)
   (db/start)
   (ai/start)
@@ -56,6 +58,7 @@
 
 (defn stop []
   (web/stop-web-server)
+  (init/stop-nrepl!)
   (ai/stop))
 
 (defn reset []
