@@ -71,5 +71,5 @@
   (future (start-adapters!)))
 
 (defn stop []
-  (dorun (map #(a/stop %) (a/active-adapters)))
+  (dorun (map a/stop (a/active-adapters)))
   (reset! a/adapters {}))

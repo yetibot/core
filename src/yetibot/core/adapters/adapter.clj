@@ -31,6 +31,13 @@
 
   (connected? [_] "Check whether the adapter is connected or not")
 
+  (connection-last-active-timestamp
+    [_]
+    "Return a timestamp for the last time a message or pong or any form of `ack`
+     was received by the server")
+
+  (connection-latency [_] "The last known latency for this connection")
+
   (stop [_] "Stop the chat adapter"))
 
 ; Instances of Adapters. If there are multiple configurations for an Adapter

@@ -293,7 +293,12 @@
 
   (a/connected? [_] (when-let [c @conn] (-> c deref :ready? deref)))
 
+  (a/connection-last-active-timestamp [_] 0) ;; TODO implement
+
+  (a/connection-latency [_] 0) ;; TODO implement
+
   (a/start [adapter] (start adapter)))
+
 
 (defn make-irc
   [config]
