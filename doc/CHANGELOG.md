@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.43 - 10/15/2018
+
+- Improve logging in interpreter
+
 ## 0.4.42 - 10/13/2018
 
 - GraphQL updates

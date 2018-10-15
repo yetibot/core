@@ -107,7 +107,7 @@
    :data is an optional map that can contain any additional data from a
    previous command, to be optionally consumed by later commands."
   [& cmds]
-  (info "reduce commands" (prn-str cmds) (partition-all (count cmds) 1 cmds))
+  (info "reduce commands" (prn-str cmds) (pr-str (partition-all (count cmds) 1 cmds)))
   ; look up the settings for room in *chat-source*
   (let [room-settings (room/settings-for-chat-source *chat-source*)]
     (:value
