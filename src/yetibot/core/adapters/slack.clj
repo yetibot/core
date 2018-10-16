@@ -230,24 +230,26 @@
   (timbre/debug "Hello, you are connected to Slack" event))
 
 (defn on-pong [{:keys [conn event connection-last-active-timestamp
-                       connection-latency] :as adapter}
+                       connection-latency ping-time] :as adapter}
                event]
-  (let [ts @connection-last-active-timestamp
+  (let [ts @ping-time
         now (System/currentTimeMillis)]
-    (timbre/debug "Pong" (pr-str event) (pr-str connection-last-active-timestamp))
+    (timbre/debug "Pong" (pr-str event))
     (reset! connection-last-active-timestamp now)
-    (reset! connection-latency (- now ts))))
+    (when ts (reset! connection-latency (- now ts)))))
 
 (defn start-pinger!
   "Send a ping event to Slack to ensure the connection is active"
-  [{:keys [conn should-ping?]}]
+  [{:keys [conn should-ping? ping-time]}]
   (async/go-loop [n 0]
     (when @should-ping?
       (when-let [c @conn]
-        (let [ping-event {:type :ping
+        (let [ts (System/currentTimeMillis)
+              ping-event {:type :ping
                           :id n
-                          :time (System/currentTimeMillis)}]
+                          :time ts}]
           (timbre/debug "Pinging Slack" (pr-str ping-event))
+          (reset! ping-time ts)
           (slack/send-event (:dispatcher c) ping-event)
           (async/<!! (async/timeout slack-ping-pong-interval-ms))
           (recur (inc n)))))))
@@ -434,7 +436,7 @@
 ;; adapter impl
 
 (defrecord Slack [config conn connected? connection-last-active-timestamp
-                  connection-latency should-ping?]
+                  ping-time connection-latency should-ping?]
   a/Adapter
 
   (a/uuid [_] (:name config))
@@ -477,4 +479,5 @@
      :connected? (atom false)
      :connection-latency (atom nil)
      :connection-last-active-timestamp (atom nil)
+     :ping-time (atom nil)
      :should-ping? (atom false)}))

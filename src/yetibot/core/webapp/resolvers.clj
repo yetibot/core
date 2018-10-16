@@ -27,7 +27,11 @@
     @adapter/adapters
     vals
     (map #(hash-map :uuid (name (adapter/uuid %))
-                    :platform (adapter/platform-name %)))))
+                    :platform (adapter/platform-name %)
+                    :is_connected (adapter/connected? %)
+                    :connection_latency (adapter/connection-latency %)
+                    :connection_last_active_timestamp
+                    (adapter/connection-last-active-timestamp %)))))
 
 (defn history-resolver
   [context
