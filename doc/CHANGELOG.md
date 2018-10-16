@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## 0.4.44 - Unreleased
+## 0.4.44 - 10/16/2018
 
 - Use ping/pong events in Slack to monitor the connection
 - Expose connection latency metrics on GraphQL `:adapters` resolver
