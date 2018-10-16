@@ -1,5 +1,9 @@
 {:objects {:adapter {:fields {:uuid {:type String}
-                              :platform {:type String}}}
+                              :platform {:type String}
+                              :is_connected {:type Boolean}
+                              :connection_latency {:type Int}
+                              :connection_last_active_timestamp {:type String}
+                              }}
 
            :history {:fields
                      {:chat_source_adapter {:type String}

@@ -1,5 +1,6 @@
 (ns yetibot.core.adapters.slack
   (:require
+    [clojure.core.async :as async]
     [clojure.pprint :refer [pprint]]
     [clojure.core.memoize :as memo]
     [yetibot.core.adapters.adapter :as a]
@@ -27,6 +28,15 @@
     [yetibot.core.util :as utl]))
 
 (def channel-cache-ttl 60000)
+
+(def slack-ping-pong-interval-ms
+  "How often to send Slack a ping event to ensure the connection is active"
+  10000)
+
+(def slack-ping-pong-timeout-ms
+  "How long to wait for a `pong` after sending a `ping` before marking the
+   connection as inactive and attempting to restart it"
+  10000)
 
 (defn slack-config
   "Transforms yetibot config to expected Slack config"
@@ -173,7 +183,7 @@
                   (unencode-message text)
                   yetibot-user))))
 
-(defn on-message [conn config {:keys [subtype] :as event}]
+(defn on-message [{:keys [conn config] :as adapter} {:keys [subtype] :as event}]
   ;; allow bot_message events to be treated as normal messages
   (if (and (not= "bot_message" subtype) subtype)
     (do
@@ -219,9 +229,38 @@
 (defn on-hello [event]
   (timbre/debug "Hello, you are connected to Slack" event))
 
-(defn on-connect [connected? e]
+(defn on-pong [{:keys [conn event connection-last-active-timestamp
+                       connection-latency ping-time] :as adapter}
+               event]
+  (let [ts @ping-time
+        now (System/currentTimeMillis)]
+    (timbre/debug "Pong" (pr-str event))
+    (reset! connection-last-active-timestamp now)
+    (when ts (reset! connection-latency (- now ts)))))
+
+(defn start-pinger!
+  "Send a ping event to Slack to ensure the connection is active"
+  [{:keys [conn should-ping? ping-time]}]
+  (async/go-loop [n 0]
+    (when @should-ping?
+      (when-let [c @conn]
+        (let [ts (System/currentTimeMillis)
+              ping-event {:type :ping
+                          :id n
+                          :time ts}]
+          (timbre/debug "Pinging Slack" (pr-str ping-event))
+          (reset! ping-time ts)
+          (slack/send-event (:dispatcher c) ping-event)
+          (async/<!! (async/timeout slack-ping-pong-interval-ms))
+          (recur (inc n)))))))
+
+(defn stop-pinger! [{:keys [should-ping?]}]
+  (reset! should-ping? false))
+
+(defn on-connect [{:keys [conn connected? should-ping?] :as adapter} e]
+  (reset! should-ping? true)
   (reset! connected? true)
-  (timbre/debug "connected"))
+  (start-pinger! adapter))
 
 (declare restart)
 
@@ -229,7 +268,8 @@
 ;; list of status codes on a close event
 (def status-normal-close 1000)
 
-(defn on-close [conn config connected? {:keys [status-code] :as status}]
+(defn on-close [{:keys [conn config connected?] :as adapter}
+                {:keys [status-code] :as status}]
   (reset! connected? false)
   (timbre/info "close" (:name config) status)
   (when (not= status-normal-close status-code)
@@ -239,7 +279,7 @@
         (timbre/info "attempt no." rb/*try* " to rereconnect to slack")
         (when rb/*error* (timbre/info "previous attempt errored:" rb/*error*))
         (when rb/*last-try* (timbre/warn "this is the last attempt"))
-        (restart conn config connected?)))))
+        (restart adapter)))))
 
 (defn on-error [exception]
   (timbre/error "error in slack" exception))
@@ -330,7 +370,9 @@
 
 ;; lifecycle
 
-(defn stop [conn]
+(defn stop [{:keys [should-ping? conn] :as adapter}]
+  (timbre/info "Stop Slack" (pr-str should-ping? conn))
+  (reset! should-ping? false)
   (when @conn
     (timbre/info "Closing" @conn)
     (slack/send-event (:dispatcher @conn) :close))
@@ -339,27 +381,28 @@
 (defn restart
   "conn is a reference to an atom.
    config is a map"
-  [conn config connected?]
+  [{:keys [conn config connected?] :as adapter}]
   (reset! conn (slack/start (slack-config config)
-                            :on-connect (partial on-connect connected?)
+                            :on-connect (partial on-connect adapter)
                             :on-error on-error
-                            :on-close (partial on-close conn config connected?)
+                            :on-close (partial on-close adapter)
                             :presence_change on-presence-change
                             :channel_joined on-channel-joined
                             :group_joined on-channel-joined
                             :channel_left on-channel-left
                             :group_left on-channel-left
                             :manual_presence_change on-manual-presence-change
-                            :message (partial on-message conn config)
+                            :message (partial on-message adapter)
+                            :pong (partial on-pong adapter)
                             :hello on-hello))
   (info "Slack (re)connected as Yetibot with id" (:id (self conn)))
   (reset-users-from-conn conn))
 
 (defn start [adapter conn config connected?]
-  (stop conn)
+  (stop adapter)
   (binding [*adapter* adapter]
     (info "adapter" adapter "starting up with config" config)
-    (restart conn config connected?)))
+    (restart adapter)))
 
 (defn history
   "chan-id can be the ID of a:
@@ -392,7 +435,8 @@
 
 ;; adapter impl
 
-(defrecord Slack [config conn connected?]
+(defrecord Slack [config conn connected? connection-last-active-timestamp
+                  ping-time connection-latency should-ping?]
   a/Adapter
 
   (a/uuid [_] (:name config))
@@ -416,12 +460,24 @@
 
   (a/chat-source [_ room] (chat-source room))
 
-  (a/stop [_] (stop conn))
+  (a/stop [adapter] (stop adapter))
 
-  (a/connected? [_] @connected?)
+  (a/connected? [_] (and @connected?
+                         (< @connection-latency slack-ping-pong-timeout-ms)))
+
+  (a/connection-last-active-timestamp [_] @connection-last-active-timestamp)
+
+  (a/connection-latency [_] @connection-latency)
 
   (a/start [adapter] (start adapter conn config connected?)))
 
 (defn make-slack
   [config]
-  (->Slack config (atom nil) (atom false)))
+  (map->Slack
+    {:config config
+     :conn (atom nil)
+     :connected? (atom false)
+     :connection-latency (atom nil)
+     :connection-last-active-timestamp (atom nil)
+     :ping-time (atom nil)
+     :should-ping? (atom false)}))
