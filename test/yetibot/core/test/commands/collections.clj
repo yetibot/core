@@ -1,7 +1,28 @@
 (ns yetibot.core.test.commands.collections
   (:require
     [yetibot.core.commands.collections :refer :all]
+    [yetibot.core.util.command-info :refer [command-execution-info]]
     [clojure.test :refer :all]))
+
+(deftest random-test
+  (testing "Random with no args"
+    (let [{:keys [matched-sub-cmd
+                  result
+                  result]} (command-execution-info
+                             "random" {:run-command? true})
+          random-number (read-string result)]
+      (is (= matched-sub-cmd #'random)
+          "It matches the expected `random` command handler")
+      (is (number? random-number)
+          "It should generate a random number when passed no args")))
+  (testing "Random with args"
+    (let [{:keys [matched-sub-cmd
+                  result
+                  result]} (command-execution-info "random" {:opts ["bar" "foo"]
+                                                             :run-command? true})]
+      (is (or (= "bar" result) (= "foo" result))
+          "Random with a collection passed into it picks a random item from the
+           collection"))))
 
 (deftest grep-data-structure-test
   (is (= (grep-data-structure #"bar" [["foo" 1] ["bar" 2]])
