@@ -32,12 +32,12 @@
                              :opts ["one" "two" "three"]})]
       (is (= result
              {:parse-tree [:expr [:cmd [:words "head" [:space " "] "2"]]]
-              :sub-commands (#"(\d+)" #'yetibot.core.commands.collections/head-n 
-                                      #".*" #'yetibot.core.commands.collections/head-1)
+              :sub-commands [#"(\d+)" #'yetibot.core.commands.collections/head-n 
+                             #".*" #'yetibot.core.commands.collections/head-1]
               :matched-sub-cmd #'yetibot.core.commands.collections/head-n
               :match ["2" "2"]
               :command "head"
               :command-args "2"
-              :result ("one" "two")}
+              :result ["one" "two"]}
              )
           "Should parse a real command, correctly match it, and execute it"))))
