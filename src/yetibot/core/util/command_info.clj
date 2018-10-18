@@ -24,6 +24,19 @@
 
    Only supports single command expressions (no pipes or sub expressions).
 
+   Required arguments:
+
+   command - the simple command to parse
+
+   An optional second map argument consisting of keys:
+
+   :opts - the opts to pass the command (i.e. what would normally be passed from
+           a previous command across a pipe)
+
+   :run-command? - whether to actually run the command. By default the command
+                   will not be run, since commands often have side effects and
+                   thus would not be suitable for unit tests
+
    Returns a map of:
 
    :ast - the result of parsing the command
@@ -33,20 +46,22 @@
             (which is how we determine `:matched-sub-cmd`)
 
    Useful for testing."
-  [command & [{:keys [opts ]}]]
+  [command & [{:keys [opts run-command?]}]]
   (info "command-execution-info" opts)
   (let [parsed (parser command)]
     (if (simple-command? parsed)
       (let [[cmd args] (hooks/split-command-and-args command)
             [cmd-re sub-commands] (hooks/find-sub-cmds cmd)
             [match sub-fn] (hooks/match-sub-cmds args sub-commands)]
-        {:parse-tree parsed
-         :sub-commands sub-commands
-         :matched-sub-cmd sub-fn
-         :match match
-         :command cmd
-         :command-args args
-         })
+        (merge
+          {:parse-tree parsed
+           :sub-commands sub-commands
+           :matched-sub-cmd sub-fn
+           :match match
+           :command cmd
+           :command-args args}
+          (when run-command?
+            {:result (sub-fn {:match match :opts opts})})))
       (throw (ex-info
                (str "Invalid command, only simple commands are supported")
                {:parsed parsed})))))
