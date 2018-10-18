@@ -12,13 +12,17 @@
 (defn- user-is-allowed? [user]
   ((privs) (:id user)))
 
+(def disallow-gif "http://www.reactiongifs.com/wp-content/gallery/no/cowboy-shaking-head-no.gif")
+
 (defn eval-cmd
   "eval <form> # evaluate the <form> data structure in Yetibot's context"
   {:yb/cat #{:util}}
   [{:keys [args user]}]
   (if (user-is-allowed? user)
     (with-out-str (pprint (eval (read-string args))))
-    (format "You are not allowed, %s." (:name user))))
+    (format "You are not allowed, %s.\n%s"
+            (:name user)
+            disallow-gif)))
 
 (cmd-hook #"eval"
           _ eval-cmd)
