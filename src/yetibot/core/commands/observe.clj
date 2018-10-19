@@ -33,7 +33,7 @@
 ;; Use a single obs-hook to monitor all dynamic observers. That way when it's
 ;; removed from the database, it won't be checked here either.
 (defn obs-handler [{:keys [body user chat-source event-type] :as event-info}]
-  (info "obs-handler" (color-str :blue event-info))
+  (debug "obs-handler" (color-str :blue event-info))
   (let [observers (model/find-all)
         channel (:room chat-source)
         username (:username user)]
