@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.45 - Unreleased
+
+- Add `command-execution-info` function to help testing command parsing and
+  regex matching - [#43](https://github.com/yetibot/yetibot.core/pull/43)
+
 ## 0.4.44 - 10/16/2018
 
 - Use ping/pong events in Slack to monitor the connection
