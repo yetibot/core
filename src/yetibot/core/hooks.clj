@@ -36,9 +36,24 @@
 (defonce re-prefix->topic (atom {}))
 
 (defn find-sub-cmds
-  "Matches prefix against command regexes in `hooks.`"
+  "Given a top level command prefix look up corresponding sub-cmds by matching
+   prefix against command regexes in `hooks.`"
   [prefix]
   (first (filter (fn [[k v]] (re-find (re-pattern k) prefix)) @hooks)))
+
+(defn match-sub-cmds
+  [command-args sub-cmds]
+  (let [cmd-pairs (partition 2 sub-cmds)]
+    (some (fn [[sub-re sub-fn]]
+            (when-let [match (re-find sub-re command-args)]
+              [match sub-fn]))
+          cmd-pairs)))
+
+(defn split-command-and-args
+  [cmd-with-args]
+  (let [[cmd args] (s/split cmd-with-args #"\s" 2)]
+    ;; make args an empty string if no args
+    [cmd (or args "")]))
 
 (defn cmd-unhook
   "Removes the sub-commands for a prefix / topic."
@@ -48,6 +63,7 @@
     (swap! re-prefix->topic dissoc str-re)
     (swap! hooks dissoc str-re)))
 
+
 (defn handle-with-hooked-cmds
   "Looks up the set of possible commands by matching the first word against
    prefixes stored in `hooks`. If it finds a match, it then matches against
@@ -56,29 +72,24 @@
    implement its own default behavior."
   [callback cmd-with-args {:keys [chat-source user opts settings] :as extra}]
   (info "handle-with-hooked-cmds" extra)
-  (let [[cmd args] (s/split cmd-with-args #"\s" 2)
-        args (or args "")] ; make it an empty string if no args
+  (let [[cmd args] (split-command-and-args cmd-with-args)] 
+    ;; find the top level command and its corresponding sub-cmds
     (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
-      ; Now try to find a matching sub-commands
-      (let [cmd-pairs (partition 2 sub-cmds)]
-        (info "found" cmd-re "on cmd" cmd (str "args:'" args "'"))
-        (if-let [[match sub-fn] (some (fn [[sub-re sub-fn]]
-                                        (info "some?" sub-re args)
-                                        (when-let [match (re-find sub-re args)]
-                                          [match sub-fn])) cmd-pairs)]
-          ; extract category settings
-          (let [disabled-cats (set (r/cat-settings-key settings))
-                fn-cats (set (:yb/cat (meta sub-fn)))]
-            (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
-              (str
-                (s/join ", " (map name matched-disabled-cats))
-                " commands are disabled in this channel🖐")
-              (sub-fn (merge extra {:cmd cmd :args args :match match}))))
-          ; couldn't find any sub commands so default to help.
-          (yetibot.core.handler/handle-unparsed-expr (str "help " (get @re-prefix->topic (str cmd-re))))))
+      ;; Now try to find a matching sub-commands
+      (if-let [[match sub-fn] (match-sub-cmds args sub-cmds)]
+        ;; extract category settings
+        (let [disabled-cats (set (r/cat-settings-key settings))
+              fn-cats (set (:yb/cat (meta sub-fn)))]
+          (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
+            (str
+              (s/join ", " (map name matched-disabled-cats))
+              " commands are disabled in this channel🖐")
+            (sub-fn (merge extra {:cmd cmd :args args :match match}))))
+        ;; couldn't find any sub commands so default to help.
+        (yetibot.core.handler/handle-unparsed-expr (str "help " (get @re-prefix->topic (str cmd-re)))))
       (callback cmd-with-args extra))))
 
-; Hook the actual handle-cmd called during interpretation.
+;; Hook the actual handle-cmd called during interpretation.
 (rh/add-hook #'handle-cmd #'handle-with-hooked-cmds)
 
 (defn lockdown-prefix-regex

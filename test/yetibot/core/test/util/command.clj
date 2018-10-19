@@ -1,5 +1,6 @@
 (ns yetibot.core.test.util.command
   (:require
+    ;; yetibot.core.commands.echo
     [clojure.test :refer :all]
     [yetibot.core.util.command :refer :all]))
 
