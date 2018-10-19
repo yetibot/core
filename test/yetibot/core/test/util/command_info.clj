@@ -27,17 +27,10 @@
         :command-args "bar"}
        (command-execution-info "foo bar"))))
   (testing "Real command with opts"
-    (let [result (command-execution-info
-                   "head 2" {:run-command? true
-                             :opts ["one" "two" "three"]})]
-      (is (= result
-             {:parse-tree [:expr [:cmd [:words "head" [:space " "] "2"]]]
-              :sub-commands [#"(\d+)" #'yetibot.core.commands.collections/head-n 
-                             #".*" #'yetibot.core.commands.collections/head-1]
-              :matched-sub-cmd #'yetibot.core.commands.collections/head-n
-              :match ["2" "2"]
-              :command "head"
-              :command-args "2"
-              :result ["one" "two"]}
-             )
-          "Should parse a real command, correctly match it, and execute it"))))
+    (let [{:keys [result match command-args]}
+          (command-execution-info
+            "head 2" {:run-command? true
+                      :opts ["one" "two" "three"]})]
+      (= match ["2" "2"])
+      (= result ["one" "two"])
+      (= command-args "2"))))
