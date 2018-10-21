@@ -90,9 +90,10 @@
 (defn get-users
   "Returns users for a given chat source"
   [source]
-  (->> @users
-       vals
-       (filter (fn [u] (and (:rooms u) ((:rooms u) source))))))
+  (let [chat-source (select-keys source [:adapter :uuid :room])]
+    (->> @users
+         vals
+         (filter (fn [u] (and (:rooms u) ((:rooms u) chat-source)))))))
 
 (defn get-user [source id]
   (@users {:adapter (:adapter source) :id id}))
