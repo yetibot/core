@@ -4,6 +4,7 @@
 
 - Add `command-execution-info` function to help testing command parsing and
   regex matching - [#43](https://github.com/yetibot/yetibot.core/pull/43)
+- Fix `users` in Slack - [#555](https://github.com/yetibot/yetibot/issues/555)
 
 ## 0.4.44 - 10/16/2018
 
