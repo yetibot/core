@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## 0.4.45 - Unreleased
+## 0.4.45 - 10/20/2018
 
 - Add `command-execution-info` function to help testing command parsing and
   regex matching - [#43](https://github.com/yetibot/yetibot.core/pull/43)
