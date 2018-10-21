@@ -148,6 +148,11 @@
            [(:name e) e])
       (throw (ex-info "unknown entity type" event)))))
 
+(defn hydrate-item
+  [config {:keys [channel ts]}]
+
+  )
+
 
 ;; events
 
@@ -158,7 +163,7 @@
         yetibot-user (find-yetibot-user conn cs)]
     (binding [*target* channel]
       (timbre/info "channel join" (color-str :blue (with-out-str (pprint cs))))
-      (handle-raw cs user-model :enter nil yetibot-user))))
+      (handle-raw cs user-model :enter yetibot-user {}))))
 
 (defn on-channel-leave [{:keys [channel] :as e} conn config]
   (let [[chan-name entity] (entity-with-name-by-id config {:channel channel})
@@ -167,7 +172,7 @@
         yetibot-user (find-yetibot-user conn cs)]
     (binding [*target* channel]
       (timbre/info "channel leave" e)
-      (handle-raw cs user-model :leave nil yetibot-user))))
+      (handle-raw cs user-model :leave yetibot-user {}))))
 
 (defn on-message-changed [{:keys [channel] {:keys [user text]} :message}
                           conn config]
@@ -189,8 +194,8 @@
         (handle-raw cs
                     user-model
                     :message
-                    (unencode-message text)
-                    yetibot-user)))))
+                    yetibot-user
+                    {:body (unencode-message text)})))))
 
 (defn on-message [{:keys [conn config] :as adapter} {:keys [subtype] :as event}]
   ;; allow bot_message events to be treated as normal messages
@@ -232,8 +237,32 @@
         (handle-raw cs
                     user-model
                     :message
-                    (unencode-message body)
-                    yetibot-user)))))
+                    yetibot-user
+                    {:body (unencode-message body)})))))
+
+(defn on-reaction-added
+  "https://api.slack.com/events/reaction_added"
+  [{:keys [conn config] :as adapter}
+   {:keys [user reaction item_user item] :as event}]
+  (let [[chan-name entity] (entity-with-name-by-id config item)
+        cs (chat-source chan-name)
+        yetibot-user (find-yetibot-user conn cs)
+        yetibot-uid (:id yetibot-user)
+        yetibot? (= yetibot-uid (:user event))
+        user-model (assoc (users/get-user cs (:user event))
+                          :yetibot? yetibot?)
+        reaction-message-user (assoc (users/get-user cs item_user)
+                                     :yetibot? (= yetibot-uid item_user))]
+    (info "reaction_added" (pr-str event))
+    ;; only support reactions on message types
+    (when (= "message" (:type item))
+      (handle-raw cs user-model :react yetibot-user
+                  ;; TODO
+                  {:reaction reaction
+                   ;; body of the message reacted to
+                   :body "todo"
+                   ;; user of the message that was reacted to
+                   :reaction-message-user reaction-message-user}))))
 
 (defn on-hello [event]
   (timbre/debug "Hello, you are connected to Slack" event))
@@ -402,6 +431,7 @@
                             :group_left on-channel-left
                             :manual_presence_change on-manual-presence-change
                             :message (partial on-message adapter)
+                            :reaction_added (partial on-reaction-added adapter)
                             :pong (partial on-pong adapter)
                             :hello on-hello))
   (info "Slack (re)connected as Yetibot with id" (:id (self conn)))
