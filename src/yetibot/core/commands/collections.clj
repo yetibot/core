@@ -1,6 +1,6 @@
 (ns yetibot.core.commands.collections
   (:require
-    [clojure.pprint :refer [pprint]]
+    [clojure.pprint :refer [pprint *print-right-margin*]]
     [cheshire.core :as json]
     [yetibot.core.interpreter :refer [handle-cmd]]
     [taoensso.timbre :as timbre :refer [info warn error]]
@@ -9,6 +9,7 @@
     [yetibot.core.hooks :refer [cmd-hook]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.util.format :refer [format-exception-log]]
+    [yetibot.core.models.users :refer [min-user-keys]]
     [yetibot.core.util :refer
      [psuedo-format split-kvs-with ensure-items-seqential
       ensure-items-collection]]))
@@ -395,13 +396,22 @@
 
 ;; raw
 (defn raw-cmd
-  "raw <coll> # output a string representation of the raw collection"
+  "raw <coll> | <args> # output a string representation of piped <coll> or <args>"
   {:yb/cat #{:util}}
   [{:keys [opts args]}]
   (pr-str (or opts args)))
 
+(defn raw-all-cmd
+  "raw all <coll> | <args> # output a string representation of all command context"
+  {:yb/cat #{:util}}
+  [{:keys [user] :as command-args}]
+  (let [minimal-user (select-keys user min-user-keys)
+        cleaned-args (merge command-args {:user minimal-user})]
+    (binding [*print-right-margin* 80]
+      (with-out-str (pprint cleaned-args)))))
 
 (cmd-hook #"raw"
+  #"all" raw-all-cmd
   _ raw-cmd)
 
 ;; data
