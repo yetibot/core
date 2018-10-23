@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.46 - 10/23/2018
+
+- Add `raw all` command to show all command args
+- Render multi line messages in Slack as code
+
 ## 0.4.45 - 10/20/2018
 
 - Add `command-execution-info` function to help testing command parsing and
