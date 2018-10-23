@@ -19,6 +19,10 @@
       :rooms #{{:adapter :slack :room \"C123\"}}}"}
   users (atom {}))
 
+(def min-user-keys
+  "The minimum set of keys all users have regardless of adapter"
+  [:username :name :mention-name :active? :id :last-active])
+
 (defn create-user
   "Build a data structure representing a user in common adapter-agnostic format.
    Ensures a consistent data structure when creating users from multiple chat
