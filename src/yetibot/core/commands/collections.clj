@@ -446,7 +446,17 @@
 ;; data
 
 (defn extract-data-cmd
-  "data <path> # extract data from the previous command with json-path syntax"
+  "data <path> # extract data from the previous command with json-path syntax
+
+   <path> syntax is like $.key or $.[0]
+   For example, try:
+
+   !about | data show
+   !about | data $.about/url
+   !about | data $.about/[*]
+
+   Find many more path examples at:
+   https://github.com/gga/json-path/blob/master/test/json_path/test/json_path_test.clj"
   {:yb/cat #{:util}}
   [{path :match
     :keys [args data]}]

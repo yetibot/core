@@ -129,8 +129,9 @@
 (defn list-cmd
   "cron list # list the configured cron tasks"
   [{{:keys [uuid room]} :chat-source}]
-  (map format-cron-entity
-       (db/query {:where/map {:chat-source-adapter (pr-str uuid)}})))
+  (let [crons (db/query {:where/map {:chat-source-adapter (pr-str uuid)}})]
+    {:result/value (map format-cron-entity crons)
+     :result/data crons}))
 
 (defn remove-cmd
   "cron remove <task-id> # remove a task by id"
@@ -142,7 +143,8 @@
         (delete-task-if-exists! int-id)
         (str "Cron task " int-id " removed 🔥")
         )
-      (str "Couldn't find a task with id " int-id " 🧐"))))
+      {:result/error
+       (str "Couldn't find a task with id " int-id " 🧐")})))
 
 (defn status-cmd
   "cron status # show the status of the scheduler"

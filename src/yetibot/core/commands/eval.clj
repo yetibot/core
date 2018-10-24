@@ -2,7 +2,7 @@
   (:require
     [schema.core :as s]
     [clojure.repl :refer :all]
-    [clojure.pprint :refer [pprint]]
+    [clojure.pprint :refer [*print-right-margin* pprint]]
     [yetibot.core.config :refer [get-config]]
     [yetibot.core.hooks :refer [cmd-hook]]
     [clojure.string :refer [split]]))
@@ -19,10 +19,10 @@
   {:yb/cat #{:util}}
   [{:keys [args user]}]
   (if (user-is-allowed? user)
-    (with-out-str (pprint (eval (read-string args))))
-    (format "You are not allowed, %s.\n%s"
-            (:name user)
-            disallow-gif)))
+    (binding [*print-right-margin* 80]
+      (with-out-str (pprint (eval (read-string args)))))
+    {:result/error
+     (format "You are not allowed, %s %s" (:name user) disallow-gif)}))
 
 (cmd-hook #"eval"
           _ eval-cmd)

@@ -4,7 +4,7 @@
     [yetibot.core.models.help :refer [fuzzy-get-docs-for get-docs get-docs-for]]
     [yetibot.core.hooks :refer [cmd-hook]]))
 
-(def separator "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
+(def separator "▬▬▬")
 
 (defn help-topics
   [_]

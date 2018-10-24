@@ -62,29 +62,33 @@
   {:yb/cat #{:util}}
   [{[_ c] :match cs :chat-source}]
   (let [[success? msg] (set-cat (:room cs) c true)]
-    (if success? (str "Disabled " c) msg)))
+    (if success?
+      {:result/value (str "Disabled " c)}
+      {:result/error msg})))
 
 (defn enable-cat-cmd
   "category enable <category-name> # enable a category by name"
   {:yb/cat #{:util}}
   [{[_ c] :match cs :chat-source}]
   (let [[success? msg] (set-cat (:room cs) c false)]
-    (if success? (str "Enabled " c) msg)))
+    (if success?
+      {:result/value (str "Enabled " c)}
+      {:result/error msg})))
 
 (defn category-list-cmd
   "category list <category-name> # list available commands in <category-name>"
   {:yb/cat #{:util}}
   [{[_ c] :match}]
   (if (valid-cat? c)
-    (map (comp :doc meta) (h/cmds-for-cat c))
-    (str c " is not a valid category. Use `category names` to view the list.")))
+    {:result/value (map (comp :doc meta) (h/cmds-for-cat c))}
+    {:result/error (str c " is not a valid category. Use `category names` to view the list.")}))
 
 (defn category-names-cmd
   "category names  # list known category names"
   {:yb/cat #{:util}}
   [{[_ c] :match cs :chat-source}]
-  (map name (keys categories)))
-
+  {:result/value (map name (keys categories))
+   :result/data categories})
 
 (cmd-hook #"category"
   #"disable\s+(\S+)" disable-cat-cmd

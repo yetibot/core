@@ -85,8 +85,9 @@
               response (wire-alias alias-map)]
           (add-alias alias-map)
           response)))
-    (str "Oops, I don't know who you are 😱. This is probably a bug:
-          Yetibot should know who everyone is.")))
+    {:result/error
+     (str "Oops, I don't know who you are 😱. This is probably a bug:"
+          "Yetibot should know who everyone is.")}))
 
 (defn list-aliases
   "alias # show existing aliases"
@@ -94,8 +95,10 @@
   [_]
   (let [as (model/find-all)]
     (if (empty? as)
-      "No aliases have been defined"
-      (into {} (map (juxt :cmd-name :cmd) as)))))
+      {:result/error "No aliases have been defined"}
+      {:result/value
+       (into {} (map (juxt :cmd-name :cmd) as))
+       :result/data as})))
 
 (defn remove-alias
   "alias remove <alias> # remove alias by name"
@@ -105,8 +108,10 @@
     (do
       (model/delete id)
       (cmd-unhook cmd)
-      (format "Alias %s removed" cmd))
-    (format "Could not find alias %s." cmd)))
+      {:result/value (format "Alias %s removed" cmd)
+       :result/data {:id id :cmd cmd}})
+    {:result/error
+     (format "Could not find alias %s." cmd)}))
 
 (defonce loader (future (load-aliases)))
 
