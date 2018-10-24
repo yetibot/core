@@ -41,6 +41,8 @@
     (debug "previous value" (pr-str previous-value))
     (debug "previous data" (pr-str previous-data))
 
+    (resolve 'first)
+
     (if (> @(:skip-next-n acc) 0)
       (do
         (swap! (:skip-next-n acc) dec)
@@ -86,17 +88,21 @@
 
             {value :result/value
              error :result/error
-             data :result/data} (when (map? command-result)
-                                  command-result)
-
+             data :result/data} (when (map? command-result) command-result)
             ]
-
-        (if (and (map? command-result) value)
-          (assoc acc
-                 :value value
-                 :error error
-                 :data data)
-          (assoc acc :value command-result))))))
+        (if error
+          ;; if there's an error short circuit the pipeline using `reduced`
+          (do
+            (info "Caught error in pipeline" error)
+            (reduced
+              {:value
+               (str "💥 Error in `" cmd-with-args "`: " error " 💥")}))
+          ;; otherwise continue reducing
+          (if (and (map? command-result) value)
+            (assoc acc
+                   :value value
+                   :data data)
+            (assoc acc :value command-result)))))))
 
 (defn handle-expr
   "Entry point for Yetibot expression evaluation  An expression is the

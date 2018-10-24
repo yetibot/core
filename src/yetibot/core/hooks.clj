@@ -71,7 +71,7 @@
    If unable to match prefix, it calls the callback, letting `handle-cmd`
    implement its own default behavior."
   [callback cmd-with-args {:keys [chat-source user opts settings] :as extra}]
-  (info "handle-with-hooked-cmds" extra)
+  ;; (info "handle-with-hooked-cmds" extra)
   (let [[cmd args] (split-command-and-args cmd-with-args)] 
     ;; find the top level command and its corresponding sub-cmds
     (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]

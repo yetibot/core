@@ -19,6 +19,7 @@
   (require 'yetibot.core.commands.nil :reload)
   (require 'yetibot.core.commands.default-command :reload)
   (require 'yetibot.core.commands.echo :reload)
+  (require 'yetibot.core.commands.error :reload)
   (require 'yetibot.core.commands.help :reload)
   (require 'yetibot.core.commands.history :reload)
   (require 'yetibot.core.commands.observe :reload)

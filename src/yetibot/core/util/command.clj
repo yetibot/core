@@ -5,6 +5,12 @@
     [yetibot.core.models.help :as help]
     [yetibot.core.parser :refer [parser]]))
 
+(defn error?
+  "Determine whether a value is an error map"
+  [x]
+  (and (map? x)
+       (contains? x :result/error)))
+
 (def config-prefix
   (or (:value (get-config sch/Str [:command :prefix])) "!"))
 

@@ -22,6 +22,7 @@
      :repl "language REPLs"
      :util "utilities that help transform expressions or operate Yetibot"
      :crude "may return crude, racy and potentially NSFW results (e.g. urban)"
+     :collection "operates on collections"
      :broken "known to be broken, probably due to an API that disappeared"
      :async "commands that execute asynchronously"}))
 

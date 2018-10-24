@@ -11,14 +11,36 @@
     [yetibot.core.util.format :refer [format-exception-log]]
     [yetibot.core.util.command-info :refer [command-execution-info]]
     [yetibot.core.models.users :refer [min-user-keys]]
+    [yetibot.core.util.command :refer [error?]]
     [yetibot.core.util :refer
      [psuedo-format split-kvs-with ensure-items-seqential
       ensure-items-collection]]))
 
+(defn ensure-coll
+  "Return nil if opts was set or return an error map otherwise"
+  [{:keys [opts args]}]
+  (or
+    (ensure-items-collection opts)
+    {:result/error
+     (str "Expected a collection but you gave me `" args "`")}))
+
+(defn coll-cmd
+  "Helper to define commands that operate only on collections"
+  [f]
+  (with-meta
+    (fn [cmd-args]
+      (let [coll-or-error (ensure-coll cmd-args)]
+        (if (error? coll-or-error)
+          coll-or-error
+          (let [result (f coll-or-error)]
+            {:result/value result
+             :result/data result}))))
+    {:yb/cat #{:util :collection}}))
+
 ; random
 (defn random
-  "random <list> # returns a random item where <list> is a comma-separated list of items.
-   Can also be used to extract a random item when a collection is piped to random."
+  "random <list> # returns a random item from <list>
+   random # generate a random number"
   {:yb/cat #{:util}}
   [{items :opts}]
   (if (not (empty? items))
@@ -29,11 +51,9 @@
           _ random)
 
 ; shuffle
-(defn shuffle-cmd
+(def shuffle-cmd
   "shuffle <list>"
-  {:yb/cat #{:util}}
-  [{items :opts}]
-  (shuffle (ensure-items-collection items)))
+  (coll-cmd shuffle))
 
 (cmd-hook #"shuffle"
           _ shuffle-cmd)
@@ -42,9 +62,12 @@
 
 ; head / tail helpers
 (defn head-or-tail
-  [single-fn multi-fn n items]
-  (let [f (if (= 1 n) single-fn (partial multi-fn n))]
-    (f (ensure-items-collection items))))
+  [single-fn multi-fn n cmd-map]
+  (let [coll-or-error (ensure-coll cmd-map)
+        f (if (= 1 n) single-fn (partial multi-fn n))]
+    (if (error? coll-or-error)
+      coll-or-error
+      (f coll-or-error))))
 
 (def head (partial head-or-tail first take))
 
@@ -54,14 +77,14 @@
 (defn head-1
   "head <list> # returns the first item from the <list>"
   {:yb/cat #{:util}}
-  [{items :opts}]
-  (head 1 items))
+  [cmd-args]
+  (head 1 cmd-args))
 
 (defn head-n
   "head <n> <list> # return the first <n> items from the <list>"
   {:yb/cat #{:util}}
-  [{[_ n] :match items :opts}]
-  (head (read-string n) items))
+  [{[_ n] :match :as cmd-args}]
+  (head (read-string n) cmd-args))
 
 (cmd-hook #"head"
           #"(\d+)" head-n
@@ -74,36 +97,33 @@
 (defn tail-1
   "tail <list> # returns the last item from the <list>"
   {:yb/cat #{:util}}
-  [{items :opts}] (tail 1 items))
+  [cmd-args] (tail 1 cmd-args))
 
 (defn tail-n
   "tail <n> <list> # returns the last <n> items from the <list>"
   {:yb/cat #{:util}}
-  [{[_ n] :match items :opts}]
-  (tail (read-string n) items))
+  [{[_ n] :match :as cmd-args}]
+  (tail (read-string n) cmd-args))
 
 (cmd-hook #"tail"
           #"(\d+)" tail-n
           _ tail-1)
 
 ; droplast
-(defn drop-last-cmd
+(def drop-last-cmd
   "droplast <list> # drop the last item from <list>"
-  {:yb/cat #{:util}}
-  [{items :opts}]
-  (drop-last (ensure-items-collection items)))
+  (coll-cmd drop-last))
 
 (cmd-hook ["droplast" #"^droplast$"]
-          _ drop-last-cmd)
+  _ drop-last-cmd)
 
 ; rest
-(defn rest-cmd
+(def rest-cmd
   "rest <list> # returns the last item from the <list>"
-  {:yb/cat #{:util}}
-  [{items :opts}] (rest items))
+  (coll-cmd rest))
 
 (cmd-hook #"rest"
-          _ rest-cmd)
+  _ rest-cmd)
 
 ; xargs
 ; example usage: !users | xargs attack
@@ -132,7 +152,9 @@
               (error "Exception in xargs cmd-runner:" cmd-runner
                      (format-exception-log ex))
               ex)))
-        itms))))
+        itms)
+      {:result/error
+       (str "Expected a collection")})))
 
 (cmd-hook #"xargs"
           _ xargs)
@@ -141,10 +163,12 @@
 (defn join
   "join <list> <separator> # joins list with optional <separator> or no separator if not specified. See also `unwords`."
   {:yb/cat #{:util}}
-  [{match :match items :opts}]
-  (info (str "join with:'" match "'."))
-  (let [join-char (if (empty? match) "" match)]
-    (s/join join-char (ensure-items-collection items))))
+  [{match :match items :opts :as cmd-args}]
+  (let [coll-or-error (ensure-coll cmd-args)
+        join-char (if (empty? match) "" match)]
+    (if (error? coll-or-error)
+      coll-or-error
+      (s/join join-char coll-or-error))))
 
 (cmd-hook #"join"
           #"(?is).+" join
@@ -197,11 +221,14 @@
 (defn flatten-cmd
   "flatten <nested list> # completely flattens a nested data struture after splitting on newlines"
   {:yb/cat #{:util}}
-  [{args :args opts :opts}]
-  (->> (ensure-items-collection opts)
-       flatten
-       (map s/split-lines)
-       flatten))
+  [{args :args opts :opts :as cmd-args}]
+  (let [error-or-coll (ensure-coll cmd-args)]
+    (if (error? error-or-coll)
+      error-or-coll
+      (->> error-or-coll
+           flatten
+           (map s/split-lines)
+           flatten))))
 
 ; letters
 (defn letters
@@ -214,21 +241,17 @@
           _ letters)
 
 ; unletters
-(defn unletters
+(def unletters
   "unletters <list> # join <list> without a delimiter"
-  {:yb/cat #{:util}}
-  [{opts :opts}]
-  (s/join "" (ensure-items-collection opts)))
+  (coll-cmd (partial s/join "")))
 
 (cmd-hook ["unletters" #"^unletters$"]
           _ unletters)
 
 ; set
-(defn set-cmd
+(def set-cmd
   "set <list> # returns the set of distinct elements in <list>"
-  {:yb/cat #{:util}}
-  [{items :opts}]
-  (set (ensure-items-collection items)))
+  (coll-cmd set))
 
 (cmd-hook #"set"
           _ set-cmd)
@@ -236,7 +259,7 @@
 ; list
 (defn list-cmd
   "list <comma-or-space-delimited-items> # construct a list"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{:keys [args]}]
   (let [delimiter (if (re-find #"," args) #"," #"\s")]
     (map s/trim (s/split args delimiter))))
@@ -246,21 +269,20 @@
 
 
 ; count
-(defn count-cmd
+(def count-cmd
   "count <list> # count the number of items in <list>"
-  {:yb/cat #{:util}}
-  [{items :opts}]
-  (str (count (ensure-items-collection items))))
+  (coll-cmd (comp str count)))
 
 (cmd-hook #"count"
           _ count-cmd)
 
 ; sum
-(defn sum-cmd
+(def sum-cmd
   "sum <list> # sum the items in <list>"
-  {:yb/cat #{:util}}
-  [{items :opts}]
-  (reduce + (map (comp read-string str) (ensure-items-collection items))))
+  (coll-cmd
+    #(->> %
+          (map (comp read-string str))
+          (reduce +))))
 
 (cmd-hook #"sum"
           _ sum-cmd)
@@ -276,11 +298,10 @@
           _ sort-cmd)
 
 ; sortnum
-(defn sortnum-cmd
+(def sortnum-cmd
   "sortnum <list> # numerically sort a list"
-  {:yb/cat #{:util}}
-  [{items :opts}]
-  (sort #(- (read-string %1) (read-string %2)) (ensure-items-collection items)))
+  (coll-cmd
+    (partial sort #(- (read-string %1) (read-string %2)))))
 
 (cmd-hook #"sortnum"
           _ sortnum-cmd)
@@ -324,7 +345,10 @@
   (let [[n p] (if (sequential? match) (rest match) ["0" args])
         pattern (re-pattern (str "(?i)" p))
         items (-> opts ensure-items-collection ensure-items-seqential)]
-    (grep-data-structure pattern items {:context (read-string n)})))
+    (if items
+      (grep-data-structure pattern items {:context (read-string n)})
+      {:result/error
+       (str "Expected a collection but you only gave me `" args "`")})))
 
 (cmd-hook #"grep"
           #"-C\s+(\d+)\s+(.+)" grep-cmd
@@ -332,7 +356,7 @@
 
 ; tee
 (defn tee-cmd
-  "tee <list> # output <list> to chat and return list (useful for pipes)"
+  "tee <list-or-args> # output <list-or-args> to chat then return it (useful for pipes)"
   {:yb/cat #{:util}}
   [{:keys [opts args]}]
   (chat-data-structure (or opts args))
@@ -342,11 +366,9 @@
           _ tee-cmd)
 
 ; reverse
-(defn reverse-cmd
+(def reverse-cmd
   "reverse <list> # reverse the ordering of <list>"
-  {:yb/cat #{:util}}
-  [{items :opts}]
-  (reverse (ensure-items-collection items)))
+  (coll-cmd reverse))
 
 (cmd-hook #"reverse"
           _ reverse-cmd)
@@ -363,10 +385,12 @@
    range 0 6 2 => 0 2 4
 
    Results are returned as collections."
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{:keys [match]}]
   (let [range-args (map read-string (rest match))]
-    (apply range range-args)))
+    (->> range-args
+         (apply range)
+         (map str))))
 
 (cmd-hook #"range"
   #"(\d+)\s+(\d+)\s+(\d+)" range-cmd
@@ -376,7 +400,7 @@
 ; keys
 (defn keys-cmd
   "keys <map> # return the keys from <map>"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{items :opts}]
   (timbre/debug (timbre/color-str :blue "keys")
                 (timbre/color-str :green (pr-str items)))
@@ -390,7 +414,7 @@
 ; vals
 (defn vals-cmd
   "vals <map> # return the vals from <map>"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{items :opts}]
   (if (map? items)
     (vals items)
@@ -402,13 +426,13 @@
 ;; raw
 (defn raw-cmd
   "raw <coll> | <args> # output a string representation of piped <coll> or <args>"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{:keys [opts args]}]
   (pr-str (or opts args)))
 
 (defn raw-all-cmd
   "raw all <coll> | <args> # output a string representation of all command context"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{:keys [user] :as command-args}]
   (let [minimal-user (select-keys user min-user-keys)
         cleaned-args (merge command-args {:user minimal-user})]
@@ -438,7 +462,8 @@
   [{:keys [data] :as opts}]
   (info "show-data-cmd" (pr-str opts))
   (if data
-    (with-out-str (pprint data))
+    (binding [*print-right-margin* 80]
+      (with-out-str (pprint data)))
     "There is no `data` from the previous command 🤔"))
 
 (defn data-cmd
