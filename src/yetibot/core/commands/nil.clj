@@ -7,7 +7,7 @@
   "nil # eats all passed args; equivalent to writing to /dev/null"
   {:yb/cat #{:util}}
   [_]
-  (suppress []))
+  (suppress {}))
 
 (cmd-hook #"nil"
           _ nil-cmd)
