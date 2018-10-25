@@ -3,12 +3,13 @@
     [clojure.pprint :refer [pprint *print-right-margin*]]
     [cheshire.core :as json]
     [yetibot.core.interpreter :refer [handle-cmd]]
-    [taoensso.timbre :as timbre :refer [info warn error]]
+    [taoensso.timbre :as timbre :refer [info warn error debug]]
     [clojure.string :as s]
     [json-path :as jp]
     [yetibot.core.hooks :refer [cmd-hook]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.util.format :refer [format-exception-log]]
+    [yetibot.core.util.command-info :refer [command-execution-info]]
     [yetibot.core.models.users :refer [min-user-keys]]
     [yetibot.core.util :refer
      [psuedo-format split-kvs-with ensure-items-seqential
@@ -112,8 +113,12 @@
   [{:keys [args opts user] :as cmd-params}]
   (if (s/blank? args)
     opts ; passthrough if no args
-    (let [itms (ensure-items-collection opts)]
-      (pmap
+    (let [itms (ensure-items-collection opts)
+          cmd-runner (if (-> (str args " " (first opts))
+                             command-execution-info :matched-sub-cmd meta :yb/cmd :async?)
+                       map pmap)]
+      (debug "xargs using cmd-runner:" (pr-str cmd-runner) "for" (pr-str args) )
+      (cmd-runner
         (fn [item]
           (try
             (apply handle-cmd
@@ -124,7 +129,7 @@
                      [args (merge cmd-params {:raw item :opts item})]
                      [(psuedo-format args item) (merge cmd-params {:raw item :opts nil})]))
             (catch Exception ex
-              (error "Exception in xargs pmap"
+              (error "Exception in xargs cmd-runner"
                      (format-exception-log ex))
               ex)))
         itms))))
