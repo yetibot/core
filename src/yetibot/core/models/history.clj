@@ -9,6 +9,8 @@
 
 ;;;; read
 
+(defn flatten-one [n] (if (= 1 n) first identity))
+
 (defn history-for-chat-source
   ([chat-source] (history-for-chat-source chat-source {}))
   ([{:keys [uuid room] :as chat-source} extra-where]
@@ -33,36 +35,38 @@
 
 (defn head
   [{:keys [uuid room] :as chat-source} n extra-where]
-  (query
-    {:where/map
-     (merge
-       {:chat-source-adapter (pr-str uuid)
-        :chat-source-room room}
-       extra-where)
-     :limit/clause (str n)}))
+  ((flatten-one n)
+   (query
+     {:where/map
+      (merge
+        {:chat-source-adapter (pr-str uuid)
+         :chat-source-room room}
+        extra-where)
+      :limit/clause (str n)})))
 
 (defn tail
   [{:keys [uuid room] :as chat-source} n extra-where]
-  (-> (query
-        {:where/map
-         (merge
-           {:chat-source-adapter (pr-str uuid)
-            :chat-source-room room}
-           extra-where)
-         :order/clause "created_at DESC"
-         :limit/clause (str n)})
-      reverse))
+  ((flatten-one n)
+   (-> (query
+         {:where/map
+          (merge
+            {:chat-source-adapter (pr-str uuid)
+             :chat-source-room room}
+            extra-where)
+          :order/clause "created_at DESC"
+          :limit/clause (str n)})
+       reverse)))
 
 (defn random
   [{:keys [uuid room] :as chat-source} extra-where]
-  (query
-    {:where/map
-     (merge
-       {:chat-source-adapter (pr-str uuid)
-       :chat-source-room room}
-       extra-where)
-     :order/clause "random()" ;; possibly slow on large tables
-     :limit/clause "1"}))
+  (first (query
+           {:where/map
+            (merge
+              {:chat-source-adapter (pr-str uuid)
+               :chat-source-room room}
+              extra-where)
+            :order/clause "random()" ;; possibly slow on large tables
+            :limit/clause "1"})))
 
 (defn grep [{:keys [uuid room] :as chat-source} pattern extra-where]
   (query

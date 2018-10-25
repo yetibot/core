@@ -23,10 +23,10 @@
                              1)]
     (condp = next-cmd
       "count" (str (h/count-entities chat-source extra-where))
-      "head" (h/format-all (h/head chat-source possible-int-arg extra-where))
-      "tail" (h/format-all (h/tail chat-source possible-int-arg extra-where))
-      "random" (h/format-all (h/random chat-source extra-where))
-      "grep" (h/format-all (h/grep chat-source (join " " args) extra-where))
+      "head" (h/head chat-source possible-int-arg extra-where)
+      "tail" (h/tail chat-source possible-int-arg extra-where)
+      "random" (h/random chat-source extra-where)
+      "grep" (h/grep chat-source (join " " args) extra-where)
       :else nil
       )))
 
@@ -36,12 +36,12 @@
 ;; then performing operations on it in memory. If no search operation is
 ;; provided, history will return only the latest 30 results.
 (defn history-cmd
-  "history [<only-yetibot-history>] # show chat history.
+  "history [<yetibot-history>] # show chat history.
 
-   <only-yetibot-history> is optional. If unspecified all history is included.
+   <yetibot-history> is optional. If unspecified all history is included.
 
-   If <only-yetibot-history> is true, only Yetibot output is included.
-   If <only-yetibot-history> is false, only non-Yetibot output is included."
+   If <yetibot-history> is true, only Yetibot output is included.
+   If <yetibot-history> is false, only non-Yetibot output is included."
   {:yb/cat #{:util}}
   [{:keys [match chat-source next-cmds skip-next-n]}]
   (info "history-cmd match" (pr-str match))
@@ -56,22 +56,26 @@
                       {}
                       {:is-yetibot (= "true" match)})
 
+        next-commands (take 1 next-cmds)
+
         history (if (> skip-n 0)
                   (do
                     (reset! skip-next-n skip-n)
-                    (history-for-cmd-sequence (take 1 next-cmds)
+                    (history-for-cmd-sequence next-commands
                                               chat-source
-                                              extra-where)
-                    )
+                                              extra-where))
                   ;; default to last 30 items if there were no filters
                   (take
-                    30
-                    (h/format-all
-                      (h/history-for-chat-source chat-source extra-where))))]
-    ;; format
-    history
-    ))
+                    30 (h/history-for-chat-source chat-source extra-where)))]
 
+    ;; format
+    (if (= (first next-commands) "count")
+      ;; count doesn't need any formatting since it's just a raw number
+      history
+      ;; everything else needs to be formatted for display
+      {:result/value (h/format-all history)
+       :result/data history}
+      )))
 
 (cmd-hook #"history"
   #"^true$" history-cmd

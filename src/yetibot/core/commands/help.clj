@@ -20,7 +20,8 @@
   (or
     (seq (get-docs-for prefix))
     (seq (fuzzy-get-docs-for prefix))
-    (format "I couldn't find any help for topic '%s'" prefix)))
+    {:result/error
+     (format "I couldn't find any help for topic '%s'" prefix)}))
 
 (defn help-all-cmd
   "help all # get help for all topics"
