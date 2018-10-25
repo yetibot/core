@@ -1,5 +1,6 @@
 (ns yetibot.core.test.util.command-info
   (:require
+    yetibot.core.commands.collections
     [yetibot.core.parser :refer [parser]]
     yetibot.core.commands.echo
     [clojure.test :refer :all]

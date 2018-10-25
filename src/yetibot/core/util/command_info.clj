@@ -1,6 +1,5 @@
 (ns yetibot.core.util.command-info
   (:require
-    yetibot.core.commands.collections
     [yetibot.core.hooks :as hooks]
     [yetibot.core.interpreter :as interpreter]
     [yetibot.core.models.help :as help]
