@@ -114,10 +114,10 @@
   (if (s/blank? args)
     opts ; passthrough if no args
     (let [itms (ensure-items-collection opts)
-          cmd-runner (if (-> (str args " " (first opts))
-                             command-execution-info :matched-sub-cmd meta :yb/cmd :async?)
-                       map pmap)]
-      (debug "xargs using cmd-runner:" (pr-str cmd-runner) "for" (pr-str args) )
+          cat (-> (str args " " (first opts))
+                  command-execution-info :matched-sub-cmd meta :yb/cat)
+          cmd-runner (if (contains? cat :async) map pmap)]
+      (debug "xargs using cmd-runner:" cmd-runner "for command" (pr-str args))
       (cmd-runner
         (fn [item]
           (try

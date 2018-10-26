@@ -8,7 +8,7 @@
 
 (defn reply-to-cmd
   "replyto <target> # send Yetibot's response to a target other than the current channel."
-  {:yb/cat #{:util} :yb/cmd {:async? true}}
+  {:yb/cat #{:util :async}}
   [{:keys [match chat-source] :as extra}]
   (let [[_ target args] match]
     (if (blank? args)
