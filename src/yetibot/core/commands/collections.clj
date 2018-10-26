@@ -116,9 +116,9 @@
     (let [itms (ensure-items-collection opts)
           cat (-> (str args " " (first opts))
                   command-execution-info :matched-sub-cmd meta :yb/cat)
-          cmd-runner (if (contains? cat :async) map pmap)]
+          cmd-runner (if (contains? cat :async) 'map 'pmap)]
       (debug "xargs using cmd-runner:" cmd-runner "for command" (pr-str args))
-      (cmd-runner
+      ((resolve cmd-runner)
         (fn [item]
           (try
             (apply handle-cmd
@@ -129,7 +129,7 @@
                      [args (merge cmd-params {:raw item :opts item})]
                      [(psuedo-format args item) (merge cmd-params {:raw item :opts nil})]))
             (catch Exception ex
-              (error "Exception in xargs cmd-runner"
+              (error "Exception in xargs cmd-runner:" cmd-runner
                      (format-exception-log ex))
               ex)))
         itms))))
