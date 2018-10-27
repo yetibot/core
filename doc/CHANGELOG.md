@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.47 - Unreleased
+
+- Allow xargs to intellignetly use `pmap` or `map` depending on whether the
+  command it's executing has `:async` in its `:yb/cat` set. [#49](https://github.com/yetibot/yetibot.core/pull/49)
+  by [@jcorrado](https://github.com/jcorrado)
+
 ## 0.4.46 - 10/23/2018
 
 - Add `raw all` command to show all command args
