@@ -469,8 +469,8 @@
 (defn show-data-cmd
   "data show # pretty print data from the previous command"
   {:yb/cat #{:util}}
-  [{:keys [data] :as opts}]
-  (info "show-data-cmd" (pr-str opts))
+  [{:keys [data] :as cmd-args}]
+  (info "show-data-cmd" (pr-str (dissoc cmd-args :user)))
   (if data
     (binding [*print-right-margin* 80]
       (with-out-str (pprint data)))

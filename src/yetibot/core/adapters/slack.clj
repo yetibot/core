@@ -235,7 +235,7 @@
                event]
   (let [ts @ping-time
         now (System/currentTimeMillis)]
-    (timbre/debug "Pong" (pr-str event))
+    (timbre/trace "Pong" (pr-str event))
     (reset! connection-last-active-timestamp now)
     (when ts (reset! connection-latency (- now ts)))))
 
@@ -249,7 +249,7 @@
               ping-event {:type :ping
                           :id n
                           :time ts}]
-          (timbre/debug "Pinging Slack" (pr-str ping-event))
+          (timbre/trace "Pinging Slack" (pr-str ping-event))
           (reset! ping-time ts)
           (slack/send-event (:dispatcher c) ping-event)
           (async/<!! (async/timeout slack-ping-pong-interval-ms))

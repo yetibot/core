@@ -28,22 +28,21 @@
    :opts"
   [acc [cmd-with-args & next-cmds]]
   (debug "pipe-cmds" *chat-source* acc cmd-with-args next-cmds)
-  (let [extra {:raw (:value acc)
+  (let [{previous-value :value
+         previous-data :data} acc
+        extra {:raw (:value acc)
+               :data previous-data
                :settings (:settings acc)
                :skip-next-n (:skip-next-n acc)
                :next-cmds next-cmds
                :user *current-user*
                :chat-source *chat-source*}
-        {previous-value :value
-         previous-data :data} acc
         possible-opts (to-coll-if-contains-newlines previous-value)]
 
-    (debug "previous value" (pr-str previous-value))
-    (debug "previous data" (pr-str previous-data))
+    ;; (debug "previous value" (pr-str previous-value))
+    ;; (debug "previous data" (pr-str previous-data))
 
-    (resolve 'first)
-
-    (if (> @(:skip-next-n acc) 0)
+    (if (pos? @(:skip-next-n acc))
       (do
         (swap! (:skip-next-n acc) dec)
         (info "skipping already-consumed command" cmd-with-args "and the next"
@@ -60,9 +59,6 @@
             {previous-value :value
              previous-data :data} acc
 
-            _ (info "previous-value" previous-value)
-            _ (info "previous-data" previous-data)
-
             ;; the result of a commad handler can either be:
             ;; - the literal value itself
             ;; - a map containing a :value key and an optional :data key
@@ -73,8 +69,7 @@
               ;; collection or as a single value, depending on whether previous
               ;; value looks like a collection
               (if (coll? possible-opts)
-                [cmd-with-args (conj extra {:opts possible-opts
-                                            :data previous-data})]
+                [cmd-with-args (conj extra {:opts possible-opts})]
                 ;; value is the previous primitive output from the last
                 ;; command. the first time around value is empty so just use
                 ;; the raw cmd-with-args

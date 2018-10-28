@@ -166,7 +166,8 @@
                        user-pattern (assoc :user-pattern user-pattern)
                        channel-pattern (assoc :channel-pattern channel-pattern))]
         (info "create observer" (color-str :blue (pr-str obs-info)))
-        ((comp wire-observer add-observer) obs-info)))))
+        {:result/value ((comp wire-observer add-observer) obs-info)
+         :result/data obs-info}))))
 
 (defn list-observers
   "observe # list observers"
