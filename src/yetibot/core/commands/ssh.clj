@@ -26,7 +26,8 @@
   "ssh servers # list servers configured for ssh access"
   {:yb/cat #{:infra}}
   [_]
-  (keys servers-by-key))
+  {:result/data servers-by-key
+   :result/value (keys servers-by-key)})
 
 (defn run-command
   "ssh <server> <command> # run a command on <server>"
@@ -43,7 +44,7 @@
           (with-connection session
                            (let [result (ssh session {:cmd command})]
                              (or (:out result) (:error result)))))))
-    (str "No servers found for " server-name)))
+    {:result/error (str "No servers found for " server-name)}))
 
 (cmd-hook #"ssh"
   #"^(\w+)\s(.+)" run-command

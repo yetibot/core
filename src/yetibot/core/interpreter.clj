@@ -28,10 +28,12 @@
    :opts"
   [acc [cmd-with-args & next-cmds]]
   (debug "pipe-cmds" *chat-source* acc cmd-with-args next-cmds)
-  (let [{previous-value :value
+  (let [;; the previous accumulated value. for the first command in a series of
+        ;; piped commands, preivous-value and previous-data will be empty
+        {previous-value :value
          previous-data :data} acc
-        extra {:raw (:value acc)
-               :data previous-data
+        extra {:raw previous-value
+               :data (or previous-data previous-value)
                :settings (:settings acc)
                :skip-next-n (:skip-next-n acc)
                :next-cmds next-cmds
@@ -53,13 +55,7 @@
       ;; possible-opts as an extra :opts param and append nothing to
       ;; cmd-with-args.
 
-      (let [;; the previous accumulated value. for the first command in a series
-            ;; of piped commands, preivous-value and previous-data will be empty
-
-            {previous-value :value
-             previous-data :data} acc
-
-            ;; the result of a commad handler can either be:
+      (let [;; the result of a commad handler can either be:
             ;; - the literal value itself
             ;; - a map containing a :value key and an optional :data key
             command-result
