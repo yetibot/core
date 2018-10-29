@@ -10,7 +10,9 @@
   {:yb/cat #{:util}}
   [{:keys [chat-source]}]
   (log/info "show users for" chat-source)
-  (map :mention-name (users/get-users chat-source)))
+  (let [users (users/get-users chat-source)]
+    {:result/value (map :mention-name users)
+     :result/data (map #(select-keys % users/min-user-keys) users)}))
 
 (cmd-hook #"users"
           ; #"reset" reset
