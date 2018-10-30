@@ -17,7 +17,7 @@
         (info "reply to" target args)
         (binding [*target* target]
           (chat-data-structure args))
-        (suppress {:nothing nil})))))
+        (suppress {})))))
 
 (cmd-hook #"replyto"
   #"(\S+)\s(.+)" reply-to-cmd)

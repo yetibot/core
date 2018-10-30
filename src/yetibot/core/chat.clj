@@ -84,6 +84,13 @@
        (re-find #"\n" formatted)
        (contains-image-url-lines? formatted)))
 
+(defn suppressed-pred [d] (:suppress (meta d)))
+
+(defn suppressed? [d]
+  (or (suppressed-pred d)
+      (and (coll? d)
+           (every? suppressed-pred d))))
+
 (defn chat-data-structure
   "Formatters to send data structures to chat.
    If `d` is a nested data structure, it will attempt to recursively flatten
@@ -95,7 +102,7 @@
          \newline
          (color-str :blue (pr-str *target*))
          )
-  (when-not (:suppress (meta d))
+  (when-not (suppressed? d)
     (let [[formatted flattened] (fmt/format-data-structure d)]
       (debug "formatted:" (pr-str formatted))
       (cond

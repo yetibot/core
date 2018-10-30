@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.48 - 10/29/2018
+
+- Fix buggy empty collection checking in xargs
+- Allow suppression meta to work on collections of suppressed items
+
 ## 0.4.47 - 10/29/2018
 
 - Allow xargs to intelligently use `pmap` or `map` depending on whether the

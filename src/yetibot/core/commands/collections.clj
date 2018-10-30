@@ -133,28 +133,27 @@
   [{:keys [args opts user] :as cmd-params}]
   (if (s/blank? args)
     opts ; passthrough if no args
-    (let [itms (ensure-items-collection opts)
-          cat (-> (str args " " (first opts))
-                  command-execution-info :matched-sub-cmd meta :yb/cat)
-          cmd-runner (if (contains? cat :async) 'map 'pmap)]
-      (debug "xargs using cmd-runner:" cmd-runner "for command" (pr-str args))
-      ((resolve cmd-runner)
-        (fn [item]
-          (try
-            (apply handle-cmd
-                   ; item could be a collection, such as when xargs is used
-                   ; on nested collections, e.g.:
-                   ; repeat 5 jargon | xargs words | xargs head
-                   (if (coll? item)
-                     [args (merge cmd-params {:raw item :opts item})]
-                     [(psuedo-format args item) (merge cmd-params {:raw item :opts nil})]))
-            (catch Exception ex
-              (error "Exception in xargs cmd-runner:" cmd-runner
-                     (format-exception-log ex))
-              ex)))
-        itms)
-      {:result/error
-       (str "Expected a collection")})))
+    (if-let [itms (ensure-items-collection opts)]
+      (let [cat (-> (str args " " (first opts))
+                    command-execution-info :matched-sub-cmd meta :yb/cat)
+            cmd-runner (if (contains? cat :async) 'map 'pmap)]
+        (debug "xargs using cmd-runner:" cmd-runner "for command" (pr-str args))
+        ((resolve cmd-runner)
+         (fn [item]
+           (try
+             (apply handle-cmd
+                    ; item could be a collection, such as when xargs is used
+                    ; on nested collections, e.g.:
+                    ; repeat 5 jargon | xargs words | xargs head
+                    (if (coll? item)
+                      [args (merge cmd-params {:raw item :opts item})]
+                      [(psuedo-format args item) (merge cmd-params {:raw item :opts nil})]))
+             (catch Exception ex
+               (error "Exception in xargs cmd-runner:" cmd-runner
+                      (format-exception-log ex))
+               ex)))
+         itms))
+      {:result/error (str "Expected a collection")})))
 
 (cmd-hook #"xargs"
           _ xargs)
