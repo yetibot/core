@@ -10,7 +10,6 @@
     [yetibot.core.logging :as logging]
     [yetibot.core.webapp.handler :as web]
     [yetibot.core.loader :refer [load-commands-and-observers]]
-    [yetibot.core.handler :refer [handle-unparsed-expr]]
     [yetibot.core.logo :refer [logo]])
   (:gen-class))
 

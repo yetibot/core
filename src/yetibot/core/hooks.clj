@@ -86,7 +86,9 @@
               " commands are disabled in this channel🖐")
             (sub-fn (merge extra {:cmd cmd :args args :match match}))))
         ;; couldn't find any sub commands so default to help.
-        (yetibot.core.handler/handle-unparsed-expr (str "help " (get @re-prefix->topic (str cmd-re)))))
+        (:value
+          (yetibot.core.handler/handle-unparsed-expr
+            (str "help " (get @re-prefix->topic (str cmd-re))))))
       (callback cmd-with-args extra))))
 
 ;; Hook the actual handle-cmd called during interpretation.
