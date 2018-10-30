@@ -1,10 +1,13 @@
 # yetibot.core change log
 
-## 0.4.47 - Unreleased
+## 0.4.47 - 10/29/2018
 
-- Allow xargs to intellignetly use `pmap` or `map` depending on whether the
+- Allow xargs to intelligently use `pmap` or `map` depending on whether the
   command it's executing has `:async` in its `:yb/cat` set. [#49](https://github.com/yetibot/yetibot.core/pull/49)
   by [@jcorrado](https://github.com/jcorrado)
+- Encode explicit errors - [#48](https://github.com/yetibot/yetibot.core/pull/48)
+- Prevent embedded commands from producing errors -
+  [#767](https://github.com/yetibot/yetibot/issues/767)
 
 ## 0.4.46 - 10/23/2018
 
