@@ -15,7 +15,7 @@
   (info "stats resolver with args" args)
   ;; (info (doall (selections-seq context)))
   (merge
-    {:uptime (uptime/formatted-uptime)
+    {:uptime (uptime/format-uptime (uptime/uptime-millis))
      :adapter_count (count @adapter/adapters)
      :user_count (count @users/users)}
 

@@ -16,7 +16,8 @@
 (defn eval-resolver
   [context {:keys [expr] :as args} value]
   (debug "eval-resolver" args)
-  (let [result (handle-unparsed-expr expr)]
+  (let [{:keys [value error]}  (handle-unparsed-expr expr)
+        result (or value error)]
     (if (coll? result)
       result
       [result])))

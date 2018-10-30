@@ -11,7 +11,9 @@
   "room list # list rooms that yetibot is in"
   {:yb/cat #{:util}}
   [_]
-  (chat/rooms))
+  (let [rooms (chat/rooms)]
+    {:result/value rooms
+     :result/data rooms}))
 
 (defn join-cmd
   "room join <room> # join <room>"
@@ -32,7 +34,9 @@
   "room settings # show all chat settings for this room"
   {:yb/cat #{:util}}
   [{:keys [chat-source]}]
-  (settings-for-room (:room chat-source)))
+  (let [settings (settings-for-room (:room chat-source))]
+    {:result/value settings
+     :result/data settings}))
 
 (defn settings-for-cmd
   "room settings <key> # show the value for a single setting"
@@ -40,7 +44,7 @@
   [{[_ k] :match cs :chat-source}]
   (if-let [v (get (settings-for-room (:room cs)) k)]
     v
-    (str "'" k "' is not set.")))
+    {:result/error (str "'" k "' is not set.")}))
 
 (defn set-cmd
   "room set <key> <value> # configure a setting for the current room"

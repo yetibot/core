@@ -55,10 +55,14 @@
       (let [timestamp (System/currentTimeMillis)
             correlation-id (str timestamp "-"
                                 (hash [chat-source user event-type body]))
+
+            parsed-normal-command
+            (when-let [[_ body] (extract-command body)] (parser body))
+
             parsed-cmds
             (or
               ;; if it starts with a command prefix (e.g. !) it's a command
-              (when-let [[_ body] (extract-command body)] [(parser body)])
+              (and parsed-normal-command [parsed-normal-command])
               ;; otherwise, check to see if there are embedded commands
               (embedded-cmds body))
             cmd? (boolean (seq parsed-cmds))]
@@ -86,7 +90,10 @@
             (fn [parse-tree]
               (try
                 (let [original-command-str (unparse parse-tree)
-                      result (handle-parsed-expr chat-source user parse-tree)
+                      {:keys [value error]} (handle-parsed-expr chat-source user
+                                                                parse-tree)
+                      result (or value error)
+                      error? (not (nil? error))
                       [formatted-response _] (format-data-structure result)]
                   ;; Yetibot should record its own response in `history` table
                   ;; before/during posting it back to the chat adapter. Then we
@@ -100,9 +107,14 @@
                           :user-name (-> yetibot-user :username str)
                           :is-yetibot true
                           :is-command false
+                          :is-error error?
                           :command original-command-str
                           :body formatted-response})
-                  (chat-data-structure result))
+                  ;; don't report errors on embedded commands
+                  (if (or (not error?) parsed-normal-command)
+                    (chat-data-structure result)
+                    (info "Not sending error result for embedded command to
+                           chat" result)))
                 (catch Throwable ex
                   (error "error handling expression:" body
                          (format-exception-log ex))

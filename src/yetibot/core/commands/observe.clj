@@ -166,15 +166,17 @@
                        user-pattern (assoc :user-pattern user-pattern)
                        channel-pattern (assoc :channel-pattern channel-pattern))]
         (info "create observer" (color-str :blue (pr-str obs-info)))
-        ((comp wire-observer add-observer) obs-info)))))
+        {:result/value ((comp wire-observer add-observer) obs-info)
+         :result/data obs-info}))))
 
 (defn list-observers
   "observe # list observers"
   {:yb/cat #{:util}}
   [& _]
   (if-let [observers (seq (model/find-all))]
-    (map format-observer observers)
-    "No observers have been defined yet 🤔"))
+    {:result/value (map format-observer observers)
+     :result/data observers}
+    {:result/error "No observers have been defined yet 🤔"}))
 
 (defn remove-observers
   "observe remove <id> # remove observer by id"
@@ -183,10 +185,14 @@
   (let [id (read-string id)
         [status] (model/delete id)]
     (if (zero? status)
-      (into
-        [(format "Could not remove observer %s. Are you sure it exists?" id)
-         ""]
-        (list-observers))
+      (let [obs (seq (model/find-all))]
+        {:result/error
+         (if obs
+           (format
+             "Could not find observer with ID `%s`. Valid observers are: %s"
+             id
+             (s/join ", " (map #(str "`" (:id %) "`: " (:pattern %)) obs)))
+           "There are no existing observers 😑")})
       (format "Observer `%s` removed" id))))
 
 (defn load-observers []

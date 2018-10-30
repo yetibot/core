@@ -25,7 +25,7 @@
 (deftest test-newline-cmd
   (let [multi-str (s/join \newline [1 2 3])]
     (is (= multi-str
-        (handle-unparsed-expr (str "echo " multi-str))))))
+        (:value (handle-unparsed-expr (str "echo " multi-str)))))))
 
 (deftest test-is-a-command
   (let [prefix "?"

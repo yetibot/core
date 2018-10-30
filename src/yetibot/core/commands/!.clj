@@ -19,7 +19,8 @@
       user
       ;; drop the prefix
       (subs (:body last-user-cmd) (count config-prefix)))
-    (format "I couldn't find any command history for you, %s." (:name user))))
+    {:result/error
+     (format "I couldn't find any command history for you, %s." (:name user))}))
 
 (cmd-hook ["!" #"!"]
           _ !-cmd)

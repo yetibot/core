@@ -28,13 +28,14 @@ for the most up-to-date reference. Pasted here for reference:
  :repl "language REPLs"
  :util "utilities that help transform expressions or operate Yetibot"
  :crude "may return crude, racy and potentially NSFW results (e.g. urban)"
+ :collection "operates on collections"
  :broken "known to be broken, probably due to an API that disappeared"}
 ```
 
 ## Channel-based category toggle
 
 Each category can be disabled or enabled at the channel level. By default all
-categories are enabled. To disable them, use `!disable :category-name`. 
+categories are enabled. To disable them, use `!disable :category-name`.
 
 > n.b. disabled categories are stored using the normal channel settings, so
 > you'll see them in `!room` if you set them. `!category` is merely a

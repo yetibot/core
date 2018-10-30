@@ -4,7 +4,7 @@
     [yetibot.core.models.help :refer [fuzzy-get-docs-for get-docs get-docs-for]]
     [yetibot.core.hooks :refer [cmd-hook]]))
 
-(def separator "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
+(def separator "▬▬▬")
 
 (defn help-topics
   [_]
@@ -20,7 +20,8 @@
   (or
     (seq (get-docs-for prefix))
     (seq (fuzzy-get-docs-for prefix))
-    (format "I couldn't find any help for topic '%s'" prefix)))
+    {:result/error
+     (format "I couldn't find any help for topic '%s'" prefix)}))
 
 (defn help-all-cmd
   "help all # get help for all topics"

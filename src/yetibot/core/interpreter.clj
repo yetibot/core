@@ -28,20 +28,23 @@
    :opts"
   [acc [cmd-with-args & next-cmds]]
   (debug "pipe-cmds" *chat-source* acc cmd-with-args next-cmds)
-  (let [extra {:raw (:value acc)
+  (let [;; the previous accumulated value. for the first command in a series of
+        ;; piped commands, preivous-value and previous-data will be empty
+        {previous-value :value
+         previous-data :data} acc
+        extra {:raw previous-value
+               :data (or previous-data previous-value)
                :settings (:settings acc)
                :skip-next-n (:skip-next-n acc)
                :next-cmds next-cmds
                :user *current-user*
                :chat-source *chat-source*}
-        {previous-value :value
-         previous-data :data} acc
         possible-opts (to-coll-if-contains-newlines previous-value)]
 
-    (debug "previous value" (pr-str previous-value))
-    (debug "previous data" (pr-str previous-data))
+    ;; (debug "previous value" (pr-str previous-value))
+    ;; (debug "previous data" (pr-str previous-data))
 
-    (if (> @(:skip-next-n acc) 0)
+    (if (pos? @(:skip-next-n acc))
       (do
         (swap! (:skip-next-n acc) dec)
         (info "skipping already-consumed command" cmd-with-args "and the next"
@@ -52,16 +55,7 @@
       ;; possible-opts as an extra :opts param and append nothing to
       ;; cmd-with-args.
 
-      (let [;; the previous accumulated value. for the first command in a series
-            ;; of piped commands, preivous-value and previous-data will be empty
-
-            {previous-value :value
-             previous-data :data} acc
-
-            _ (info "previous-value" previous-value)
-            _ (info "previous-data" previous-data)
-
-            ;; the result of a commad handler can either be:
+      (let [;; the result of a commad handler can either be:
             ;; - the literal value itself
             ;; - a map containing a :value key and an optional :data key
             command-result
@@ -71,8 +65,7 @@
               ;; collection or as a single value, depending on whether previous
               ;; value looks like a collection
               (if (coll? possible-opts)
-                [cmd-with-args (conj extra {:opts possible-opts
-                                            :data previous-data})]
+                [cmd-with-args (conj extra {:opts possible-opts})]
                 ;; value is the previous primitive output from the last
                 ;; command. the first time around value is empty so just use
                 ;; the raw cmd-with-args
@@ -86,17 +79,21 @@
 
             {value :result/value
              error :result/error
-             data :result/data} (when (map? command-result)
-                                  command-result)
-
+             data :result/data} (when (map? command-result) command-result)
             ]
-
-        (if (and (map? command-result) value)
-          (assoc acc
-                 :value value
-                 :error error
-                 :data data)
-          (assoc acc :value command-result))))))
+        (if error
+          ;; if there's an error short circuit the pipeline using `reduced`
+          (do
+            (info "Caught error in pipeline" error)
+            (reduced
+              {:error
+               (str "💥 Error in `" cmd-with-args "`: " error " 💥")}))
+          ;; otherwise continue reducing
+          (if (and (map? command-result) value)
+            (assoc acc
+                   :value value
+                   :data data)
+            (assoc acc :value command-result)))))))
 
 (defn handle-expr
   "Entry point for Yetibot expression evaluation  An expression is the
@@ -110,13 +107,12 @@
   (info "reduce commands" (prn-str cmds) (pr-str (partition-all (count cmds) 1 cmds)))
   ; look up the settings for room in *chat-source*
   (let [room-settings (room/settings-for-chat-source *chat-source*)]
-    (:value
-      (reduce
-        pipe-cmds
-        ;; Allow commands to consume n next commands in the pipeline and inform
-        ;; the reducer to skip over them. This is useful e.g. queries that can be
-        ;; optimized by "pushing down" the operating into the query engine.
-        {:settings room-settings :skip-next-n (atom 0) :value "" :data nil}
-        ;; let each command peak into the next command so it can decide whether it
-        ;; wants to consume it.
-        (partition-all (count cmds) 1 cmds)))))
+    (reduce
+      pipe-cmds
+      ;; Allow commands to consume n next commands in the pipeline and inform
+      ;; the reducer to skip over them. This is useful e.g. queries that can be
+      ;; optimized by "pushing down" the operating into the query engine.
+      {:settings room-settings :skip-next-n (atom 0) :value "" :data nil}
+      ;; let each command peak into the next command so it can decide whether it
+      ;; wants to consume it.
+      (partition-all (count cmds) 1 cmds))))

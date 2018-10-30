@@ -52,12 +52,12 @@
 
 ; helpers for all collection cmds
 (defn ensure-items-collection [items]
-  {:pre [(not (nil? items))]}
-  (if (coll? items)
-    (if (map? items)
-      (for [[k v] items] (str k ": " v))
-      items)
-    (s/split items #"\n")))
+  (when items
+    (if (coll? items)
+      (if (map? items)
+        (for [[k v] items] (str k ": " v))
+        items)
+      (s/split items #"\n"))))
 
 (defn ensure-items-seqential
   "Ensures items is Sequential. If it's not, such as a map, it will transform it
