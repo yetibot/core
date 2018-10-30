@@ -53,6 +53,8 @@
 
 (defn reconstruct-pipe [cmds] (join " | " cmds))
 
+(parse-and-eval "echo hi | echo bye")
+
 (def unparse-transformer
   "Takes a parse tree and turns it back into a string"
   (partial

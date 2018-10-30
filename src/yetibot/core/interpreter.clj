@@ -86,7 +86,7 @@
           (do
             (info "Caught error in pipeline" error)
             (reduced
-              {:value
+              {:error
                (str "💥 Error in `" cmd-with-args "`: " error " 💥")}))
           ;; otherwise continue reducing
           (if (and (map? command-result) value)
@@ -107,13 +107,12 @@
   (info "reduce commands" (prn-str cmds) (pr-str (partition-all (count cmds) 1 cmds)))
   ; look up the settings for room in *chat-source*
   (let [room-settings (room/settings-for-chat-source *chat-source*)]
-    (:value
-      (reduce
-        pipe-cmds
-        ;; Allow commands to consume n next commands in the pipeline and inform
-        ;; the reducer to skip over them. This is useful e.g. queries that can be
-        ;; optimized by "pushing down" the operating into the query engine.
-        {:settings room-settings :skip-next-n (atom 0) :value "" :data nil}
-        ;; let each command peak into the next command so it can decide whether it
-        ;; wants to consume it.
-        (partition-all (count cmds) 1 cmds)))))
+    (reduce
+      pipe-cmds
+      ;; Allow commands to consume n next commands in the pipeline and inform
+      ;; the reducer to skip over them. This is useful e.g. queries that can be
+      ;; optimized by "pushing down" the operating into the query engine.
+      {:settings room-settings :skip-next-n (atom 0) :value "" :data nil}
+      ;; let each command peak into the next command so it can decide whether it
+      ;; wants to consume it.
+      (partition-all (count cmds) 1 cmds))))
