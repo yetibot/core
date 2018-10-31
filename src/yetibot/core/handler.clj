@@ -39,7 +39,9 @@
 (def all-event-types #{:message :leave :enter :sound :kick})
 
 (defn handle-raw
-  "Handler for optional hooks.
+  "Top level handler for commands. Properly records commands in the database,
+   handles errors, and posts the result back to chat.
+
    Expected event-types are:
    :message
    :leave
