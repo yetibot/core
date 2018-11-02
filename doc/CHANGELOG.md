@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.49 - 11/2/2018
+
+- Add GROUP BY to db/util.
+  [#50](https://github.com/yetibot/yetibot.core/pull/50) by
+  [@jcorrado](https://github.com/jcorrado)
+
 ## 0.4.48 - 10/29/2018
 
 - Fix buggy empty collection checking in xargs
