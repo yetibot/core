@@ -5,7 +5,7 @@
     [clojure.string :as s]
     [yetibot.core.util.format :refer [pseudo-format-n *subst-prefix*
                                       remove-surrounding-quotes]]
-    [yetibot.core.handler :refer [handle-unparsed-expr]]
+    [yetibot.core.handler :refer [record-and-run-expr]]
     [yetibot.core.util.format :refer [format-n]]
     [yetibot.core.models.help :as help]
     [yetibot.core.db.alias :as model]
@@ -13,12 +13,13 @@
 
 (def method-like-replacement-prefix "\\$")
 
-(defn- build-alias-cmd-fn [cmd]
-  (fn [{:keys [user args]}]
+(defn- build-alias-cmd-fn [cmd ]
+  (fn [{:keys [user args yetibot-user]}]
     (binding [*subst-prefix* method-like-replacement-prefix]
       (let [args (if (empty? args) [] (s/split args #" "))
             expr (pseudo-format-n cmd args)]
-        (handle-unparsed-expr expr)))))
+        (str "eval: " cmd)
+        #_(record-and-run-expr expr user yetibot-user)))))
 
 (defn- existing-alias [cmd-name]
   (first (model/query {:where/map {:cmd-name cmd-name}})))

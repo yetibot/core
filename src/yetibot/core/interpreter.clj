@@ -9,6 +9,7 @@
     [yetibot.core.util.format :refer [to-coll-if-contains-newlines]]))
 
 (def ^:dynamic *current-user*)
+(def ^:dynamic *yetibot-user*)
 (def ^:dynamic *chat-source*)
 
 (defn handle-cmd
@@ -38,6 +39,7 @@
                :skip-next-n (:skip-next-n acc)
                :next-cmds next-cmds
                :user *current-user*
+               :yetibot-user *yetibot-user*
                :chat-source *chat-source*}
         possible-opts (to-coll-if-contains-newlines previous-value)]
 
