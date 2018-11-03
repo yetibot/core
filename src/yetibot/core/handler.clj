@@ -50,6 +50,7 @@
       :embedded? - whether or not the command was embedded
       :error? - whether or not the result was an error
       :result - the formatted string result
+      :timeout? - set to true if the command timed out
      }
    ]
 
@@ -57,7 +58,8 @@
    "
   [body user yetibot-user & [{:keys [record-yetibot-response?]
                               :or {record-yetibot-response? true}}]]
-  (info "record-and-run-raw" record-yetibot-response?)
+  (info "record-and-run-raw" body record-yetibot-response? 
+        interp/*chat-source*)
   (let [{:keys [adapter room uuid is-private]
          :as chat-source} interp/*chat-source*
         timestamp (System/currentTimeMillis)
@@ -140,9 +142,6 @@
                             :result (format exception-format ex)})))
                      parsed-cmds))
                (timeout expr-eval-timeout-ms)])]
-        (info "throw away" (pr-str results) (pr-str timeout-result))
-        (info "command eval result and timeout"
-              (pr-str {:results results :timeout-result timeout-result}))
         (or results
             [{:timeout? true
               :result (str "Evaluation of `" body "` timed out after "

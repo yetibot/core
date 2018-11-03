@@ -1,14 +1,17 @@
 (ns yetibot.core.commands.observe
   (:require
+    [clojure.core.async :refer [go]]
     [selmer.parser :refer [render]]
     [clojure.string :as s :refer [split trim]]
     [clojure.tools.cli :refer [parse-opts]]
     [taoensso.timbre :refer [color-str debug trace info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.db.observe :as model]
-    [yetibot.core.handler :refer [handle-unparsed-expr all-event-types]]
+    [yetibot.core.handler :refer [record-and-run-raw
+                                  handle-unparsed-expr all-event-types]]
     [yetibot.core.hooks :refer [cmd-hook obs-hook]]
     [yetibot.core.util :refer [is-command?]]
+    [yetibot.core.util.command :as command]
     [yetibot.core.interpreter :refer [*chat-source*]]
     [yetibot.core.models.help :as help]
     [yetibot.core.util.format :refer [remove-surrounding-quotes]]))
@@ -32,8 +35,8 @@
 
 ;; Use a single obs-hook to monitor all dynamic observers. That way when it's
 ;; removed from the database, it won't be checked here either.
-(defn obs-handler [{:keys [body user chat-source event-type] :as event-info}]
-  (debug "obs-handler" (color-str :blue event-info))
+(defn obs-handler [{:keys [body user yetibot-user chat-source event-type] :as event-info}]
+  (debug "obs-handler" (color-str :blue (dissoc event-info :user)))
   (let [observers (model/find-all)
         channel (:room chat-source)
         username (:username user)]
@@ -71,25 +74,26 @@
                                :blank-pattern? (s/blank? pattern)}))
 
           (when match?
-            (future
-              (let [rendered-cmd (render cmd {:username username
-                                              :channel channel})
-                    expr (if body
-                           ;; older / existing behavior for piping matched message
-                           ;; into the observer's command
-                           (format "echo %s | %s" body rendered-cmd)
-                           ;; new behavior for non-message type observers uses
-                           ;; template rendering to access the username and
-                           ;; channel name with no explicit piping behavior
-                           rendered-cmd)
-                    result (try
-                             (handle-unparsed-expr chat-source user expr)
-                             (catch Throwable e
-                               (info "Error handling observer" expr e)
-                               nil))]
-                (when result
-                  (info "obs expr" expr)
-                  (chat-data-structure result))))))))))
+            (go
+              (binding [*chat-source* chat-source]
+                (let [rendered-cmd (render cmd {:username username
+                                                :channel channel})
+                      expr (str command/config-prefix
+                                (if body
+                                  ;; older / existing behavior for piping matched
+                                  ;; message into the observer's command
+                                  (format "echo %s | %s" body rendered-cmd)
+                                  ;; new behavior for non-message type observers
+                                  ;; uses template rendering to access the
+                                  ;; username and channel name with no explicit
+                                  ;; piping behavior
+                                  rendered-cmd))
+                      [{:keys [error? timeout? result] :as expr-result}]
+                      (record-and-run-raw expr user yetibot-user)]
+                  (if (and result (not error?) (not timeout?))
+                    (chat-data-structure result)
+                    (info "Skipping observer because it errored or timed out"
+                          (pr-str expr-result))))))))))))
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
 

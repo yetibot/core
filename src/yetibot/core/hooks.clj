@@ -146,7 +146,7 @@
     #'yetibot.core.handler/handle-raw
     (let [event-types (set event-types)]
       (fn [callback chat-source user event-type body yetibot-user]
-        #_(debug "observed" (:yetibot? user)
+        (debug "observed" (:yetibot? user)
                  (color-str :blue chat-source)
                  user event-type body)
         (when (and
@@ -157,4 +157,5 @@
                      :user user
                      :yetibot-user yetibot-user
                      :body body}))
+        ;; observers always pass through to the callback
         (callback chat-source user event-type body yetibot-user)))))
