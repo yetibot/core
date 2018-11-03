@@ -119,7 +119,11 @@
                            ;; the chat adapter. Then we can more easily
                            ;; correlate request (e.g. commands from user) and
                            ;; response (output from Yetibot)
-                           (when (and record-yetibot-response? yetibot-user)
+                           (trace
+                             record-yetibot-response?
+                             "recording history" uuid room is-private
+                                 original-command-str formatted-response)
+                           (when record-yetibot-response?
                              (h/add {:chat-source-adapter uuid
                                      :chat-source-room room
                                      :is-private is-private

@@ -30,7 +30,8 @@
   [{:keys [id user-id chat-source-room chat-source-adapter schedule cmd] :as cron}]
   (info "wire-cron!" (color-str :green (pr-str cron)))
   (let [chat-source {:room chat-source-room
-                     :uuid chat-source-adapter}
+                     :is-private false
+                     :uuid (read-string chat-source-adapter)}
         handler (fn [t]
                   (info "cron triggered:" (pr-str t))
                   (info id chat-source-room chat-source-adapter schedule cmd)
