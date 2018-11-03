@@ -5,7 +5,7 @@
     [clojure.string :as s]
     [yetibot.core.util.format :refer [pseudo-format-n *subst-prefix*
                                       remove-surrounding-quotes]]
-    [yetibot.core.handler :refer [record-and-run-expr]]
+    [yetibot.core.handler :refer [record-and-run-raw]]
     [yetibot.core.util.format :refer [format-n]]
     [yetibot.core.util.command :as command]
     [yetibot.core.models.help :as help]
@@ -19,8 +19,13 @@
     (binding [*subst-prefix* method-like-replacement-prefix]
       (let [args (if (empty? args) [] (s/split args #" "))
             expr (str command/config-prefix (pseudo-format-n cmd args))
-            results (record-and-run-expr expr user yetibot-user)]
-        (map :result results)))))
+            results (record-and-run-raw expr user yetibot-user
+                                        ;; avoid double recording the yetibot
+                                        ;; response since the parent command
+                                        ;; execution that evaluated the alias
+                                        ;; will record the nested response
+                                        {:record-yetibot-response? false})]
+        (first (map :result results))))))
 
 (defn- existing-alias [cmd-name]
   (first (model/query {:where/map {:cmd-name cmd-name}})))
