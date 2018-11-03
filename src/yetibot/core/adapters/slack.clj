@@ -107,7 +107,7 @@
     (slack-config config) *target* ""
     {:unfurl_media "true" :as_user "true"
      :attachments [{:pretext ""
-                    :text (str "```" msg "```")}]}))
+                    :text msg}]}))
 
 ;; formatting
 

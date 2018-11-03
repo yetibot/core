@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.50 - 11/3/2018
+
+- Remove fenced code block formatting on multiline Slack messages since it
+  breaks Emoji and other Slack formatting niceties.
+
 ## 0.4.49 - 11/2/2018
 
 - Add GROUP BY to db/util.
