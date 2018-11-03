@@ -7,6 +7,7 @@
                                       remove-surrounding-quotes]]
     [yetibot.core.handler :refer [record-and-run-expr]]
     [yetibot.core.util.format :refer [format-n]]
+    [yetibot.core.util.command :as command]
     [yetibot.core.models.help :as help]
     [yetibot.core.db.alias :as model]
     [yetibot.core.hooks :refer [cmd-hook cmd-unhook]]))
@@ -17,9 +18,9 @@
   (fn [{:keys [user args yetibot-user]}]
     (binding [*subst-prefix* method-like-replacement-prefix]
       (let [args (if (empty? args) [] (s/split args #" "))
-            expr (pseudo-format-n cmd args)]
-        (str "eval: " cmd)
-        #_(record-and-run-expr expr user yetibot-user)))))
+            expr (str command/config-prefix (pseudo-format-n cmd args))
+            results (record-and-run-expr expr user yetibot-user)]
+        (map :result results)))))
 
 (defn- existing-alias [cmd-name]
   (first (model/query {:where/map {:cmd-name cmd-name}})))
