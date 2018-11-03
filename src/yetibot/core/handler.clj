@@ -4,7 +4,7 @@
     [clojure.core.match :refer [match]]
     [clojure.stacktrace :as st]
     [clojure.string :refer [join]]
-    [taoensso.timbre :refer [debug info warn error]]
+    [taoensso.timbre :refer [debug trace info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.util.command :refer [command? extract-command embedded-cmds]]
     [yetibot.core.interpreter :as interp]
@@ -58,7 +58,7 @@
    "
   [body user yetibot-user & [{:keys [record-yetibot-response?]
                               :or {record-yetibot-response? true}}]]
-  (info "record-and-run-raw" body record-yetibot-response? 
+  (trace "record-and-run-raw" body record-yetibot-response?
         interp/*chat-source*)
   (let [{:keys [adapter room uuid is-private]
          :as chat-source} interp/*chat-source*
@@ -81,7 +81,7 @@
         cmd? (boolean (seq parsed-cmds))]
 
     ;; record the body of users' messages if the user is not Yetibot
-    (when-not (:yetibot? user)
+    (when (and user (not (:yetibot? user)))
       (h/add {:chat-source-adapter uuid
               :chat-source-room room
               :is-private is-private
@@ -119,17 +119,18 @@
                            ;; the chat adapter. Then we can more easily
                            ;; correlate request (e.g. commands from user) and
                            ;; response (output from Yetibot)
-                           (h/add {:chat-source-adapter uuid
-                                   :chat-source-room room
-                                   :is-private is-private
-                                   :correlation-id correlation-id
-                                   :user-id (-> yetibot-user :id str)
-                                   :user-name (-> yetibot-user :username str)
-                                   :is-yetibot true
-                                   :is-command false
-                                   :is-error error?
-                                   :command original-command-str
-                                   :body formatted-response})
+                           (when (and record-yetibot-response? yetibot-user)
+                             (h/add {:chat-source-adapter uuid
+                                     :chat-source-room room
+                                     :is-private is-private
+                                     :correlation-id correlation-id
+                                     :user-id (-> yetibot-user :id str)
+                                     :user-name (-> yetibot-user :username str)
+                                     :is-yetibot true
+                                     :is-command false
+                                     :is-error error?
+                                     :command original-command-str
+                                     :body formatted-response}))
                            ;; don't report errors on embedded commands
                            {:embedded? (not parsed-normal-command)
                             :error? error?

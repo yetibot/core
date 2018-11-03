@@ -7,8 +7,7 @@
     [taoensso.timbre :refer [color-str debug trace info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.db.observe :as model]
-    [yetibot.core.handler :refer [record-and-run-raw
-                                  handle-unparsed-expr all-event-types]]
+    [yetibot.core.handler :refer [record-and-run-raw all-event-types]]
     [yetibot.core.hooks :refer [cmd-hook obs-hook]]
     [yetibot.core.util :refer [is-command?]]
     [yetibot.core.util.command :as command]
