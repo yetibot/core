@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.52 - 11/4/2018
+
+- Upgrade to `org.clojure/java.classpath "0.3.0"`
+- Throw an error if db namespaces to load are empty
+
 ## 0.4.51 - 11/4/2018
 
 - Add new `record-and-run-raw` function to handle recording history and
