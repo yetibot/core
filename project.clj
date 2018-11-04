@@ -39,7 +39,7 @@
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.2"]
                  [org.clojure/java.jdbc "0.7.3"]
-                 [org.postgresql/postgresql "42.1.4"]
+                 [org.postgresql/postgresql "42.2.5"]
 
                  [stylefruits/gniazdo-jsr356 "1.0.0"]
 

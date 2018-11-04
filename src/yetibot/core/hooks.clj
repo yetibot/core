@@ -157,4 +157,5 @@
                      :user user
                      :yetibot-user yetibot-user
                      :body body}))
+        ;; observers always pass through to the callback
         (callback chat-source user event-type body yetibot-user)))))

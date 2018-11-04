@@ -2,7 +2,8 @@
   "Scheduling capabilities for running commands in the future.
    See https://crontab.guru/examples.html for Cron syntax examples."
   (:require
-    [yetibot.core.handler :refer [handle-unparsed-expr]]
+    [yetibot.core.handler :refer [record-and-run-raw]]
+    [yetibot.core.util.command :as command]
     [yetibot.core.interpreter :refer [*chat-source* *current-user*]]
     [yetibot.core.chat :refer [*target* *adapter-uuid* chat-data-structure]]
     [yetibot.core.db.cron :as db]
@@ -29,15 +30,27 @@
   [{:keys [id user-id chat-source-room chat-source-adapter schedule cmd] :as cron}]
   (info "wire-cron!" (color-str :green (pr-str cron)))
   (let [chat-source {:room chat-source-room
-                     :uuid chat-source-adapter}
+                     :is-private false
+                     :uuid (read-string chat-source-adapter)}
         handler (fn [t]
-                  (info "cron triggered" (pr-str t))
+                  (info "cron triggered:" (pr-str t))
                   (info id chat-source-room chat-source-adapter schedule cmd)
-                  (binding [*chat-source* chat-source
-                            *current-user* {:id user-id}
-                            *target* chat-source-room
-                            *adapter-uuid* (read-string chat-source-adapter)]
-                    (info (chat-data-structure (handle-unparsed-expr cmd)))))
+                  (try
+                    (binding [*chat-source* chat-source
+                              *current-user* {:id user-id}
+                              *target* chat-source-room
+                              *adapter-uuid* (read-string chat-source-adapter)]
+                      (let [expr (str command/config-prefix cmd)
+                            [{:keys [error? timeout? result] :as expr-result}]
+                            (record-and-run-raw expr nil nil)]
+                        (info "cron result" (pr-str expr-result))
+                        (if (and result (not error?) (not timeout?))
+                          (chat-data-structure result)
+                          (info
+                            "Skipping cron because it errored or timed out"
+                            (pr-str expr-result)))))
+                    (catch Throwable e
+                      (info "Error in cron:" e))))
         task-id (id-to-task-id id)]
     ;; if a task with the same ID already exists, delete it before re-adding it
     (delete-task-if-exists! id)
@@ -64,8 +77,7 @@
   (cron/stop! scheduler)
   (cron/start! scheduler)
   (list-tasks)
-  (cron/list-instances scheduler)
-  )
+  (cron/list-instances scheduler))
 
 (defn format-cron-entity
   [{:keys [id chat-source-room schedule cmd]}]
