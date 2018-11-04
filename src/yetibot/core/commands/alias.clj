@@ -14,7 +14,7 @@
 
 (def method-like-replacement-prefix "\\$")
 
-(defn- build-alias-cmd-fn [cmd ]
+(defn- build-alias-cmd-fn [cmd]
   (fn [{:keys [user args yetibot-user]}]
     (binding [*subst-prefix* method-like-replacement-prefix]
       (let [args (if (empty? args) [] (s/split args #" "))
