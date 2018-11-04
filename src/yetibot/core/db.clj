@@ -16,10 +16,15 @@
 
 (defn schemas []
   (let [nss (set (find-namespaces db-ns-pattern))]
-    (apply require nss)
-    (for [n nss :when (and (ns-resolve n 'schema)
-                           (valid-schema-map? @(ns-resolve n 'schema)))]
-      (deref (ns-resolve n 'schema)))))
+    (if (empty? nss)
+      (do
+        (error "No database namespaces found")
+        (throw (ex-info "No database namespaces found" {:nss nss})))
+      (do
+        (apply require nss)
+        (for [n nss :when (and (ns-resolve n 'schema)
+                               (valid-schema-map? @(ns-resolve n 'schema)))]
+          (deref (ns-resolve n 'schema)))))))
 
 (defn table-exists?
   [table-name]
