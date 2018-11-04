@@ -168,7 +168,10 @@
   "Top level handler for commands. Properly records commands in the database,
    handles errors, and posts the result back to chat.
 
+   This is hook'd for obs-hook handlers.
+
    Expected event-types are:
+
    :message
    :leave
    :enter

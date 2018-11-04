@@ -1,5 +1,12 @@
 # yetibot.core change log
 
+## 0.4.51 - 11/4/2018
+
+- Add new `record-and-run-raw` function to handle recording history and
+  evaluating expressions via the main pipeline (via `handle-raw`) and also for
+  alias, observers, and cron. This fixes a major bug in aliases that was
+  introduced in 0.4.47.
+
 ## 0.4.50 - 11/3/2018
 
 - Remove fenced code block formatting on multiline Slack messages since it
