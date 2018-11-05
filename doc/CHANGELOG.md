@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.53 - 11/4/2018
+
+- Support `HAVING` clause in `y.c.db.util/query` -
+  [#54](https://github.com/yetibot/yetibot.core/pull/54) by
+  [@jcorrado](https://github.com/jcorrado)
+
 ## 0.4.52 - 11/4/2018
 
 - Upgrade to `org.clojure/java.classpath "0.3.0"`
