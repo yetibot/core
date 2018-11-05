@@ -97,8 +97,8 @@
           where-args :where/args
           ;; optional
           group-clause :group/clause
-          order-clause :order/clause
           having-clause :having/clause
+          order-clause :order/clause
           offset-clause :offset/clause
           limit-clause :limit/clause
           identifiers :query/identifiers}]
@@ -114,8 +114,8 @@
                           " FROM " (qualified-table-name table)
                           (when-not (blank? where-clause) (str " WHERE " where-clause))
                           (when group-clause (str " GROUP BY " group-clause))
-                          (when order-clause (str " ORDER BY " order-clause))
                           (when having-clause (str " HAVING " having-clause))
+                          (when order-clause (str " ORDER BY " order-clause))
                           (when offset-clause (str " OFFSET " offset-clause))
                           (when limit-clause (str " LIMIT " limit-clause)))]
                     where-args)
