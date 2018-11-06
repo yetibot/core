@@ -60,7 +60,7 @@
            :command cmd
            :command-args args}
           (when run-command?
-            {:result (sub-fn {:match match :opts opts})})))
+            {:result (sub-fn {:match match :args args :opts opts})})))
       (throw (ex-info
                (str "Invalid command, only simple commands are supported")
                {:parsed parsed})))))

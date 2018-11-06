@@ -78,8 +78,7 @@
     (is (= (flatten-cmd {:opts [[[(str 1 \newline 2 \newline 3 \newline)]]]})
            ["1" "2" "3"]))))
 
-
-
 (deftest words-test
-
-  )
+  (= (:result
+       (command-execution-info "words foo bar" {:run-command? true}))
+     ["foo" "bar"]))
