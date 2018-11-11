@@ -21,7 +21,7 @@
   (insta/parser
     "expr = cmd (<space> <pipe> <space> cmd)*
      cmd = words
-     <sub-expr> = <backtick> expr <backtick> | nestable-sub-expr
+     sub-expr = <backtick> expr <backtick> | nestable-sub-expr
      <nestable-sub-expr> = <dollar> <lparen> expr <rparen>
      <non-nestable-sub-expr> = dollar !lparen
      words = space* word (space* word)* space*
@@ -46,7 +46,10 @@
      :space str
      :parened str
      :cmd identity
-     :expr #'handle-expr}))
+     :sub-expr (fn [{:keys [value error]}]
+                 (or value error))
+     :expr #'handle-expr
+     }))
 
 (defn parse-and-eval [input]
   (-> input parser transformer))
@@ -63,6 +66,7 @@
      :parened str
      :cmd identity
      ;; avoid wrapping the top level :expr in a subexpression when unparsing
+     :sub-expr str
      :expr (fn [& cmds] (str "$(" (reconstruct-pipe cmds)  ")"))
      }))
 

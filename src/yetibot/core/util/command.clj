@@ -33,7 +33,6 @@
   (->> (parser body)
        second second rest
        ; get expressions
-       (filter #(= :expr (first %)))
-       ; ensure prefix is actually a command
+       (filter #(= :sub-expr (first %)))
+       (map second)
        (filter #(command? (-> % second second second)))))
-
