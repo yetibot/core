@@ -39,8 +39,8 @@
    Unwraps it and returns it formatted for the user.
 
    body - unparsed expression. Could be one of:
-          1. A command like 'echo hello yetibot'
-          2. Embedded commands like 'nice day today `weather`'
+          1. A command like '!echo hello yetibot'
+          2. Embedded commands like 'nice day today `weather` `echo foo`'
           3. Normal body text without commands.
 
    When the body was an expression, it returns:
