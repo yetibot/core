@@ -43,9 +43,6 @@
                :chat-source *chat-source*}
         possible-opts (to-coll-if-contains-newlines previous-value)]
 
-    ;; (debug "previous value" (pr-str previous-value))
-    ;; (debug "previous data" (pr-str previous-data))
-
     (if (pos? @(:skip-next-n acc))
       (do
         (swap! (:skip-next-n acc) dec)
