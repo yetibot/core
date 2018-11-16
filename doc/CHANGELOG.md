@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.54 - 11/16/2018
+
+- Fix evaluation of subexpressions -
+  [#55](https://github.com/yetibot/yetibot.core/pull/55)
+
 ## 0.4.53 - 11/4/2018
 
 - Support `HAVING` clause in `y.c.db.util/query` -
