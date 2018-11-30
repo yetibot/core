@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.4.55 - 11/30/2018
+
+- Fix `!that` command
+
 ## 0.4.54 - 11/16/2018
 
 - Fix evaluation of subexpressions -
