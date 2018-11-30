@@ -172,17 +172,25 @@
 (defn on-message-changed [{:keys [channel] {:keys [user text]} :message}
                           conn config]
   (timbre/info "message changed")
+  ;; ignore message changed events from Yetibot - it's probably just Slack
+  ;; unfurling stuff and we need to ignore it or it will result in double
+  ;; history
   (let [[chan-name entity] (entity-with-name-by-id config {:channel channel
                                                            :user user})
         cs (chat-source chan-name)
         yetibot-user (find-yetibot-user conn cs)
-        user-model (users/get-user cs user)]
-    (binding [*target* channel]
-      (handle-raw cs
-                  user-model
-                  :message
-                  (unencode-message text)
-                  yetibot-user))))
+        yetibot-uid (:id yetibot-user)
+        yetibot? (= yetibot-uid user)
+        user-model (assoc (users/get-user cs user)
+                          :yetibot? yetibot?)]
+    (if yetibot?
+      (info "ignoring message changed event from Yetibot user" yetibot-uid)
+      (binding [*target* channel]
+        (handle-raw cs
+                    user-model
+                    :message
+                    (unencode-message text)
+                    yetibot-user)))))
 
 (defn on-message [{:keys [conn config] :as adapter} {:keys [subtype] :as event}]
   ;; allow bot_message events to be treated as normal messages

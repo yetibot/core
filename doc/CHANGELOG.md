@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.56 - 11/30/2018
+
+- Ignore `on-message-changed` events in Slack if user is Yetibot to avoid double
+  recording history. When Slack unfurls things it fires a message changed event.
+
 ## 0.4.55 - 11/30/2018
 
 - Fix `!that` command
