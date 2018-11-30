@@ -5,9 +5,11 @@
     [yetibot.core.hooks :refer [cmd-hook]]))
 
 (defn get-that [chat-source cmd?]
-  ;; the cmd used to call this will be in history, so get the last two then get
-  ;; the first for it
-  (let [result (last (h/last-chat-for-room chat-source cmd? 2))]
+  (info (pr-str chat-source))
+  ;; the cmd used to call this will be in history, so if cmd? is true, get the
+  ;; last two then get the last of those
+  (let [items (if cmd? 2 1)
+        result (last (h/last-chat-for-room chat-source cmd? items))]
     {:result/value (:body result)
      :result/data result}))
 
