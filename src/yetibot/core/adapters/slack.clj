@@ -18,6 +18,7 @@
      [channels :as channels]
      [groups :as groups]
      [reactions :as reactions]
+     [conversations :as conversations]
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
     [taoensso.timbre :as timbre :refer [color-str debug info warn error]]
@@ -245,6 +246,7 @@
   [{:keys [conn config] :as adapter}
    {:keys [user reaction item_user item] :as event}]
   (let [[chan-name entity] (entity-with-name-by-id config item)
+        sc (slack-config config)
         cs (chat-source chan-name)
         yetibot-user (find-yetibot-user conn cs)
         yetibot-uid (:id yetibot-user)
@@ -252,15 +254,19 @@
         user-model (assoc (users/get-user cs (:user event))
                           :yetibot? yetibot?)
         reaction-message-user (assoc (users/get-user cs item_user)
-                                     :yetibot? (= yetibot-uid item_user))]
-    (info "reaction_added" (pr-str event))
+                                     :yetibot? (= yetibot-uid item_user))
+        {[message] :messages} (conversations/history
+                                sc (:channel item)
+                                {:latest (:ts item)
+                                 :inclusive "true"
+                                 :count "1"})]
+    (info "reaction_added" (pr-str event) (pr-str message))
     ;; only support reactions on message types
     (when (= "message" (:type item))
       (handle-raw cs user-model :react yetibot-user
-                  ;; TODO
                   {:reaction reaction
                    ;; body of the message reacted to
-                   :body "todo"
+                   :body (:text message)
                    ;; user of the message that was reacted to
                    :reaction-message-user reaction-message-user}))))
 
