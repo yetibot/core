@@ -1,5 +1,22 @@
 # yetibot.core change log
 
+## 0.4.57 - 12/3/2018
+
+- React event support for observers!
+  [#756](https://github.com/yetibot/yetibot/issues/756)
+
+  This enables fun Slack-specific behavior where a reaction can trigger a
+  Yetibot command.
+
+  For example, to generate a rage meme whenever someone reacts with 😡 on a
+  message:
+
+  ```
+  !obs -e react rage = meme rage: {{body}}
+  ```
+
+  See the docs on `!help observe` for more info!
+
 ## 0.4.56 - 11/30/2018
 
 - Ignore `on-message-changed` events in Slack if user is Yetibot to avoid double
