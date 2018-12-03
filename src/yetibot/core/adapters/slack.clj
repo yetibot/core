@@ -263,12 +263,13 @@
     (info "reaction_added" (pr-str event) (pr-str message))
     ;; only support reactions on message types
     (when (= "message" (:type item))
-      (handle-raw cs user-model :react yetibot-user
-                  {:reaction reaction
-                   ;; body of the message reacted to
-                   :body (:text message)
-                   ;; user of the message that was reacted to
-                   :reaction-message-user reaction-message-user}))))
+      (binding [*target* (:channel item)]
+        (handle-raw cs user-model :react yetibot-user
+                    {:reaction reaction
+                     ;; body of the message reacted to
+                     :body (:text message)
+                     ;; user of the message that was reacted to
+                     :message-user reaction-message-user})))))
 
 (defn on-hello [event]
   (timbre/debug "Hello, you are connected to Slack" event))
