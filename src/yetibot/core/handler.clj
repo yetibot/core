@@ -18,7 +18,7 @@
 
 (def ^:private exception-format "👮 %s 👮")
 
-(def all-event-types #{:message :leave :enter :sound :kick})
+(def all-event-types #{:message :leave :enter :sound :kick :react})
 
 (defn handle-parsed-expr
   "Top-level for already-parsed commands.
@@ -176,14 +176,17 @@
    :leave
    :enter
    :sound
-   :kick"
+   :kick
+   :react"
   [{:keys [adapter room uuid is-private] :as chat-source}
-   user event-type body yetibot-user]
-  (when body
+   user event-type yetibot-user
+   {:keys [body reaction] :as event-info}]
+  ;; Note: only :message and :react have a body
+  (when (and body (= event-type :message))
     (binding [interp/*chat-source* chat-source]
       (go
-        ;; there may be multiple expr-results, as in the case of multiple embedded
-        ;; commands in a single body
+        ;; there may be multiple expr-results, as in the case of multiple
+        ;; embedded commands in a single body
         (let [expr-results (record-and-run-raw body user yetibot-user)]
           (run!
             (fn [{:keys [timeout? embedded? error? result]}]

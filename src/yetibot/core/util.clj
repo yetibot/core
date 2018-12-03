@@ -1,5 +1,6 @@
 (ns yetibot.core.util
   (:require
+    [taoensso.timbre :refer [color-str debug info warn error]]
     [clojure.string :as s]
     [robert.hooke :as rh]
     [clojure.stacktrace :as st]
@@ -91,6 +92,8 @@
 
 ;; patterns
 
-(defn is-command? [h] (and h (re-find #"^\!" h)))
+(defn is-command? [h]
+  (info (pr-str h))
+  (and h (re-find #"^\!" h)))
 
 

@@ -34,12 +34,19 @@
 
 ;; Use a single obs-hook to monitor all dynamic observers. That way when it's
 ;; removed from the database, it won't be checked here either.
-(defn obs-handler [{:keys [body user yetibot-user chat-source event-type] :as event-info}]
-  #_(debug "obs-handler" (color-str :blue (dissoc event-info :user)))
+(defn obs-handler [{:keys [body reaction user yetibot-user chat-source
+                           message-user event-type]
+                    :as event-info}]
+  (debug "obs-handler" (color-str :blue (dissoc event-info :user)))
   (let [observers (model/find-all)
         channel (:room chat-source)
-        username (:username user)]
-    (when-not (is-command? body) ;; ignore commands
+        username (:username user)
+        ;; when event type is react, message-username is the username of the
+        ;; user that originally posted the message
+        message-username (:username message-user)]
+    ;; ignore commands on message types
+    (when-not (and (= event-type :message)
+                   (is-command? body))
       ;; (info "obs-handler" (color-str :blue event-info))
       ;; check all known observers from the db to see if any fired
       (doseq [observer observers]
@@ -55,17 +62,21 @@
               channel-match? (or (nil? channel-pattern)
                                  (re-find (re-pattern channel-pattern) channel))
 
-              ;; when matching on a :message event match against the body. when
-              ;; matching on any other event types, match on the username
-              body-or-username (if (= :message event-type) body username)
+              ;; when matching on a :message event match against the body.
+              ;; when matching on a :react event match against the reaction.
+              ;; when matching on any other event types, match on the username
+              match-text (condp = event-type
+                           :message body
+                           :react reaction
+                           username)
 
               match? (and event-type-matches?
                           user-match?
                           channel-match?
                           (or (s/blank? pattern)
-                              (re-find (re-pattern pattern) body-or-username)))]
+                              (re-find (re-pattern pattern) match-text)))]
 
-          (trace "observer" (pr-str
+          (debug "observer" (pr-str
                               {:match? match?
                                :user-match? user-match?
                                :channel-match? channel-match?
@@ -75,13 +86,18 @@
           (when match?
             (go
               (binding [*chat-source* chat-source]
+                ;; apply templating to the cmd with selmer
                 (let [rendered-cmd (render cmd {:username username
+                                                :message-username
+                                                message-username
+                                                :reaction reaction
+                                                :body body
                                                 :channel channel})
                       expr (str command/config-prefix
                                 (if body
                                   ;; older / existing behavior for piping matched
                                   ;; message into the observer's command
-                                  (format "echo %s | %s" body rendered-cmd)
+                                  rendered-cmd
                                   ;; new behavior for non-message type observers
                                   ;; uses template rendering to access the
                                   ;; username and channel name with no explicit
@@ -126,13 +142,20 @@
    echo <matched-text> | <cmd>. <cmd> may contain a piped expression, but it
    must be quoted.
 
-   Template variables are available in the <cmd> RHS:
+   When a match occurs the <cmd> will be executed. <cmd> may contain a piped
+   expression but it must be quoted. <cmd> can also include template variables:
 
-     {{channel}} - the channel that the observer triggered in
-     {{username}} - the username of the user that triggered the observer
+     `{{channel}}` - the channel that the observer triggered in
+     `{{username}}` - the username of the user that triggered the observer
+     `{{body}}` - the body of the message that triggered the observer
 
-   [event-type] is optional. If omitted, it will default to `message`. Valid
-   event types are: `message`, `leave`, `enter`, `sound`, `kick`.
+   Only applies to `react` observer types:
+
+     `{{reaction}}` - the reaction e.g. :rage:
+     `{{message-username}}` - username that originally posted the messsage
+
+   [event-type] is optional. If omitted, it will default to `message`.
+   Valid event types are: `message`, `leave`, `enter`, `sound`, `kick`, `react`.
 
    [user-pattern] is an optional regex pattern. When specified, it creates an
    observer that only fires for a specific user or users that match the pattern.
@@ -141,13 +164,19 @@
    observer that only fires for matching channel names.
 
    Examples:
+
    1. Generate a meme when appropriate
    !observe y.?u.?no = meme y u no:
 
    2. Lookup the temperature any time someone mentions something that looks like
-   a zip code: !observe \\b\\d{5}\\b = \"weather | head 2 | tail\"
+   a zip code:
+   !observe \\b\\d{5}\\b = \"weather | head 2 | tail\"
 
-   Observers can be easily abused. Use them with caution & restraint 🙏."
+   3. Generate a rage meme with the body of the message any time someone reacts
+   with a rage reaction (Slack only):
+   !observe -e react rage = meme rage: {{body}}
+
+   Observers can be easily abused. Use them with caution & restraint 🙏"
   {:yb/cat #{:util}}
   [{[_ opts-str cmd] :match user :user}]
 

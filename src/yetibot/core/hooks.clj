@@ -145,17 +145,20 @@
   (rh/add-hook
     #'yetibot.core.handler/handle-raw
     (let [event-types (set event-types)]
-      (fn [callback chat-source user event-type body yetibot-user]
+      (fn [callback chat-source user event-type yetibot-user
+           {:keys [body reaction] :as event-info}]
         #_(debug "observed" (:yetibot? user)
-                 (color-str :blue chat-source)
-                 user event-type body)
+               (color-str :blue chat-source)
+               {:user user}
+               {:event-type event-type}
+               (color-str :blue (pr-str event-info)))
         (when (and
                 (not (:yetibot? user))
                 (contains? event-types event-type))
-          (observer {:chat-source chat-source
-                     :event-type event-type
-                     :user user
-                     :yetibot-user yetibot-user
-                     :body body}))
+          (observer (merge event-info
+                           {:chat-source chat-source
+                            :event-type event-type
+                            :user user
+                            :yetibot-user yetibot-user})))
         ;; observers always pass through to the callback
-        (callback chat-source user event-type body yetibot-user)))))
+        (callback chat-source user event-type yetibot-user event-info)))))

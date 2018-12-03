@@ -137,20 +137,23 @@
          user (users/get-user (chat-source chan) user-id)]
      (log/info "handle message" info "from" chan yetibot-user)
      (binding [*target* chan]
-       (handle-raw (chat-source chan) user :message (:text info) yetibot-user))))
+       (handle-raw (chat-source chan)
+                   user :message yetibot-user {:body (:text info)}))))
 
 (defn handle-part [a irc {:keys [target] :as info}]
   (binding [*target* target]
     (handle-raw (chat-source target)
-                (create-user info) :leave nil
-                (construct-yetibot-from-nick (:nick @irc)))))
+                (create-user info) :leave
+                (construct-yetibot-from-nick (:nick @irc))
+                {})))
 
 (defn handle-join [a irc {:keys [target] :as info}]
   (log/debug "handle-join" info)
   (binding [*target* target]
     (handle-raw (chat-source (:target info))
-                (create-user info) :enter nil
-                (construct-yetibot-from-nick (:nick @irc)))))
+                (create-user info) :enter
+                (construct-yetibot-from-nick (:nick @irc))
+                {})))
 
 (defn handle-nick [a _ info]
   (let [[nick] (:params info)
