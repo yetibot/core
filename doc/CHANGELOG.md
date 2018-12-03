@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.58 - 12/3/2018
+
+- Fixup bug in xargs where raw `:result/data` / `:result/value` data structures
+  were returned instead of being extracted
+
 ## 0.4.57 - 12/3/2018
 
 - React event support for observers!

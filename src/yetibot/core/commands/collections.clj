@@ -141,13 +141,17 @@
         ((resolve cmd-runner)
          (fn [item]
            (try
-             (apply handle-cmd
-                    ; item could be a collection, such as when xargs is used
-                    ; on nested collections, e.g.:
-                    ; repeat 5 jargon | xargs words | xargs head
-                    (if (coll? item)
-                      [args (merge cmd-params {:raw item :opts item})]
-                      [(psuedo-format args item) (merge cmd-params {:raw item :opts nil})]))
+             (let [{:result/keys [value error] :as cmd-result}
+                   (apply handle-cmd
+                          ;; item could be a collection, such as when xargs is
+                          ;; used on nested collections, e.g.:
+                          ;; repeat 5 jargon | xargs words | xargs head
+                          (if (coll? item)
+                            [args (merge cmd-params {:raw item :opts item})]
+                            [(psuedo-format args item)
+                             (merge cmd-params {:raw item :opts nil})]))
+                   _ (info "xargs cmd-result" (pr-str cmd-result))]
+               (or error value cmd-result))
              (catch Exception ex
                (error "Exception in xargs cmd-runner:" cmd-runner
                       (format-exception-log ex))
