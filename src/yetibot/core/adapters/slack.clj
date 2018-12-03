@@ -149,12 +149,6 @@
            [(:name e) e])
       (throw (ex-info "unknown entity type" event)))))
 
-(defn hydrate-item
-  [config {:keys [channel ts]}]
-
-  )
-
-
 ;; events
 
 (defn on-channel-join [{:keys [channel] :as e} conn config]

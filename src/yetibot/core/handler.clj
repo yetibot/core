@@ -182,14 +182,11 @@
    user event-type yetibot-user
    {:keys [body reaction] :as event-info}]
   ;; Note: only :message and :react have a body
-  (when (= event-type :react)
-    (info "handle-raw react" {:event-info event-info})
-    )
   (when (and body (= event-type :message))
     (binding [interp/*chat-source* chat-source]
       (go
-        ;; there may be multiple expr-results, as in the case of multiple embedded
-        ;; commands in a single body
+        ;; there may be multiple expr-results, as in the case of multiple
+        ;; embedded commands in a single body
         (let [expr-results (record-and-run-raw body user yetibot-user)]
           (run!
             (fn [{:keys [timeout? embedded? error? result]}]
