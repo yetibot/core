@@ -44,7 +44,9 @@
         ;; when event type is react, message-username is the username of the
         ;; user that originally posted the message
         message-username (:username message-user)]
-    (when-not (is-command? body) ;; ignore commands
+    ;; ignore commands on message types
+    (when-not (and (= event-type :message)
+                   (is-command? body))
       ;; (info "obs-handler" (color-str :blue event-info))
       ;; check all known observers from the db to see if any fired
       (doseq [observer observers]
