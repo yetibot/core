@@ -249,15 +249,38 @@
                           :yetibot? yetibot?)
         reaction-message-user (assoc (users/get-user cs item_user)
                                      :yetibot? (= yetibot-uid item_user))
-        {[message] :messages} (conversations/history
-                                sc (:channel item)
-                                {:latest (:ts item)
-                                 :inclusive "true"
-                                 :count "1"})]
-    (info "reaction_added" (pr-str event) (pr-str message))
+
+        {[parent-message] :messages} (conversations/history
+                                       sc (:channel item)
+                                       {:latest (:ts item)
+                                        :inclusive "true"
+                                        :count "1"})
+
+        parent-ts (:ts parent-message)
+
+        ;; figure out if the user reacted to the top level parent of the thread
+        ;; or a child
+        is-parent? (= (:ts parent-message) (:ts item))
+
+        child-ts (:ts item)
+
+        child-message (when-not is-parent?
+                        (->> (conversations/replies
+                               sc (:channel item)
+                               parent-ts
+                               {:latest child-ts
+                                :inclusive "true"
+                                :limit "1"})
+                             :messages
+                             (filter (fn [{:keys [ts]}] (= ts child-ts)))
+                             first
+                             ))
+
+        message (if is-parent? parent-message child-message)]
     ;; only support reactions on message types
     (when (= "message" (:type item))
-      (binding [*target* (:channel item)]
+      (binding [*target* (:channel item)
+                *thread-ts* parent-ts]
         (handle-raw cs user-model :react yetibot-user
                     {:reaction reaction
                      ;; body of the message reacted to
