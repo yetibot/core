@@ -138,10 +138,6 @@
 (defn observe-cmd
   "observe [-e event-type] [-u user-pattern] [-c channel-pattern] <pattern> = <cmd> # create an observer
 
-   When a match occurs, it'll be passed via normal pipe-semantics to <cmd>, e.g.
-   echo <matched-text> | <cmd>. <cmd> may contain a piped expression, but it
-   must be quoted.
-
    When a match occurs the <cmd> will be executed. <cmd> may contain a piped
    expression but it must be quoted. <cmd> can also include template variables:
 
