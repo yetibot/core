@@ -41,7 +41,7 @@
 (defn random
   "random <list> # returns a random item from <list>
    random # generate a random number"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{items :opts}]
   (if (not (empty? items))
     (rand-nth (ensure-items-collection items))
@@ -76,13 +76,13 @@
 ; head
 (defn head-1
   "head <list> # returns the first item from the <list>"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [cmd-args]
   (head 1 cmd-args))
 
 (defn head-n
   "head <n> <list> # return the first <n> items from the <list>"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{[_ n] :match :as cmd-args}]
   (head (read-string n) cmd-args))
 
@@ -96,12 +96,12 @@
 ; tail
 (defn tail-1
   "tail <list> # returns the last item from the <list>"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [cmd-args] (tail 1 cmd-args))
 
 (defn tail-n
   "tail <n> <list> # returns the last <n> items from the <list>"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{[_ n] :match :as cmd-args}]
   (tail (read-string n) cmd-args))
 
@@ -129,7 +129,7 @@
 ; example usage: !users | xargs attack
 (defn xargs
   "xargs <cmd> <list> # run <cmd> for every item in <list> in parallel; behavior is similar to xargs(1)'s xargs -n1"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{:keys [args opts user] :as cmd-params}]
   (if (s/blank? args)
     opts ; passthrough if no args
@@ -165,7 +165,7 @@
 ; join
 (defn join
   "join <list> <separator> # joins list with optional <separator> or no separator if not specified. See also `unwords`."
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{match :match items :opts :as cmd-args}]
   (let [coll-or-error (ensure-coll cmd-args)
         join-char (if (empty? match) "" match)]
@@ -180,7 +180,7 @@
 ; split
 (defn split
   "split <pattern> <string> # split string with <pattern>"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{[_ split-by-str to-split] :match}]
   (let [split-by (re-pattern split-by-str)]
     (s/split to-split split-by)))
@@ -191,7 +191,7 @@
 ; trim
 (defn trim
   "trim <string> # remove whitespace from both ends of <string>"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{args :args}]
   (s/trim args))
 
@@ -201,7 +201,7 @@
 ; words
 (defn words
   "words <string> # split <string> by spaces into a list"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{args :args}]
   (s/split args #" "))
 
@@ -211,7 +211,7 @@
 ; unwords
 (defn unwords
   "unwords <list> # join <list> with a single space"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{args :args opts :opts}]
   (if (nil? opts)
     args ; no collection, return the value as-is
@@ -223,7 +223,7 @@
 ; flatten
 (defn flatten-cmd
   "flatten <nested list> # completely flattens a nested data struture after splitting on newlines"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{args :args opts :opts :as cmd-args}]
   (let [error-or-coll (ensure-coll cmd-args)]
     (if (error? error-or-coll)
@@ -236,7 +236,7 @@
 ; letters
 (defn letters
   "letters <string> # turn <string> into a sequence of individual letters"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{args :args}]
   (map str (seq args)))
 
@@ -293,7 +293,7 @@
 ; sort
 (defn sort-cmd
   "sort <list> # sort a list"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{items :opts}]
   (sort (ensure-items-collection items)))
 
@@ -343,7 +343,7 @@
 (defn grep-cmd
   "grep <pattern> <list> # filters the items in <list> by <pattern>
    grep -C <n> <pattern> <list> # filter items in <list> by <patttern> and include <n> items before and after each matched item"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{:keys [match opts args]}]
   (let [[n p] (if (sequential? match) (rest match) ["0" args])
         pattern (re-pattern (str "(?i)" p))
@@ -360,7 +360,7 @@
 ; tee
 (defn tee-cmd
   "tee <list-or-args> # output <list-or-args> to chat then return it (useful for pipes)"
-  {:yb/cat #{:util}}
+  {:yb/cat #{:util :collection}}
   [{:keys [opts args]}]
   (chat-data-structure (or opts args))
   (or opts args))
