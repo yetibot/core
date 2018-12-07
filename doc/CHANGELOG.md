@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.59 - 12/6/2018
+
+- Remove duplicates in `category list <category>` command
+- Add `:collection` metadata to all the collection commands so they properly
+  show up in the `!category list collection` command
+
 ## 0.4.58 - 12/4/2018
 
 - Fixup bug in xargs where raw `:result/data` / `:result/value` data structures
