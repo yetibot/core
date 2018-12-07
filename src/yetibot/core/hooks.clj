@@ -31,7 +31,10 @@
            ;; regex that triggers the cmd)
            (comp (partial take-nth 2) rest))
          (filter
-           (fn [cmd] ((set (:yb/cat (meta cmd))) search-cat))))))
+           (fn [cmd] ((set (:yb/cat (meta cmd))) search-cat)))
+         ;; remove duplicates since multiple regexes can trigger the same
+         ;; command
+         set)))
 
 (defonce re-prefix->topic (atom {}))
 
@@ -72,7 +75,7 @@
    implement its own default behavior."
   [callback cmd-with-args {:keys [chat-source user opts settings] :as extra}]
   ;; (info "handle-with-hooked-cmds" extra)
-  (let [[cmd args] (split-command-and-args cmd-with-args)] 
+  (let [[cmd args] (split-command-and-args cmd-with-args)]
     ;; find the top level command and its corresponding sub-cmds
     (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
       ;; Now try to find a matching sub-commands
