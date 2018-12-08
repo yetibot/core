@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.60 - 12/8/2018
+
+- Replace `"_"` with `" "` on reactions from react observers, e.g.
+  `thinking_face` becomes `thinking face`
+- Re-hookup the `flatten` command (it was removed at some point)
+
 ## 0.4.59 - 12/6/2018
 
 - Remove duplicates in `category list <category>` command

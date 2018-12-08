@@ -163,6 +163,7 @@
           _ xargs)
 
 ; join
+
 (defn join
   "join <list> <separator> # joins list with optional <separator> or no separator if not specified. See also `unwords`."
   {:yb/cat #{:util :collection}}
@@ -233,6 +234,9 @@
            (map s/split-lines)
            flatten))))
 
+(cmd-hook ["flatten" #"^flatten$"]
+  _ flatten-cmd)
+
 ; letters
 (defn letters
   "letters <string> # turn <string> into a sequence of individual letters"
@@ -253,7 +257,7 @@
 
 ; set
 (def set-cmd
-  "set <list> # returns the set of distinct elements in <list>"
+  "set <list> # returns the set of distinct elements in <list> and does not preserve order"
   (coll-cmd set))
 
 (cmd-hook #"set"
@@ -292,7 +296,7 @@
 
 ; sort
 (defn sort-cmd
-  "sort <list> # sort a list"
+  "sort <list> # alphabetically sort a list"
   {:yb/cat #{:util :collection}}
   [{items :opts}]
   (sort (ensure-items-collection items)))

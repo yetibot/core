@@ -282,7 +282,7 @@
       (binding [*target* (:channel item)
                 *thread-ts* parent-ts]
         (handle-raw cs user-model :react yetibot-user
-                    {:reaction reaction
+                    {:reaction (s/replace reaction "_" " ")
                      ;; body of the message reacted to
                      :body (:text message)
                      ;; user of the message that was reacted to
