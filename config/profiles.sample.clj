@@ -1,4 +1,4 @@
-;; Sample profiles.clj for Yetibot configuraration.
+;; Sample profiles.clj for Yetibot configuration.
 ;; equivalent to config.sample.edn
 ;;
 ;; It defines a dev profile, but you may want to share much of the configuration
@@ -162,5 +162,8 @@
 
    ;; `wordnik` dictionary
    :yetibot-wordnik-key ""
+
+   ;; nrepl configuration
+   :yetibot-nrepl-port ""
 
 }}}
