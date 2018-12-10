@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.61 - Unreleased
+
+- Make nrepl port configurable - [#57](https://github.com/yetibot/yetibot.core/pull/57)
+  by [@kaffein](https://github.com/kaffein)
+
 ## 0.4.60 - 12/8/2018
 
 - Replace `"_"` with `" "` on reactions from react observers, e.g.
