@@ -10,13 +10,20 @@
     [yetibot.core.logging :as logging]
     [yetibot.core.webapp.handler :as web]
     [yetibot.core.loader :refer [load-commands-and-observers]]
-    [yetibot.core.logo :refer [logo]])
+    [yetibot.core.logo :refer [logo]]
+    [yetibot.core.config :refer [get-config]]
+    [schema.core :as s])
   (:gen-class))
 
 (defn welcome-message! []
   (println logo))
 
-(def nrepl-port 65432)
+(def nrepl-schema
+  {(s/optional-key :port) s/Int})
+
+(defn- config [] (:value (get-config nrepl-schema [:nrepl])))
+
+(def nrepl-port (or (:port (config)) 65432))
 
 (defonce nrepl-server (atom nil))
 
