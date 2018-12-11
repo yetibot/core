@@ -69,10 +69,9 @@ To update to a newer version:
 
 ## Docs
 
-- [Load Order](doc/LOADING.md)
-- [Categories](doc/CATEGORIES.md)
-- [Command handling pipeline](doc/COMMAND_HANDLING_PIPELINE.md)
-- [Yetibot project README](https://github.com/devth/yetibot)
+- [User Guide](https://yetibot.com/user-guide/)
+- [Dev Guide](https://yetibot.com/dev-guide/)
+- [Ops Guide](https://yetibot.com/ops-guide/)
 
 ## Change Log
 
@@ -80,6 +79,6 @@ View the [CHANGELOG](doc/CHANGELOG.md).
 
 ## License
 
-Copyright © 2013–2017 Trevor C. Hartman
+Copyright © 2013–2019 Trevor C. Hartman
 
 Distributed under the Eclipse Public License version 1.0.
