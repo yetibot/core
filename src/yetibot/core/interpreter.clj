@@ -3,7 +3,7 @@
   (:require
     [yetibot.core.models.default-command :refer [configured-default-command]]
     [clojure.set :refer [difference intersection]]
-    [yetibot.core.models.room :as room]
+    [yetibot.core.models.channel :as channel]
     [taoensso.timbre :refer [color-str debug info warn error]]
     [yetibot.core.util :refer [psuedo-format]]
     [yetibot.core.util.format :refer [to-coll-if-contains-newlines]]))
@@ -104,14 +104,14 @@
    previous command, to be optionally consumed by later commands."
   [& cmds]
   (info "reduce commands" (prn-str cmds) (pr-str (partition-all (count cmds) 1 cmds)))
-  ; look up the settings for room in *chat-source*
-  (let [room-settings (room/settings-for-chat-source *chat-source*)]
+  ; look up the settings for channel in *chat-source*
+  (let [channel-settings (channel/settings-for-chat-source *chat-source*)]
     (reduce
       pipe-cmds
       ;; Allow commands to consume n next commands in the pipeline and inform
       ;; the reducer to skip over them. This is useful e.g. queries that can be
       ;; optimized by "pushing down" the operating into the query engine.
-      {:settings room-settings :skip-next-n (atom 0) :value "" :data nil}
+      {:settings channel-settings :skip-next-n (atom 0) :value "" :data nil}
       ;; let each command peak into the next command so it can decide whether it
       ;; wants to consume it.
       (partition-all (count cmds) 1 cmds))))

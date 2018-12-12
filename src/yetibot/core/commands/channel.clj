@@ -1,60 +1,60 @@
-(ns yetibot.core.commands.room
+(ns yetibot.core.commands.channel
   (:require
     [taoensso.timbre :refer [debug info warn error]]
-    [yetibot.core.models.room :as model]
+    [yetibot.core.models.channel :as model]
     [yetibot.core.adapters.adapter :as a]
     [yetibot.core.chat :as chat]
     [clojure.string :as s]
     [yetibot.core.hooks :refer [cmd-hook]]))
 
 (defn list-cmd
-  "room list # list rooms that yetibot is in"
+  "channel list # list channels that yetibot is in"
   {:yb/cat #{:util}}
   [_]
-  (let [rooms (chat/rooms)]
-    {:result/value rooms
-     :result/data rooms}))
+  (let [channels (chat/channels)]
+    {:result/value channels
+     :result/data channels}))
 
 (defn join-cmd
-  "room join <room> # join <room>"
+  "channel join <channel> # join <channel>"
   {:yb/cat #{:util}}
-  [{[_ room] :match}]
-  (chat/join room))
+  [{[_ channel] :match}]
+  (chat/join channel))
 
 (defn leave-cmd
-  "room leave <room> # leave <room>"
+  "channel leave <channel> # leave <channel>"
   {:yb/cat #{:util}}
-  [{[_ room] :match}]
-  (chat/leave room))
+  [{[_ channel] :match}]
+  (chat/leave channel))
 
-(defn settings-for-room [room]
-  (model/settings-for-room (a/uuid chat/*adapter*) room))
+(defn settings-for-channel [channel]
+  (model/settings-for-channel (a/uuid chat/*adapter*) channel))
 
 (defn settings-cmd
-  "room settings # show all chat settings for this room"
+  "channel settings # show all chat settings for this channel"
   {:yb/cat #{:util}}
   [{:keys [chat-source]}]
-  (let [settings (settings-for-room (:room chat-source))]
+  (let [settings (settings-for-channel (:room chat-source))]
     {:result/value settings
      :result/data settings}))
 
 (defn settings-for-cmd
-  "room settings <key> # show the value for a single setting"
+  "channel settings <key> # show the value for a single setting"
   {:yb/cat #{:util}}
   [{[_ k] :match cs :chat-source}]
-  (if-let [v (get (settings-for-room (:room cs)) k)]
+  (if-let [v (get (settings-for-channel (:room cs)) k)]
     v
     {:result/error (str "'" k "' is not set.")}))
 
 (defn set-cmd
-  "room set <key> <value> # configure a setting for the current room"
+  "channel set <key> <value> # configure a setting for the current channel"
   {:yb/cat #{:util}}
   [{[_ k _ v] :match cs :chat-source}]
   (info "set" k "=" v)
   (model/update-settings (a/uuid chat/*adapter*) (:room cs) k v)
   (str "✓ Set " k " = " v " for this channel."))
 
-(cmd-hook #"room"
+(cmd-hook ["channel" #"^channel|room$"]
   #"settings\s+(\S+)" settings-for-cmd
   #"settings$" settings-cmd
   #"set\s+(\S+)\s+(\=\s+)?(.+)" set-cmd

@@ -1,7 +1,7 @@
 (ns yetibot.core.chat
   (:require
     [yetibot.core.adapters.adapter :as a]
-    [yetibot.core.models.room :as room]
+    [yetibot.core.models.channel :as channel]
     [taoensso.timbre :refer [color-str debug trace info warn error]]
     [yetibot.core.util.format :as fmt]))
 
@@ -16,12 +16,12 @@
   nil)
 
 (def ^:dynamic *adapter*
-  "Dynamically set adapter to dispatch chat functions on. Adapaters should bind
+  "Dynamically set adapter to dispatch chat functions on. Adapters should bind
    this when receiving messages to be handled."
   nil)
 
 (def ^:dynamic *target*
-  "The target room a chat should be sent to"
+  "The target channel a chat should be sent to"
   nil)
 
 (defn- validate-sender
@@ -45,9 +45,9 @@
 
 (def send-msg (validate-sender #(a/send-msg *adapter* %)))
 (def send-paste (validate-sender #(a/send-paste *adapter* %)))
-(defn join [room] (a/join *adapter* room))
-(defn leave [room] (a/leave *adapter* room))
-(defn rooms [] (a/rooms *adapter*))
+(defn join [channel] (a/join *adapter* channel))
+(defn leave [channel] (a/leave *adapter* channel))
+(defn channels [] (a/channels *adapter*))
 
 
 (defn base-chat-source
@@ -121,37 +121,37 @@
 ;     (when-let [send-to-all (deref (ns-resolve n 'send-to-all))]
 ;       (send-to-all msg))))
 
-(defn all-rooms []
+(defn all-channels []
   "Return a collections of vectors containing:
    - adapter
-   - room
-   - room settings"
+   - channel
+   - channel settings"
   (apply concat
     (pmap
       (fn [adapter]
-        (let [rs (a/rooms adapter)
+        (let [rs (a/channels adapter)
               uuid (a/uuid adapter)]
           (pmap
             (fn [r]
-              (let [settings (room/settings-for-room uuid r)]
+              (let [settings (channel/settings-for-channel uuid r)]
                 [adapter r settings]))
             rs)))
       (a/active-adapters))))
 
-(defn rooms-with-broadcast []
+(defn channels-with-broadcast []
   (filter
-    (fn [[adapter room settings]] (= "true" (get settings "broadcast")))
-    (all-rooms)))
+    (fn [[adapter channel settings]] (= "true" (get settings "broadcast")))
+    (all-channels)))
 
 (defn broadcast
-  "Broadcast message to all rooms who have the broadcast setting enabled"
+  "Broadcast message to all channels who have the broadcast setting enabled"
   [msg]
   (dorun
     (map
-      (fn [[adapter room settings]]
-        (binding [*target* room]
+      (fn [[adapter channel settings]]
+        (binding [*target* channel]
           (a/send-msg adapter msg)))
-      (rooms-with-broadcast))))
+      (channels-with-broadcast))))
 
 ; TODO: move hooks/suppress right here
 

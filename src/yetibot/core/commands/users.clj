@@ -6,7 +6,7 @@
     [yetibot.core.hooks :refer [cmd-hook]]))
 
 (defn show-users
-  "users # list all users presently in the room"
+  "users # list all users presently in the channel"
   {:yb/cat #{:util}}
   [{:keys [chat-source]}]
   (log/info "show users for" chat-source)

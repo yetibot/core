@@ -2,7 +2,7 @@
   (:require
     [yetibot.core.models.users :as users]
     [yetibot.core.chat :as chat]
-    [yetibot.core.models.room :as room]
+    [yetibot.core.models.channel :as channel]
     [yetibot.core.webapp.resolvers.stats :as stats]
     [cuerdas.core :refer [kebab snake]]
     [yetibot.core.adapters.adapter :as adapter]
@@ -68,7 +68,7 @@
   (mapcat
     (fn [adapter]
       (binding [chat/*adapter* adapter]
-        (map #(hash-map :name %) (chat/rooms))))
+        (map #(hash-map :name %) (chat/channels))))
     (adapter/active-adapters)))
 
 (def stats-resolver (partial stats/stats-resolver))

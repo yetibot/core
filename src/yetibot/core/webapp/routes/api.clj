@@ -22,7 +22,7 @@
                       *target* (:room chat-source)]
               (info "chat-source" chat-source)
               (let [user {:username "api"}
-                    room (:room chat-source)
+                    channel (:room chat-source)
                     res (or text (handle-unparsed-expr chat-source user command))]
                 (chat-data-structure res)
                 res))

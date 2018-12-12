@@ -66,6 +66,6 @@
   ;; TODO
   )
 
-(deftest last-chat-for-room-test
-  (last-chat-for-room chat-source true)
-  (last-chat-for-room chat-source false))
+(deftest last-chat-for-channel-test
+  (last-chat-for-channel chat-source true)
+  (last-chat-for-channel chat-source false))

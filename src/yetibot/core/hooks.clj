@@ -4,7 +4,7 @@
     [taoensso.timbre :refer [color-str trace debug info warn error]]
     [yetibot.core.handler]
     [clojure.string :as s]
-    [yetibot.core.models.room :as r]
+    [yetibot.core.models.channel :as c]
     [yetibot.core.interpreter :refer [handle-cmd]]
     [yetibot.core.models.help :as help]
     [robert.hooke :as rh]
@@ -81,7 +81,7 @@
       ;; Now try to find a matching sub-commands
       (if-let [[match sub-fn] (match-sub-cmds args sub-cmds)]
         ;; extract category settings
-        (let [disabled-cats (set (r/cat-settings-key settings))
+        (let [disabled-cats (set (c/cat-settings-key settings))
               fn-cats (set (:yb/cat (meta sub-fn)))]
           (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
             (str

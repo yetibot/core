@@ -82,7 +82,7 @@
 (defn format-cron-entity
   [{:keys [id chat-source-room schedule cmd]}]
   (str
-    "[cmd=" cmd "] [schedule=" schedule "] [id=" id "] [room="
+    "[cmd=" cmd "] [schedule=" schedule "] [id=" id "] [channel="
     chat-source-room "]"))
 
 (defn cron-cmd

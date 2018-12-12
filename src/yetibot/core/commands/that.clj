@@ -9,7 +9,7 @@
   ;; the cmd used to call this will be in history, so if cmd? is true, get the
   ;; last two then get the last of those
   (let [items (if cmd? 2 1)
-        result (last (h/last-chat-for-room chat-source cmd? items))]
+        result (last (h/last-chat-for-channel chat-source cmd? items))]
     {:result/value (:body result)
      :result/data result}))
 
