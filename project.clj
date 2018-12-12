@@ -126,7 +126,7 @@
 
                  ; web
                  [com.walmartlabs/lacinia "0.26.0"] ;; graphql
-                 [selmer "1.11.0"]
+                 [selmer "1.12.5"]
                  [compojure "1.6.0"]
                  [prone "1.1.4"]
                  [hiccup "1.0.5"]

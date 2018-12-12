@@ -70,7 +70,7 @@
                 ;; the raw cmd-with-args
                 [(if (empty? previous-value)
                    cmd-with-args
-                   ; next time apply psuedo-format to support %s substitution
+                   ;; next time apply psuedo-format to support %s substitution
                    (psuedo-format cmd-with-args previous-value))
                  extra]))
 
