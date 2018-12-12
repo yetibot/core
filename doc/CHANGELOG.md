@@ -1,9 +1,10 @@
 # yetibot.core change log
 
-## 0.4.61 - Unreleased
+## 0.4.61 - 12/12/18
 
 - Make nrepl port configurable - [#57](https://github.com/yetibot/yetibot.core/pull/57)
   by [@kaffein](https://github.com/kaffein)
+- Add `render` command for templating data across pipes
 
 ## 0.4.60 - 12/8/2018
 
