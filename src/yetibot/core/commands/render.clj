@@ -10,7 +10,7 @@
   [{data :data match :match raw :raw :as args}]
   (info "render-cmd" match raw)
   (try
-    (let [template (if raw
+    (let [template (if (and raw (not (coll? raw)))
                      (string/replace match raw "") ;; remove piped args
                      match)
           rendered (if (sequential? data)
@@ -20,7 +20,7 @@
        :result/value rendered})
     (catch Exception e
       (info "Error rendering template")
-      (debug e)
+      ;; (debug e)
       {:result/error (.getMessage e)})))
 
 (cmd-hook #"render"

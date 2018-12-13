@@ -45,7 +45,7 @@
             (which is how we determine `:matched-sub-cmd`)
 
    Useful for testing."
-  [command & [{:keys [opts data run-command?]}]]
+  [command & [{:keys [opts data raw run-command?]}]]
   (info "command-execution-info" opts)
   (let [parsed (parser command)]
     (if (simple-command? parsed)
@@ -63,6 +63,7 @@
             {:result (sub-fn {:match match
                               :args args
                               :data data
+                              :raw raw
                               :opts opts})})))
       (throw (ex-info
                (str "Invalid command, only simple commands are supported")

@@ -1,5 +1,13 @@
 # yetibot.core change log
 
+## 0.4.62 - 12/12/18
+
+- Fix bug in `render` when collections were passed across a pipe, e.g.:
+
+  ```
+  list 1 2 3 | render foo
+  ```
+
 ## 0.4.61 - 12/12/18
 
 - Make nrepl port configurable - [#57](https://github.com/yetibot/yetibot.core/pull/57)

@@ -15,10 +15,12 @@
            "the lazy brown water buffalo")))
 
   (testing "A template operating over a sequential produces a sequential"
-    (is (= ["1" "2"]
+    (is (= ["item 1" "item 2"]
            (-> (command-execution-info
-              "render {{foo}}"
-              (assoc execution-opts :data [{:foo 1} {:foo 2}]))
+                 "render item {{.}}"
+                 (assoc execution-opts
+                        :data [1 2]
+                        :raw [1 2]))
                :result :result/value))))
 
   (testing "An invalid template that throws an error"
