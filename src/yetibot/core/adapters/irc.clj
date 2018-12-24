@@ -20,12 +20,12 @@
 
 (declare join-or-part-with-current-channels connect start)
 
-(defn rooms [{:keys [current-channels] :as a}] @current-channels)
+(defn channels [{:keys [current-channels] :as a}] @current-channels)
 
 (defn config-path [adapter]
  [:yetibot :irc (a/uuid adapter)])
 
-(defn rooms-config-path [adapter]
+(defn channels-config-path [adapter]
   (conj (config-path adapter) :rooms))
 
 (def wait-before-reconnect 30000)
@@ -87,38 +87,38 @@
     (info "reloaded config, now:" new-conf)
     (reset! mutable-config new-conf)))
 
-(defn set-rooms-config
-  "Accepts a function that will be passed the current rooms config. Return value
-   of function will be used to set the new rooms config"
+(defn set-channels-config
+  "Accepts a function that will be passed the current channels config. Return value
+   of function will be used to set the new channels config"
   [adapter f]
-  (log/info "rooms config path is" (rooms-config-path adapter)
-            (f (rooms adapter)))
-  (mconfig/update-config! (rooms-config-path adapter) (f (rooms adapter)))
+  (log/info "channels config path is" (channels-config-path adapter)
+            (f (channels adapter)))
+  (mconfig/update-config! (channels-config-path adapter) (f (channels adapter)))
   (reload-and-reset-config! adapter))
 
-(defn add-room-to-config [a room]
-  (log/info "add room" room "to irc config")
+(defn add-channel-to-config [a channel]
+  (log/info "add channel" channel "to irc config")
   (log/info
-    (set-rooms-config a #(set (conj % room)))))
+    (set-channels-config a #(set (conj % channel)))))
 
-(defn remove-room-from-config [a room]
-  (log/info "remove room from irc config")
-  (set-rooms-config a (comp set (partial filter #(not= % room)))))
+(defn remove-channel-from-config [a channel]
+  (log/info "remove channel from irc config")
+  (set-channels-config a (comp set (partial filter #(not= % channel)))))
 
-(defn join-room [a room]
-  (add-room-to-config a room)
+(defn join-channel [a channel]
+  (add-channel-to-config a channel)
   (join-or-part-with-current-channels a)
-  (str "Joined " room))
+  (str "Joined " channel))
 
-(defn leave-room [a room]
-  (remove-room-from-config a room)
+(defn leave-channel [a channel]
+  (remove-channel-from-config a channel)
   (join-or-part-with-current-channels a)
-  (str "Left " room))
+  (str "Left " channel))
 
 (defn fetch-users [a]
-  (doall (map #(irc-conn/write-irc-line @(:conn a) "WHO" %) (rooms a))))
+  (doall (map #(irc-conn/write-irc-line @(:conn a) "WHO" %) (channels a))))
 
-(defn recognized-chan? [a chan] ((set (rooms a)) chan))
+(defn recognized-chan? [a chan] ((set (channels a)) chan))
 
 (defn construct-yetibot-from-nick [nick]
   {:username nick
@@ -169,7 +169,7 @@
 
 (defn handle-invite [a _ info]
   (log/info "handle invite" info)
-  (join-room a (second (:params info))))
+  (join-channel a (second (:params info))))
 
 (defn handle-raw-log [adapter _ b c] (log/trace b c))
 
@@ -221,16 +221,16 @@
 (defn join-or-part-with-current-channels
   "Determine the diff between current-channels and configured channels to
    determine which to join and part. After resolving the diff, set
-   current-channels equal to configured rooms."
+   current-channels equal to configured channels."
   [{:keys [conn mutable-config current-channels] :as adapter}]
-  (let [configured-rooms (:rooms @mutable-config)
-        to-part (difference @current-channels configured-rooms)
-        to-join (difference configured-rooms @current-channels)]
-    (info "configured-rooms" configured-rooms)
+  (let [configured-channels (:rooms @mutable-config)
+        to-part (difference @current-channels configured-channels)
+        to-join (difference configured-channels @current-channels)]
+    (info "configured-channels" configured-channels)
     (debug "channels" @current-channels)
     (debug "to-part" to-part)
     (debug "to-join" to-join)
-    (reset! current-channels configured-rooms)
+    (reset! current-channels configured-channels)
     (doall (map #(irc/join @conn %) to-join))
     (doall (map #(irc/part @conn %) to-part))
     (fetch-users adapter)))
@@ -280,17 +280,19 @@
 
   (a/platform-name [_] "IRC")
 
-  (a/rooms [a] (rooms a))
+  (a/rooms [a] (channels a))
+
+  (a/channels [a] (channels a))
 
   (a/send-paste [a msg] (send-paste a msg))
 
   (a/send-msg [a msg] (send-msg a msg))
 
-  (a/join [a room] (join-room a room))
+  (a/join [a channel] (join-channel a channel))
 
-  (a/leave [a room] (leave-room a room))
+  (a/leave [a channel] (leave-channel a channel))
 
-  (a/chat-source [_ room] (chat-source room))
+  (a/chat-source [_ channel] (chat-source channel))
 
   (a/stop [adapter] (stop adapter))
 

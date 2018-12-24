@@ -75,11 +75,11 @@
                         " AND body ~ ?")
      :where/args  [(pr-str uuid) room pattern]}))
 
-(defn last-chat-for-room
-  "Takes chat source and returns the last chat for the room.
+(defn last-chat-for-channel
+  "Takes chat source and returns the last chat for the channel.
    `cmd?` is a boolean specifying whether it should be the last yetibot command
    or a normal chat. Useful for `that` commands."
-  ([chat-source cmd?] (last-chat-for-room chat-source cmd? 1))
+  ([chat-source cmd?] (last-chat-for-channel chat-source cmd? 1))
   ([{:keys [uuid room]} cmd? history-count]
    (query {:limit/clause history-count
            :order/clause "created_at DESC"

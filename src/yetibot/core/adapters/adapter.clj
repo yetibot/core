@@ -13,19 +13,21 @@
 
   (rooms [_] "A vector of rooms yetibot is in")
 
+  (channels [_] "A vector of channels yetibot is in")
+
   (send-paste [_ msg] "Multi-line strings meant to be formatted as code")
 
   (send-msg [_ msg] "Single message to post")
 
-  (join [_ room]
-        "join room - may not be supported by all adapters, e.g. Slack. In this
+  (join [_ channel]
+        "join channel - may not be supported by all adapters, e.g. Slack. In this
          case the adapter should return instructions for its method of joining
          (e.g. /invite in Slack).")
 
-  (leave [_ room] "leave room - may not be supported - should give instructions
+  (leave [_ channel] "leave channel - may not be supported - should give instructions
                    just like join.")
 
-  (chat-source [_ room] "Define a chat-source map specific to this adapter")
+  (chat-source [_ channel] "Define a chat-source map specific to this adapter")
 
   (start [_] "Start the chat adapter")
 

@@ -84,7 +84,7 @@
   (str (when (:is_channel chan-or-grp) "#")
        (:name chan-or-grp)))
 
-(defn rooms
+(defn channels
   "A vector of channels and any private groups by name"
   [config]
   (concat
@@ -361,14 +361,14 @@
   (timbre/debug "manual presence changed" e)
   (handle-presence-change e))
 
-(defn room-persist-edn
-  "Update config.edn when a room is joined or left"
-  [uuid room joined?]
+(defn channel-persist-edn
+  "Update config.edn when a channel is joined or left"
+  [uuid channel joined?]
   (if joined?
     ;; add
     (apply-config!
       [:yetibot :adapters uuid :rooms]
-      (fn [x] (conj room)))
+      (fn [x] (conj channel)))
     ;; remove
     (apply-config!
       [:yetibot :adapters "uuid" :rooms]
@@ -382,7 +382,7 @@
   (let [c (:channel e)
         {:keys [uuid room] :as cs} (chat-source (:id c))
         user-ids (:members c)]
-    (room-persist-edn uuid room true)
+    (channel-persist-edn uuid room true)
     (timbre/debug "adding chat source" cs "for users" user-ids)
     (dorun (map #(users/add-chat-source-to-user cs %) user-ids))))
 
@@ -393,7 +393,7 @@
   (let [c (:channel e)
         {:keys [uuid room] :as cs} (chat-source c)
         users-in-chan (users/get-users cs)]
-    (room-persist-edn uuid room false)
+    (channel-persist-edn uuid room false)
     (timbre/debug "remove users from" cs (map :id users-in-chan))
     (dorun (map (fn [u] (users/remove-user cs (:id u))) users-in-chan))))
 
@@ -424,7 +424,7 @@
                            (assoc user :mention-name
                                   (str "<@" (:id user) ">")))]
           (if (empty? chat-sources)
-            (users/add-user-without-room
+            (users/add-user-without-channel
               (:adapter (base-chat-source)) user-model)
             ;; for each chat source add a user individually
             (run! (fn [cs] (users/add-user cs user-model)) chat-sources))))
@@ -506,22 +506,24 @@
 
   (a/platform-name [_] "Slack")
 
-  (a/rooms [_] (rooms config))
+  (a/rooms [_] (channels config))
+
+  (a/channels [_] (channels config))
 
   (a/send-paste [_ msg] (send-paste config msg))
 
   (a/send-msg [_ msg] (send-msg config msg))
 
-  (a/join [_ room]
+  (a/join [_ channel]
     (str
-      "Slack bots such as myself can't join rooms on their own. Use /invite "
+      "Slack bots such as myself can't join channels on their own. Use /invite "
       "@yetibot from the channel you'd like me to join instead.✌️"))
 
-  (a/leave [_ room]
-    (str "Slack bots such as myself can't leave rooms on their own. Use /kick "
+  (a/leave [_ channel]
+    (str "Slack bots such as myself can't leave channels on their own. Use /kick "
          "@yetibot from the channel you'd like me to leave instead. 👊"))
 
-  (a/chat-source [_ room] (chat-source room))
+  (a/chat-source [_ channel] (chat-source channel))
 
   (a/stop [adapter] (stop adapter))
 

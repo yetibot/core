@@ -44,22 +44,22 @@
 
 (defn add-user-merge
   "Knows how to merge a new user with an existing user by combining the set of
-   rooms"
+   channels"
   [chat-source]
   (partial
     merge-with
     (fn [existing-user new-user]
       (update-in existing-user [:rooms] conj chat-source))))
 
-(defn add-user-without-room
+(defn add-user-without-channel
   [adapter {:keys [id] :as user}]
-  "Added for Slack, where we might know about users but don't know the rooms
-   that they are in because yetibot is not in those rooms."
+  "Added for Slack, where we might know about users but don't know the channels
+   that they are in because yetibot is not in those channels."
   (let [user-key {:adapter adapter :id id}]
     (swap! users assoc user-key user)))
 
 (defn add-user
-  "Add a user according to chat-source. If the user already exists, its rooms
+  "Add a user according to chat-source. If the user already exists, its channels
    will be merged via `add-user-merge` but all other user properties will remain
    unchanged."
   [chat-source {:keys [id] :as user}]

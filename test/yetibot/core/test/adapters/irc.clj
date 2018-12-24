@@ -20,11 +20,11 @@
     (fn [c] (= :irc (:type c)))
     (ai/adapters-config)))
 
-(deftest rooms-for-last-config
+(deftest channels-for-last-config
   (comment
 
     (binding [*config* (last (irc-config))]
-      (rooms))
+      (channels))
 
     (binding [*config* (last (irc-config))]
       (:groups (list-groups)))

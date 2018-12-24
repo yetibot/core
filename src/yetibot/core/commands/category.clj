@@ -1,7 +1,7 @@
 (ns yetibot.core.commands.category
   (:require
     [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.models.room :as r]
+    [yetibot.core.models.channel :as c]
     [yetibot.core.adapters.adapter :as a]
     [yetibot.core.chat :as chat]
     [clojure.string :as s]
@@ -30,7 +30,7 @@
   "category # show category names and descriptions and whether they are enabled or disabled"
   {:yb/cat #{:util}}
   [{:keys [chat-source]}]
-  (let [disabled-cats (set (r/cat-settings-key (r/settings-for-chat-source chat-source)))]
+  (let [disabled-cats (set (c/cat-settings-key (c/settings-for-chat-source chat-source)))]
     (for [[c desc] categories]
       (str
         (if (disabled-cats c) "🚫 " "✅ ")
@@ -40,19 +40,19 @@
 
 (defn set-cat
   "Disables or enables a category and returns a pair indicating [success msg]"
-  [room category disabled?]
+  [channel category disabled?]
   (let [c (keyword category)]
     ; validate the category exists
     (if (get categories c)
       (do
-        (r/apply-settings
-          (a/uuid chat/*adapter*) room
-          (fn [current-room-settings]
-            (let [current-disabled (set (r/cat-settings-key current-room-settings))
+        (c/apply-settings
+          (a/uuid chat/*adapter*) channel
+          (fn [current-channel-settings]
+            (let [current-disabled (set (c/cat-settings-key current-channel-settings))
                   f (if disabled? conj disj)]
-              (assoc current-room-settings
-                     r/cat-settings-key
-                     (f current-disabled c)))))
+              (assoc current-channel-settings
+                c/cat-settings-key
+                (f current-disabled c)))))
         [true "success"])
       [false (str category
                   " is not a known category. Use `category names` to view the list.")])))

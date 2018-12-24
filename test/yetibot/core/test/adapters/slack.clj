@@ -68,7 +68,7 @@
     (react adapter "balloon" "D0HFDJHA4")))
 
 
-(deftest rooms-for-last-config
+(deftest channels-for-last-config
   (comment
     (binding [*config* (last (slack-configs))]
       (list-channels))
@@ -77,7 +77,7 @@
       (channels-cached))
 
     (binding [*config* (last (slack-configs))]
-      (rooms))
+      (channels))
 
     (binding [*config* (last (slack-configs))]
       (:groups (list-groups)))
