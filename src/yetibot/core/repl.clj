@@ -69,3 +69,29 @@
 (defn load-all []
   (future
     (load-commands-and-observers)))
+
+(defn help
+  []
+  (println
+    "\u001B[37m
+     Hello.
+
+     The Yetibot dev REPL is intended to be used during interactive development
+     as is commonly practiced in the Clojure community (see
+     https://clojure.org/guides/repl/introduction if you want to learn more
+     about interactive development with a REPL).
+
+     Here are a few commands it provides:
+
+     (start) - run Yetibot with your config and a small subset of core commands.
+     (reset) - useful during dev to reload and restart Yetibot
+     (stop) - stop Yetibot - can be useful e.g. to free up the webserver port
+     (load-all) - load everything instead of the subset of Yetibot
+
+     Have more questions?
+
+     - Check out the docs at https://yetibot.com
+     - Join Slack at https://slack.yetibot.com and ask away!
+
+     HTH! λλλ
+     \u001B[m"))

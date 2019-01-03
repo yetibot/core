@@ -3,7 +3,7 @@
     [yetibot.core.chat :as chat]
     [yetibot.core.adapters.init :as ai]
     [clojure.stacktrace :refer [print-stack-trace]]
-    [clojure.tools.nrepl.server :as nrepl]
+    [nrepl.server :as nrepl]
     [yetibot.core.config-mutable :as mconfig]
     [yetibot.core.db :as db]
     [taoensso.timbre :refer [info warn error]]

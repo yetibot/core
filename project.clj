@@ -8,29 +8,46 @@
   :deploy-repositories [["releases" :clojars]]
   :repl-options {:init-ns yetibot.core.repl
                  :timeout 120000
-                 :welcome (println "Welcome to the Yetibot development repl!")}
+                 :prompt (fn [ns] (str "\u001B[35m[\u001B[34m" ns
+                                       "\u001B[35m] \u001B[37mλ:\u001B[m "))
+                 :welcome
+                 (do
+                   (println)
+                   (println
+                     (str
+                       "\u001B[37m"
+                       "  Welcome to the Yetibot dev REPL!"
+                       \newline
+                       "  Use \u001B[35m(\u001B[34mhelp\u001B[35m) "
+                       "\u001B[37mto see available commands."
+                       \newline
+                       \newline
+                       "\u001B[35m    λλλ"
+                       "\u001B[m"
+                       ))
+                   (println)
+                   )}
   ; :aot [yetibot.core.init]
   :resource-paths ["resources"
                    ;; yetibot-dashboard is an npm dep
                    "node_modules/yetibot-dashboard/dist"]
   :main yetibot.core.init
-  :plugins [[lein-environ "1.0.3"]
+  :plugins [[lein-environ "1.1.0"]
             [lein-npm "0.6.2"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
-                   {:plugins [[venantius/ultra "0.5.1"]]}]
+                   {:plugins []}]
              :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"
                     :yb-adapters-freenode-host "irc.freenode.net"
                     :yb-adapters-freenode-port "6667"
                     :yb-adapters-freenode-username "yetibot-test"}}}
-  :dependencies [[org.clojure/clojure "1.9.0"]
+  :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/core.async "0.3.465"]
                  [org.clojure/data.json "0.2.6"]
-                 [org.clojure/tools.nrepl "0.2.13"]
-                 [org.clojure/tools.cli "0.3.5"]
-                 [org.clojure/tools.trace "0.7.9"]
+                 [org.clojure/tools.cli "0.4.1"]
+                 [org.clojure/tools.trace "0.7.10"]
                  [org.clojure/tools.namespace "0.2.11"]
                  [org.clojure/java.classpath "0.3.0"]
                  [org.clojure/core.cache "0.6.5"]
@@ -55,7 +72,7 @@
                  ; [rhizome "0.1.9"]
 
                  ; http
-                 [clj-http "3.7.0"]
+                 [clj-http "3.9.1"]
 
                  ; github
                  [irresponsible/tentacles "0.6.2"]
@@ -103,7 +120,7 @@
                  ; retry
                  [robert/bruce "0.8.0"]
                  [com.cemerick/url "0.1.1"]
-                 [io.aviso/pretty "0.1.34"] ; pretty stacktraces
+                 ;; [io.aviso/pretty "0.1.34"] ; pretty stacktraces
 
                  ; web/ring
                  [ring/ring-json "0.4.0"]
@@ -121,11 +138,16 @@
                  [ring/ring-defaults "0.3.1"]
                  [ring/ring-session-timeout "0.2.0"]
 
-                 [metosin/ring-middleware-format "0.6.0" :exclusions [clj-stacktrace]]
-                 [metosin/ring-http-response "0.9.0"]
+                 [ring-middleware-format "0.7.2"
+                  :exclusions [org.flatland/ordered
+                               clj-stacktrace]]
+                 ;; use newer flatland with support for java 11
+                 [org.flatland/ordered "1.5.7"]
+
+                 ;; [metosin/ring-http-response "0.9.1"]
 
                  ; web
-                 [com.walmartlabs/lacinia "0.26.0"] ;; graphql
+                 [com.walmartlabs/lacinia "0.31.0-rc-1"] ;; graphql
                  [selmer "1.12.5"]
                  [compojure "1.6.0"]
                  [prone "1.1.4"]

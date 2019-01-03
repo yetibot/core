@@ -3,7 +3,6 @@
             [compojure.core :refer [defroutes GET]]
             [yetibot.core.version :refer [version]]
             [yetibot.core.webapp.views.common :as common]
-            [ring.util.http-response :refer [ok]]
             [hiccup.element :refer [link-to image]]
             [clojure.java.io :as io]))
 
