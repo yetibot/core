@@ -128,6 +128,7 @@
                  [ring-logger-timbre "0.7.6"]
                  [ring.middleware.conditional "0.2.0"]
                  [ring-cors "0.1.12"]
+                 [nrepl "0.5.3"]
 
                  ; [ring/ring-jetty-adapter "1.4.0"]
                  [http-kit "2.3.0"]
