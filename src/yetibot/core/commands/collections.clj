@@ -51,8 +51,6 @@
 (cmd-hook #"random"
           _ random)
 
-(map inc (range 10))
-
 ; shuffle
 (def shuffle-cmd
   "shuffle <list>"
