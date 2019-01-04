@@ -18,9 +18,8 @@
     {:adapter :test :room "foo"}
     {:id "yetitest"}
     :message
-    (str "test history: " i)
-    {:username "yetibot" :id "123"}))
-
+    {:username "yetibot" :id "123"}
+    {:body (str "test history: " i)}))
 
 (deftest test-newline-cmd
   (let [multi-str (s/join \newline [1 2 3])]

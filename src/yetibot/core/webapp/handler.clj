@@ -12,7 +12,7 @@
     [compojure.route :as route]
     [taoensso.timbre :as timbre]
     [environ.core :refer [env]]
-    [clojure.tools.nrepl.server :as nrepl]))
+    [nrepl.server :as nrepl]))
 
 (defonce web-server (atom nil))
 

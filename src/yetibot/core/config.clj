@@ -2,13 +2,10 @@
   "Config is made available via [environ](https://github.com/weavejester/environ).
    See yetibot.core.config-mutable for configuration that can be changed at
    runtime, such as which channels to join on IRC."
-  (:require
-    [yetibot.core.util.config :as uc]
-    [dec :refer [explode]]
-    [environ.core :refer [env]]
-    [taoensso.timbre :refer [info warn error]]
-    [clojure.pprint :refer [pprint]]
-    [clojure.string :refer [blank? split]]))
+  (:require [dec :refer [explode]]
+            [environ.core :refer [env]]
+            [taoensso.timbre :refer [info]]
+            [yetibot.core.util.config :as uc]))
 
 (def config-prefixes [:yb :yetibot])
 
