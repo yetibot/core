@@ -1,5 +1,13 @@
 # yetibot.core change log
 
+## 0.4.63 - 01/04/2018
+
+- Upgrade to Clojure 1.10 -
+  [#59](https://github.com/yetibot/yetibot.core/pull/59)
+- Rename room command to channel -
+  [#58](https://github.com/yetibot/yetibot.core/pull/58) by
+  [@kaffein](https://github.com/kaffein)
+
 ## 0.4.62 - 12/12/18
 
 - Fix bug in `render` when collections were passed across a pipe, e.g.:
