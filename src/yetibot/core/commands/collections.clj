@@ -1,20 +1,21 @@
 (ns yetibot.core.commands.collections
-  (:require
-    [clojure.pprint :refer [pprint *print-right-margin*]]
-    [cheshire.core :as json]
-    [yetibot.core.interpreter :refer [handle-cmd]]
-    [taoensso.timbre :as timbre :refer [info warn error debug]]
-    [clojure.string :as s]
-    [json-path :as jp]
-    [yetibot.core.hooks :refer [cmd-hook]]
-    [yetibot.core.chat :refer [chat-data-structure]]
-    [yetibot.core.util.format :refer [format-exception-log]]
-    [yetibot.core.util.command-info :refer [command-execution-info]]
-    [yetibot.core.models.users :refer [min-user-keys]]
-    [yetibot.core.util.command :refer [error?]]
-    [yetibot.core.util :refer
-     [psuedo-format split-kvs-with ensure-items-seqential
-      ensure-items-collection]]))
+  (:require [clojure.pprint :refer [*print-right-margin* pprint]]
+            [clojure.string :as s]
+            [json-path :as jp]
+            [taoensso.timbre :as timbre :refer [debug error info]]
+            [yetibot.core.chat :refer [chat-data-structure]]
+            [yetibot.core.hooks :refer [cmd-hook]]
+            [yetibot.core.interpreter :refer [handle-cmd]]
+            [yetibot.core.models.users :refer [min-user-keys]]
+            [yetibot.core.util
+             :refer
+             [ensure-items-collection
+              ensure-items-seqential
+              psuedo-format
+              split-kvs-with]]
+            [yetibot.core.util.command :refer [error?]]
+            [yetibot.core.util.command-info :refer [command-execution-info]]
+            [yetibot.core.util.format :refer [format-exception-log]]))
 
 (defn ensure-coll
   "Return nil if opts was set or return an error map otherwise"
