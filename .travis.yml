@@ -2,6 +2,8 @@ language: clojure
 lein: lein
 jdk:
   - oraclejdk8
+  - oraclejdk9
+  - oraclejdk11
 
 before_script:
   - psql -c 'create database yetibot;' -U postgres
