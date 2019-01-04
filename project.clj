@@ -25,8 +25,7 @@
                        "\u001B[35m    λλλ"
                        "\u001B[m"
                        ))
-                   (println)
-                   )}
+                   (println))}
   ; :aot [yetibot.core.init]
   :resource-paths ["resources"
                    ;; yetibot-dashboard is an npm dep
