@@ -37,7 +37,7 @@
 (def slack-ping-pong-timeout-ms
   "How long to wait for a `pong` after sending a `ping` before marking the
    connection as inactive and attempting to restart it"
-  10000)
+  5000)
 
 (defn slack-config
   "Transforms yetibot config to expected Slack config"
@@ -296,7 +296,7 @@
                event]
   (let [ts @ping-time
         now (System/currentTimeMillis)]
-    (timbre/trace "Pong" (pr-str event))
+    (timbre/debug "Pong" (pr-str event))
     (reset! connection-last-active-timestamp now)
     (when ts (reset! connection-latency (- now ts)))))
 
@@ -310,7 +310,7 @@
               ping-event {:type :ping
                           :id n
                           :time ts}]
-          (timbre/trace "Pinging Slack" (pr-str ping-event))
+          (timbre/debug "Pinging Slack" (pr-str ping-event))
           (reset! ping-time ts)
           (slack/send-event (:dispatcher c) ping-event)
           (async/<!! (async/timeout slack-ping-pong-interval-ms))
@@ -527,8 +527,16 @@
 
   (a/stop [adapter] (stop adapter))
 
-  (a/connected? [_] (and @connected?
-                         (< @connection-latency slack-ping-pong-timeout-ms)))
+  (a/connected? [{:keys [connected?
+                         connection-last-active-timestamp]}]
+    (let [now (System/currentTimeMillis)
+          time-since-last-active (- now @connection-last-active-timestamp)
+          surpassed-timeout? (> time-since-last-active
+                                (+ slack-ping-pong-timeout-ms
+                                   slack-ping-pong-interval-ms))]
+      (and @connected?
+           (not surpassed-timeout?))))
+
 
   (a/connection-last-active-timestamp [_] @connection-last-active-timestamp)
 
