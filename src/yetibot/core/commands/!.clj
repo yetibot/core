@@ -14,13 +14,19 @@
                                   :chat-source chat-source
                                   :cmd? true
                                   :limit 2}))]
-    (handle-unparsed-expr
-      chat-source
-      user
-      ;; drop the prefix
-      (subs (:body last-user-cmd) (count config-prefix)))
+    (let [{:keys [value error data]}
+          (handle-unparsed-expr
+            chat-source
+            user
+            ;; drop the prefix
+            (subs (:body last-user-cmd) (count config-prefix)))]
+
+      (if error
+        {:result/error error}
+        #:result{:value value :data data}))
     {:result/error
-     (format "I couldn't find any command history for you, %s." (:name user))}))
+     (format "I couldn't find any command history for you, %s."
+             (:name user))}))
 
 (cmd-hook ["!" #"!"]
           _ !-cmd)

@@ -5,6 +5,7 @@
 - Improve Slack connection logic: when ping timeout is surpassed the Slack
   adapter will now report `false` for `connected?`
 - Upgrade to yetibot-dashboard 0.7.0
+- Fix `!!`
 
 ## 0.4.63 - 01/04/2018
 
