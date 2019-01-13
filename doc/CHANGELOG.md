@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.64 - 01/13/2018
+
+- Improve Slack connection logic: when ping timeout is surpassed the Slack
+  adapter will now report `false` for `connected?`
+- Upgrade to yetibot-dashboard 0.7.0
+
 ## 0.4.63 - 01/04/2018
 
 - Upgrade to Clojure 1.10 -
