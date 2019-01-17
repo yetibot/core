@@ -4,6 +4,7 @@
   (:require [dec :refer [explode]]
             [environ.core :refer [env]]
             [taoensso.timbre :refer [info]]
+            [yetibot.core.util.spec-config :as spec-config]
             [yetibot.core.util.config :as uc]))
 
 (def config-prefixes [:yb :yetibot])
@@ -44,4 +45,7 @@
 
 (defonce ^:private config (atom (config-from-env-or-file)))
 
-(def get-config (partial uc/get-config @config))
+(def get-config (partial #'uc/get-config @config))
+
+(def get-spec-config
+  (partial #'spec-config/get-config @config))

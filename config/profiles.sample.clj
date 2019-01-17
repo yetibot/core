@@ -154,8 +154,8 @@
    :yetibot-ssh-groups-0-servers-1-host ""
 
    ;; `weather`
-   :yetibot-weather-wunderground-key ""
-   :yetibot-weather-wunderground-default-zip ""
+   :yetibot-weather-weatherbitio-key ""
+   :yetibot-weather-weatherbitio-default-zip ""
 
    ;; `wolfram`
    :yetibot-wolfram-appid ""

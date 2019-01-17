@@ -1,9 +1,13 @@
 (ns yetibot.core.models.default-command
   (:require
-    [schema.core :as sch]
-    [yetibot.core.config :refer [get-config]]))
+    [clojure.spec.alpha :as s]
+    [yetibot.core.config :refer [get-spec-config]]))
+
+(s/def :yetibot.config.spec/default-command string?)
 
 (defn configured-default-command []
   (or
-    (:value (get-config sch/Any [:default :command]))
+    (:value (get-spec-config
+              :yetibot.config.spec/default-command
+              [:default :command]))
     "help"))

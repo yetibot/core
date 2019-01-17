@@ -36,9 +36,14 @@
   :plugins [[lein-environ "1.1.0"]
             [lein-npm "0.6.2"]]
   :profiles {:profiles/dev {}
-             :dev [:profiles/dev
-                   {:plugins [[lein-midje "3.2.1"]]
-                    :dependencies [[midje "1.9.6"]]}]
+             :dev
+             [:profiles/dev
+              {:injections
+               [(require 'clojure.spec.alpha)
+                ;; obviously
+                (clojure.spec.alpha/check-asserts true)]
+               :plugins [[lein-midje "3.2.1"]]
+               :dependencies [[midje "1.9.6"]]}]
              :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"
