@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.4.65 - 01/17/2018
+
+- Fixup `yetibot-dashboard` to serve new assets by parsing the `index.html`
+  output by `yetibot-dashboard`'s `create-react-app` scripts.
+- Upgrade to yetibot-dashboard 0.7.1
+
 ## 0.4.64 - 01/13/2018
 
 - Improve Slack connection logic: when ping timeout is surpassed the Slack

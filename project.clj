@@ -29,7 +29,9 @@
   ; :aot [yetibot.core.init]
   :resource-paths ["resources"
                    ;; yetibot-dashboard is an npm dep
-                   "node_modules/yetibot-dashboard/dist"]
+                   ;; we serve the static html/css/js out of it to run the SPA
+                   ;; dashboard
+                   "node_modules/yetibot-dashboard/build"]
   :main yetibot.core.init
   :plugins [[lein-environ "1.1.0"]
             [lein-npm "0.6.2"]]
@@ -152,7 +154,7 @@
                  [compojure "1.6.0"]
                  [prone "1.1.4"]
                  [hiccup "1.0.5"]
-                 ; [markdown-clj "0.9.66"]
+                 [hickory "0.7.1"] ; parse html into hiccup
 
                  [slack-rtm "0.1.6" :exclusions [[stylefruits/gniazdo]]]
                  ]
@@ -167,4 +169,4 @@
                   ["vcs" "commit"]
                   ["vcs" "push"]]
 
-  :npm {:dependencies [[yetibot-dashboard "0.7.0"]]})
+  :npm {:dependencies [[yetibot-dashboard "0.7.1"]]})
