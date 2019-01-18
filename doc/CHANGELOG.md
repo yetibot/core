@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.66 - 01/18/2018
+
+- Fix setting Yetibot graphql endpoint in dashboard before the JS that uses it
+  loads
+
 ## 0.4.65 - 01/17/2018
 
 - Fixup `yetibot-dashboard` to serve new assets by parsing the `index.html`
