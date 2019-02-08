@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.4.66 - Unreleased
+
+- Ensure `head`, `tail` and `json <path>` always return a string for individual
+  values. Related to [#829](https://github.com/yetibot/yetibot/issues/829).
+
 ## 0.4.66 - 01/18/2018
 
 - Fix setting Yetibot graphql endpoint in dashboard before the JS that uses it

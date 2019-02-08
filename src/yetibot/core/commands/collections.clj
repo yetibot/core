@@ -70,9 +70,9 @@
       coll-or-error
       (f coll-or-error))))
 
-(def head (partial head-or-tail first take))
+(def head (partial head-or-tail (comp str first) take))
 
-(def tail (partial head-or-tail last take-last))
+(def tail (partial head-or-tail (comp str last) take-last))
 
 ; head
 (defn head-1
@@ -471,7 +471,11 @@
   (info (timbre/color-str :blue "extra-data-cmd") path \newline
         (timbre/color-str :blue (pr-str data)))
   (if data
-    (jp/at-path path data)
+    (let [res (jp/at-path path data)]
+      (if (coll? res)
+        res
+        ;; always convert individual values to string for passing across a pipe
+        (str res)))
     "There is no `data` from the previous command 🤔"))
 
 (defn show-data-cmd
