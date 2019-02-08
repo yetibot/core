@@ -1,9 +1,9 @@
 # yetibot.core change log
 
-## 0.4.66 - Unreleased
+## 0.4.67 - Unreleased
 
-- Ensure `head`, `tail` and `json <path>` always return a string for individual
-  values. Related to [#829](https://github.com/yetibot/yetibot/issues/829).
+- Ensure `head` and `tail` always return a string for individual values.
+  Related to [#829](https://github.com/yetibot/yetibot/issues/829).
 
 ## 0.4.66 - 01/18/2018
 
