@@ -139,6 +139,10 @@
                     (if-let [resolved (resolve v#)] resolved v#)])
                  cmd-pairs))))
 
+
+;; TODO make obs-hooks reloadable - maybe each one should have some metadata
+;; like name and description of intent assocaited with it?
+
 (defn obs-hook
   "Pass a collection of event-types you're interested in and an observer
    function that accepts a single arg. If an event occurs that matches the
