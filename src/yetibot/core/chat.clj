@@ -133,7 +133,7 @@
               uuid (a/uuid adapter)]
           (pmap
             (fn [r]
-              (let [settings (channel/settings-for-channel uuid r)]
+              (let [settings (channel/channel-settings uuid r)]
                 [adapter r settings]))
             rs)))
       (a/active-adapters))))

@@ -1,6 +1,7 @@
 (ns yetibot.core.config-mutable
-  "Mutable config is stored in an edn file which may be updated at runtime."
+  "Mutable config is stored in the database which may be updated at runtime."
   (:require
+    [yetibot.core.db.history :as db.history]
     [yetibot.core.util.config :as uc]
     [environ.core :refer [env]]
     [clojure.java.io :refer [as-file]]

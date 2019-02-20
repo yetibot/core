@@ -2,7 +2,6 @@
   (:require
     [yetibot.core.db.util :as db.util]))
 
-
 (def schema
   "For regular human output from a chat adapter, history is simply recorded.
    For Yetibot responses, the correlating user command is tracked.

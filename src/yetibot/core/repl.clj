@@ -14,6 +14,7 @@
 
 ; use a few non-network commands for dev
 (defn load-minimal []
+  (require 'yetibot.core.commands.category :reload)
   (require 'yetibot.core.commands.about :reload)
   (require 'yetibot.core.commands.collections :reload)
   (require 'yetibot.core.commands.nil :reload)

@@ -29,8 +29,8 @@
 (defn show-all-cmd
   "category # show category names and descriptions and whether they are enabled or disabled"
   {:yb/cat #{:util}}
-  [{:keys [chat-source]}]
-  (let [disabled-cats (set (c/cat-settings-key (c/settings-for-chat-source chat-source)))]
+  [{{:keys [room uuid]} :chat-source}]
+  (let [disabled-cats (c/get-disabled-cats uuid room)]
     (for [[c desc] categories]
       (str
         (if (disabled-cats c) "🚫 " "✅ ")
@@ -40,39 +40,39 @@
 
 (defn set-cat
   "Disables or enables a category and returns a pair indicating [success msg]"
-  [channel category disabled?]
+  [uuid channel category disabled?]
   (let [c (keyword category)]
-    ; validate the category exists
+    ;; validate the category exists
     (if (get categories c)
-      (do
-        (c/apply-settings
-          (a/uuid chat/*adapter*) channel
-          (fn [current-channel-settings]
-            (let [current-disabled (set (c/cat-settings-key current-channel-settings))
-                  f (if disabled? conj disj)]
-              (assoc current-channel-settings
-                c/cat-settings-key
-                (f current-disabled c)))))
+      (let [existing-disabled-cats (c/get-disabled-cats uuid channel)]
+        (c/set-disabled-cats
+          uuid
+          channel
+          (if disabled?
+            (conj existing-disabled-cats c)
+            (disj existing-disabled-cats c)))
         [true "success"])
-      [false (str category
-                  " is not a known category. Use `category names` to view the list.")])))
+      [false
+       (str
+         category
+         " is not a known category. Use `category names` to view the list.")])))
 
 (defn disable-cat-cmd
   "category disable <category-name> # disable a category by name"
   {:yb/cat #{:util}}
   [{[_ c] :match cs :chat-source}]
-  (let [[success? msg] (set-cat (:room cs) c true)]
+  (let [[success? msg] (set-cat (:uuid cs) (:room cs) c true)]
     (if success?
-      {:result/value (str "Disabled " c)}
+      {:result/value (str "✓ Disabled " c " category")}
       {:result/error msg})))
 
 (defn enable-cat-cmd
   "category enable <category-name> # enable a category by name"
   {:yb/cat #{:util}}
   [{[_ c] :match cs :chat-source}]
-  (let [[success? msg] (set-cat (:room cs) c false)]
+  (let [[success? msg] (set-cat (:uuid cs) (:room cs) c false)]
     (if success?
-      {:result/value (str "Enabled " c)}
+      {:result/value (str "✓ Enabled " c " category")}
       {:result/error msg})))
 
 (defn category-list-cmd
