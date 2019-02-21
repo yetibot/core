@@ -107,6 +107,9 @@
     (set-key uuid channel cat-settings-key (pr-str categories))))
 
 ;; yetibot-channels: channels yetibot is in
+;; Note we only track these for adapters that don't remember which channels they
+;; were in across reconnects (e.g. IRC). Slack does not store this in the db
+;; since it keeps track on the server.
 
 (defn get-yetibot-channels
   "Yetibot channels are channels that Yetibot is in or should be in (e.g. IRC
