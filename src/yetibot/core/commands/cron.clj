@@ -89,12 +89,25 @@
   "cron <schedule> <command> # run <command> according to <schedule>.
 
    <schedule> must be a valid crontab string with 7 space-separated arguments:
+
    second minute hour day-of-week day-of-month month year
 
-   Note: this is more expressive than standard cron which only supports 5
-   arguments: minutes hours day-of-month month day-of-week
+   For example:
 
-   See docs at http://docs.caudate.me/hara/hara-io-scheduler.html#schedule."
+     0 0 6 6 9 * 2010
+     | | | | | |   |
+     | | | | | |   +- 2010 only.
+     | | | | | +----- any day of the week.
+     | | | | +------- 9th month (September).
+     | | | +--------- 6th day of the month.
+     | | +----------- 6th hour of the day.
+     | +------------- Top of the hour (minutes = 0).
+     +--------------- Top of the minute (seconds = 0).
+
+   Note: this is more expressive than standard cron which only supports 5
+   arguments (lacking second and year).
+
+   See docs at https://zcaudate.github.io/hara/hara-io-scheduler.html#schedule"
   [{[_ cron-schedule cmd] :match
     user :user
     {:keys [uuid room] :as chat-source} :chat-source}]
