@@ -22,7 +22,6 @@
      [rtm :as rtm]]
     [slack-rtm.core :as slack]
     [taoensso.timbre :as timbre :refer [color-str debug info warn error]]
-    [yetibot.core.models.channel :as channel]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure *thread-ts* *target* *adapter*]]

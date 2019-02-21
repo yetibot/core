@@ -1,5 +1,12 @@
 # yetibot.core change log
 
+## 0.4.68 - Unreleased
+
+- Mutable config is fully deprecated! See [the blog
+  post](https://yetibot.com/blog/2019-02-20-moving-mutable-config-to-the-database)
+  for details on reasoning and how to migrate old configuration.
+  [#61](https://github.com/yetibot/yetibot.core/pull/61)
+
 ## 0.4.67 - 2/18/2018
 
 - Ensure `head` and `tail` always return a string for individual values.
