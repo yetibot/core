@@ -9,9 +9,9 @@
      [core :as irc]
      [connection :as irc-conn]]
     [yetibot.core.models.users :as users]
+    [yetibot.core.models.channel :as channel]
     [clojure.string :refer [split-lines join]]
     [yetibot.core.config :as config]
-    [yetibot.core.config-mutable :as mconfig]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure send-msg-for-each
                                *target* *adapter*] :as chat]
@@ -22,13 +22,16 @@
 
 (defn channels [{:keys [current-channels] :as a}] @current-channels)
 
-(defn config-path [adapter]
- [:yetibot :irc (a/uuid adapter)])
+;; (defn config-path [adapter]
+;;  [:yetibot :irc (a/uuid adapter)])
 
-(defn channels-config-path [adapter]
-  (conj (config-path adapter) :rooms))
+;; (defn channels-config-path [adapter]
+;;   (conj (config-path adapter) :rooms))
 
-(def wait-before-reconnect 30000)
+(def wait-before-reconnect
+  "We need to delay before attempting to reconnect or else IRC will think the
+   username is still taken since it waits awhile to show the user as offline."
+  30000)
 
 (def irc-max-message-length 420)
 
@@ -73,28 +76,22 @@
    split it and send one for each"
   [a p] (send-msg-for-each (prepare-paste p)))
 
-(def channels-schema #{s/Str})
-
-(def mutable-config-schema {:rooms #{s/Str}})
-
 (defn reload-and-reset-config!
   "Reloads config from disk, then uses adapter uuid to lookup the correct config
    map for this instance and resets the config atom with it."
-  [{:keys [mutable-config] :as a}]
-  (mconfig/reload-config!)
-  (let [new-conf (:value (mconfig/get-config
-                           mutable-config-schema (config-path a)))]
+  [{:keys [channel-config] :as a}]
+  (let [uuid (a/uuid a)
+        new-conf (channel/get-yetibot-channels uuid)]
     (info "reloaded config, now:" new-conf)
-    (reset! mutable-config new-conf)))
+    (reset! channel-config new-conf)))
 
 (defn set-channels-config
-  "Accepts a function that will be passed the current channels config. Return value
-   of function will be used to set the new channels config"
+  "Accepts a function that will be passed the current channels config. Return
+   value of function will be used to set the new channels config"
   [adapter f]
-  (log/info "channels config path is" (channels-config-path adapter)
-            (f (channels adapter)))
-  (mconfig/update-config! (channels-config-path adapter) (f (channels adapter)))
-  (reload-and-reset-config! adapter))
+  (let [uuid (a/uuid adapter)]
+    (channel/set-yetibot-channels uuid (f (channels adapter)))
+    (reload-and-reset-config! adapter)))
 
 (defn add-channel-to-config [a channel]
   (log/info "add channel" channel "to irc config")
@@ -129,6 +126,7 @@
    is listening in, or it can be a private message. If yetibot does not
    recognize the :target, reply back to user with PRIVMSG."
    [a irc info]
+   (log/info "handle-message" (pr-str info))
    (let [config (:config a)
          {yetibot-nick :nick} @irc
          yetibot-user (construct-yetibot-from-nick yetibot-nick)
@@ -140,25 +138,31 @@
        (handle-raw (chat-source chan)
                    user :message yetibot-user {:body (:text info)}))))
 
-(defn handle-part [a irc {:keys [target] :as info}]
-  (binding [*target* target]
-    (handle-raw (chat-source target)
-                (create-user info) :leave
-                (construct-yetibot-from-nick (:nick @irc))
-                {})))
+(defn handle-part
+  "Event that fires when someone leaves a channel that Yetibot is listening in"
+  [a irc {:keys [params] :as info}]
+  (log/debug "handle-part" (pr-str info))
+  (let [target (first params)]
+    (binding [*target* target]
+      (handle-raw (chat-source (first params))
+                  (create-user info) :leave
+                  (construct-yetibot-from-nick (:nick @irc))
+                  {}))))
 
-(defn handle-join [a irc {:keys [target] :as info}]
+(defn handle-join [a irc {:keys [params] :as info}]
   (log/debug "handle-join" info)
-  (binding [*target* target]
-    (handle-raw (chat-source (:target info))
-                (create-user info) :enter
-                (construct-yetibot-from-nick (:nick @irc))
-                {})))
+  (let [target (first params)]
+    (binding [*target* target]
+      (handle-raw (chat-source target)
+                  (create-user info) :enter
+                  (construct-yetibot-from-nick (:nick @irc))
+                  {}))))
 
 (defn handle-nick [a _ info]
   (let [[nick] (:params info)
         id (:user info)]
-    (users/update-user (chat-source (:target info)) id {:username nick :name nick})))
+    (users/update-user
+      (chat-source (first (:params info))) id {:username nick :name nick})))
 
 (defn handle-who-reply [a _ info]
   (log/debug "352" info)
@@ -171,7 +175,12 @@
   (log/info "handle invite" info)
   (join-channel a (second (:params info))))
 
-(defn handle-raw-log [adapter _ b c] (log/trace b c))
+(defn handle-raw-log [adapter _ b c]
+  (log/info b c))
+
+(defn handle-kick [a _ {:keys [params] :as info}]
+  (log/info "kicked" (pr-str info))
+  (leave-channel a (first params)))
 
 (defn handle-end-of-names
   "Callback for end of names list from IRC. Currently not doing anything with it."
@@ -193,6 +202,7 @@
               {:privmsg #'handle-message
                :raw-log #'handle-raw-log
                :part #'handle-part
+               :kick #'handle-kick
                :join #'handle-join
                :nick #'handle-nick
                :invite #'handle-invite
@@ -222,8 +232,8 @@
   "Determine the diff between current-channels and configured channels to
    determine which to join and part. After resolving the diff, set
    current-channels equal to configured channels."
-  [{:keys [conn mutable-config current-channels] :as adapter}]
-  (let [configured-channels (:rooms @mutable-config)
+  [{:keys [conn channel-config current-channels] :as adapter}]
+  (let [configured-channels @channel-config
         to-part (difference @current-channels configured-channels)
         to-join (difference configured-channels @current-channels)]
     (info "configured-channels" configured-channels)
@@ -242,7 +252,7 @@
 
 (defn start
   "Join and fetch all users with WHO <channel>"
-  [{:keys [mutable-config config conn] :as adapter}]
+  [{:keys [channel-config config conn] :as adapter}]
   (binding [*adapter* adapter]
     (info "starting IRC with" config)
     (info "*adapter* is" (log/color-str :blue (pr-str *adapter*)))
@@ -256,19 +266,19 @@
   (when-let [c @conn] (irc/kill c))
   (reset! conn nil))
 
-(defrecord IRC [config mutable-config current-channels conn]
+(defrecord IRC [config channel-config current-channels conn]
 
   ; config
   ; Holds the immutable configuration for a single IRC Adapter instance.
 
-  ; mutable-config
-  ; Loaded from disk in start. It stores the IRC channels that Yetibot should
+  ; channel-config
+  ; Loaded from database. It stores the IRC channels that Yetibot should
   ; join on startup. When Yetibot is commanded to join or leave channels,
-  ; mutable-config is updated and persisted to disk.
+  ; channel-config is updated and persisted to the database.
 
   ; current-channels
   ; Atom holding the set of current channels that Yetibot is listening on. This
-  ; is necessary to track in addition to mutable config in order to diff
+  ; is necessary to track in addition to channel-config in order to diff
   ; channels when modifying config to know which ones to part or join.
 
   ; conn

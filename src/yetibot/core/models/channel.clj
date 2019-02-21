@@ -7,12 +7,13 @@
     [clojure.string :as s]))
 
 (def cat-settings-key "disabled-categories")
-
 (def channel-is-member-key "is-member")
+(def yetibot-channels-key "yetibot-channels")
 
 (def protected-keys
   "Users can not manually set these keys"
   #{cat-settings-key
+    yetibot-channels-key
     channel-is-member-key})
 
 (def channel-config-defaults
@@ -37,7 +38,11 @@
                                        :chat-source-channel channel}})]
 
     (->> results
-         (map (fn [{:keys [key value]}] [key value]))
+         (map (fn [{:keys [key value]}]
+                [key
+                 ;; handle special encoding for disabled-categories
+                 (if (= key cat-settings-key)
+                   (read-string value) value)]))
          (into {})
          merge-defaults)))
 
@@ -49,9 +54,13 @@
 
 (defn find-key
   [uuid channel k]
-  (first (db/query {:where/map {:chat-source-adapter (pr-str uuid)
-                                :chat-source-channel channel
-                                :key k}})))
+  (first (db/query
+           {:where/map
+            (merge
+              {:chat-source-adapter (pr-str uuid)
+               :key k}
+              (when channel
+                {:chat-source-channel channel}))})))
 
 (defn set-key
   [uuid channel k v]
@@ -79,6 +88,10 @@
       (debug "unset key failed, not found" k)
       nil)))
 
+;; disabled categories
+
+
+
 (defn get-disabled-cats [uuid channel]
   (debug "get-disabled-cats" (pr-str uuid) (pr-str channel))
   (if-let [cat-settings (find-key uuid channel cat-settings-key)]
@@ -92,3 +105,22 @@
   (if (empty? categories)
     (unset-key uuid channel cat-settings-key)
     (set-key uuid channel cat-settings-key (pr-str categories))))
+
+;; yetibot-channels: channels yetibot is in
+
+(defn get-yetibot-channels
+  "Yetibot channels are channels that Yetibot is in or should be in (e.g. IRC
+   upon conecting is not yet in them but knows which channels to join using this
+   fn)."
+  [uuid]
+  (if-let [{:keys [value]} (find-key uuid nil yetibot-channels-key)]
+    (read-string value)
+    #{}))
+
+(comment
+  (get-yetibot-channels :freenode)
+  )
+
+(defn set-yetibot-channels
+  [uuid channels]
+  (set-key uuid nil yetibot-channels-key (pr-str channels)))

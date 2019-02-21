@@ -1,7 +1,6 @@
 (ns yetibot.core.config
-  "Config is made available via [environ](https://github.com/weavejester/environ).
-   See yetibot.core.config-mutable for configuration that can be changed at
-   runtime, such as which channels to join on IRC."
+  "Config is made available via
+   [environ](https://github.com/weavejester/environ)"
   (:require [dec :refer [explode]]
             [environ.core :refer [env]]
             [taoensso.timbre :refer [info]]

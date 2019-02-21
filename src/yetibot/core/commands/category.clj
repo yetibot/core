@@ -30,6 +30,8 @@
   "category # show category names and descriptions and whether they are enabled or disabled"
   {:yb/cat #{:util}}
   [{{:keys [room uuid]} :chat-source}]
+  ;; Optimization note: this could be pulled out of `settings` key from fn args
+  ;; map instead of looking it up directly from the db:
   (let [disabled-cats (c/get-disabled-cats uuid room)]
     (for [[c desc] categories]
       (str
@@ -66,6 +68,9 @@
       {:result/value (str "✓ Disabled " c " category")}
       {:result/error msg})))
 
+;; Note: if you disable `util` commands you won't be able to set categories any
+;; more, thus locking yourself out and requiring manually editing the db to
+;; re-enable.
 (defn enable-cat-cmd
   "category enable <category-name> # enable a category by name"
   {:yb/cat #{:util}}

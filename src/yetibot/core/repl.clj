@@ -2,7 +2,6 @@
   "Load this namespace when working with yetibot in the REPL or during dev."
   (:require
     [yetibot.core.init :as init]
-    [yetibot.core.config-mutable :as mconfig]
     [yetibot.core.chat :as chat]
     [clojure.stacktrace :refer [print-stack-trace]]
     [yetibot.core.db :as db]
@@ -38,7 +37,6 @@
   "Load a minimal set of commands, start the database and connect to chat adapters"
   []
   (logging/start)
-  (mconfig/reload-config!)
   (init/start-nrepl!)
   (web/start-web-server)
   (db/start)
@@ -49,14 +47,12 @@
 
 (defn start-web
   []
-  (mconfig/reload-config!)
   (load-minimal-with-db)
   (web/start-web-server))
 
 (defn start-offline
   "Offline repl-driven dev mode"
   []
-  (mconfig/reload-config!)
   (load-minimal-with-db))
 
 (defn stop []
