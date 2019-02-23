@@ -6,6 +6,7 @@
   post](https://yetibot.com/blog/2019-02-20-moving-mutable-config-to-the-database)
   for details on reasoning and how to migrate old configuration if necessary.
   [#61](https://github.com/yetibot/yetibot.core/pull/61)
+- Remove `room` method from `Adapter`
 
 ## 0.4.67 - 2/18/2018
 

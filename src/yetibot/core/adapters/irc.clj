@@ -22,12 +22,6 @@
 
 (defn channels [{:keys [current-channels] :as a}] @current-channels)
 
-;; (defn config-path [adapter]
-;;  [:yetibot :irc (a/uuid adapter)])
-
-;; (defn channels-config-path [adapter]
-;;   (conj (config-path adapter) :rooms))
-
 (def wait-before-reconnect
   "We need to delay before attempting to reconnect or else IRC will think the
    username is still taken since it waits awhile to show the user as offline."
@@ -289,8 +283,6 @@
   (a/uuid [_] (:name config))
 
   (a/platform-name [_] "IRC")
-
-  (a/rooms [a] (channels a))
 
   (a/channels [a] (channels a))
 

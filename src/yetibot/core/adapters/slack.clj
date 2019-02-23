@@ -489,8 +489,6 @@
 
   (a/platform-name [_] "Slack")
 
-  (a/rooms [_] (channels config))
-
   (a/channels [_] (channels config))
 
   (a/send-paste [_ msg] (send-paste config msg))
