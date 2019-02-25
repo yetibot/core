@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## 0.5.0 - Unreleased
+## 0.5.0 - 2/24/2019
 
 - Mutable config is fully deprecated and removed! See [the blog
   post](https://yetibot.com/blog/2019-02-20-moving-mutable-config-to-the-database)
