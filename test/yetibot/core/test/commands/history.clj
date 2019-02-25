@@ -1,12 +1,10 @@
 (ns yetibot.core.test.commands.history
   (:require
     [yetibot.core.db :as db]
-    [yetibot.core.config-mutable :refer [reload-config!]]
     [yetibot.core.models.history :as h]
     [yetibot.core.commands.history :refer :all]))
 
 ;; we need a database, so load config and start the db
-(reload-config!)
 (db/start)
 
 (def chat-source {:adapter :test :room "foo"})

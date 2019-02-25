@@ -1,4 +1,5 @@
 (ns yetibot.core.models.users
+  "This is an in-memory representation of users by adapter and channel"
   (:require
     [taoensso.timbre :refer [info debug warn error]]
     [clj-time.core :refer [now]]))
@@ -9,14 +10,14 @@
   ^{:doc
     "key is a map like: {:adapter adapter, :id user-id}
      value is a user with keys:
-       adapter, username, id, active?, last-active, rooms
+       adapter, username, id, active?, last-active, channels
 
      e.g.:
 
      {:adapter :slack :id 1}
      {:adapter :slack, :username \"yetibot\", :id 1,
       :active? true, :last-active <DateTime>,
-      :rooms #{{:adapter :slack :room \"C123\"}}}"}
+      :channels #{{:adapter :slack :room \"C123\"}}}"}
   users (atom {}))
 
 (def min-user-keys
@@ -49,7 +50,7 @@
   (partial
     merge-with
     (fn [existing-user new-user]
-      (update-in existing-user [:rooms] conj chat-source))))
+      (update-in existing-user [:channels] conj chat-source))))
 
 (defn add-user-without-channel
   [adapter {:keys [id] :as user}]
@@ -65,7 +66,7 @@
   [chat-source {:keys [id] :as user}]
   (let [user-key {:adapter (:adapter chat-source) :id id}]
     (swap! users (add-user-merge chat-source)
-           {user-key (merge user {:rooms #{chat-source}})})))
+           {user-key (merge user {:channels #{chat-source}})})))
 
 (defn update-user [source id attrs]
   (debug "update-user" source id attrs)
@@ -81,15 +82,15 @@
     (swap! users update-in [user-key] merge attrs)))
 
 (defn remove-user
-  "Removes chat-source from the user's :rooms set"
+  "Removes chat-source from the user's :channels set"
   [chat-source id]
   (let [user-key {:adapter (:adapter chat-source) :id id}]
-    (swap! users update-in [user-key :rooms] disj chat-source)))
+    (swap! users update-in [user-key :channels] disj chat-source)))
 
 (defn add-chat-source-to-user
   [chat-source id]
   (let [user-key {:adapter (:adapter chat-source) :id id}]
-    (swap! users update-in [user-key :rooms] conj chat-source)))
+    (swap! users update-in [user-key :channels] conj chat-source)))
 
 (defn get-users
   "Returns users for a given chat source"
@@ -97,7 +98,7 @@
   (let [chat-source (select-keys source [:adapter :uuid :room])]
     (->> @users
          vals
-         (filter (fn [u] (and (:rooms u) ((:rooms u) chat-source)))))))
+         (filter (fn [u] (and (:channels u) ((:channels u) chat-source)))))))
 
 (defn get-user [source id]
   (@users {:adapter (:adapter source) :id id}))

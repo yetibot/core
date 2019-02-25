@@ -11,8 +11,6 @@
 
   (platform-name [_] "String describing the chat platform this adapter supports.")
 
-  (rooms [_] "A vector of rooms yetibot is in")
-
   (channels [_] "A vector of channels yetibot is in")
 
   (send-paste [_ msg] "Multi-line strings meant to be formatted as code")

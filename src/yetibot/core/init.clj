@@ -4,7 +4,6 @@
     [yetibot.core.adapters.init :as ai]
     [clojure.stacktrace :refer [print-stack-trace]]
     [nrepl.server :as nrepl]
-    [yetibot.core.config-mutable :as mconfig]
     [yetibot.core.db :as db]
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.logging :as logging]
@@ -41,16 +40,11 @@
   (nrepl/stop-server @nrepl-server))
 
 (defn -main [& args]
-  ;; only continue if able to load config
-  (if-let [c (mconfig/reload-config!)]
-    (do
-      (welcome-message!)
-      (web/start-web-server)
-      (start-nrepl!)
-      (db/start)
-      (logging/start)
-      (ai/start)
-      (load-commands-and-observers))
-    (do
-      (error "Yetibot failed to start: please ensure config is in place at" (mconfig/config-path) " and that it is well-formed (see the log above for details)")
-      (shutdown-agents))))
+  (do
+    (welcome-message!)
+    (web/start-web-server)
+    (start-nrepl!)
+    (db/start)
+    (logging/start)
+    (ai/start)
+    (load-commands-and-observers)))

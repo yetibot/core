@@ -28,7 +28,7 @@
   (chat/leave channel))
 
 (defn settings-for-channel [channel]
-  (model/settings-for-channel (a/uuid chat/*adapter*) channel))
+  (model/channel-settings (a/uuid chat/*adapter*) channel))
 
 (defn settings-cmd
   "channel settings # show all chat settings for this channel"
@@ -51,13 +51,33 @@
   {:yb/cat #{:util}}
   [{[_ k _ v] :match cs :chat-source}]
   (info "set" k "=" v)
-  (model/update-settings (a/uuid chat/*adapter*) (:room cs) k v)
-  (str "✓ Set " k " = " v " for this channel."))
+  (if (model/protected-keys k)
+    {:result/error
+     (str "`" k "` is a protected key and cannot be manually set")}
+    (let [result (model/set-key (a/uuid chat/*adapter*) (:room cs) k v)]
+      {:result/value (str "✓ Set " k " = " v " for this channel.")
+       :result/data result}
+      )))
+
+(defn unset-cmd
+  "channel set <key> <value> # configure a setting for the current channel"
+  {:yb/cat #{:util}}
+  [{[_ k] :match cs :chat-source}]
+  (info "unset" k)
+  (if (model/protected-keys k)
+    {:result/error
+     (str "`" k "` is a protected key and cannot be manually unset")}
+    (if-let [result (model/unset-key (a/uuid chat/*adapter*) (:room cs) k)]
+      {:result/value (str "✓ Unset " k " for this channel.")
+       :result/data result}
+      {:result/error
+       (str "Key `" k "` is not set on the " (:room cs) " channel")})))
 
 (cmd-hook ["channel" #"^channel|room$"]
   #"settings\s+(\S+)" settings-for-cmd
   #"settings$" settings-cmd
   #"set\s+(\S+)\s+(\=\s+)?(.+)" set-cmd
+  #"unset\s+(\S+)" unset-cmd
   #"leave\s+(.+)" leave-cmd
   #"join\s+(.+)" join-cmd
-  #"(list)?" list-cmd)
+  #"list" list-cmd)

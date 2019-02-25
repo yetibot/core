@@ -74,14 +74,14 @@
    If unable to match prefix, it calls the callback, letting `handle-cmd`
    implement its own default behavior."
   [callback cmd-with-args {:keys [chat-source user opts settings] :as extra}]
-  ;; (info "handle-with-hooked-cmds" extra)
+  (info "handle-with-hooked-cmds" chat-source opts (pr-str settings))
   (let [[cmd args] (split-command-and-args cmd-with-args)]
     ;; find the top level command and its corresponding sub-cmds
     (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
       ;; Now try to find a matching sub-commands
       (if-let [[match sub-fn] (match-sub-cmds args sub-cmds)]
         ;; extract category settings
-        (let [disabled-cats (set (c/cat-settings-key settings))
+        (let [disabled-cats (settings c/cat-settings-key)
               fn-cats (set (:yb/cat (meta sub-fn)))]
           (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
             (str
