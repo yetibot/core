@@ -25,7 +25,7 @@
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure *thread-ts* *target* *adapter*]]
-    [yetibot.core.util :as utl]))
+    [yetibot.core.util :as util :refer [image?]]))
 
 (def channel-cache-ttl 60000)
 
@@ -53,7 +53,6 @@
 
 (defn channel-by-id [id config]
   (first (filter #(= id (:id %)) (channels-cached config))))
-
 
 (defn list-groups [config] (groups/list (slack-config config)))
 
@@ -91,23 +90,31 @@
     (map #(str "#" (:name %)) (channels-in config))))
 
 (defn send-msg [config msg]
-  (debug "send-msg"
-         (color-str :blue (pr-str config))
-         {:target *target*
-          :thread-ts *thread-ts*})
-  (slack-chat/post-message
-    (slack-config config) *target* msg
-    (merge
-      {:unfurl_media "true" :as_user "true"}
-      (when *thread-ts*
-        {:thread_ts *thread-ts*}))))
+  (let [img? (image? msg)
+        _ (debug "send-msg"
+                 (color-str :blue (pr-str config))
+                 {:img? img?
+                  :target *target*
+                  :thread-ts *thread-ts*})
+
+        {:keys [ok error response_metadata] :as response}
+        (slack-chat/post-message
+          (slack-config config) *target* msg
+          (merge
+            {:unfurl_media "true" :as_user "true"}
+            (when img?
+              {:blocks [{"type" "image"
+                         "image_url" msg
+                         "alt_text" msg}]})
+            (when *thread-ts*
+              {:thread_ts *thread-ts*})))]
+    (debug "slack response" (pr-str response))))
 
 (defn send-paste [config msg]
   (slack-chat/post-message
     (slack-config config) *target* ""
     {:unfurl_media "true" :as_user "true"
-     :attachments [{:pretext ""
-                    :text msg}]}))
+     :attachments [{:pretext "" :text msg}]}))
 
 ;; formatting
 
@@ -121,7 +128,9 @@
    @here and @channel as <!here> and <!channel>. Wat. DECODE THAT NOISE.
 
    <!here> becomes @here
-   <!channel> becomes @channel"
+   <!channel> becomes @channel
+
+   Why are you gross, Slack"
   [body]
   (-> body
     (s/replace  #"\<\!(here|channel)\>" "@$1")

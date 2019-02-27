@@ -3,6 +3,7 @@
     [taoensso.timbre :refer [color-str debug info warn error]]
     [clojure.string :as s]
     [robert.hooke :as rh]
+    [cemerick.url :refer [url]]
     [clojure.stacktrace :as st]
     [clojure.data.json :as json]))
 
@@ -97,3 +98,16 @@
   (and h (re-find #"^\!" h)))
 
 
+;; image detection
+
+(def image-pattern #"\.(png|jpe?g|gif|webp|svg)$")
+
+(defn image?
+  "Simple utility to detect if a URL represents an image purely by looking at
+   the file extension (i.e. not too smart)."
+  [possible-url]
+  (try
+    (let [{:keys [path]} (url possible-url)]
+      (re-find image-pattern path)) 
+    (catch Exception e
+      false)))

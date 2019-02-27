@@ -85,7 +85,7 @@
 
                  ; chat protocols
                  [irclj "0.5.0-alpha4"]
-                 [org.julienxx/clj-slack "0.6.2"]
+                 [org.julienxx/clj-slack "0.6.3"]
                  [slack-rtm "0.1.7"]
 
                  ; javascript evaluation
