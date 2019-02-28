@@ -1,8 +1,12 @@
 # yetibot.core change log
 
-## 0.5.1 - 2/27/2019
+## 0.5.2 - 2/27/2019
 
 - Fix bug that could cause `users` to blow up
+
+## 0.5.1 - 2/27/2019
+
+- Botched release
 
 ## 0.5.0 - 2/24/2019
 
