@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.5.1 - 2/27/2019
+
+- Fix bug that could cause `users` to blow up
+
 ## 0.5.0 - 2/24/2019
 
 - Mutable config is fully deprecated and removed! See [the blog
