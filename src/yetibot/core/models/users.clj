@@ -98,7 +98,8 @@
   (let [chat-source (select-keys source [:adapter :uuid :room])]
     (->> @users
          vals
-         (filter (fn [u] (and (:channels u) ((:channels u) chat-source)))))))
+         (filter (fn [{:keys [channels]}]
+                   (and channels ((set channels) chat-source)))))))
 
 (defn get-user [source id]
   (@users {:adapter (:adapter source) :id id}))
