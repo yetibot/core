@@ -11,12 +11,13 @@
   "react <emoji> # add a Slack reaction to the last message in the channel"
   {:yb/cat #{:fun}}
   [{emoji :match chat-source :chat-source}]
-  (debug chat-source)
   (if (not= :slack (:adapter chat-source))
-    "React only works on Slack 🎈"
+    {:result/error "React only works on Slack 🎈"}
     (let [adapter (get @a/adapters (:uuid chat-source))
-          [_ emoji-name] (re-find #"^:(.+):$" emoji)]
-     (suppress (slack/react adapter emoji-name *target*)))))
+          [_ emoji-name] (re-find #"^:(.+):" emoji)]
+      (if emoji-name
+        (suppress (slack/react adapter emoji-name *target*))
+        {:result/error (str "Couldn't extract emoji from `" emoji "`")}))))
 
 (cmd-hook #"react"
   #".+" react-cmd)

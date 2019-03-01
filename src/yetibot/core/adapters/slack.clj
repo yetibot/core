@@ -477,6 +477,8 @@
                             (filter #(not (s/starts-with? (:text %) "!"))))
         msg (first non-yb-non-cmd)
         ts (:ts msg)]
+    (debug "react with"
+           (pr-str {:emoji emoji :channel channel :timestamp ts}))
     (reactions/add c emoji {:channel channel :timestamp ts})))
 
 ;; adapter impl
