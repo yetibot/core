@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.5.4 - 3/1/2019
+
+- Output images as Slack Blocks
+
 ## 0.5.3 - 3/1/2019
 
 - Fix bug in `emoji` where a space on the end would cause an NPE and add better
