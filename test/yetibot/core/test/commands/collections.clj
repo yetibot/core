@@ -82,3 +82,16 @@
   (= (:result
        (command-execution-info "words foo bar" {:run-command? true}))
      ["foo" "bar"]))
+
+(deftest random-test
+  (= (:result
+       (command-execution-info "repeat 3 echo hi" {:run-command? true})
+       {:parse-tree [:expr [:cmd [:words "repeat" [:space " "] "3" [:space " "]
+                                  "echo" [:space " "] "hi"]]]
+        :sub-commands [#"(\d+)\s(.+)" #'yetibot.core.commands.collections/repeat-cmd]
+        :matched-sub-cmd #'yetibot.core.commands.collections/repeat-cmd
+        :match ["3 echo hi" "3" "echo hi"]
+        :command "repeat"
+        :command-args "3 echo hi"
+        :result ["hi" "hi" "hi"]}
+       )))

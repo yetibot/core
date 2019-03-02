@@ -2,7 +2,7 @@
   (:require [clojure.pprint :refer [*print-right-margin* pprint]]
             [clojure.string :as s]
             [json-path :as jp]
-            [taoensso.timbre :as timbre :refer [debug error info]]
+            [taoensso.timbre :as timbre :refer [trace debug error info]]
             [yetibot.core.chat :refer [chat-data-structure]]
             [yetibot.core.hooks :refer [cmd-hook]]
             [yetibot.core.interpreter :refer [handle-cmd]]
@@ -445,7 +445,8 @@
   (let [minimal-user (select-keys user min-user-keys)
         cleaned-args (merge command-args {:user minimal-user})]
     (binding [*print-right-margin* 80]
-      (with-out-str (pprint cleaned-args)))))
+      {:result/value (with-out-str (pprint cleaned-args))
+       :result/data cleaned-args})))
 
 (cmd-hook #"raw"
   #"all" raw-all-cmd
@@ -500,3 +501,44 @@
   #"show" show-data-cmd
   #".+" extract-data-cmd
   _ data-cmd)
+
+(def max-repeat 10)
+
+(defn repeat-cmd
+  "repeat <n> <cmd> # repeat <cmd> <n> times"
+  {:yb/cat #{:util}}
+  [{[_ n cmd] :match user :user opts :opts chat-source :chat-source}]
+  (let [n (read-string n)]
+    (when (> n max-repeat)
+      (chat-data-structure
+        (format "LOL %s 🐴🐴 You can only repeat %s times 😇"
+                (:name user) max-repeat)))
+    (trace "repeat-cmd" {:chat-source chat-source
+                        :user (keys user)
+                        :opts opts
+                        :n n :cmd cmd})
+    (let [n (min max-repeat n)
+          results
+          (repeatedly
+            n
+            ;; We should use record-and-run-raw here, but that doesn't allow us
+            ;; to pre-populate :opts, which is important for use cases like:
+            ;;
+            ;; !range 10 | repeat 5 random
+            ;;
+            ;; I wonder if a parse tree could express pre-populated args somehow
+            ;; 🤔
+            #(handle-cmd cmd {:chat-source chat-source
+                              :user user :opts opts}))]
+      ;; flatten out the results
+      (info (pr-str results))
+      (map (fn [{:result/keys [value error] :as arg}]
+             ;; - some commands return {:result/value :result/data} structures
+             ;; - others return an error like {:result/error}
+             ;; - others just return a plain value
+             ;; so look for all 3 forms
+             (or error value arg))
+           results))))
+
+(cmd-hook #"repeat"
+          #"(\d+)\s(.+)" repeat-cmd)

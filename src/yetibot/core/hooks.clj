@@ -81,7 +81,7 @@
       ;; Now try to find a matching sub-commands
       (if-let [[match sub-fn] (match-sub-cmds args sub-cmds)]
         ;; extract category settings
-        (let [disabled-cats (settings c/cat-settings-key)
+        (let [disabled-cats (if settings (settings c/cat-settings-key) #{})
               fn-cats (set (:yb/cat (meta sub-fn)))]
           (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
             (str
