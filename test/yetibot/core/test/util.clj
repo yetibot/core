@@ -35,4 +35,7 @@
 
   (testing "Valid URLs"
     (is (image? "https://i.imgflip.com/2v045r.jpg"))
-    (is (image? "https://media1.giphy.com/media/15aGGXfSlat2dP6ohs/giphy.gif"))))
+    (is (image? "https://media1.giphy.com/media/15aGGXfSlat2dP6ohs/giphy.gif")))
+
+  (testing "Valid URL with query string"
+    (is (image? "https://i.imgflip.com/2v045r.jpg?foo=bar"))))
