@@ -107,7 +107,10 @@
    the file extension (i.e. not too smart)."
   [possible-url]
   (try
-    (let [{:keys [path]} (url possible-url)]
-      (re-find image-pattern path)) 
+    (let [{:keys [query path]} (url possible-url)]
+      (or
+        (re-find image-pattern path)
+        ;; we indicate images from Wolfram are jpgs by tossing a &t=.jpg on it
+        (= ".jpg" (get query "t"))))
     (catch Exception e
       false)))

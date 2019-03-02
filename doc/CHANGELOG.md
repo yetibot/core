@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.5.5 - 3/1/2019
+
+- Detect URLs that have &t=.jpg as images too
+
 ## 0.5.4 - 3/1/2019
 
 - Output images as Slack Blocks
