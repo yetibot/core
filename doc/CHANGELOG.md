@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.5.3 - 3/1/2019
+
+- Fix bug in `emoji` where a space on the end would cause an NPE and add better
+  error reporting if the user doesn't provide a valid emoji
+- Fix broken `repeat` and add test coverage
+
 ## 0.5.2 - 2/27/2019
 
 - Fix bug that could cause `users` to blow up
