@@ -108,7 +108,9 @@
                          "alt_text" msg}]})
             (when *thread-ts*
               {:thread_ts *thread-ts*})))]
-    (debug "slack response" (pr-str response))))
+    (if ok
+      (debug "slack response" (pr-str response))
+      (error "error posting to slack" (pr-str response)))))
 
 (defn send-paste [config msg]
   (slack-chat/post-message
