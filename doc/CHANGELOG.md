@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.5.6 - 3/3/2019
+
+- Fixup history commands being formatted incorrectly
+
 ## 0.5.5 - 3/1/2019
 
 - Detect URLs that have &t=.jpg as images too
