@@ -68,14 +68,14 @@
                   (take
                     30 (h/history-for-chat-source chat-source extra-where)))]
 
+		(info "computed history" (pr-str history))
     ;; format
     (if (= (first next-commands) "count")
       ;; count doesn't need any formatting since it's just a raw number
       history
       ;; everything else needs to be formatted for display
       {:result/value (h/format-all history)
-       :result/data history}
-      )))
+       :result/data history})))
 
 (cmd-hook #"history"
   #"^true$" history-cmd

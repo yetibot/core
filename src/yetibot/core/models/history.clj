@@ -168,7 +168,9 @@
   (format "%s: %s" user-name body))
 
 (defn format-all [entities]
-  (map format-entity entities))
+  (if (sequential? entities)
+    (map format-entity entities)
+    (format-entity entities)))
 
 ;;;; write
 

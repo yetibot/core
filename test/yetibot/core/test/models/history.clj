@@ -48,10 +48,12 @@
   (head chat-source 2 extra-where))
 
 (deftest test-tail
-  (tail chat-source 2 extra-where))
+  (is
+    (= 2
+       (count (tail chat-source 2 extra-where)))))
 
 (deftest test-random
-  (random chat-source extra-where))
+  (is (map? (random chat-source extra-where))))
 
 (deftest test-grep
   (grep chat-source "b.d+" extra-where))
