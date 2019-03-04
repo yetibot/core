@@ -160,7 +160,7 @@
                  [slack-rtm "0.1.6" :exclusions [[stylefruits/gniazdo]]]
                  ]
 
-  :aliases { "test" ["midje"]}
+  :aliases {"test" ["midje"]}
 
   :release-tasks [["vcs" "assert-committed"]
                   ["deps"]
