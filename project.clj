@@ -37,7 +37,8 @@
             [lein-npm "0.6.2"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
-                   {:plugins []}]
+                   {:plugins [[lein-midje "3.2.1"]]
+                    :dependencies [[midje "1.9.4"]]}]
              :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"
@@ -158,6 +159,8 @@
 
                  [slack-rtm "0.1.6" :exclusions [[stylefruits/gniazdo]]]
                  ]
+
+  :aliases { "test" ["midje"]}
 
   :release-tasks [["vcs" "assert-committed"]
                   ["deps"]
