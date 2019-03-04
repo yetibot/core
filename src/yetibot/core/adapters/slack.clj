@@ -97,7 +97,8 @@
                   :target *target*
                   :thread-ts *thread-ts*})
 
-        {:keys [ok error response_metadata] :as response}
+        {:keys [ok response_metadata]
+         slack-error :error :as response}
         (slack-chat/post-message
           (slack-config config) *target* msg
           (merge
@@ -105,7 +106,7 @@
             (when img?
               {:blocks [{"type" "image"
                          "image_url" msg
-                         "alt_text" msg}]})
+                         "alt_text" "Image"}]})
             (when *thread-ts*
               {:thread_ts *thread-ts*})))]
     (if ok
