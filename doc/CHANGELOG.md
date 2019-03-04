@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.5.7 - 3/3/2019
+
+- Move `karma` from yetibot to yetibot.core -
+  [#68](https://github.com/yetibot/yetibot.core/pull/68) by
+  [@jcorrado](https://github.com/jcorrado)
+
 ## 0.5.6 - 3/3/2019
 
 - Fixup history commands being formatted incorrectly
