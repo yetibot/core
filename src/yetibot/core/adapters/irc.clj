@@ -170,7 +170,7 @@
   (join-channel a (second (:params info))))
 
 (defn handle-raw-log [adapter _ b c]
-  (log/info b c))
+  (log/trace b c))
 
 (defn handle-kick [a _ {:keys [params] :as info}]
   (log/info "kicked" (pr-str info))
