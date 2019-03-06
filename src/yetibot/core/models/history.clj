@@ -4,6 +4,14 @@
     [yetibot.core.db.util :refer [transform-where-map]]
     [yetibot.core.db.history :refer [create query]]
     [clojure.string :refer [join split]]
+    [yetibot.core.util.time :as t]
+    [clj-time
+     [coerce :refer [from-date to-sql-time]]
+     [format :refer [formatter unparse]]
+     [core :refer [day year month
+                   to-time-zone after?
+                   default-time-zone now time-zone-for-id date-time utc
+                   ago hours days weeks years months]]]
     [yetibot.core.models.users :as u]
     [taoensso.timbre :refer [info color-str warn error spy]]))
 
@@ -164,8 +172,8 @@
 
 ;;;; formatting
 
-(defn format-entity [{:keys [user-name body] :as e}]
-  (format "%s: %s" user-name body))
+(defn format-entity [{:keys [created-at user-name body] :as e}]
+  (format "%s at %s: %s" user-name (t/format-time (from-date created-at)) body))
 
 (defn format-all [entities]
   (if (sequential? entities)

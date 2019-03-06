@@ -67,8 +67,6 @@
                   ;; default to last 30 items if there were no filters
                   (take
                     30 (h/history-for-chat-source chat-source extra-where)))]
-
-		(info "computed history" (pr-str history))
     ;; format
     (if (= (first next-commands) "count")
       ;; count doesn't need any formatting since it's just a raw number
