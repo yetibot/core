@@ -1,6 +1,6 @@
 (ns yetibot.core.commands.history
   (:require
-    [taoensso.timbre :refer [info]]
+    [taoensso.timbre :refer [debug info]]
     [yetibot.core.models.history :as h]
     [clojure.string :refer [blank? join split]]
     [yetibot.core.hooks :refer [cmd-hook]]))
@@ -67,6 +67,8 @@
                   ;; default to last 30 items if there were no filters
                   (take
                     30 (h/history-for-chat-source chat-source extra-where)))]
+
+    (debug "computed history" (pr-str history))
     ;; format
     (if (= (first next-commands) "count")
       ;; count doesn't need any formatting since it's just a raw number
