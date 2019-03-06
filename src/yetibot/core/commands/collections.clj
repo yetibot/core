@@ -259,7 +259,7 @@
 ; set
 (def set-cmd
   "set <list> # returns the set of distinct elements in <list> and does not preserve order"
-  (coll-cmd set))
+  (coll-cmd (comp seq set)))
 
 (cmd-hook #"set"
           _ set-cmd)
