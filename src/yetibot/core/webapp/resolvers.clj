@@ -10,6 +10,7 @@
     [yetibot.core.db.alias :as db.alias]
     [yetibot.core.db.observe :as db.observe]
     [yetibot.core.db.cron :as db.cron]
+    [yetibot.core.models.karma :as karma]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [taoensso.timbre :refer [error debug info color-str]]))
 
