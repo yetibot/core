@@ -37,7 +37,8 @@
                   {:username {:type String}
                    :is_active {:type Boolean}
                    :id {:type String}
-                   :last_active {:type String} }}
+                   :last_active {:type String}
+                   :karma {:type Int}}}
 
            :alias {:fields
                    {:id {:type Int}

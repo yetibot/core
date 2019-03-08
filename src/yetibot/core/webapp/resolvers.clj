@@ -92,7 +92,8 @@
       {:username username
        :is_active active?
        :id id
-       :last_active last-active})))
+       :last_active last-active
+       :karma (karma/get-score (str "@" id))})))
 
 (defn aliases-resolver
   [context {:keys [] :as args} value]
