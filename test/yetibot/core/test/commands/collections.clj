@@ -95,3 +95,19 @@
         :command-args "3 echo hi"
         :result ["hi" "hi" "hi"]}
        )))
+
+
+(deftest data-test
+
+  (testing "No data results in an error"
+    (is
+      (=
+       #:result{:error "There is no `data` from the previous command 🤔"}
+       (:result (command-execution-info "data $.[0]" {:run-command? true})))))
+
+  (testing "Data should be preserved in data <path>"
+    (is (=
+         {:foo :bar}
+         (-> (command-execution-info "data $.[0]" {:data [{:foo :bar}]
+                                                   :run-command? true})
+             :result :result/data)))))

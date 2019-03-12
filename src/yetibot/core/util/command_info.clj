@@ -32,6 +32,9 @@
    :opts - the opts to pass the command (i.e. what would normally be passed from
            a previous command across a pipe)
 
+   :data - data to pass in (i.e. would normally be passed from a previous command
+           in a pipeline)
+
    :run-command? - whether to actually run the command. By default the command
                    will not be run, since commands often have side effects and
                    thus would not be suitable for unit tests
