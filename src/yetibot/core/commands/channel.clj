@@ -73,7 +73,7 @@
       {:result/error
        (str "Key `" k "` is not set on the " (:room cs) " channel")})))
 
-(cmd-hook ["channel" #"^channel|room$"]
+(cmd-hook #"channel"
   #"settings\s+(\S+)" settings-for-cmd
   #"settings$" settings-cmd
   #"set\s+(\S+)\s+(\=\s+)?(.+)" set-cmd

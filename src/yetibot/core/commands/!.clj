@@ -28,5 +28,5 @@
      (format "I couldn't find any command history for you, %s."
              (:name user))}))
 
-(cmd-hook ["!" #"!"]
-          _ !-cmd)
+(cmd-hook #"!"
+  _ !-cmd)
