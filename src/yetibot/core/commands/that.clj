@@ -25,6 +25,6 @@
   [{:keys [chat-source]}]
   (get-that chat-source false))
 
-(cmd-hook ["that" #"^that$"]
+(cmd-hook #"that"
   #"cmd" that-with-cmd-cmd
   _ that-cmd)

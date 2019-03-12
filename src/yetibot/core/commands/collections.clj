@@ -115,7 +115,7 @@
   "droplast <list> # drop the last item from <list>"
   (coll-cmd drop-last))
 
-(cmd-hook ["droplast" #"^droplast$"]
+(cmd-hook #"droplast"
   _ drop-last-cmd)
 
 ; rest
@@ -161,7 +161,7 @@
       {:result/error (str "Expected a collection")})))
 
 (cmd-hook #"xargs"
-          _ xargs)
+  _ xargs)
 
 ; join
 
@@ -176,8 +176,8 @@
       (s/join join-char coll-or-error))))
 
 (cmd-hook #"join"
-          #"(?is).+" join
-          _ join)
+  #"(?is).+" join
+  _ join)
 
 ; split
 (defn split
@@ -188,7 +188,7 @@
     (s/split to-split split-by)))
 
 (cmd-hook #"split"
-          #"(?is)^(\S+)\s+(.+)$" split)
+  #"(?is)^(\S+)\s+(.+)$" split)
 
 ; trim
 (defn trim
@@ -197,8 +197,8 @@
   [{args :args}]
   (s/trim args))
 
-(cmd-hook ["trim" #"^trim$"]
-          _ trim)
+(cmd-hook #"trim"
+  _ trim)
 
 ; words
 (defn words
@@ -207,8 +207,8 @@
   [{args :args}]
   (s/split args #" "))
 
-(cmd-hook ["words" #"^words$"]
-          _ words)
+(cmd-hook #"words"
+  _ words)
 
 ; unwords
 (defn unwords
@@ -219,8 +219,8 @@
     args ; no collection, return the value as-is
     (s/join " " (ensure-items-collection opts))))
 
-(cmd-hook ["unwords" #"^unwords$"]
-          _ unwords)
+(cmd-hook #"unwords"
+  _ unwords)
 
 ; flatten
 (defn flatten-cmd
@@ -235,7 +235,7 @@
            (map s/split-lines)
            flatten))))
 
-(cmd-hook ["flatten" #"^flatten$"]
+(cmd-hook #"flatten"
   _ flatten-cmd)
 
 ; letters
@@ -245,16 +245,16 @@
   [{args :args}]
   (map str (seq args)))
 
-(cmd-hook ["letters" #"^letters$"]
-          _ letters)
+(cmd-hook #"letters"
+  _ letters)
 
 ; unletters
 (def unletters
   "unletters <list> # join <list> without a delimiter"
   (coll-cmd (partial s/join "")))
 
-(cmd-hook ["unletters" #"^unletters$"]
-          _ unletters)
+(cmd-hook #"unletters"
+  _ unletters)
 
 ; set
 (def set-cmd
@@ -262,7 +262,7 @@
   (coll-cmd (comp seq set)))
 
 (cmd-hook #"set"
-          _ set-cmd)
+  _ set-cmd)
 
 ; list
 (defn list-cmd
@@ -273,7 +273,7 @@
     (map s/trim (s/split args delimiter))))
 
 (cmd-hook #"list"
-          _ list-cmd)
+  _ list-cmd)
 
 
 ; count
@@ -282,7 +282,7 @@
   (coll-cmd (comp str count)))
 
 (cmd-hook #"count"
-          _ count-cmd)
+  _ count-cmd)
 
 ; sum
 (def sum-cmd
@@ -293,7 +293,7 @@
           (reduce +))))
 
 (cmd-hook #"sum"
-          _ sum-cmd)
+  _ sum-cmd)
 
 ; sort
 (defn sort-cmd
@@ -303,7 +303,7 @@
   (sort (ensure-items-collection items)))
 
 (cmd-hook #"sort"
-          _ sort-cmd)
+  _ sort-cmd)
 
 ; sortnum
 (def sortnum-cmd
@@ -312,7 +312,7 @@
     (partial sort #(- (read-string %1) (read-string %2)))))
 
 (cmd-hook #"sortnum"
-          _ sortnum-cmd)
+  _ sortnum-cmd)
 
 ; grep
 (defn slide-context [coll i n]
@@ -359,8 +359,8 @@
        (str "Expected a collection but you only gave me `" args "`")})))
 
 (cmd-hook #"grep"
-          #"-C\s+(\d+)\s+(.+)" grep-cmd
-          _ grep-cmd)
+  #"-C\s+(\d+)\s+(.+)" grep-cmd
+  _ grep-cmd)
 
 ; tee
 (defn tee-cmd
@@ -371,7 +371,7 @@
   (or opts args))
 
 (cmd-hook #"tee"
-          _ tee-cmd)
+  _ tee-cmd)
 
 ; reverse
 (def reverse-cmd
@@ -379,7 +379,7 @@
   (coll-cmd reverse))
 
 (cmd-hook #"reverse"
-          _ reverse-cmd)
+  _ reverse-cmd)
 
 ; range
 (defn range-cmd
@@ -417,7 +417,7 @@
     (split-kvs-with first items)))
 
 (cmd-hook #"keys"
-          _ keys-cmd)
+  _ keys-cmd)
 
 ; vals
 (defn vals-cmd
@@ -429,7 +429,7 @@
     (split-kvs-with second items)))
 
 (cmd-hook #"vals"
-          _ vals-cmd)
+  _ vals-cmd)
 
 ;; raw
 (defn raw-cmd
@@ -544,4 +544,4 @@
            results))))
 
 (cmd-hook #"repeat"
-          #"(\d+)\s(.+)" repeat-cmd)
+  #"(\d+)\s(.+)" repeat-cmd)
