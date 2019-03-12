@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.5.8 - Unreleased
+
+- Fix posting collections in Slack Threads -
+  [#868](https://github.com/yetibot/yetibot/issues/868)
+
 ## 0.5.7 - 3/3/2019
 
 - Move `karma` from yetibot to yetibot.core -

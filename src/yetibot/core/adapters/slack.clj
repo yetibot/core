@@ -107,8 +107,7 @@
               {:blocks [{"type" "image"
                          "image_url" msg
                          "alt_text" "Image"}]})
-            (when *thread-ts*
-              {:thread_ts *thread-ts*})))]
+            (when *thread-ts* {:thread_ts *thread-ts*})))]
     (if ok
       (debug "slack response" (pr-str response))
       (error "error posting to slack" (pr-str response)))))
@@ -116,8 +115,10 @@
 (defn send-paste [config msg]
   (slack-chat/post-message
     (slack-config config) *target* ""
-    {:unfurl_media "true" :as_user "true"
-     :attachments [{:pretext "" :text msg}]}))
+    (merge
+      {:unfurl_media "true" :as_user "true"
+       :attachments [{:pretext "" :text msg}]}
+      (when *thread-ts* {:thread_ts *thread-ts*}))))
 
 ;; formatting
 
