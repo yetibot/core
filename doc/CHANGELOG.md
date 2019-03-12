@@ -6,6 +6,8 @@
   [#868](https://github.com/yetibot/yetibot/issues/868)
 - Preserve data in data <path> -
   [#72](https://github.com/yetibot/yetibot.core/pull/72)
+- Allow commands to specify multiple regex / topic pairs
+  [#73](https://github.com/yetibot/yetibot.core/pull/73)
 
 ## 0.5.7 - 3/3/2019
 
