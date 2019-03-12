@@ -4,6 +4,8 @@
 
 - Fix posting collections in Slack Threads -
   [#868](https://github.com/yetibot/yetibot/issues/868)
+- Preserve data in data <path> -
+  [#72](https://github.com/yetibot/yetibot.core/pull/72)
 
 ## 0.5.7 - 3/3/2019
 
