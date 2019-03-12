@@ -473,11 +473,14 @@
         (timbre/color-str :blue (pr-str data)))
   (if data
     (let [res (jp/at-path path data)]
-      (if (coll? res)
-        res
-        ;; always convert individual values to string for passing across a pipe
-        (str res)))
-    "There is no `data` from the previous command 🤔"))
+      {:result/data res
+       :result/value
+       (if (coll? res)
+         res
+         ;; always convert individual values to string for passing across a pipe
+         (str res))})
+    {:result/error
+     "There is no `data` from the previous command 🤔"}))
 
 (defn show-data-cmd
   "data show # pretty print data from the previous command"
