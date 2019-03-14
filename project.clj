@@ -38,7 +38,7 @@
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
                    {:plugins [[lein-midje "3.2.1"]]
-                    :dependencies [[midje "1.9.4"]]}]
+                    :dependencies [[midje "1.9.6"]]}]
              :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"
@@ -46,18 +46,18 @@
                     :yb-adapters-freenode-port "6667"
                     :yb-adapters-freenode-username "yetibot-test"}}}
   :dependencies [[org.clojure/clojure "1.10.0"]
-                 [org.clojure/core.async "0.3.465"]
+                 [org.clojure/core.async "0.4.490"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.4.1"]
                  [org.clojure/tools.trace "0.7.10"]
                  [org.clojure/tools.namespace "0.2.11"]
                  [org.clojure/java.classpath "0.3.0"]
-                 [org.clojure/core.cache "0.6.5"]
-                 [org.clojure/core.memoize "0.5.9"]
+                 [org.clojure/core.cache "0.7.2"]
+                 [org.clojure/core.memoize "0.7.1"]
                  [org.clojure/core.match "0.3.0-alpha5"]
                  [org.clojure/data.xml "0.0.8"]
-                 [org.clojure/data.zip "0.1.2"]
-                 [org.clojure/java.jdbc "0.7.3"]
+                 [org.clojure/data.zip "0.1.3"]
+                 [org.clojure/java.jdbc "0.7.9"]
                  [org.postgresql/postgresql "42.2.5"]
 
                  [stylefruits/gniazdo-jsr356 "1.0.0"]
@@ -82,7 +82,7 @@
                  ; email
                  [com.draines/postal "2.0.2"]
                  [io.forward/clojure-mail "1.0.7" :exclusions [medley]]
-                 [medley "1.0.0"]
+                 [medley "1.1.0"]
 
                  ; chat protocols
                  [irclj "0.5.0-alpha4"]
@@ -100,12 +100,11 @@
 
                  ; json parsing / schema
                  [com.bigml/closchema "0.1.8"]
-                 [cheshire "5.8.0"]
-                 [prismatic/schema "1.1.6"]
+                 [prismatic/schema "1.1.10"]
                  [json-path "1.0.1"]
 
                  ; utils
-                 [funcool/cuerdas "2.0.4"]
+                 [funcool/cuerdas "2.1.0"]
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.4.1"]
                  [robert/hooke "1.3.0"]
@@ -130,7 +129,7 @@
                  [ring-logger-timbre "0.7.6"]
                  [ring.middleware.conditional "0.2.0"]
                  [ring-cors "0.1.12"]
-                 [nrepl "0.5.3"]
+                 [nrepl "0.6.0"]
 
                  ; [ring/ring-jetty-adapter "1.4.0"]
                  [http-kit "2.3.0"]
@@ -138,10 +137,10 @@
                  ; [ring-server "0.4.0"]
                  ; [info.sunng/ring-jetty9-adapter "0.8.4"]
 
-                 [ring/ring-defaults "0.3.1"]
+                 [ring/ring-defaults "0.3.2"]
                  [ring/ring-session-timeout "0.2.0"]
 
-                 [ring-middleware-format "0.7.2"
+                 [ring-middleware-format "0.7.4"
                   :exclusions [org.flatland/ordered
                                clj-stacktrace]]
                  ;; use newer flatland with support for java 11
@@ -150,14 +149,14 @@
                  ;; [metosin/ring-http-response "0.9.1"]
 
                  ; web
-                 [com.walmartlabs/lacinia "0.31.0-rc-1"] ;; graphql
-                 [selmer "1.12.5"]
-                 [compojure "1.6.0"]
-                 [prone "1.1.4"]
+                 [com.walmartlabs/lacinia "0.32.0"] ;; graphql
+                 [selmer "1.12.9"]
+                 [compojure "1.6.1"]
+                 [prone "1.6.1"]
                  [hiccup "1.0.5"]
                  [hickory "0.7.1"] ; parse html into hiccup
 
-                 [slack-rtm "0.1.6" :exclusions [[stylefruits/gniazdo]]]
+                 [slack-rtm "0.1.7" :exclusions [[stylefruits/gniazdo]]]
                  ]
 
   :aliases {"test" ["with-profile" "+test" "midje"]}

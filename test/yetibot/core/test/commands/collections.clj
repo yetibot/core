@@ -98,7 +98,6 @@
 
 
 (deftest data-test
-
   (testing "No data results in an error"
     (is
       (=
@@ -111,3 +110,12 @@
          (-> (command-execution-info "data $.[0]" {:data [{:foo :bar}]
                                                    :run-command? true})
              :result :result/data)))))
+
+
+(deftest str-test
+  (testing "Any arg gets converted to string"
+    (is (=
+         "3"
+         (:result (command-execution-info "str 3" {:run-command? true}))
+         )))
+  )

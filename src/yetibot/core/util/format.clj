@@ -41,7 +41,7 @@
   [s arg]
   (if (re-find (general-subst-pattern) s)
     (s/replace s (general-subst-pattern) arg)
-    s))
+    (str s " " arg)))
 
 (defn pseudo-format-n
   "Combination of pseudo-format and format-n - it can do both if the string
