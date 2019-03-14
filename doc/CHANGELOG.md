@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## 0.5.8 - Unreleased
+## 0.5.8 - 3/14/2019
 
 - Fix posting collections in Slack Threads -
   [#868](https://github.com/yetibot/yetibot/issues/868)
