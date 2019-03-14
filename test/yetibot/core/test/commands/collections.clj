@@ -110,12 +110,3 @@
          (-> (command-execution-info "data $.[0]" {:data [{:foo :bar}]
                                                    :run-command? true})
              :result :result/data)))))
-
-(deftest str-test
-  (testing "Any arg gets converted to string"
-    (is (=
-         "3"
-         ;; we're not testing anything because the "3" was alreayd a string.
-         ;; Might need to improve command-execution-info to be able to accept
-         ;; piped expressions 🤔
-         (:result (command-execution-info "str 3" {:run-command? true}))))))

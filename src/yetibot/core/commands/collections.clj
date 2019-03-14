@@ -545,15 +545,3 @@
 
 (cmd-hook #"repeat"
   #"(\d+)\s(.+)" repeat-cmd)
-
-;; str
-(defn str-cmd
-  "str <arg> # convert <arg> to a string"
-  {:yb/cat #{:util}}
-  [{arg :match items :opts}]
-  (if (seq? items)
-    (map str items)
-    (str arg)))
-
-(cmd-hook #"str"
-  _ str-cmd)
