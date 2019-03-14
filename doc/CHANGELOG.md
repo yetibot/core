@@ -8,6 +8,8 @@
   [#72](https://github.com/yetibot/yetibot.core/pull/72)
 - Allow commands to specify multiple regex / topic pairs
   [#73](https://github.com/yetibot/yetibot.core/pull/73)
+- Add string command and upgrade a bunch of deps -
+  [#74](https://github.com/yetibot/yetibot.core/pull/74)
 
 ## 0.5.7 - 3/3/2019
 
