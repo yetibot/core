@@ -102,7 +102,7 @@
         (slack-chat/post-message
           (slack-config config) *target* msg
           (merge
-            {:unfurl_media "true" :as_user "true"}
+            {:unfurl_media "false" :as_user "true"}
             (when img?
               {:blocks [{"type" "image"
                          "image_url" msg
@@ -116,7 +116,7 @@
   (slack-chat/post-message
     (slack-config config) *target* ""
     (merge
-      {:unfurl_media "true" :as_user "true"
+      {:unfurl_media "false" :as_user "true"
        :attachments [{:pretext "" :text msg}]}
       (when *thread-ts* {:thread_ts *thread-ts*}))))
 
