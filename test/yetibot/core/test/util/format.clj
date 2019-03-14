@@ -48,6 +48,19 @@
            "--> %s <-- 1 2")
         "It shouldn't work with the old prefix after a new one is bound.")))
 
+(deftest pseudo-format-test
+  (testing "Basic pseudo-format usage"
+    (is
+      (=
+       "foo bar"
+       (pseudo-format "foo" "bar"))
+      "pseudo-format appends to the end by default")
+    (is
+      (=
+       "foo bar baz"
+       (pseudo-format "foo %s baz" "bar"))
+      "It substitutes in the middle when it's supposed to")))
+
 (deftest replace-even-if-nothing-to-replace-with
   (binding [*subst-prefix* "\\$"]
     (is (= (pseudo-format-n "qux --> $s <-- should b empty" [])

@@ -5,8 +5,7 @@
     [clojure.set :refer [difference intersection]]
     [yetibot.core.models.channel :as channel]
     [taoensso.timbre :refer [color-str debug info warn error]]
-    [yetibot.core.util :refer [psuedo-format]]
-    [yetibot.core.util.format :refer [to-coll-if-contains-newlines]]))
+    [yetibot.core.util.format :refer [pseudo-format to-coll-if-contains-newlines]]))
 
 (def ^:dynamic *current-user*)
 (def ^:dynamic *yetibot-user*)
@@ -70,8 +69,8 @@
                 ;; the raw cmd-with-args
                 [(if (empty? previous-value)
                    cmd-with-args
-                   ;; next time apply psuedo-format to support %s substitution
-                   (psuedo-format cmd-with-args previous-value))
+                   ;; next time apply pseudo-format to support %s substitution
+                   (pseudo-format cmd-with-args previous-value))
                  extra]))
 
             _ (info "command-result" (color-str :green (pr-str command-result)))
