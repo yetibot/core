@@ -4,10 +4,10 @@
     [yetibot.core.hooks :refer [cmd-hook]]))
 
 (defn echo-cmd
-  "echo <text> # Echos back <text>. Useful for piping."
+  "echo <text> # Echos back <text> as a string. Useful for piping."
   {:yb/cat #{:util}}
   [{:keys [args] :as cmd-args}]
-  args)
+  (str args))
 
 (cmd-hook #"echo"
   _ echo-cmd)

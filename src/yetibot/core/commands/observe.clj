@@ -228,7 +228,9 @@
 
 (defonce loader (future (load-observers)))
 
-(cmd-hook ["observe" #"^obs(erver*)*$"]
+(cmd-hook {"observe" #"observe"
+           "obs" #"obs"
+           "observer" #"observer"}
   #"^(list)*$" list-observers
   #"remove\s+(\S+)" remove-observers
   #"(.+)\=\s*(.+)" observe-cmd)

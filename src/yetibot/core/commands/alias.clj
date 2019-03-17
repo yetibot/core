@@ -46,9 +46,9 @@
   (let [docstring (str cmd-name " # alias for " cmd)
         existing-alias (existing-alias cmd-name)
         cmd-fn (build-alias-cmd-fn cmd)]
-    (cmd-hook [cmd-name (re-pattern (str "^" cmd-name "$"))]
-              _ cmd-fn)
-    ; manually add docs since the meta on cmd-fn is lost in cmd-hook
+    (cmd-hook (re-pattern cmd-name)
+      _ cmd-fn)
+    ;; manually add docs since the meta on cmd-fn is lost in cmd-hook
     (help/add-docs cmd-name [docstring])
     (info "wire-alias" existing-alias)
     (if existing-alias

@@ -109,16 +109,35 @@
 (defn cmd-hook-resolved
   "Expects fully resolved syntax where as plain cmd-hook can take normally
    unresolved symbols like _ and translate them into '_"
-  [re-prefix & cmds]
-  (let [[topic re-prefix] (if (vector? re-prefix) re-prefix [(str re-prefix) re-prefix])
-        re-prefix (lockdown-prefix-regex re-prefix)
+  [topic-and-pattern & cmds]
+  ;; re-prefix can be:
+  ;; - a single regex - we take its string value to populate topic
+  ;; - [deprecated] a vector of [topic-str regex-pattern]
+  ;; - a map {topic pattern} - containing any number of topic/pattern pairs
+  ;;
+  ;; normalize it into the map form:
+  (let [topics->patterns (condp #(%1 %2) topic-and-pattern
+                               vector? (let [[topic pattern] topic-and-pattern]
+                                         {topic pattern})
+                               ;; already in correct form
+                               map? topic-and-pattern
+                               ;; else - just the pattern
+                               {(str topic-and-pattern) topic-and-pattern})
         cmd-pairs (partition 2 cmds)]
-    (swap! re-prefix->topic conj {(str re-prefix) topic})
-    (help/add-docs
-      topic
-      (map (fn [[_ cmd-fn]] (:doc (meta cmd-fn)))
-           cmd-pairs))
-    (swap! hooks conj {(str re-prefix) cmds})))
+
+    (run!
+      (fn [[topic re-prefix]]
+        (let [re-prefix (lockdown-prefix-regex re-prefix)]
+          ;; store a mapping of re-prefix (string representation) to topic
+          (swap! re-prefix->topic conj {(str re-prefix) topic})
+          ;; add to help docs
+          (help/add-docs
+            topic
+            ;; extract the docstring from each subcommand
+            (map (fn [[_ cmd-fn]] (:doc (meta cmd-fn))) cmd-pairs))
+          ;; store the hooks to match
+          (swap! hooks conj {(str re-prefix) cmds})))
+      topics->patterns)))
 
 (defmacro cmd-hook
   "Takes potentially special syntax and resolves it to symbols for

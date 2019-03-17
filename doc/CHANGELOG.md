@@ -1,5 +1,16 @@
 # yetibot.core change log
 
+## 0.5.8 - 3/14/2019
+
+- Fix posting collections in Slack Threads -
+  [#868](https://github.com/yetibot/yetibot/issues/868)
+- Preserve data in data <path> -
+  [#72](https://github.com/yetibot/yetibot.core/pull/72)
+- Allow commands to specify multiple regex / topic pairs
+  [#73](https://github.com/yetibot/yetibot.core/pull/73)
+- Add string command, stop unfurling, and upgrade a bunch of deps -
+  [#74](https://github.com/yetibot/yetibot.core/pull/74)
+
 ## 0.5.7 - 3/3/2019
 
 - Move `karma` from yetibot to yetibot.core -
