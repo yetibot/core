@@ -79,6 +79,11 @@
                     :score {:type Int}}}
            }
 
+ :enums {:karma_report {:values [{:enum-value :SCORES
+                                  :description "Users with the most amassed karma"}
+                                 {:enum-value :GIVERS
+                                  :description "User who have bestored the most karma"}]}}
+
  :queries {:eval {:type (list String)
                   :args {:expr {:type String}}
                   :resolve :eval}
@@ -137,5 +142,8 @@
                        :resolve :crons}
 
            :karmas {:type (list :karma)
-                    :resolve :karmas}
+                    :resolve :karmas
+                    :args {:report {:type :karma_report}
+                           :limit {:type Int
+                                   :default-value 10}}}
            }}

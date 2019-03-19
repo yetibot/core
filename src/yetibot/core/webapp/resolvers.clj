@@ -109,8 +109,13 @@
   (db.cron/query {:query/identifiers identity}))
 
 (defn karmas-resolver
-  [context {:keys [] :as args} value]
-  (map (fn [{:keys [user-id score]}]
-         {:user_id user-id
-          :score score})
-       (karma/get-high-scores)))
+  [context {:keys [report limit] :as args} value]
+  (condp = report
+    :SCORES (map (fn [{:keys [user-id score]}]
+                   {:user_id user-id
+                    :score score})
+                 (karma/get-high-scores limit))
+    :GIVERS (map (fn [{:keys [voter-id score]}]
+                   {:user_id voter-id
+                    :score score})
+                 (karma/get-high-givers limit))))
