@@ -110,7 +110,7 @@
 
 (defn karmas-resolver
   [context {:keys [] :as args} value]
-  (map (fn [{:keys [:user-id :score]}]
+  (map (fn [{:keys [user-id score]}]
          {:user_id user-id
           :score score})
        (karma/get-high-scores)))
