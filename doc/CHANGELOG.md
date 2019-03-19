@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.5.10 - 3/19/2019
+
+- Re-release without REBL under resources
+
 ## 0.5.9 - 3/19/2019
 
 - Fix `%s` expansion in alias - this was being overriden by alias' special `$s`
