@@ -37,7 +37,8 @@
                   {:username {:type String}
                    :is_active {:type Boolean}
                    :id {:type String}
-                   :last_active {:type String} }}
+                   :last_active {:type String}
+                   :karma {:type Int}}}
 
            :alias {:fields
                    {:id {:type Int}
@@ -73,6 +74,9 @@
            :channel {:fields
                      {:name {:type String}}}
 
+           :karma {:fields
+                   {:user_id {:type String}
+                    :score {:type Int}}}
            }
 
  :queries {:eval {:type (list String)
@@ -132,4 +136,6 @@
            :crons {:type (list :cron)
                        :resolve :crons}
 
+           :karmas {:type (list :karma)
+                    :resolve :karmas}
            }}

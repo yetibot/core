@@ -10,6 +10,7 @@
     [yetibot.core.db.alias :as db.alias]
     [yetibot.core.db.observe :as db.observe]
     [yetibot.core.db.cron :as db.cron]
+    [yetibot.core.models.karma :as karma]
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [taoensso.timbre :refer [error debug info color-str]]))
 
@@ -92,7 +93,8 @@
       {:username username
        :is_active active?
        :id id
-       :last_active last-active})))
+       :last_active last-active
+       :karma (karma/get-score (str "@" id))})))
 
 (defn aliases-resolver
   [context {:keys [] :as args} value]
@@ -105,3 +107,10 @@
 (defn crons-resolver
   [context {:keys [] :as args} value]
   (db.cron/query {:query/identifiers identity}))
+
+(defn karmas-resolver
+  [context {:keys [] :as args} value]
+  (map (fn [{:keys [user-id score]}]
+         {:user_id user-id
+          :score score})
+       (karma/get-high-scores)))

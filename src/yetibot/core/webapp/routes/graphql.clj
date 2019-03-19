@@ -27,6 +27,7 @@
                                      :observers resolvers/observers-resolver
                                      :crons resolvers/crons-resolver
                                      :channels resolvers/channels-resolver
+                                     :karmas resolvers/karmas-resolver
                                      })
       lacina.schema/compile))
 
