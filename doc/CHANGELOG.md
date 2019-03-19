@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.5.9 - 3/19/2019
+
+- Fix `%s` expansion in alias - this was being overriden by alias' special `$s`
+  expansion since we moved to the standard `pseudo-format` function
+  [#76](https://github.com/yetibot/yetibot.core/pull/76)
+
 ## 0.5.8 - 3/14/2019
 
 - Fix posting collections in Slack Threads -
