@@ -1,5 +1,17 @@
 # yetibot.core change log
 
+## 0.5.10 - 3/19/2019
+
+- Re-release without REBL under resources
+
+## 0.5.9 - 3/19/2019
+
+- Fix `%s` expansion in alias - this was being overriden by alias' special `$s`
+  expansion since we moved to the standard `pseudo-format` function
+  [#76](https://github.com/yetibot/yetibot.core/pull/76)
+- Surface `karma` via GraphQL API
+  [#69](https://github.com/yetibot/yetibot.core/pull/69)
+
 ## 0.5.8 - 3/14/2019
 
 - Fix posting collections in Slack Threads -

@@ -16,16 +16,19 @@
 
 (defn- build-alias-cmd-fn [cmd]
   (fn [{:keys [user args yetibot-user]}]
-    (binding [*subst-prefix* method-like-replacement-prefix]
-      (let [args (if (empty? args) [] (s/split args #" "))
-            expr (str command/config-prefix (pseudo-format-n cmd args))
-            results (record-and-run-raw expr user yetibot-user
-                                        ;; avoid double recording the yetibot
-                                        ;; response since the parent command
-                                        ;; execution that evaluated the alias
-                                        ;; will record the nested response
-                                        {:record-yetibot-response? false})]
-        (first (map :result results))))))
+    (let [args (if (empty? args) [] (s/split args #" "))
+          ;; this binding must be constrained to just computing the expr so it
+          ;; doesn't interfere with regular/default substitution in the
+          ;; evaluation of piped expressions (i.e. %s instead of $s)
+          expr (binding [*subst-prefix* method-like-replacement-prefix]
+                 (str command/config-prefix (pseudo-format-n cmd args)))
+          results (record-and-run-raw expr user yetibot-user
+                                      ;; avoid double recording the yetibot
+                                      ;; response since the parent command
+                                      ;; execution that evaluated the alias
+                                      ;; will record the nested response
+                                      {:record-yetibot-response? false})]
+      (first (map :result results)))))
 
 (defn- existing-alias [cmd-name]
   (first (model/query {:where/map {:cmd-name cmd-name}})))
