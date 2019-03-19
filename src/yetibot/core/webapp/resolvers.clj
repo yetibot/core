@@ -4,7 +4,6 @@
     [yetibot.core.chat :as chat]
     [yetibot.core.models.channel :as channel]
     [yetibot.core.webapp.resolvers.stats :as stats]
-    [yetibot.core.webapp.resolvers.karma :as karma]
     [cuerdas.core :refer [kebab snake]]
     [yetibot.core.adapters.adapter :as adapter]
     [yetibot.core.db.history :as history]
@@ -109,4 +108,9 @@
   [context {:keys [] :as args} value]
   (db.cron/query {:query/identifiers identity}))
 
-(def karmas-resolver (partial karmas/karmas-resolver))
+(defn karmas-resolver
+  [context {:keys [] :as args} value]
+  (map (fn [{:keys [:user-id :score]}]
+         {:user_id user-id
+          :score score})
+       (karma/get-high-scores)))
