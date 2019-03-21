@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.5.11 - 3/21/2019
+
+- Upgrade Selmer to 1.12.11
+
 ## 0.5.10 - 3/19/2019
 
 - Re-release without REBL under resources
