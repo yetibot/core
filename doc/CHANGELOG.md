@@ -1,5 +1,17 @@
 # yetibot.core change log
 
+## 0.5.12 - 3/28/2019
+
+- Allow non-map results in xargs
+  [#79](https://github.com/yetibot/yetibot.core/pull/79)
+- Added karma high-score and high-giver reports in GraphQL
+  [#77](https://github.com/yetibot/yetibot.core/pull/77) by
+  [@jcorrado](https://github.com/jcorrado).
+
+  Now accepting limits on count of returned karma records for aggregate reports,
+  in stead of hard coding to 10. Our model defends the DB, forcing a range of 1
+  - 100.
+
 ## 0.5.11 - 3/21/2019
 
 - Upgrade Selmer to 1.12.11
