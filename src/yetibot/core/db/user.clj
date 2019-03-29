@@ -5,9 +5,9 @@
 (def schema {:schema/table "user"
              :schema/specs
              (into [[:chat-source-adapter :text]
-                    [:id :text "NOT NULL"]
+                    [:user-id :text "NOT NULL"]
                     [:username :text "NOT NULL"]
-                    [:display_name :text "NOT NULL"]
+                    [:display-name :text "NOT NULL"]
                     ;; should we attempt to keep track of which channels the
                     ;; user is in? 🤔
                     ;; if we wanted to store it as a column here it's have to be
