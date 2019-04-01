@@ -60,7 +60,7 @@
       )))
 
 (defn unset-cmd
-  "channel set <key> <value> # configure a setting for the current channel"
+  "channel unset <key> # remove a setting for the current channel"
   {:yb/cat #{:util}}
   [{[_ k] :match cs :chat-source}]
   (info "unset" k)
