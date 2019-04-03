@@ -1,5 +1,26 @@
 # yetibot.core change log
 
+## 0.5.14 - 4/3/2019
+
+- Allow globally disabling embedded expressions like 
+
+  ```
+  `echo foo`
+  ```
+  via configuration:
+
+  ```
+  :yetibot-command-embedded-enabled "false"
+  ```
+
+  or equivalent EDN:
+
+  ```edn
+  :command {;; Whether or not embedded commands should be globally available
+            ;; (enabled by default)
+            :embedded {:enabled "false"}}
+  ```
+
 ## 0.5.13 - 4/2/2019
 
 - Fixup help doc on `channel unset` command
