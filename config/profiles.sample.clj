@@ -19,6 +19,8 @@
    ;; Whether or not embedded commands should be globally available (enabled by
    ;; default)
    :yetibot-command-embedded-enabled "false"
+   ;; Whether to enable having a fallback command. Default is true.
+   :yetibot-command-fallback-enabled "true"
 
    ;; Yetibot needs a Postgres instance to run against.
    :yetibot-db-url "postgresql://localhost:5432/yetibot"

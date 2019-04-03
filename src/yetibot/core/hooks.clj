@@ -12,11 +12,6 @@
 
 (def ^:private Pattern java.util.regex.Pattern)
 
-(defn suppress
-  "Wraps parameter in meta data to indicate that it should not be posted to chat"
-  [data-structure]
-  (with-meta data-structure {:suppress true}))
-
 ; Stores the mapping of prefix-regex -> sub-commands.
 (defonce hooks (atom {}))
 

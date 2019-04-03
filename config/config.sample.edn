@@ -42,7 +42,10 @@
   :command {:prefix "!"
             ;; Whether or not embedded commands should be globally available
             ;; (enabled by default)
-            :embedded {:enabled "false"}}
+            :embedded {:enabled "false"}
+            ;; Whether to enable having a fallback command. Default is true.
+            :fallback {:enabled "true"}
+            }
   ;; the default command to fall back to if no other commands match
   :default {:command "giphy"}
   :jenkins {:cache {:ttl "3600000"},

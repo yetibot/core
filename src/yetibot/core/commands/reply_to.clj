@@ -1,10 +1,9 @@
 (ns yetibot.core.commands.reply-to
   (:require
     [clojure.string :refer [blank?]]
-    [yetibot.core.chat :refer [*target*]]
     [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.chat :refer [chat-data-structure]]
-    [yetibot.core.hooks :refer [cmd-hook suppress]]))
+    [yetibot.core.chat :refer [*target* chat-data-structure suppress]]
+    [yetibot.core.hooks :refer [cmd-hook]]))
 
 (defn reply-to-cmd
   "replyto <target> # send Yetibot's response to a target other than the current channel."

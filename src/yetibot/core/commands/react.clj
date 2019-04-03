@@ -4,8 +4,8 @@
     [taoensso.timbre :refer [debug info warn error]]
     [yetibot.core.adapters.adapter :as a]
     [yetibot.core.adapters.slack :as slack]
-    [yetibot.core.chat :refer [*target*]]
-    [yetibot.core.hooks :refer [cmd-hook suppress]]))
+    [yetibot.core.chat :refer [*target* suppress]]
+    [yetibot.core.hooks :refer [cmd-hook]]))
 
 (defn react-cmd
   "react <emoji> # add a Slack reaction to the last message in the channel"
