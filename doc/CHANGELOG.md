@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## 0.5.13 - 4/2/2019
+
+- Fixup help doc on `channel unset` command
+- Add `yetibot.core.test` with Midje checkers to help unwrap return maps from
+  commands [#81](https://github.com/yetibot/yetibot.core/pull/81)
+
 ## 0.5.12 - 3/28/2019
 
 - Allow non-map results in xargs
