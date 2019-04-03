@@ -3,9 +3,9 @@
    [midje.sweet :refer [defchecker checker fact => =not=>]]
    [midje.checking.core :refer [extended-=]]))
 
-;; A few Midje checkers provided Extended Equality tests of the
-;; standard keys in the map returned by commands supporting piped
-;; data.  These are intended to be used in *.command.* tests.
+;; A few Midje checkers providing Extended Equality tests of standard
+;; keys in the map returned by commands supporting piped data.  These
+;; are intended to be used in *.command.* tests.
 
 (defn mk-checker
   [expected key]
