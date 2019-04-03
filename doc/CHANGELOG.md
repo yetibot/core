@@ -2,7 +2,7 @@
 
 ## 0.5.14 - 4/3/2019
 
-- Allow globally disabling embedded expressions like 
+- Allow globally disabling embedded expressions like
 
   ```
   `echo foo`
@@ -19,6 +19,17 @@
   :command {;; Whether or not embedded commands should be globally available
             ;; (enabled by default)
             :embedded {:enabled "false"}}
+  ```
+- Allow globally disabling fallback commands via configuration:
+
+  ```
+  ;; Whether to enable having a fallback command. Default is true.
+  :yetibot-command-fallback-enabled "false"
+  ```
+
+  ```edn
+  :command {;; Whether to enable having a fallback command. Default is true.
+            :fallback {:enabled "false"}}
   ```
 
 ## 0.5.13 - 4/2/2019
