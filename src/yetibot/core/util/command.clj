@@ -1,6 +1,5 @@
 (ns yetibot.core.util.command
   (:require
-    [clojure.string :refer [join]]
     [schema.core :as sch]
     [yetibot.core.config :refer [get-config]]
     [yetibot.core.models.help :as help]
