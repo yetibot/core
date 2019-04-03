@@ -1,9 +1,11 @@
 (ns yetibot.core.handler
   (:require
+    [schema.core :as sch]
+    [yetibot.core.config :refer [get-config]]
     [clojure.core.async :refer [timeout alts!! alts! chan go <! >! >!! <!!]]
     [clojure.core.match :refer [match]]
     [clojure.stacktrace :as st]
-    [clojure.string :refer [join]]
+    [clojure.string :refer [blank? join]]
     [taoensso.timbre :refer [debug trace info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
     [yetibot.core.util.command :refer [command? extract-command embedded-cmds]]
@@ -13,6 +15,36 @@
     [yetibot.core.util.format :refer [to-coll-if-contains-newlines
                                       format-data-structure
                                       format-exception-log]]))
+
+(defn embedded-enabled?
+  "Determine whether or not embedded commands are enabled.
+
+   Embedded commands look like:
+
+   The weather looks nice today `weather seattle`
+
+   instead of the more explicit command execution syntax:
+
+   !weather seattle
+
+   This means multiple embedded commands can be contained within a single
+   message, such as:
+
+   `weather seattle` `weather new york`
+
+   However, some teams may find the overloading of backtick syntax disruptive,
+   so it can be globally disabled in configuration.
+
+   In the future we'll also allow this setting to be overriden on a per-channel
+   basis.
+
+   It is enabled by default."
+  []
+  (let [{value :value} (get-config sch/Str [:command :embedded :enabled])]
+    (if-not (blank? value)
+      (not (= "false" value))
+      ;; enabled by default
+      true)))
 
 (def expr-eval-timeout-ms 1000)
 
@@ -77,7 +109,7 @@
           ;; if it starts with a command prefix (e.g. !) it's a command
           (and parsed-normal-command [parsed-normal-command])
           ;; otherwise, check to see if there are embedded commands
-          (embedded-cmds body))
+          (when (embedded-enabled?) (embedded-cmds body)))
         cmd? (boolean (seq parsed-cmds))]
 
     ;; record the body of users' messages if the user is not Yetibot

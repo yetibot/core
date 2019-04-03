@@ -39,7 +39,10 @@
   :ebay {:appid ""},
   :giphy {:key ""},
   :weather {:wunderground {:key "" :default {:zip ""}}},
-  :command {:prefix "!"}
+  :command {:prefix "!"
+            ;; Whether or not embedded commands should be globally available
+            ;; (enabled by default)
+            :embedded {:enabled "false"}}
   ;; the default command to fall back to if no other commands match
   :default {:command "giphy"}
   :jenkins {:cache {:ttl "3600000"},

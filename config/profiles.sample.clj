@@ -16,6 +16,9 @@
    ;; By default Yetibot uses the ! prefix to match commands.
    ;; You can use this configuration to customize the prefix used by Yetibot
    :yetibot-command-prefix ","
+   ;; Whether or not embedded commands should be globally available (enabled by
+   ;; default)
+   :yetibot-command-embedded-enabled "false"
 
    ;; Yetibot needs a Postgres instance to run against.
    :yetibot-db-url "postgresql://localhost:5432/yetibot"
