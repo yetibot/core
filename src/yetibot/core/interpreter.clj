@@ -1,7 +1,9 @@
 (ns yetibot.core.interpreter
   "Handles evaluation of a parse tree"
   (:require
-    [yetibot.core.models.default-command :refer [configured-default-command]]
+    [yetibot.core.chat :refer [suppress]]
+    [yetibot.core.models.default-command :refer [fallback-enabled?
+                                                 configured-default-command]]
     [clojure.set :refer [difference intersection]]
     [yetibot.core.models.channel :as channel]
     [taoensso.timbre :refer [color-str debug info warn error]]
@@ -16,12 +18,15 @@
    falls back to image search when available."
   [cmd-with-args extra]
   (info "nothing handled" cmd-with-args)
-  (if-not (:fallback? extra)
-    (handle-cmd (str (configured-default-command) " " cmd-with-args)
-                (assoc extra :fallback? true))
-    ; if fallback? is true, nothing handled this command so don't try to
-    ; fallback again
-    (format "I don't know how to handle %s" cmd-with-args)))
+  (if (fallback-enabled?)
+    (if-not (:fallback? extra)
+      (handle-cmd (str (configured-default-command) " " cmd-with-args)
+                  (assoc extra :fallback? true))
+      ;; if fallback? is true, nothing handled this command so don't try to
+      ;; fallback again
+      (format "I don't know how to handle %s" cmd-with-args))
+    ;; return nothing when fallbacks are disabled
+    (suppress {})))
 
 (defn pipe-cmds
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra

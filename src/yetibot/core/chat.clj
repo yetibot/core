@@ -153,7 +153,10 @@
           (a/send-msg adapter msg)))
       (channels-with-broadcast))))
 
-; TODO: move hooks/suppress right here
+(defn suppress
+  "Wraps parameter in meta data to indicate that it should not be posted to chat"
+  [data-structure]
+  (with-meta data-structure {:suppress true}))
 
 (defn with-target
   "Add target meta data to the data structure to instruct `chat` where to send it"
