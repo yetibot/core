@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.5.15 - 4/9/2019
+
+- Ensure previous value in args is a string to prevent errors in piped
+  expressions if a command returns a non-string
+
 ## 0.5.14 - 4/3/2019
 
 - Allow globally disabling embedded expressions like
