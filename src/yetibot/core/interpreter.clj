@@ -1,6 +1,7 @@
 (ns yetibot.core.interpreter
   "Handles evaluation of a parse tree"
   (:require
+    [clojure.string :refer [blank?]]
     [yetibot.core.chat :refer [suppress]]
     [yetibot.core.models.default-command :refer [fallback-enabled?
                                                  configured-default-command]]
@@ -35,8 +36,7 @@
   (debug "pipe-cmds" *chat-source* acc cmd-with-args next-cmds)
   (let [;; the previous accumulated value. for the first command in a series of
         ;; piped commands, preivous-value and previous-data will be empty
-        {previous-value :value
-         previous-data :data} acc
+        {previous-value :value previous-data :data} acc
         extra {:raw previous-value
                :data (or previous-data previous-value)
                :settings (:settings acc)
@@ -71,8 +71,8 @@
                 [cmd-with-args (conj extra {:opts possible-opts})]
                 ;; value is the previous primitive output from the last
                 ;; command. the first time around value is empty so just use
-                ;; the raw cmd-with-args
-                [(if (empty? previous-value)
+                ;; the raw cmd-with-args.
+                [(if (empty? (str previous-value))
                    cmd-with-args
                    ;; next time apply pseudo-format to support %s substitution
                    (pseudo-format cmd-with-args previous-value))
