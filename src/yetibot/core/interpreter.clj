@@ -1,7 +1,6 @@
 (ns yetibot.core.interpreter
   "Handles evaluation of a parse tree"
   (:require
-    [clojure.string :refer [blank?]]
     [yetibot.core.chat :refer [suppress]]
     [yetibot.core.models.default-command :refer [fallback-enabled?
                                                  configured-default-command]]
