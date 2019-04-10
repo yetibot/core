@@ -77,6 +77,6 @@
              :result/value reply-emoji}))))))
 
 (cmd-hook "karma"
-          #"^@?\w[-\w]*\w$" get-score
-          #"^(?x) (@?\w[-\w]*\w) \s{0,2} (--|\+\+) (?: \s+(.+) )?$" adjust-score
+          #"^@\w[-\w]*\w$" get-score
+          #"^(?x) (@\w[-\w]*\w) \s{0,2} (--|\+\+) (?: \s+(.+) )?$" adjust-score
           _ get-high-scores)

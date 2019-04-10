@@ -1,14 +1,14 @@
 (ns yetibot.core.test.commands.karma.specs
   (:require
-   [midje.sweet :refer [facts fact => truthy]]
+   [midje.sweet :refer [facts fact => =not=> truthy]]
    [yetibot.core.commands.karma.specs :as karma.spec]
    [clj-time.core :as time]
    [clj-time.coerce :as time.coerce]
    [clojure.spec.alpha :as s]))
 
 (def epoch (time.coerce/to-long (time/now)))
-(def test-user (str "test-user-" epoch))
-(def test-voter (str "test-voter-" epoch))
+(def test-user (str "@test-user-" epoch))
+(def test-voter (str "@test-voter-" epoch))
 (def test-note (str "test-note-" epoch))
 
 ;; The context passed to our command handlers
@@ -17,16 +17,16 @@
 (facts "common specs (not yet relocated)"
        (fact ctx
              (let [invalid-ctx (assoc-in slack-ctx [:chat-source :adapter] nil)]
-               (s/valid? ::karma.spec/ctx slack-ctx)             => truthy
+               (s/valid? ::karma.spec/ctx slack-ctx)       => truthy
                (s/valid? ::karma.spec/ctx invalid-ctx) =not=> truthy)))
 
 (facts karma
        (fact user-id
              (s/valid? ::karma.spec/user-id "@jereme")       => truthy
-             (s/valid? ::karma.spec/user-id "jereme")        => truthy
              (s/valid? ::karma.spec/user-id "@7jereme")      => truthy
              (s/valid? ::karma.spec/user-id "@jereme7")      => truthy
              (s/valid? ::karma.spec/user-id "@jer-eme")      => truthy
+             (s/valid? ::karma.spec/user-id "jereme")    =not=> truthy
              (s/valid? ::karma.spec/user-id "@--jereme") =not=> truthy
              (s/valid? ::karma.spec/user-id "@jereme--") =not=> truthy)
 
