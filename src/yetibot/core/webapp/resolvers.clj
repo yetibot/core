@@ -14,8 +14,8 @@
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [taoensso.timbre :refer [error debug info color-str]]))
 
-(def eval-chat-source {:adapter :graphql.eval :channel :graphql.eval})
-(def eval-user {:username "graphql" :id "graphql"})
+(def eval-chat-source {:adapter :graphql :uuid :graphql :room "graphql"})
+(def eval-user {:username "graphql" :name "graphql" :id "graphql"})
 
 (defn eval-resolver
   [context {:keys [expr] :as args} value]
