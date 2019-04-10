@@ -1,6 +1,6 @@
 (ns yetibot.core.commands.eval
   (:require
-    [yetibot.core.model.admin :refer [user-is-admin?]]
+    [yetibot.core.models.admin :refer [user-is-admin?]]
     [clojure.repl :refer :all]
     [clojure.pprint :refer [*print-right-margin* pprint]]
     [yetibot.core.hooks :refer [cmd-hook]]
