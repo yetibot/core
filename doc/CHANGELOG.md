@@ -4,6 +4,7 @@
 
 - Ensure previous value in args is a string to prevent errors in piped
   expressions if a command returns a non-string
+- Hardcode a chat source and user for the eval GraphQL resource
 
 ## 0.5.14 - 4/3/2019
 
