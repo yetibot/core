@@ -102,7 +102,7 @@
         (slack-chat/post-message
           (slack-config config) *target* msg
           (merge
-            {:unfurl_media "false" :as_user "true"}
+            {:unfurl_media (str (not (boolean img?))) :as_user "true"}
             (when img?
               {:blocks [{"type" "image"
                          "image_url" msg
