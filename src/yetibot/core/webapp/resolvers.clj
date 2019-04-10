@@ -38,7 +38,6 @@
     "echo hi")
   )
 
-
 (defn adapters-resolver
   [context {:keys [] :as args} value]
   (->>
