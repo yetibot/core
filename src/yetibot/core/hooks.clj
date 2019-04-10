@@ -1,5 +1,6 @@
 (ns yetibot.core.hooks
   (:require
+    [yetibot.core.models.admin :as admin]
     [clojure.set :refer [difference intersection]]
     [taoensso.timbre :refer [color-str trace debug info warn error]]
     [yetibot.core.handler]
@@ -61,33 +62,41 @@
     (swap! re-prefix->topic dissoc str-re)
     (swap! hooks dissoc str-re)))
 
-
 (defn handle-with-hooked-cmds
   "Looks up the set of possible commands by matching the first word against
    prefixes stored in `hooks`. If it finds a match, it then matches against
    sub-commands and defaults to help if no sub-commands match.
+
    If unable to match prefix, it calls the callback, letting `handle-cmd`
    implement its own default behavior."
   [callback cmd-with-args {:keys [chat-source user opts settings] :as extra}]
   (info "handle-with-hooked-cmds" chat-source opts (pr-str settings))
-  (let [[cmd args] (split-command-and-args cmd-with-args)]
-    ;; find the top level command and its corresponding sub-cmds
-    (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
-      ;; Now try to find a matching sub-commands
-      (if-let [[match sub-fn] (match-sub-cmds args sub-cmds)]
-        ;; extract category settings
-        (let [disabled-cats (if settings (settings c/cat-settings-key) #{})
-              fn-cats (set (:yb/cat (meta sub-fn)))]
-          (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
-            (str
-              (s/join ", " (map name matched-disabled-cats))
-              " commands are disabled in this channel🖐")
-            (sub-fn (merge extra {:cmd cmd :args args :match match}))))
-        ;; couldn't find any sub commands so default to help.
-        (:value
-          (yetibot.core.handler/handle-unparsed-expr
-            (str "help " (get @re-prefix->topic (str cmd-re))))))
-      (callback cmd-with-args extra))))
+  (let [[cmd args] (split-command-and-args cmd-with-args)
+        admin-only-command? (admin/admin-only-command? cmd)
+        user-is-admin? (admin/user-is-admin? user)
+        _ (info "admin only?" admin-only-command?
+                "user is admin?" user-is-admin?)]
+    ;; ensure the user is allowed to run this command
+    (if (and admin-only-command? (not user-is-admin?))
+      {:result/error (format
+                       "Only admins are allowed to execute %s commands" cmd)}
+      ;; find the top level command and its corresponding sub-cmds
+      (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
+        ;; Now try to find a matching sub-commands
+        (if-let [[match sub-fn] (match-sub-cmds args sub-cmds)]
+          ;; extract category settings
+          (let [disabled-cats (if settings (settings c/cat-settings-key) #{})
+                fn-cats (set (:yb/cat (meta sub-fn)))]
+            (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
+              (str
+                (s/join ", " (map name matched-disabled-cats))
+                " commands are disabled in this channel🖐")
+              (sub-fn (merge extra {:cmd cmd :args args :match match}))))
+          ;; couldn't find any sub commands so default to help.
+          (:value
+            (yetibot.core.handler/handle-unparsed-expr
+              (str "help " (get @re-prefix->topic (str cmd-re))))))
+        (callback cmd-with-args extra)))))
 
 ;; Hook the actual handle-cmd called during interpretation.
 (rh/add-hook #'handle-cmd #'handle-with-hooked-cmds)
@@ -152,7 +161,6 @@
                     ; cmd-hook cannot extract it.
                     (if-let [resolved (resolve v#)] resolved v#)])
                  cmd-pairs))))
-
 
 ;; TODO make obs-hooks reloadable - maybe each one should have some metadata
 ;; like name and description of intent assocaited with it?
