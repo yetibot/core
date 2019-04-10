@@ -64,5 +64,6 @@
        :access {:key ""}},
   :wordnik {:key ""},
   :imgflip {:username "", :password ""},
-  :eval {:priv ["U123123" "~awesomeperson"]},
+  :admin {:commands ["observer"]
+          :users ["U123123" "~awesomeperson"]},
   :nrepl {:port ""}}}
