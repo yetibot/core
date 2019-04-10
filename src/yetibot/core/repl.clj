@@ -23,6 +23,7 @@
   (require 'yetibot.core.commands.help :reload)
   (require 'yetibot.core.commands.history :reload)
   (require 'yetibot.core.commands.observe :reload)
+  (require 'yetibot.core.commands.alias :reload)
   (require 'yetibot.core.commands.channel :reload)
   (require 'yetibot.core.commands.users :reload)
   (require 'yetibot.core.commands.that :reload)

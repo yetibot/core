@@ -6,7 +6,7 @@
 (s/def ::id string?)
 (s/def ::user (s/keys :req-un [::name ::id]))
 
-(s/def ::adapter #{:irc :slack})
+(s/def ::adapter #{:graphql :irc :slack})
 (s/def ::chat-source (s/keys :req-un [::adapter]))
 
 (s/def ::ctx (s/keys :req-un [::user ::chat-source]))

@@ -30,8 +30,8 @@
    sources.
 
    `active?` can be determined by any criteria. In Slack it's managed by
-   presence detection. In IRC and Campfire it could be managed by being offline,
-   or have an activity timeout. If ommitted, it defaults to true."
+   presence detection. In IRC it could be managed by being offline, or have an
+   activity timeout. If ommitted, it defaults to true."
   ([username user-info] (create-user username true user-info))
   ([username active? {:keys [id] :as user-info}]
    (let [id (str (or id username))
