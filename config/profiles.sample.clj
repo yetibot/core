@@ -147,6 +147,7 @@
    ;; The set of commands to restrict to admins only (note `eval` is *always*
    ;; admin only regardless of config):
    :yetibot-admin-commands-0 "observer"
+   :yetibot-admin-commands-1 "obs"
 
    ;; Configure GitHub if you have your own fork of the yetibot repo. This will
    ;; allow opening feature requests on your fork.
