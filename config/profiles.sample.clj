@@ -137,10 +137,17 @@
    :yetibot-jenkins-instances-1-name "yetibot.core"
    :yetibot-jenkins-instances-1-uri "http://yetibot.core/"
 
-   ;; Set of Strings: Slack IDs or IRC users (which have ~ prefixes) of users who
-   ;; can use the yetibot `eval` command.
-   :yetibot-eval-priv-0 "U123123"
-   :yetibot-eval-priv-1 "~awesomeperson"
+   ;; Admin section controls which users have admin privileges and which
+   ;; commands are locked down to admin use only.
+   ;;
+   ;; Set of Strings: Slack IDs or IRC users (which have ~ prefixes) of users
+   ;; who can use the yetibot `eval` command.
+   :yetibot-admin-users-0 "U123123"
+   :yetibot-admin-users-1 "~awesomeperson"
+   ;; The set of commands to restrict to admins only (note `eval` is *always*
+   ;; admin only regardless of config):
+   :yetibot-admin-commands-0 "observer"
+   :yetibot-admin-commands-1 "obs"
 
    ;; Configure GitHub if you have your own fork of the yetibot repo. This will
    ;; allow opening feature requests on your fork.

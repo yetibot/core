@@ -1,5 +1,14 @@
 # yetibot.core change log
 
+## 0.5.15 - 4/10/2019
+
+- Ensure previous value in args is a string to prevent errors in piped
+  expressions if a command returns a non-string
+- Hardcode a chat source and user for the eval GraphQL resource
+- Promote the concept of admin from eval-specific to a general concept and allow
+  any command to be configured as admin-only -
+  [#87](https://github.com/yetibot/yetibot.core/pull/87)
+
 ## 0.5.14 - 4/3/2019
 
 - Allow globally disabling embedded expressions like

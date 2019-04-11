@@ -14,14 +14,29 @@
     [yetibot.core.handler :refer [handle-unparsed-expr]]
     [taoensso.timbre :refer [error debug info color-str]]))
 
+(def eval-chat-source {:adapter :graphql :uuid :graphql :room "graphql"})
+(def eval-user {:username "graphql" :name "graphql" :id "graphql"})
+
 (defn eval-resolver
   [context {:keys [expr] :as args} value]
   (debug "eval-resolver" args)
-  (let [{:keys [value error]}  (handle-unparsed-expr expr)
+  ;; stub in a fake chat-source and user so commands that depend on these still
+  ;; work
+  (let [{:keys [value error]} (handle-unparsed-expr
+                                eval-chat-source eval-user expr)
         result (or value error)]
+    ;; normalize to always returning a collection, as required by the graphql
+    ;; schema
     (if (coll? result)
       result
       [result])))
+
+(comment
+  (handle-unparsed-expr
+    eval-chat-source
+    eval-user
+    "echo hi")
+  )
 
 (defn adapters-resolver
   [context {:keys [] :as args} value]
