@@ -3,7 +3,10 @@
     [schema.core :as s]
     [yetibot.core.config :refer [get-config]]))
 
-(defn config [] (get-config {:users [s/Str] :commands [s/Str]} [:admin]))
+(defn config [] (get-config
+                  {(s/optional-key :users ) [s/Str]
+                   (s/optional-key :commands) [s/Str]}
+                  [:admin]))
 
 (defn admin-only-command? [cmd]
   (boolean ((-> (config) :value :commands set) cmd)))
