@@ -46,7 +46,7 @@
       ;; enabled by default
       true)))
 
-(def expr-eval-timeout-ms 1000)
+(def expr-eval-timeout-ms 5000)
 
 (def ^:private exception-format "👮 %s 👮")
 
