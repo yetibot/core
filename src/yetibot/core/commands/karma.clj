@@ -1,11 +1,18 @@
 (ns yetibot.core.commands.karma
   (:require
+   [schema.core :as sch]
+   [yetibot.core.config :refer [get-config]]
    [yetibot.core.hooks :refer [cmd-hook]]
    [yetibot.core.models.karma :as model]
    [yetibot.core.commands.karma.specs :as karma.spec]
    [clojure.string :as str]
    [clj-time.format :as t]
    [clojure.spec.alpha :as s]))
+
+(def config (:value (get-config sch/Any [:karma])))
+
+(def pos-emoji (or (-> config :emoji :positive) "🌈"))
+(def neg-emoji (or (-> config :emoji :negative) "⛈"))
 
 (def error {:parse {:result/error "Sorry, I wasn't able to parse that."}
             :karma {:result/error "Sorry, that's not how Karma works. 🤔"}})
@@ -62,7 +69,7 @@
             positive-karma? (= action :positive)]
         (if (and positive-karma? (= user-id voter-id))
           (:karma error)
-          (let [[score-delta reply-emoji] (if positive-karma? [1 "💜"] [-1 "💔"])]
+          (let [[score-delta reply-emoji] (if positive-karma? [1 pos-emoji] [-1 neg-emoji])]
             (model/add-score-delta! user-id voter-name score-delta note)
             {:result/data {:user-id user-id
                            :score (model/get-score user-id)
