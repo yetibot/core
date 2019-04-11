@@ -1,6 +1,6 @@
 (ns yetibot.core.test.commands.karma.specs
   (:require
-   [midje.sweet :refer [facts fact => =not=> truthy]]
+   [midje.sweet :refer [fact => =not=> truthy]]
    [yetibot.core.commands.karma.specs :as karma.spec]
    [clj-time.core :as time]
    [clj-time.coerce :as time.coerce]
@@ -12,29 +12,29 @@
 (def test-note (str "test-note-" epoch))
 
 ;; The context passed to our command handlers
-(def slack-ctx {:chat-source {:adapter :slack}, :user {:id test-voter :name test-voter}})
+(def ctx {:user {:id test-voter :name test-voter}})
 
-(facts "common specs (not yet relocated)"
-       (fact ctx
-             (let [invalid-ctx (assoc-in slack-ctx [:chat-source :adapter] nil)]
-               (s/valid? ::karma.spec/ctx slack-ctx)       => truthy
-               (s/valid? ::karma.spec/ctx invalid-ctx) =not=> truthy)))
+(fact ctx
+      (let [invalid-ctx (assoc-in ctx [:user :name] nil)]
+        (s/valid? ::karma.spec/ctx ctx)             => truthy
+        (s/valid? ::karma.spec/ctx invalid-ctx) =not=> truthy))
 
-(facts karma
-       (fact user-id
-             (s/valid? ::karma.spec/user-id "@jereme")       => truthy
-             (s/valid? ::karma.spec/user-id "@7jereme")      => truthy
-             (s/valid? ::karma.spec/user-id "@jereme7")      => truthy
-             (s/valid? ::karma.spec/user-id "@jer-eme")      => truthy
-             (s/valid? ::karma.spec/user-id "jereme")    =not=> truthy
-             (s/valid? ::karma.spec/user-id "@--jereme") =not=> truthy
-             (s/valid? ::karma.spec/user-id "@jereme--") =not=> truthy)
+(fact user-id
+      (s/valid? ::karma.spec/user-id "@lake")       => truthy
+      (s/valid? ::karma.spec/user-id "@7lake")      => truthy
+      (s/valid? ::karma.spec/user-id "@lake7")      => truthy
+      (s/valid? ::karma.spec/user-id "@la-ke")      => truthy
+      (s/valid? ::karma.spec/user-id "lake")    =not=> truthy
+      (s/valid? ::karma.spec/user-id "@--lake") =not=> truthy
+      (s/valid? ::karma.spec/user-id "@lake--") =not=> truthy)
 
-       (fact action
-             (first (s/conform ::karma.spec/action "++")) => :positive
-             (first (s/conform ::karma.spec/action "--")) => :negative
-             (s/valid? ::karma.spec/action "+-")      =not=> truthy)
+(fact action
+      (first (s/conform ::karma.spec/action "++")) => :positive
+      (first (s/conform ::karma.spec/action "--")) => :negative
+      (s/valid? ::karma.spec/action "+-")      =not=> truthy
+      (s/valid? ::karma.spec/action "")        =not=> truthy)
 
-       (fact note
-             (s/valid? ::karma.spec/note "The quick brown fox") => truthy
-             (s/valid? ::karma.spec/note 42)                =not=> truthy))
+(fact note
+      (s/valid? ::karma.spec/note "Lake") => truthy
+      (s/valid? ::karma.spec/note "42")   => truthy
+      (s/valid? ::karma.spec/note 42) =not=> truthy)
