@@ -11,11 +11,11 @@
 
 (def config (:value (get-config sch/Any [:karma])))
 
-(def pos-emoji (or (-> config :emoji :positive) "🌈"))
-(def neg-emoji (or (-> config :emoji :negative) "⛈"))
+(def pos-emoji (or (-> config :emoji :positive) ":rainbow:"))  ;; 🌈
+(def neg-emoji (or (-> config :emoji :negative) ":thunder_cloud_and_rain:"))  ;; ⛈
 
 (def error {:parse {:result/error "Sorry, I wasn't able to parse that."}
-            :karma {:result/error "Sorry, that's not how Karma works. 🤔"}})
+            :karma {:result/error "Sorry, that's not how Karma works. :thinking_face:"}})  ;; 🤔
 
 (defn- fmt-user-score
   [user-id score]

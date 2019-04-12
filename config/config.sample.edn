@@ -67,4 +67,4 @@
   :admin {:commands ["observer" "obs"]
           :users ["U123123" "~awesomeperson"]},
   :nrepl {:port ""}
-  :karma {:emoji {:positive "🌮" :negative "💩"}}}}
+  :karma {:emoji {:positive ":taco:" :negative ":poop:"}}}}
