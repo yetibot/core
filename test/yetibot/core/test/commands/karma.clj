@@ -8,14 +8,14 @@
    [clj-time.coerce :as time.coerce]))
 
 (def epoch (time.coerce/to-long (time/now)))
-(def test-user (str "test-user-" epoch))
-(def test-voter (str "test-voter-" epoch))
+(def test-user (str "@test-user-" epoch))
+(def test-voter (str "@test-voter-" epoch))
 (def test-note (str "test-note-" epoch))
 (def test-score 1000000)
 (def _ "entire-match not used by test")
 
 ;; The context passed to our command handlers
-(def slack-ctx {:chat-source {:adapter :slack}, :user {:id test-voter :name test-voter}})
+(def ctx {:user {:id test-voter :name test-voter}})
 
 (namespace-state-changes (before :contents (db/start)))
 
@@ -23,10 +23,10 @@
 
   ;; Our DB could have other users' scores so we make the assumption
   ;; that a high enough `test-score' will keep our `test-user' in the
-  ;; leaderboard.
+  ;; leaderboard.  Dodgy.
   (fact get-score
         (model/add-score-delta! test-user test-voter test-score test-note)
-        (let [data (-> (get-score (assoc slack-ctx :match test-user))
+        (let [data (-> (get-score (assoc ctx :match [_ test-user]))
                        :result/data)]
           (:user-id data)                  => test-user
           (:score data)                    => test-score
@@ -35,7 +35,7 @@
 
   (fact get-high-score
         (model/add-score-delta! test-user test-voter test-score test-note)
-        (let [data (->> (get-high-scores slack-ctx)
+        (let [data (->> (get-high-scores ctx)
                         :result/data
                         (filter #(= (:user-id %) test-user))
                         first)]
@@ -43,13 +43,13 @@
           (:score data)   => test-score))
 
   (fact "adjust-score can increase another user's karma"
-        (let [data (-> (adjust-score (assoc slack-ctx :match [_ test-user "++"]))
+        (let [data (-> (adjust-score (assoc ctx :match [_ test-user "++"]))
                        :result/data)]
           (:user-id data) => test-user
           (:score data)   => 1))
 
   (fact "adjust-score can increase another user's karma and include a note"
-        (let [data (-> (adjust-score (assoc slack-ctx :match [_ test-user "++" test-note]))
+        (let [data (-> (adjust-score (assoc ctx :match [_ test-user "++" test-note]))
                        :result/data)]
           (:user-id data)                  => test-user
           (:score data)                    => 1
@@ -57,20 +57,20 @@
           (-> data :notes first :voter-id) => test-voter))
 
   (fact "adjust-score can decrease another user's karma"
-        (let [data (-> (adjust-score (assoc slack-ctx :match [_ test-user "--"]))
+        (let [data (-> (adjust-score (assoc ctx :match [_ test-user "--"]))
                        :result/data)]
           (:user-id data) => test-user
           (:score data)   => -1))
 
   (fact "adjust-score can decrease another user's karma and include a note"
-        (let [data (-> (adjust-score (assoc slack-ctx :match [_ test-user "--" test-note]))
+        (let [data (-> (adjust-score (assoc ctx :match [_ test-user "--" test-note]))
                        :result/data)]
           ;; We don't return notes for negative karma adjustments
           (:user-id data) => test-user
           (:score data)   => -1))
 
   (fact "adjust-score allows a user to decrease their own karma"
-        (let [data (-> (adjust-score (-> slack-ctx
+        (let [data (-> (adjust-score (-> ctx
                                          (assoc :match [_ test-user "--"])
                                          (assoc-in [:user :id] test-user)))
                        :result/data)]
@@ -78,19 +78,7 @@
           (:score data)   => -1))
 
   (fact "adjust-score precludes a user from increasing their own karma"
-        (let [r (adjust-score (-> slack-ctx
+        (let [r (adjust-score (-> ctx
                                   (assoc :match [_ test-user "++"])
                                   (assoc-in [:user :id] test-user)))]
-          (:result/error r) => truthy))
-
-  (fact "adjust-score tightly parses invocations"
-        (adjust-score (assoc slack-ctx :match (format "%s+-" test-user)))   => #(contains? % :result/error)
-        (adjust-score (assoc slack-ctx :match (format "+-%s" test-user)))   => #(contains? % :result/error)
-        (adjust-score (assoc slack-ctx :match (format "++%s" test-user)))   => #(contains? % :result/error)
-        (adjust-score (assoc slack-ctx :match (format "--%s" test-user)))   => #(contains? % :result/error)
-        (adjust-score (assoc slack-ctx :match (format "++%s++" test-user))) => #(contains? % :result/error)
-        (adjust-score (assoc slack-ctx :match (format "++%s--" test-user))) => #(contains? % :result/error)
-        (adjust-score (assoc slack-ctx :match (format "--%s--" test-user))) => #(contains? % :result/error)
-        (adjust-score (assoc slack-ctx :match (format "--%s++" test-user))) => #(contains? % :result/error)
-        (adjust-score (assoc slack-ctx :match (format "%s++--" test-user))) => #(contains? % :result/error)
-        (adjust-score (assoc slack-ctx :match (format "%s--++" test-user))) => #(contains? % :result/error)))
+          (:result/error r) => truthy)))
