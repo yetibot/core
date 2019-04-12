@@ -178,4 +178,7 @@
    ;; nrepl configuration
    :yetibot-nrepl-port ""
 
+   ;; `karma`
+   :yetibot-karma-emoji-positive "🌮"
+   :yetibot-karma-emoji-negative "💩"
 }}}
