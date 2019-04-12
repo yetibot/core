@@ -1,6 +1,17 @@
 # yetibot.core change log
 
+## 0.5.16 - 4/12/2019
+
+- Karma improvements:
+  - Make emojis that represent positive or negative karma configurable
+    [#89](https://github.com/yetibot/yetibot.core/pull/89)
+  - Remove IRC support until we have a clean way to handle users
+    [#88](https://github.com/yetibot/yetibot.core/pull/88)
+- Increase command timeout to 5 seconds (previously 1 second)
+- Make admin config optional
+
 ## 0.5.15 - 4/10/2019
+
 
 - Ensure previous value in args is a string to prevent errors in piped
   expressions if a command returns a non-string
