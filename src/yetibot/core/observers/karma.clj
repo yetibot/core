@@ -42,9 +42,8 @@
   (karma/adjust-score {:user {:id voter-id :name voter-name}
                        :match ["_" user-id action note]}))
 
-(def add-karma (partial adjust-karma "++"))
-
-(def remove-karma (partial adjust-karma "--"))
+(def inc-karma (partial adjust-karma "++"))
+(def dec-karma (partial adjust-karma "--"))
 
 (defn- fmt-response
   [result]
@@ -58,17 +57,25 @@
 (defn reaction-hook
   [event-info]
   (when-let [response (condp = (:reaction event-info)
-                        pos-reaction (-> event-info parse-react-event add-karma)
-                        neg-reaction (-> event-info parse-react-event remove-karma)
+                        pos-reaction (-> event-info parse-react-event inc-karma)
+                        neg-reaction (-> event-info parse-react-event dec-karma)
                         nil)]
-    (chat-data-structure (fmt-response response))))
+    (fmt-response response)))
 
 (defn message-hook
   [event-info]
   (when-let [parsed-event (parse-message-event event-info)]
-    (-> (apply adjust-karma parsed-event)
-        fmt-response
-        chat-data-structure)))
+    (fmt-response (apply adjust-karma parsed-event))))
 
-(obs-hook #{:react} #'reaction-hook)
-(obs-hook #{:message} #'message-hook)
+;; chat-data-structure requires some run-time state so we're pulling
+;; it out of our hook fns so they can be tested.
+(defn hook-wrapper
+  [f event]
+  (when-let [response (f event)]
+    (chat-data-structure response)))
+
+(def reaction-hook-wrapper (partial hook-wrapper reaction-hook))
+(def message-hook-wrapper (partial hook-wrapper message-hook))
+
+(obs-hook #{:react} #'reaction-hook-wrapper)
+(obs-hook #{:message} #'message-hook-wrapper)
