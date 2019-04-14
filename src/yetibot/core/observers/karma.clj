@@ -13,24 +13,38 @@
       (str/replace "_" " ")))
 
 (def pos-reaction (emoji-shortcode->reaction karma/pos-emoji))
-
 (def neg-reaction (emoji-shortcode->reaction karma/neg-emoji))
 
-(defn- parse-event-info
+(def cmd-re (re-pattern
+             (str "^(?x) \\s* (" karma/pos-emoji "|" karma/neg-emoji ") \\s*"
+                  "(@\\w[-\\w]*\\w) \\s*"
+                  "(?:--|\\+\\+)?"
+                  "(?: \\s+(.+) )? \\s*$")))
+
+(defn- parse-react-event
   [e]
   {:voter-name (-> e :user :name)
    :voter-id   (format "@%s" (-> e :user :id))
    :user-id    (format "@%s" (-> e :message-user :id))})
 
+(defn- parse-message-event
+  [{body :body user :user}]
+  (when-let [[_ action user-id note] (re-matches cmd-re body)]
+    (let [action (if (= action karma/pos-emoji) "++" "--")]
+      [action
+       {:voter-name (:name user)
+        :voter-id   (format "@%s" (:id user))
+        :user-id    user-id
+        :note       note}])))
+
 (defn- adjust-karma
-  [event-info, action]
-  (let [{:keys [voter-name voter-id user-id]} (parse-event-info event-info)]
-    (karma/adjust-score {:user {:id voter-id :name voter-name}
-                         :match ["_" user-id action]})))
+  [action {:keys [voter-id voter-name user-id note]}]
+  (karma/adjust-score {:user {:id voter-id :name voter-name}
+                       :match ["_" user-id action note]}))
 
-(defn- add-karma [e] (adjust-karma e "++"))
+(def add-karma (partial adjust-karma "++"))
 
-(defn- remove-karma [e] (adjust-karma e "--"))
+(def remove-karma (partial adjust-karma "--"))
 
 (defn- fmt-response
   [result]
@@ -43,10 +57,18 @@
 
 (defn reaction-hook
   [event-info]
-  (if-let [response (condp = (:reaction event-info)
-                      pos-reaction (add-karma event-info)
-                      neg-reaction (remove-karma event-info)
-                      nil)]
+  (when-let [response (condp = (:reaction event-info)
+                        pos-reaction (-> event-info parse-react-event add-karma)
+                        neg-reaction (-> event-info parse-react-event remove-karma)
+                        nil)]
     (chat-data-structure (fmt-response response))))
 
+(defn message-hook
+  [event-info]
+  (when-let [parsed-event (parse-message-event event-info)]
+    (-> (apply adjust-karma parsed-event)
+        fmt-response
+        chat-data-structure)))
+
 (obs-hook #{:react} #'reaction-hook)
+(obs-hook #{:message} #'message-hook)
