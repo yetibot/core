@@ -179,6 +179,6 @@
    :yetibot-nrepl-port ""
 
    ;; `karma`
-   :yetibot-karma-emoji-positive "🌮"
-   :yetibot-karma-emoji-negative "💩"
-}}}
+   :yetibot-karma-emoji-positive ":taco:"
+   :yetibot-karma-emoji-negative ":poop:"
+   }}}
