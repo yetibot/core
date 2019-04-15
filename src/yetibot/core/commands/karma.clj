@@ -9,6 +9,19 @@
    [clj-time.format :as t]
    [clojure.spec.alpha :as s]))
 
+(comment
+
+  The Karma feature is presently only available for use in Slack.
+
+  Unfortunately Slack delivers reaction events by shortcode (actually
+  slightly modified string version).  Without an exhaustive mapping
+  there's no reliable way for us to support configrable emoji reaction
+  processing in Slack.  Unfortunately, this breaks IRC, where reactions
+  are then rendered as the shortcode string instead of the emoji
+  character.  We hope to improve this in the future.
+
+  )
+
 (def config (:value (get-config sch/Any [:karma])))
 
 (def pos-emoji (or (-> config :emoji :positive) ":rainbow:"))  ;; 🌈

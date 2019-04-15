@@ -7,6 +7,13 @@
    [yetibot.core.commands.karma :as karma]))
 
 (defn- emoji-shortcode->reaction
+  "When Slack delivers reaction events it reformats the emoji
+  shortcodes, removing colons and replacing underscores with spaces.
+  We provide that same functionality, here, so we can more easily
+  compare delivered events.
+
+  :thunder_cloud_and_rain: is delivered as 'thunder cloud and rain'
+  "
   [emoji-shortcode]
   (-> (re-matches #":(.+):" emoji-shortcode)
       second
