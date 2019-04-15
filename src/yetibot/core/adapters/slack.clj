@@ -92,10 +92,10 @@
 (defn send-msg [config msg]
   (let [img? (image? msg)
         _ (debug "send-msg"
-                 (color-str :blue (pr-str config))
-                 {:img? img?
-                  :target *target*
-                  :thread-ts *thread-ts*})
+                 (color-str :blue
+                            {:img? img?
+                             :target *target*
+                             :thread-ts *thread-ts*}))
 
         {:keys [ok response_metadata]
          slack-error :error :as response}
