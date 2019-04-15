@@ -20,17 +20,11 @@
 (def pos-reaction-event (assoc reaction-event :reaction pos-reaction))
 (def neg-reaction-event (assoc reaction-event :reaction neg-reaction))
 
-;; Mock message event passed to our observers
-(def message-event {:user {:id test-voter :name test-voter}})
-
 (defn mk-message-event
+  "Return mock message event to pass to our observers"
   [emoji, user]
-  (assoc message-event :body (format "%s @%s" emoji user)))
-
-(def pos-message-event (mk-message-event pos-emoji test-user))
-(def neg-message-event (mk-message-event neg-emoji test-user))
-(def pos-message-self-event (mk-message-event pos-emoji test-voter))
-(def neg-message-self-event (mk-message-event neg-emoji test-voter))
+  (let [e {:user {:id test-voter :name test-voter}}]
+    (assoc e :body (format "%s @%s" emoji user))))
 
 (defn- reply-is?
   [emoji s]
@@ -47,28 +41,32 @@
 
   ;; Reaction Observer
   (fact "reaction-hook can increment karma for another user"
-        (reaction-hook pos-reaction-event) => inc-success?)
+    (reaction-hook pos-reaction-event) => inc-success?)
 
   (fact "reaction-hook can decrement karma for another user"
-        (reaction-hook neg-reaction-event) => dec-success?)
+    (reaction-hook neg-reaction-event) => dec-success?)
 
   (fact "reaction-hook allows a user to decrement their own karma"
-        (let [e (assoc-in neg-reaction-event [:message-user :id] test-voter)]
-          (reaction-hook e) => dec-success?))
+    (let [e (assoc-in neg-reaction-event [:message-user :id] test-voter)]
+      (reaction-hook e) => dec-success?))
 
   (fact "reaction-hook precludes a users from incrementing their own karma"
-        (let [e (assoc-in pos-reaction-event [:message-user :id] test-voter)]
-          (reaction-hook e) => (-> error :karma :result/error)))
+    (let [e (assoc-in pos-reaction-event [:message-user :id] test-voter)]
+      (reaction-hook e) => (-> error :karma :result/error)))
 
   ;; Message Observer
   (fact "message-hook can increment karma for another user"
-        (message-hook pos-message-event) => inc-success?)
+    (let [e (mk-message-event pos-emoji test-user)]
+      (message-hook e)) => inc-success?)
 
   (fact "message-hook can decrement karma for another user"
-        (message-hook neg-message-event) => dec-success?)
+    (let [e (mk-message-event neg-emoji test-user)]
+      (message-hook e))=> dec-success?)
 
   (fact "message-hook allows a user to decrement their own karma"
-        (message-hook neg-message-self-event) => dec-success?)
+    (let [e (mk-message-event neg-emoji test-voter)]
+      (message-hook e)) => dec-success?)
 
   (fact "message-hook precludes a users from incrementing their own karma"
-        (message-hook pos-message-self-event) => (-> error :karma :result/error)))
+    (let [e (mk-message-event pos-emoji test-voter)]
+      (message-hook e)) => (-> error :karma :result/error)))

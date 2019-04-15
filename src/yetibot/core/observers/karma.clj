@@ -74,8 +74,5 @@
   (when-let [response (f event)]
     (chat-data-structure response)))
 
-(def reaction-hook-wrapper (partial hook-wrapper reaction-hook))
-(def message-hook-wrapper (partial hook-wrapper message-hook))
-
-(obs-hook #{:react} #'reaction-hook-wrapper)
-(obs-hook #{:message} #'message-hook-wrapper)
+(obs-hook #{:react} (partial hook-wrapper reaction-hook))
+(obs-hook #{:message} (partial hook-wrapper message-hook))
