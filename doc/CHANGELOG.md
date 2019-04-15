@@ -1,5 +1,12 @@
 # yetibot.core change log
 
+## 0.5.17 - 4/15/2019
+
+- Add configurable observers for karma -
+  [#90](https://github.com/yetibot/yetibot.core/pull/90) by
+  [@jcorrado](https://github.com/jcorrado).
+- Reduce logging in Slack adapter
+
 ## 0.5.16 - 4/12/2019
 
 - Karma improvements:
