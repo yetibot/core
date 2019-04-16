@@ -24,15 +24,15 @@
 
 (def cmd-re (re-pattern
              (str "^(?x) \\s* (" karma/pos-emoji "|" karma/neg-emoji ") \\s*"
-                  "(@\\w[-\\w]*\\w) \\s*"
+                  "@(\\w[-\\w]*\\w) \\s*"
                   "(?:--|\\+\\+)?"
                   "(?: \\s+(.+) )? \\s*$")))
 
 (defn- parse-react-event
   [e]
   {:voter-name (-> e :user :name)
-   :voter-id   (format "@%s" (-> e :user :id))
-   :user-id    (format "@%s" (-> e :message-user :id))})
+   :voter-id   (-> e :user :id)
+   :user-id    (-> e :message-user :id)})
 
 (defn- parse-message-event
   [{body :body user :user}]
@@ -40,7 +40,7 @@
     (let [action (if (= action karma/pos-emoji) "++" "--")]
       [action
        {:voter-name (:name user)
-        :voter-id   (format "@%s" (:id user))
+        :voter-id   (:id user)
         :user-id    user-id
         :note       note}])))
 
@@ -56,7 +56,7 @@
   [result]
   (if (contains? result :result/error)
     (:result/error result)
-    (format "%s <%s>: %d"
+    (format "%s <@%s>: %d"
             (:result/value result)
             (-> result :result/data :user-id)
             (-> result :result/data :score))))

@@ -8,8 +8,8 @@
    [clj-time.coerce :as time.coerce]))
 
 (def epoch (time.coerce/to-long (time/now)))
-(def test-user (str "@test-user-" epoch))
-(def test-voter (str "@test-voter-" epoch))
+(def test-user (str "test-user-" epoch))
+(def test-voter (str "test-voter-" epoch))
 (def test-note (str "test-note-" epoch))
 (def test-score 1000000)
 (def _ "entire-match not used by test")
