@@ -37,7 +37,8 @@
 
 (namespace-state-changes (before :contents (db/start)))
 
-(with-state-changes [(after :facts (model/delete-user! test-user))]
+(with-state-changes [(after :facts (do (model/delete-user! test-user)
+                                       (model/delete-user! test-voter)))]
 
   ;; Reaction Observer
   (fact "reaction-hook can increment karma for another user"

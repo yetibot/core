@@ -9,18 +9,15 @@
    [clj-time.format :as t]
    [clojure.spec.alpha :as s]))
 
-(comment
-
-  The Karma feature is presently only available for use in Slack.
-
-  Unfortunately Slack delivers reaction events by shortcode (actually
-  slightly modified string version).  Without an exhaustive mapping
-  there's no reliable way for us to support configrable emoji reaction
-  processing in Slack.  Unfortunately, this breaks IRC, where reactions
-  are then rendered as the shortcode string instead of the emoji
-  character.  We hope to improve this in the future.
-
-  )
+;; The Karma feature is presently only available for use in Slack.
+;;
+;; Slack delivers reaction events by shortcode (actually a slightly
+;; modified string version).  Without an exhaustive mapping there's no
+;; reliable way for us to support configrable emoji reaction
+;; processing in Slack, which we have prioritized.  Unfortunately,
+;; this breaks IRC, where response emjoi are then rendered as the
+;; shortcode string instead of the character.  We hope to improve this
+;; in the future.
 
 (def config (:value (get-config sch/Any [:karma])))
 
@@ -32,7 +29,7 @@
 
 (defn- fmt-user-score
   [user-id score]
-  (format "<%s>: %s\n" user-id score))
+  (format "<@%s>: %s\n" user-id score))
 
 (defn- fmt-user-notes
   [notes]
@@ -90,6 +87,6 @@
              :result/value reply-emoji}))))))
 
 (cmd-hook "karma"
-          #"^(?x) \s* (@\w[-\w]*\w) \s*$" get-score
-          #"^(?x) \s* (@\w[-\w]*\w) \s{0,2} (--|\+\+) (?: \s+(.+) )? \s*$" adjust-score
+          #"^(?x) \s* @(\w[-\w]*\w) \s*$" get-score
+          #"^(?x) \s* @(\w[-\w]*\w) \s{0,2} (--|\+\+) (?: \s+(.+) )? \s*$" adjust-score
           _ get-high-scores)

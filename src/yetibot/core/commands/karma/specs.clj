@@ -7,7 +7,7 @@
 
 (s/def ::ctx (s/keys :req-un [::user]))
 
-(s/def ::user-id (s/and string? #(re-matches #"@\w[-\w]*\w" %)))
+(s/def ::user-id (s/and string? #(re-matches #"\w[-\w]*\w" %)))
 (s/def ::action (s/and string? (s/or :positive #(= "++" %)
                                      :negative #(= "--" %))))
 (s/def ::note (s/nilable string?))
