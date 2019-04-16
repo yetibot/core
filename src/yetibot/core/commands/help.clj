@@ -8,7 +8,10 @@
 
 (defn help-topics
   [_]
-  (str "Use help <topic> for more details"
+  (str "Use help <topic> for more details."
+       \newline
+       "Note: help no longer includes aliases by default. Use the alias command
+        to list available aliases"
        \newline
        (s/join ", "
                (sort (keys (get-docs))))))

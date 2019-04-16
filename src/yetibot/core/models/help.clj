@@ -1,38 +1,69 @@
 (ns yetibot.core.models.help
+  "Store help docs in memory and provide convenience functions to access them.
+
+   Note: help docs for built in commands and docs for aliases are stored
+   separately in their own atoms (`docs` and `alias-docs`).
+
+   Note: fuzzy matching only works on built in commands (not aliases)."
   (:require [clojure.string :as s]
+            [taoensso.timbre :refer [info warn error]]
             [clj-fuzzy.metrics :refer [levenshtein]]
             [clojure.data.json :as json]))
 
 (defonce ^{:doc "Map of prefix to corresponding command docs"}
   docs (atom {}))
 
+(defonce ^{:doc "Map of prefix to corresponding alias docs"}
+  alias-docs (atom {}))
+
+(comment
+  (reset! docs {})
+  (reset! alias-docs {})
+  )
+
 (def distance-threshold "Minimum distance for fuzzy prefix matching" 3)
 
 (def distance-range
-  "The range of acceptible distances to look for, beginning with 0 up to
-   `distance-threshold` exclusive"
+  "The range of acceptible distances to look for, beginning with 0 up
+   to `distance-threshold` exclusive"
   (range (inc distance-threshold)))
 
-(defn add-docs [prefix cmds]
-  ; add to the docs atom using prefix string as the key
-  (let [cmds (->> cmds
-                  (remove nil?)
-                  ; trim up that whitespace
-                  (map (comp
-                         (partial s/join \newline)
-                         (partial map s/trim)
-                         s/split-lines))
-                  set)]
-    (swap! docs conj {(str prefix) cmds})))
+(defn add-docs
+  "Add docstrings for a prefix to the appropriate atom, depending on whether or
+   not it is an alias"
+  ([prefix cmds] (add-docs prefix cmds false))
+  ([prefix cmds alias?]
+   ;; only add them if cmds contains docstrings (they might not if there was no
+   ;; metadata on the sub-command functions, as is the case when creating
+   ;; aliases)
+   (when-let [cmds (->> cmds (remove nil?) seq)]
+     (info "add-docs" {:alias? alias?} prefix (pr-str cmds))
+     ;; add to the docs atom using prefix string as the key
+     (let [docs-atom (if alias? alias-docs docs)
+           cmds (->> cmds
+                     ;; trim up that whitespace 😑
+                     (map (comp
+                            (partial s/join \newline)
+                            (partial map s/trim)
+                            s/split-lines))
+                     set)]
+       (swap! docs-atom conj {(str prefix) cmds})))))
 
 (defn get-docs [] @docs)
+(defn get-alias-docs [] @alias-docs)
 
-(defn remove-docs [prefix] (swap! docs dissoc prefix))
+(defn remove-docs
+  [prefix]
+  ;; attemp to remove from both help stores
+  (swap! alias-docs dissoc prefix)
+  (swap! docs dissoc prefix))
 
 (defn get-docs-for
   "Return a set of all doc entries for a given prefix"
   [prefix]
-  (get (get-docs) prefix))
+  (or
+   (get (get-docs) prefix)
+   (get (get-alias-docs) prefix)))
 
 (defn distance-to-prefix
   "Take a string and return prefixes grouped by distance"
