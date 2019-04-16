@@ -1,5 +1,14 @@
 # yetibot.core change log
 
+## 0.5.18 - 4/16/2019
+
+- Fix karma regression where user could increment their own karma
+  [#92](https://github.com/yetibot/yetibot.core/pull/92)
+  by [@jcorrado](https://github.com/jcorrado).
+- Cleanup karma formatting
+  [#94](https://github.com/yetibot/yetibot.core/pull/94)
+  by [@jcorrado](https://github.com/jcorrado).
+
 ## 0.5.17 - 4/15/2019
 
 - Add configurable observers for karma -
