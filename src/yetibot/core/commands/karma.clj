@@ -24,8 +24,8 @@
 (def pos-emoji (or (-> config :emoji :positive) ":rainbow:"))  ;; 🌈
 (def neg-emoji (or (-> config :emoji :negative) ":thunder_cloud_and_rain:"))  ;; ⛈
 
-(def error {:parse {:result/error "Sorry, I wasn't able to parse that."}
-            :karma {:result/error "Sorry, that's not how Karma works. :thinking_face:"}})  ;; 🤔
+(def error {:parse "Sorry, I wasn't able to parse that."
+            :karma "Sorry, that's not how Karma works. :thinking_face:"})  ;; 🤔
 
 (defn- fmt-user-score
   [user-id score]
@@ -51,7 +51,7 @@
   {:yb/cat #{:fun}}
   [ctx]
   (if-not (s/valid? ::karma.spec/get-score-ctx ctx)
-    (:parse error)
+    {:result/error (:parse error)}
     (let [{[_ user-id] :match} ctx
           score (model/get-score user-id)
           notes (model/get-notes user-id)]
@@ -73,18 +73,23 @@
   [ctx]
   (let [parsed (s/conform ::karma.spec/adjust-score-ctx ctx)]
     (if (= parsed ::s/invalid)
-      (:parse error)
+      {:result/error (:parse error)}
       (let [{{voter-id :id voter-name :name} :user} parsed
             {{user-id :user-id [action _] :action note :note} :match} parsed
             positive-karma? (= action :positive)]
         (if (and positive-karma? (= user-id voter-id))
-          (:karma error)
+          {:result/data {:error (:karma error)
+                         :user-id user-id
+                         :voter-id voter-id}
+           :result/value (:karma error)}
           (let [[score-delta reply-emoji] (if positive-karma? [1 pos-emoji] [-1 neg-emoji])]
             (model/add-score-delta! user-id voter-name score-delta note)
-            {:result/data {:user-id user-id
-                           :score (model/get-score user-id)
-                           :notes (model/get-notes user-id)}
-             :result/value reply-emoji}))))))
+            (let [score (model/get-score user-id)
+                  notes (model/get-notes user-id)]
+              {:result/data {:user-id user-id
+                             :score score
+                             :notes notes}
+               :result/value (format "%s <@%s>: %d" reply-emoji user-id score)})))))))
 
 (cmd-hook "karma"
           #"^(?x) \s* @(\w[-\w]*\w) \s*$" get-score

@@ -52,27 +52,18 @@
 (def inc-karma (partial adjust-karma "++"))
 (def dec-karma (partial adjust-karma "--"))
 
-(defn- fmt-response
-  [result]
-  (if (contains? result :result/error)
-    (:result/error result)
-    (format "%s <@%s>: %d"
-            (:result/value result)
-            (-> result :result/data :user-id)
-            (-> result :result/data :score))))
-
 (defn reaction-hook
   [event-info]
   (when-let [response (condp = (:reaction event-info)
                         pos-reaction (-> event-info parse-react-event inc-karma)
                         neg-reaction (-> event-info parse-react-event dec-karma)
                         nil)]
-    (fmt-response response)))
+    (:result/value response)))
 
 (defn message-hook
   [event-info]
   (when-let [parsed-event (parse-message-event event-info)]
-    (fmt-response (apply adjust-karma parsed-event))))
+    (:result/value (apply adjust-karma parsed-event))))
 
 ;; chat-data-structure requires some run-time state so we're pulling
 ;; it out of our hook fns so they can be tested.
