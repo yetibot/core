@@ -53,7 +53,7 @@
 
   (fact "reaction-hook precludes a users from incrementing their own karma"
     (let [e (assoc-in pos-reaction-event [:message-user :id] test-voter)]
-      (reaction-hook e) => (-> error :karma :result/error)))
+      (reaction-hook e) => (:karma error)))
 
   ;; Message Observer
   (fact "message-hook can increment karma for another user"
@@ -70,4 +70,4 @@
 
   (fact "message-hook precludes a users from incrementing their own karma"
     (let [e (mk-message-event pos-emoji test-voter)]
-      (message-hook e)) => (-> error :karma :result/error)))
+      (message-hook e)) => (:karma error)))

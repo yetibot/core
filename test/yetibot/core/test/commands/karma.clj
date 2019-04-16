@@ -81,4 +81,4 @@
         (let [r (adjust-score (-> ctx
                                   (assoc :match [_ test-user "++"])
                                   (assoc-in [:user :id] test-user)))]
-          (:result/error r) => truthy)))
+          (-> r :result/data :error) => (:karma error))))
