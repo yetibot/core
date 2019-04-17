@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## 0.5.19 - 4/16/2019
+
+- Remove aliases from help docs -
+  [#95](https://github.com/yetibot/yetibot.core/pull/95)
+
 ## 0.5.18 - 4/16/2019
 
 - Fix karma regression where user could increment their own karma
