@@ -29,7 +29,7 @@
 
 (deftest similar
   (let [similar (map #(str "foobar" %) (range 4))]
-    (doall (map #(add-docs % []) similar))
+    (doall (map #(add-docs % ["foobar baz"]) similar))
     (is
-      (re-find #"Did.you.mean" (first (fuzzy-get-docs-for "foobar")))
+      (re-find #"Did.you.mean" (str (first (fuzzy-get-docs-for "foobar"))))
       "When there are many similar matches, show them to the user")))
