@@ -37,7 +37,6 @@
    ;; metadata on the sub-command functions, as is the case when creating
    ;; aliases)
    (when-let [cmds (->> cmds (remove nil?) seq)]
-     (info "add-docs" {:alias? alias?} prefix (pr-str cmds))
      ;; add to the docs atom using prefix string as the key
      (let [docs-atom (if alias? alias-docs docs)
            cmds (->> cmds
