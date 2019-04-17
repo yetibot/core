@@ -52,7 +52,7 @@
     (cmd-hook (re-pattern cmd-name)
       _ cmd-fn)
     ;; manually add docs since the meta on cmd-fn is lost in cmd-hook
-    (help/add-docs cmd-name [docstring])
+    (help/add-docs cmd-name [docstring] true)
     (info "wire-alias" existing-alias)
     (if existing-alias
       (format "Replaced existing alias %s. Was `%s`" cmd-name (:cmd existing-alias))
@@ -124,6 +124,17 @@
      (format "Could not find alias %s." cmd)}))
 
 (defonce loader (future (load-aliases)))
+
+(comment
+
+  ;; load the first alias only
+  (let [alias-cmds (model/find-all)
+        first-alias (first alias-cmds)]
+    (info "loading" (pr-str first-alias))
+    (wire-alias first-alias))
+
+  )
+
 
 (cmd-hook #"alias"
           #"^$" list-aliases
