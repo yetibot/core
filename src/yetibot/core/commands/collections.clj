@@ -43,9 +43,16 @@
   "random <list> # returns a random item from <list>
    random # generate a random number"
   {:yb/cat #{:util :collection}}
-  [{items :opts}]
+  [{data :data data-collection :data-collection items :opts}]
+  (info "random"
+        (pr-str data)
+        (pr-str data-collection))
   (if (not (empty? items))
-    (rand-nth (ensure-items-collection items))
+    (let [idx (rand-int (count (ensure-items-collection items)))
+          item (nth items idx)
+          data (when data-collection (nth data-collection idx))]
+     {:result/value item
+      :result/data data})
     (str (rand 100000))))
 
 (cmd-hook #"random"

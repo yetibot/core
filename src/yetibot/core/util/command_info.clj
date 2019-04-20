@@ -35,6 +35,8 @@
    :data - data to pass in (i.e. would normally be passed from a previous command
            in a pipeline)
 
+   :data-collection - the collection subset of data that has symmetry with :opts
+
    :run-command? - whether to actually run the command. By default the command
                    will not be run, since commands often have side effects and
                    thus would not be suitable for unit tests
@@ -48,7 +50,7 @@
             (which is how we determine `:matched-sub-cmd`)
 
    Useful for testing."
-  [command & [{:keys [opts data raw run-command?]}]]
+  [command & [{:keys [opts data-collection data raw run-command?]}]]
   (info "command-execution-info" opts)
   (let [parsed (parser command)]
     (if (simple-command? parsed)
@@ -56,18 +58,19 @@
             [cmd-re sub-commands] (hooks/find-sub-cmds cmd)
             [match sub-fn] (hooks/match-sub-cmds args sub-commands)]
         (merge
-          {:parse-tree parsed
-           :sub-commands sub-commands
-           :matched-sub-cmd sub-fn
-           :match match
-           :command cmd
-           :command-args args}
-          (when run-command?
-            {:result (sub-fn {:match match
-                              :args args
-                              :data data
-                              :raw raw
-                              :opts opts})})))
+         {:parse-tree parsed
+          :sub-commands sub-commands
+          :matched-sub-cmd sub-fn
+          :match match
+          :command cmd
+          :command-args args}
+         (when run-command?
+           {:result (sub-fn {:match match
+                             :args args
+                             :data data
+                             :data-collection data-collection
+                             :raw raw
+                             :opts opts})})))
       (throw (ex-info
-               (str "Invalid command, only simple commands are supported")
-               {:parsed parsed})))))
+              (str "Invalid command, only simple commands are supported")
+              {:parsed parsed})))))

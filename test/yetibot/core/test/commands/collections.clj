@@ -110,3 +110,19 @@
          (-> (command-execution-info "data $.[0]" {:data [{:foo :bar}]
                                                    :run-command? true})
              :result :result/data)))))
+
+(deftest data-propagation-test
+  (testing "Collection utils should propagate data"
+    (let [{{:result/keys [value data]} :result}
+          (command-execution-info
+            "random"
+            {:opts (map str [1 2 3])
+             :data-collection (map #(hash-map % %) [1 2 3])
+             :data {:items (map #(hash-map % %) [1 2 3])
+                    :count 3}
+             :run-command? true})]
+      (is
+        (= (->> value read-string (repeat 2) (apply hash-map))
+           data)
+        "random should pull the corresponding random item out of the data and
+         propagate it"))))

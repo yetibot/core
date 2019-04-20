@@ -35,9 +35,12 @@
   (debug "pipe-cmds" *chat-source* acc cmd-with-args next-cmds)
   (let [;; the previous accumulated value. for the first command in a series of
         ;; piped commands, preivous-value and previous-data will be empty
-        {previous-value :value previous-data :data} acc
+        {previous-value :value
+         previous-data-collection :data-collection
+         previous-data :data} acc
         extra {:raw previous-value
                :data (or previous-data previous-value)
+               :data-collection previous-data-collection
                :settings (:settings acc)
                :skip-next-n (:skip-next-n acc)
                :next-cmds next-cmds
@@ -62,38 +65,50 @@
             ;; - a map containing a :value key and an optional :data key
             command-result
             (apply
-              handle-cmd
+             handle-cmd
               ;; determine whether to pass args to handle command as an :opts
               ;; collection or as a single value, depending on whether previous
               ;; value looks like a collection
-              (if (coll? possible-opts)
-                [cmd-with-args (conj extra {:opts possible-opts})]
+             (if (coll? possible-opts)
+               [cmd-with-args (conj extra {:opts possible-opts})]
                 ;; value is the previous primitive output from the last
                 ;; command. the first time around value is empty so just use
                 ;; the raw cmd-with-args.
-                [(if (empty? (str previous-value))
-                   cmd-with-args
+               [(if (empty? (str previous-value))
+                  cmd-with-args
                    ;; next time apply pseudo-format to support %s substitution
-                   (pseudo-format cmd-with-args previous-value))
-                 extra]))
+                  (pseudo-format cmd-with-args previous-value))
+                extra]))
 
             _ (info "command-result" (color-str :green (pr-str command-result)))
 
             {value :result/value
              error :result/error
+             collection-path :result/collection-path
              data :result/data} (when (map? command-result) command-result)
-            ]
+
+            ;; when `collection-path` is provided, obtain it and pass it over
+            ;; the pipe for potential consumption by collection commands
+            data-collection (or (when collection-path
+                                  (get-in data collection-path))
+                                ;; or if it's not provided, check to see if data
+                                ;; is sequential and provide it as the
+                                ;; data-collection, which is used by collection
+                                ;; utilities like head, tail, and random
+                                (when (sequential? data) data))]
+
         (if error
           ;; if there's an error short circuit the pipeline using `reduced`
           (do
             (info "Caught error in pipeline" error)
             (reduced
-              {:error
-               (str "💥 Error in `" cmd-with-args "`: " error " 💥")}))
+             {:error
+              (str "💥 Error in `" cmd-with-args "`: " error " 💥")}))
           ;; otherwise continue reducing
           (if (and (map? command-result) value)
             (assoc acc
                    :value value
+                   :data-collection data-collection
                    :data data)
             (assoc acc :value command-result)))))))
 
@@ -110,7 +125,7 @@
   ; look up the settings for channel in *chat-source*
   (let [channel-settings (channel/settings-for-chat-source *chat-source*)]
     (reduce
-      pipe-cmds
+      #'pipe-cmds
       ;; Allow commands to consume n next commands in the pipeline and inform
       ;; the reducer to skip over them. This is useful e.g. queries that can be
       ;; optimized by "pushing down" the operating into the query engine.
