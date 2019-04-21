@@ -17,6 +17,33 @@
             [yetibot.core.util.command-info :refer [command-execution-info]]
             [yetibot.core.util.format :refer [format-exception-log]]))
 
+;; TODO we need a way to preserve data on commands that operate on collections,
+;; like: grep, shuffle, sort, sortnum
+;; Idea:
+(comment
+
+  (def extra
+    {:opts [:one :two :three]
+     :data-collection [{:key :one :more :data}
+                       {:key :two :more :data}
+                       {:key :three :more :data}]})
+
+  (def re-ordering
+    (->> (:opts extra)
+         (map-indexed vector)
+         ;; then do the thing, like shuffle, or grep or whatever
+         shuffle))
+
+  ;; we can pull the result out
+  (map second re-ordering)
+  ;; and now we have an ordering map to apply to the data-collection
+  (def ordering (map first re-ordering))
+  ;; but we'd need a way to apply this ordering to the original
+  (map (partial nth (:data-collection extra)) ordering)
+  ;; kinda inefficient?
+
+  )
+
 (defn ensure-coll
   "Return nil if opts was set or return an error map otherwise"
   [{:keys [opts args]}]
@@ -43,10 +70,7 @@
   "random <list> # returns a random item from <list>
    random # generate a random number"
   {:yb/cat #{:util :collection}}
-  [{data :data data-collection :data-collection items :opts}]
-  (info "random"
-        (pr-str data)
-        (pr-str data-collection))
+  [{:keys [data-collection] items :opts}]
   (if (not (empty? items))
     (let [idx (rand-int (count (ensure-items-collection items)))
           item (nth items idx)
@@ -70,16 +94,20 @@
 
 ; head / tail helpers
 (defn head-or-tail
-  [single-fn multi-fn n cmd-map]
+  [single-fn multi-fn n {:keys [data-collection]
+                         :as cmd-map}]
   (let [coll-or-error (ensure-coll cmd-map)
         f (if (= 1 n) single-fn (partial multi-fn n))]
     (if (error? coll-or-error)
       coll-or-error
-      (f coll-or-error))))
+      (merge
+        {:result/value (f coll-or-error)}
+        (when data-collection
+          {:result/data (f data-collection)})))))
 
-(def head (partial head-or-tail (comp str first) take))
+(def head (partial head-or-tail first take))
 
-(def tail (partial head-or-tail (comp str last) take-last))
+(def tail (partial head-or-tail last take-last))
 
 ; head
 (defn head-1
@@ -291,7 +319,7 @@
 ; count
 (def count-cmd
   "count <list> # count the number of items in <list>"
-  (coll-cmd (comp str count)))
+  (coll-cmd count))
 
 (cmd-hook #"count"
   _ count-cmd)
@@ -522,16 +550,18 @@
 (defn repeat-cmd
   "repeat <n> <cmd> # repeat <cmd> <n> times"
   {:yb/cat #{:util}}
-  [{[_ n cmd] :match user :user opts :opts chat-source :chat-source}]
+  [{[_ n cmd] :match :keys [user opts chat-source data data-collection]}]
   (let [n (read-string n)]
     (when (> n max-repeat)
       (chat-data-structure
         (format "LOL %s 🐴🐴 You can only repeat %s times 😇"
                 (:name user) max-repeat)))
-    (trace "repeat-cmd" {:chat-source chat-source
-                        :user (keys user)
-                        :opts opts
-                        :n n :cmd cmd})
+    (debug "repeat-cmd" {:chat-source chat-source
+                         :user (keys user)
+                         :data data
+                         :data-collection data-collection
+                         :opts opts
+                         :n n :cmd cmd})
     (let [n (min max-repeat n)
           results
           (repeatedly
@@ -544,16 +574,22 @@
             ;; I wonder if a parse tree could express pre-populated args somehow
             ;; 🤔
             #(handle-cmd cmd {:chat-source chat-source
-                              :user user :opts opts}))]
-      ;; flatten out the results
-      (info (pr-str results))
-      (map (fn [{:result/keys [value error] :as arg}]
-             ;; - some commands return {:result/value :result/data} structures
-             ;; - others return an error like {:result/error}
-             ;; - others just return a plain value
-             ;; so look for all 3 forms
-             (or error value arg))
-           results))))
+                              :data data
+                              :data-collection data-collection
+                              :user user 
+                              :opts opts}))
+
+          ;; - some commands return {:result/value :result/data} structures
+          ;; - others return an error like {:result/error}
+          ;; - others just return a plain value
+          ;; so look for all 3 forms
+          values (map (fn [{:result/keys [value error] :as arg}]
+                        (or value error arg)) results)
+          data (map :result/data results)
+          ]
+      (info (pr-str (doall results)))
+      {:result/value values
+       :result/data data})))
 
 (cmd-hook #"repeat"
   #"(\d+)\s(.+)" repeat-cmd)

@@ -1,6 +1,7 @@
 (ns yetibot.core.test.commands.collections
   (:require
     [yetibot.core.commands.collections :refer :all]
+    [taoensso.timbre :refer [info]]
     [yetibot.core.util.command-info :refer [command-execution-info]]
     [clojure.test :refer :all]))
 
@@ -111,18 +112,42 @@
                                                    :run-command? true})
              :result :result/data)))))
 
+(def opts (map str [1 2 3]))
+(def data {:items (map #(hash-map % %) [1 2 3]) :count 3})
+(def data-collection (:items data))
+
+(def params {:opts opts
+             :data-collection data-collection
+             :data data
+             :run-command? true})
+
+(defn value->data
+  [value]
+  (->> value read-string (repeat 2) (apply hash-map)))
+
 (deftest data-propagation-test
-  (testing "Collection utils should propagate data"
-    (let [{{:result/keys [value data]} :result}
-          (command-execution-info
-            "random"
-            {:opts (map str [1 2 3])
-             :data-collection (map #(hash-map % %) [1 2 3])
-             :data {:items (map #(hash-map % %) [1 2 3])
-                    :count 3}
-             :run-command? true})]
+
+  (testing "random should propagate data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "random" params)]
       (is
-        (= (->> value read-string (repeat 2) (apply hash-map))
-           data)
+        (= (value->data value) data)
         "random should pull the corresponding random item out of the data and
-         propagate it"))))
+         propagate it")))
+
+  (testing "head should propagate data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "head 2" params)]
+      (is (= [{1 1} {2 2}] data (map value->data value))))
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "head" params)]
+      (info (pr-str value) (pr-str {:data data}))
+      (is (= {1 1} data (value->data value)))))
+
+  (testing "repeat should accumulate the resulting data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "repeat 3 random" params)]
+      (is (=  data (map value->data value))))
+    )
+
+  )
