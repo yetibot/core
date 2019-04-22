@@ -159,4 +159,11 @@
                                                  (assoc params
                                                         :opts {:foo :bar}))]
       (is (= [:bar] value))
-      (is (= sample-data data)))))
+      (is (= sample-data data))))
+
+  (testing "droplast and rest should propagate data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "droplast" params)]
+      (is (= data (map value->data value))))
+    )
+  )

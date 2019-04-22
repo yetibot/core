@@ -51,7 +51,6 @@
 
    Useful for testing."
   [command & [{:keys [opts data-collection data raw run-command?]}]]
-  (info "command-execution-info" opts)
   (let [parsed (parser command)]
     (if (simple-command? parsed)
       (let [[cmd args] (hooks/split-command-and-args command)

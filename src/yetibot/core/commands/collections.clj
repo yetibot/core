@@ -140,7 +140,7 @@
 (cmd-hook #"take"
           #"(\d+)" head-n)
 
-; tail
+;; tail
 (defn tail-1
   "tail <list> # returns the last item from the <list>"
   {:yb/cat #{:util :collection}}
@@ -156,10 +156,19 @@
           #"(\d+)" tail-n
           _ tail-1)
 
-; droplast
-(def drop-last-cmd
+;; droplast
+(defn drop-last-cmd
   "droplast <list> # drop the last item from <list>"
-  (coll-cmd drop-last))
+  {:yb/cat #{:util :collection}}
+  [{:keys [data-collection] :as cmd-args}]
+  (let [coll-or-error (ensure-coll cmd-args)]
+    (if (error? coll-or-error)
+      coll-or-error
+      (let [value (drop-last coll-or-error)]
+        {:result/value value
+         :result/data (if data-collection
+                        (drop-last data-collection)
+                        value)}))))
 
 (cmd-hook #"droplast"
   _ drop-last-cmd)
@@ -215,7 +224,6 @@
   _ xargs)
 
 ; join
-
 (defn join
   "join <list> <separator> # joins list with optional <separator> or no separator if not specified. See also `unwords`."
   {:yb/cat #{:util :collection}}
