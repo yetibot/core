@@ -576,7 +576,7 @@
 
 (cmd-hook #"data"
   #"show" show-data-cmd
-  #".+" extract-data-cmd
+  #"\$.+" extract-data-cmd
   _ data-cmd)
 
 (def max-repeat 10)
