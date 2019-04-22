@@ -173,10 +173,19 @@
 (cmd-hook #"droplast"
   _ drop-last-cmd)
 
-; rest
-(def rest-cmd
+;; rest
+(defn rest-cmd
   "rest <list> # returns the last item from the <list>"
-  (coll-cmd rest))
+  {:yb/cat #{:util :collection}}
+  [{:keys [data-collection] :as cmd-args}]
+  (let [coll-or-error (ensure-coll cmd-args)]
+    (if (error? coll-or-error)
+      coll-or-error
+      (let [value (rest coll-or-error)]
+        {:result/value value
+         :result/data (if data-collection
+                        (rest data-collection)
+                        value)}))))
 
 (cmd-hook #"rest"
   _ rest-cmd)

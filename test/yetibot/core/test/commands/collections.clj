@@ -165,5 +165,9 @@
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                   "droplast" params)]
       (is (= data (map value->data value))))
+
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "rest" params)]
+    (is (= data (map value->data value))))
     )
   )
