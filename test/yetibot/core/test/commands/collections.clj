@@ -113,12 +113,12 @@
              :result :result/data)))))
 
 (def opts (map str [1 2 3]))
-(def data {:items (map #(hash-map % %) [1 2 3]) :count 3})
-(def data-collection (:items data))
+(def sample-data {:items (map #(hash-map % %) [1 2 3]) :count 3})
+(def sample-data-collection (:items sample-data))
 
 (def params {:opts opts
-             :data-collection data-collection
-             :data data
+             :data-collection sample-data-collection
+             :data sample-data
              :run-command? true})
 
 (defn value->data
@@ -129,25 +129,34 @@
 
   (testing "random should propagate data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "random" params)]
+                                                 "random" params)]
       (is
-        (= (value->data value) data)
-        "random should pull the corresponding random item out of the data and
+       (= (value->data value) data)
+       "random should pull the corresponding random item out of the data and
          propagate it")))
 
   (testing "head should propagate data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "head 2" params)]
+                                                 "head 2" params)]
       (is (= [{1 1} {2 2}] data (map value->data value))))
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "head" params)]
+                                                 "head" params)]
       (info (pr-str value) (pr-str {:data data}))
       (is (= {1 1} data (value->data value)))))
 
   (testing "repeat should accumulate the resulting data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "repeat 3 random" params)]
-      (is (=  data (map value->data value))))
-    )
+                                                 "repeat 3 random" params)]
+      (is (= data (map value->data value)))))
 
-  )
+  (testing "keys and vals should propagate data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                 "keys" params)]
+      (is (= ["1" "2" "3"] value))
+      (is (= sample-data data)))
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                 "vals"
+                                                 (assoc params
+                                                        :opts {:foo :bar}))]
+      (is (= [:bar] value))
+      (is (= sample-data data)))))

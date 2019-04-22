@@ -84,12 +84,20 @@
 
             {value :result/value
              error :result/error
+             ;; collection-path is a path to a collection inside of `data` that
+             ;; holds symmetry with opts - this is used to derive
+             ;; `data-collection`
              collection-path :result/collection-path
+             ;; data-collection is the piece of data inside of data - this is an
+             ;; alternative to providing a `collection-path`
+             data-collection :result/data-collection
+             ;; the actual raw data (presumably from an API call)
              data :result/data} (when (map? command-result) command-result)
 
             ;; when `collection-path` is provided, obtain it and pass it over
             ;; the pipe for potential consumption by collection commands
-            data-collection (or (when collection-path
+            data-collection (or data-collection
+                                (when collection-path
                                   (get-in data collection-path))
                                 ;; or if it's not provided, check to see if data
                                 ;; is sequential and provide it as the

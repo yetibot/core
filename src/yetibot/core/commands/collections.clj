@@ -17,6 +17,17 @@
             [yetibot.core.util.command-info :refer [command-execution-info]]
             [yetibot.core.util.format :refer [format-exception-log]]))
 
+
+;; Idea: maybe all commands should propagate all of their args. Unify things
+;; like:
+;; - the args passed to a cmd
+;; - the return map of a cmd (optionally modifying the result, data,
+;; data-collection)
+;; - the args passed to observers
+;; We'd need to identify the common denominators then spec out any differences
+;; in shape for the various purposes and contexts.
+
+
 ;; TODO we need a way to preserve data on commands that operate on collections,
 ;; like: grep, shuffle, sort, sortnum
 ;; Idea:
@@ -449,12 +460,12 @@
 (defn keys-cmd
   "keys <map> # return the keys from <map>"
   {:yb/cat #{:util :collection}}
-  [{items :opts}]
-  (timbre/debug (timbre/color-str :blue "keys")
-                (timbre/color-str :green (pr-str items)))
-  (if (map? items)
-    (keys items)
-    (split-kvs-with first items)))
+  [{items :opts :keys [data data-collection]}]
+  {:result/value (if (map? items)
+                   (keys items)
+                   (split-kvs-with first items))
+   :result/data data
+   :result/data-collection data-collection})
 
 (cmd-hook #"keys"
   _ keys-cmd)
@@ -463,10 +474,13 @@
 (defn vals-cmd
   "vals <map> # return the vals from <map>"
   {:yb/cat #{:util :collection}}
-  [{items :opts}]
-  (if (map? items)
-    (vals items)
-    (split-kvs-with second items)))
+  [{items :opts :keys [data data-collection]}]
+  {:result/value
+   (if (map? items)
+     (vals items)
+     (split-kvs-with second items))
+   :result/data data
+   :result/data-collection data-collection})
 
 (cmd-hook #"vals"
   _ vals-cmd)
@@ -475,17 +489,20 @@
 (defn raw-cmd
   "raw <coll> | <args> # output a string representation of piped <coll> or <args>"
   {:yb/cat #{:util :collection}}
-  [{:keys [opts args]}]
-  (pr-str (or opts args)))
+  [{:keys [data data-collection opts args]}]
+  {:result/data data
+   :result/data-collection data-collection
+   :result/value (pr-str (or opts args))})
 
 (defn raw-all-cmd
   "raw all <coll> | <args> # output a string representation of all command context"
   {:yb/cat #{:util :collection}}
-  [{:keys [user] :as command-args}]
+  [{:keys [user data-collection] :as command-args}]
   (let [minimal-user (select-keys user min-user-keys)
         cleaned-args (merge command-args {:user minimal-user})]
     (binding [*print-right-margin* 80]
       {:result/value (with-out-str (pprint cleaned-args))
+       :result/data-collection data-collection
        :result/data cleaned-args})))
 
 (cmd-hook #"raw"
