@@ -97,7 +97,6 @@
         :result ["hi" "hi" "hi"]}
        )))
 
-
 (deftest data-test
   (testing "No data results in an error"
     (is
@@ -110,7 +109,12 @@
          {:foo :bar}
          (-> (command-execution-info "data $.[0]" {:data [{:foo :bar}]
                                                    :run-command? true})
-             :result :result/data)))))
+             :result :result/data))))
+
+
+
+
+  )
 
 (def opts (map str [1 2 3]))
 (def sample-data {:items (map #(hash-map % %) [1 2 3]) :count 3})

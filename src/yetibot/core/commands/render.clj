@@ -3,10 +3,22 @@
     [clojure.string :as string]
     [yetibot.core.hooks :refer [cmd-hook]]
     [taoensso.timbre :refer [debug info warn error]]
+    selmer.util
     [selmer.parser :refer [render]]))
 
+;; configure html unescaping in Selmer:
+(selmer.util/turn-off-escaping!)
+
+;; alternatively, we could install a filter to unescape:
+(comment
+  (org.apache.commons.lang3.StringEscapeUtils/unescapeHtml4
+    "Want to see some yetis? Come check out Trevor Hartman&#39;s talk &quot;Growing a Chatops Platform and Having Fun with Clojure&quot; where we take a look at the development of Yetibot! #clojure #clojurenorth – @clojurenorth Tue Feb 12 12:36:46 +0000 2019")
+  )
+
 (defn render-cmd
-  "render <template> # renders template against data passed over a pipe"
+  "render <template> # renders a Selmer template against data passed over a pipe.
+
+   See https://github.com/yogthos/Selmer for docs on templating."
   [{data :data match :match raw :raw :as args}]
   (info "render-cmd" match raw)
   (try

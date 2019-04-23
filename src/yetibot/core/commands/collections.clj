@@ -541,12 +541,17 @@
    Find many more path examples at:
    https://github.com/gga/json-path/blob/master/test/json_path/test/json_path_test.clj"
   {:yb/cat #{:util}}
-  [{path :match
+  [{[_ path] :match
     :keys [args data]}]
-  (info (timbre/color-str :blue "extra-data-cmd") path \newline
-        (timbre/color-str :blue (pr-str data)))
+  (debug (timbre/color-str :blue "extra-data-cmd")
+         \newline
+         (timbre/color-str :green {:path path})
+         \newline
+         (timbre/color-str :blue (type data) (pr-str data)))
   (if data
     (let [res (jp/at-path path data)]
+      (timbre/info "extract-data-cmd result"
+                   (timbre/color-str :blue (pr-str res)))
       {:result/data res
        :result/value
        (if (coll? res)
@@ -576,7 +581,9 @@
 
 (cmd-hook #"data"
   #"show" show-data-cmd
-  #"\$.+" extract-data-cmd
+  ;; specifically ignore any args passed since they would be appended to the
+  ;; command, but the `data` command ignores args and only looks at data
+  #"(\$\S+).*" extract-data-cmd
   _ data-cmd)
 
 (def max-repeat 10)
@@ -610,7 +617,7 @@
             #(handle-cmd cmd {:chat-source chat-source
                               :data data
                               :data-collection data-collection
-                              :user user 
+                              :user user
                               :opts opts}))
 
           ;; - some commands return {:result/value :result/data} structures
@@ -627,3 +634,15 @@
 
 (cmd-hook #"repeat"
   #"(\d+)\s(.+)" repeat-cmd)
+
+(defn unquote-cmd
+  "unquote <string> # remove double quotes from the beginning and end of <string>"
+  {:yb/cat #{:util}}
+  [{:keys [args data]}]
+  {:result/value (-> "\"foo\" bar\""
+                     (s/replace #"^\"" "")
+                     (s/replace #"\"$" ""))
+   :result/data data})
+
+(cmd-hook #"unquote"
+  _ unquote-cmd)
