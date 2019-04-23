@@ -94,8 +94,7 @@
         :match ["3 echo hi" "3" "echo hi"]
         :command "repeat"
         :command-args "3 echo hi"
-        :result ["hi" "hi" "hi"]}
-       )))
+        :result ["hi" "hi" "hi"]})))
 
 (deftest data-test
   (testing "No data results in an error"
@@ -109,15 +108,12 @@
          {:foo :bar}
          (-> (command-execution-info "data $.[0]" {:data [{:foo :bar}]
                                                    :run-command? true})
-             :result :result/data))))
+             :result :result/data)))))
 
-
-
-
-  )
-
-(def opts (map str [1 2 3]))
-(def sample-data {:items (map #(hash-map % %) [1 2 3]) :count 3})
+(def opts (map str ["red" "green" "blue"]))
+;; construct some fake data that in theory represents the simplified
+;; human-friendly opts above:
+(def sample-data {:items (map #(hash-map % %) ["red" "green" "blue"]) :count 3})
 (def sample-data-collection (:items sample-data))
 
 (def params {:opts opts
@@ -127,7 +123,7 @@
 
 (defn value->data
   [value]
-  (->> value read-string (repeat 2) (apply hash-map)))
+  (->> value (repeat 2) (apply hash-map)))
 
 (deftest data-propagation-test
 
@@ -142,11 +138,11 @@
   (testing "head should propagate data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                  "head 2" params)]
-      (is (= [{1 1} {2 2}] data (map value->data value))))
+      (is (= [{"red" "red"} {"green" "green"}] data (map value->data value))))
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                  "head" params)]
       (info (pr-str value) (pr-str {:data data}))
-      (is (= {1 1} data (value->data value)))))
+      (is (= {"red" "red"} data (value->data value)))))
 
   (testing "repeat should accumulate the resulting data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
@@ -156,7 +152,7 @@
   (testing "keys and vals should propagate data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                  "keys" params)]
-      (is (= ["1" "2" "3"] value))
+      (is (= ["red" "green" "blue"] value))
       (is (= sample-data data)))
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                  "vals"
@@ -172,6 +168,26 @@
 
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                   "rest" params)]
-    (is (= data (map value->data value))))
-    )
+    (is (= data (map value->data value)))))
+
+  (testing "sort propagates sorted data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "sort" params)]
+      (info "sorted data" (pr-str data))
+      (info "sorted opts" (pr-str value))
+      (is (= ["blue" "green" "red"] value))
+      (is (= data (map value->data value)))))
+
+  (testing "shuffle propagates shuffled data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "shuffle" params)]
+      (is (= data (map value->data value)))))
+
+  (testing "grep propagates matched data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  ;; only matches "red" and
+                                                  ;; "green"
+                                                  "grep e.$" params)]
+      (is (= data (map value->data value)))))
+
   )

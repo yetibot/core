@@ -6,7 +6,7 @@
     selmer.util
     [selmer.parser :refer [render]]))
 
-;; configure html unescaping in Selmer:
+;; configure html unescaping in Selmer since our target is not HTML:
 (selmer.util/turn-off-escaping!)
 
 ;; alternatively, we could install a filter to unescape:

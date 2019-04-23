@@ -93,14 +93,6 @@
 (cmd-hook #"random"
           _ random)
 
-; shuffle
-(def shuffle-cmd
-  "shuffle <list>"
-  (coll-cmd shuffle))
-
-(cmd-hook #"shuffle"
-          _ shuffle-cmd)
-
 (def head-tail-regex #"(\d+).+")
 
 ; head / tail helpers
@@ -363,12 +355,38 @@
 (cmd-hook #"sum"
   _ sum-cmd)
 
+
+(defn transform-opts-with-data
+  [f {:keys [opts data-collection] :as cmd-args}]
+  (let [coll-or-error (ensure-coll cmd-args)]
+    (if (error? coll-or-error)
+      coll-or-error
+      (let [re-ordering (->> opts
+                             (map-indexed vector)
+                             f)
+            ordering (map first re-ordering)
+            opts (map second re-ordering)
+            data (map (partial nth data-collection) ordering)]
+        {:result/value opts
+         :result/data data}))))
+
+
+(defn shuffle-cmd
+  "shuffle <list> # shuffle the order of a piped collection"
+  {:yb/cat #{:util :collection}}
+  [{:as cmd-args}]
+  (transform-opts-with-data shuffle cmd-args))
+
+(cmd-hook #"shuffle"
+          _ shuffle-cmd)
+
 ; sort
 (defn sort-cmd
   "sort <list> # alphabetically sort a list"
   {:yb/cat #{:util :collection}}
-  [{items :opts}]
-  (sort (ensure-items-collection items)))
+  [{items :opts :as cmd-args}]
+  (transform-opts-with-data
+    (partial sort-by second) cmd-args))
 
 (cmd-hook #"sort"
   _ sort-cmd)
@@ -404,25 +422,33 @@
 (defn grep-data-structure
   "opts available:
      :context int - how many items around matched line to return"
-  [pattern d & [opts]]
+  [pattern d & [options]]
   (let [finder (partial re-find pattern)
-        context-count (or (:context opts) 0)
-        filter-fn (fn [i]
+        context-count (or (:context options) 0)
+        filter-fn (fn [[idx item]]
                     (cond
-                      (string? i) (finder i)
-                      (coll? i) (some finder (map str (flatten i)))))]
-    (flatten (sliding-filter context-count filter-fn d))))
+                      (string? item) (finder item)
+                      (coll? item) (some finder (map str (flatten item)))))]
+    (apply concat (sliding-filter context-count filter-fn d))))
 
 (defn grep-cmd
   "grep <pattern> <list> # filters the items in <list> by <pattern>
    grep -C <n> <pattern> <list> # filter items in <list> by <patttern> and include <n> items before and after each matched item"
   {:yb/cat #{:util :collection}}
-  [{:keys [match opts args]}]
+  [{:keys [match opts args data-collection]}]
   (let [[n p] (if (sequential? match) (rest match) ["0" args])
         pattern (re-pattern (str "(?i)" p))
         items (-> opts ensure-items-collection ensure-items-seqential)]
     (if items
-      (grep-data-structure pattern items {:context (read-string n)})
+      (let [matches (grep-data-structure
+                     pattern (map-indexed vector items)
+                     {:context (read-string n)})
+            ordering (map first matches)
+            value (map second matches)
+            data (map (partial nth data-collection) ordering)
+            ]
+        {:result/value value
+         :result/data data})
       {:result/error
        (str "Expected a collection but you only gave me `" args "`")})))
 
@@ -434,9 +460,10 @@
 (defn tee-cmd
   "tee <list-or-args> # output <list-or-args> to chat then return it (useful for pipes)"
   {:yb/cat #{:util :collection}}
-  [{:keys [opts args]}]
+  [{:keys [data opts args]}]
   (chat-data-structure (or opts args))
-  (or opts args))
+  {:result/value (or opts args)
+   :result/data data})
 
 (cmd-hook #"tee"
   _ tee-cmd)
