@@ -226,8 +226,10 @@
 (defn trim
   "trim <string> # remove whitespace from both ends of <string>"
   {:yb/cat #{:util :collection}}
-  [{args :args}]
-  (s/trim args))
+  [{:keys [args data data-collection]}]
+  {:result/data data
+   :result/data-collection data-collection
+   :result/value (s/trim args)})
 
 (cmd-hook #"trim"
   _ trim)

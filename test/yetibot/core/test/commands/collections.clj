@@ -192,9 +192,7 @@
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                   "sortnum"
                                                   (assoc params
-                                                         :opts ["2"
-                                                                "1"
-                                                                "3"]))]
+                                                         :opts ["2" "1" "3"]))]
       (is (= ["1" "2" "3"] value))
       (is (= [{"green" "green"} {"red" "red"} {"blue" "blue"}] data))))
 
