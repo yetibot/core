@@ -186,6 +186,16 @@
       (is (= ["blue" "green" "red"] value))
       (is (= data (map value->data value)))))
 
+  (testing "sortnum propagates sorted data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "sortnum"
+                                                  (assoc params
+                                                         :opts ["2"
+                                                                "1"
+                                                                "3"]))]
+      (is (= ["1" "2" "3"] value))
+      (is (= [{"green" "green"} {"red" "red"} {"blue" "blue"}] data))))
+
   (testing "shuffle propagates shuffled data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                   "shuffle" params)]

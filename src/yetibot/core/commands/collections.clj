@@ -392,10 +392,12 @@
   _ sort-cmd)
 
 ; sortnum
-(def sortnum-cmd
+(defn sortnum-cmd
   "sortnum <list> # numerically sort a list"
-  (coll-cmd
-    (partial sort #(- (read-string %1) (read-string %2)))))
+  {:yb/cat #{:util :collection}}
+  [{items :opts :as cmd-args}]
+  (transform-opts-with-data
+    (partial sort-by second #(- (read-string %1) (read-string %2))) cmd-args))
 
 (cmd-hook #"sortnum"
   _ sortnum-cmd)
