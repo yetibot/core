@@ -554,11 +554,8 @@
       (timbre/info "extract-data-cmd result"
                    (timbre/color-str :blue (pr-str res)))
       {:result/data res
-       :result/value
-       (if (coll? res)
-         res
-         ;; always convert individual values to string for passing across a pipe
-         (str res))})
+       :result/value (binding [*print-right-margin* 80]
+                       (with-out-str (pprint res)))})
     {:result/error
      "There is no `data` from the previous command 🤔"}))
 
@@ -569,7 +566,8 @@
   (info "show-data-cmd" (pr-str (dissoc cmd-args :user)))
   (if data
     (binding [*print-right-margin* 80]
-      (with-out-str (pprint data)))
+      {:result/value (with-out-str (pprint data))
+       :result/data data})
     "There is no `data` from the previous command 🤔"))
 
 (defn data-cmd
@@ -577,7 +575,8 @@
   {:yb/cat #{:util}}
   [{:keys [data]}]
   (if data
-    data
+    {:result/data data
+     :result/value data}
     "There is no `data` from the previous command 🤔"))
 
 (cmd-hook #"data"

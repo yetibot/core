@@ -203,6 +203,11 @@
                                                   "shuffle" params)]
       (is (= data (map value->data value)))))
 
+  (testing "reverse propagates reversed data"
+    (let [{{:result/keys [value data]} :result} (command-execution-info
+                                                  "reverse" params)]
+      (is (= data (map value->data value)))))
+
   (testing "grep propagates matched data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                   ;; only matches "red" and
