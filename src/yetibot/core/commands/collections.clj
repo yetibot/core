@@ -445,7 +445,8 @@
                      {:context (read-string n)})
             ordering (map first matches)
             value (map second matches)
-            data (map (partial nth data-collection) ordering)
+            data (when data-collection
+                   (map (partial nth data-collection) ordering))
             ]
         {:result/value value
          :result/data data})

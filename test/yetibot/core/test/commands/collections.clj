@@ -25,10 +25,6 @@
           "Random with a collection passed into it picks a random item from the
            collection"))))
 
-(deftest grep-data-structure-test
-  (is (= (grep-data-structure #"bar" [["foo" 1] ["bar" 2]])
-         '("bar" 2))))
-
 (deftest slide-context-test
   (is (= (slide-context (range 10) 3 2)
          [1 2 3 4 5]))
@@ -48,22 +44,34 @@
 (deftest grep-around-test
   (is (= (grep-data-structure
            #"yes"
-           '("devth: foo" "devth: yes" "devth: bar" "devth: lol" "devth: ok" "devth: baz" "devth: !history | grep -C 2 yes")
+           (map-indexed vector ["devth: foo"
+                                "devth: yes"
+                                "devth: bar"
+                                "devth: lol"
+                                "devth: ok"
+                                "devth: baz"
+                                "devth: !history | grep -C 2 yes"])
            {:context 2})
-         '("devth: foo" "devth: yes" "devth: bar" "devth: lol" "devth: ok" "devth: baz" "devth: !history | grep -C 2 yes")))
+         [[0 "devth: foo"]
+          [1 "devth: yes"]
+          [2 "devth: bar"]
+          [3 "devth: lol"]
+          [4 "devth: ok"]
+          [5 "devth: baz"]
+          [6 "devth: !history | grep -C 2 yes"]]))
   (is (= (grep-data-structure
            #"foo"
-           ["bar" "lol" "foo" "baz" "qux"]
+           (map-indexed vector ["bar" "lol" "foo" "baz" "qux"])
            {:context 1})
-         '("lol" "foo" "baz"))))
+         '([1 "lol"] [2 "foo"] [3 "baz"]))))
 
 (deftest grep-cmd-test
   (is (= (grep-cmd {:args "foo"
                     :opts ["foo" "bar"]})
-         '("foo")))
+         #:result{:value ["foo"], :data nil}))
   (is (= (grep-cmd {:match (re-find #"-C\s+(\d+)\s+(.+)" "-C 1 baz")
                     :opts ["foo" "bar" "baz"]})
-         '("bar" "baz"))))
+         #:result{:value ["bar" "baz"], :data nil})))
 
 (deftest flatten-test
   (testing "Simple case"
