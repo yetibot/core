@@ -27,34 +27,6 @@
 ;; We'd need to identify the common denominators then spec out any differences
 ;; in shape for the various purposes and contexts.
 
-
-;; TODO we need a way to preserve data on commands that operate on collections,
-;; like: grep, shuffle, sort, sortnum
-;; Idea:
-(comment
-
-  (def extra
-    {:opts [:one :two :three]
-     :data-collection [{:key :one :more :data}
-                       {:key :two :more :data}
-                       {:key :three :more :data}]})
-
-  (def re-ordering
-    (->> (:opts extra)
-         (map-indexed vector)
-         ;; then do the thing, like shuffle, or grep or whatever
-         shuffle))
-
-  ;; we can pull the result out
-  (map second re-ordering)
-  ;; and now we have an ordering map to apply to the data-collection
-  (def ordering (map first re-ordering))
-  ;; but we'd need a way to apply this ordering to the original
-  (map (partial nth (:data-collection extra)) ordering)
-  ;; kinda inefficient?
-
-  )
-
 (defn ensure-coll
   "Return nil if opts was set or return an error map otherwise"
   [{:keys [opts args]}]
