@@ -75,16 +75,17 @@
 
 (deftest flatten-test
   (testing "Simple case"
-    (is (= (flatten-cmd {:opts ["1" "2" "3"]})
+    (is (= (:result/value (flatten-cmd {:opts ["1" "2" "3"]}))
            ["1" "2" "3"])))
   (testing "Simple nested case"
-    (is (= (flatten-cmd {:opts [["1" "2" "3"]]})
+    (is (= (:result/value (flatten-cmd {:opts [["1" "2" "3"]]}))
           ["1" "2" "3"])))
   (testing "Simple case with newlines"
-    (is (= (flatten-cmd {:opts [(str 1 \newline 2 \newline 3 \newline)]})
+    (is (= (:result/value
+             (flatten-cmd {:opts [(str 1 \newline 2 \newline 3 \newline)]}))
           ["1" "2" "3"])))
   (testing "Nested case with newlines"
-    (is (= (flatten-cmd {:opts [[[(str 1 \newline 2 \newline 3 \newline)]]]})
+    (is (= (:result/value -(flatten-cmd {:opts [[[(str 1 \newline 2 \newline 3 \newline)]]]}))
            ["1" "2" "3"]))))
 
 (deftest words-test

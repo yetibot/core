@@ -67,13 +67,13 @@
   "Helper to define commands that operate only on collections"
   [f]
   (with-meta
-    (fn [cmd-args]
+    (fn [{:keys [data-collection] :as cmd-args}]
       (let [coll-or-error (ensure-coll cmd-args)]
         (if (error? coll-or-error)
           coll-or-error
           (let [result (f coll-or-error)]
             {:result/value result
-             :result/data result}))))
+             :result/data (f data-collection)}))))
     {:yb/cat #{:util :collection}}))
 
 ; random
@@ -282,18 +282,19 @@
 (cmd-hook #"unwords"
   _ unwords)
 
-; flatten
+;; flatten
 (defn flatten-cmd
   "flatten <nested list> # completely flattens a nested data struture after splitting on newlines"
   {:yb/cat #{:util :collection}}
-  [{args :args opts :opts :as cmd-args}]
+  [{:keys [args opts data-collection] :as cmd-args}]
   (let [error-or-coll (ensure-coll cmd-args)]
     (if (error? error-or-coll)
       error-or-coll
-      (->> error-or-coll
-           flatten
-           (map s/split-lines)
-           flatten))))
+      {:result/value (->> error-or-coll
+                          flatten
+                          (map s/split-lines)
+                          flatten)
+       :result/data (flatten data-collection)})))
 
 (cmd-hook #"flatten"
   _ flatten-cmd)
@@ -355,7 +356,6 @@
 (cmd-hook #"sum"
   _ sum-cmd)
 
-
 (defn transform-opts-with-data
   [f {:keys [opts data-collection] :as cmd-args}]
   (let [coll-or-error (ensure-coll cmd-args)]
@@ -369,7 +369,6 @@
             data (map (partial nth data-collection) ordering)]
         {:result/value opts
          :result/data data}))))
-
 
 (defn shuffle-cmd
   "shuffle <list> # shuffle the order of a piped collection"
