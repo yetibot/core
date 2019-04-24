@@ -1,6 +1,7 @@
 (ns yetibot.core.test.commands.collections
   (:require
     [yetibot.core.commands.collections :refer :all]
+    yetibot.core.commands.about
     [taoensso.timbre :refer [info]]
     [yetibot.core.util.command-info :refer [command-execution-info]]
     [clojure.test :refer :all]))
@@ -213,4 +214,30 @@
                                                   "grep e.$" params)]
       (is (= data (map value->data value)))))
 
-  )
+  (testing "xargs still works on simple commands that don't return a map"
+    (is (= ["value is red" "value is green" "value is blue"]
+           (-> (command-execution-info
+                            ;; only matches "red" and
+                            ;; "green"
+                            "xargs echo value is" params)
+               :result
+               :result/value))))
+
+  (testing "xargs accumulates and propagates data when it exists"
+    (is (= #:result{:value ["red" "green" "blue"],
+                    :data-collection
+                    [[{"red" "red"} {"green" "green"} {"blue" "blue"}]
+                     [{"red" "red"} {"green" "green"} {"blue" "blue"}]
+                     [{"red" "red"} {"green" "green"} {"blue" "blue"}]],
+                    :data
+                    [{:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
+                      :count 3}
+                     {:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
+                      :count 3}
+                     {:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
+                      :count 3}]}
+           (-> (command-execution-info
+                 ;; only matches "red" and
+                 ;; "green"
+                 "xargs trim" params)
+               :result)))))

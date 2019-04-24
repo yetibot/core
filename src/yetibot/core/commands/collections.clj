@@ -165,32 +165,38 @@
     (if-let [itms (ensure-items-collection opts)]
       (let [cat (-> (str args " " (first opts))
                     command-execution-info :matched-sub-cmd meta :yb/cat)
-            cmd-runner (if (contains? cat :async) 'map 'pmap)]
-        (debug "xargs using cmd-runner:" cmd-runner "for command" (pr-str args))
-        ((resolve cmd-runner)
-         (fn [item]
-           (try
-             (let [cmd-result
-                   (apply handle-cmd
-                          ;; item could be a collection, such as when xargs is
-                          ;; used on nested collections, e.g.:
-                          ;; repeat 5 jargon | xargs words | xargs head
-                          (if (coll? item)
-                            [args (merge cmd-params {:raw item :opts item})]
-                            [(psuedo-format args item)
-                             (merge cmd-params {:raw item :opts nil})]))
+            cmd-runner (if (contains? cat :async) 'map 'pmap)
+            _ (debug "xargs using cmd-runner:" cmd-runner "for command"
+                     (pr-str args))
+            xargs-results
+            ((resolve cmd-runner)
+             (fn [item]
+               (try
+                 (let [cmd-result
+                       (apply handle-cmd
+                              ;; item could be a collection, such as when xargs
+                              ;; is used on nested collections, e.g.:
+                              ;; repeat 5 jargon | xargs words | xargs head
+                              (if (coll? item)
+                                [args (merge cmd-params {:raw item :opts item})]
+                                [(psuedo-format args item)
+                                 (merge cmd-params {:raw item :opts nil})]))
 
-                   [value error] (if (map? cmd-result)
-                                   ((juxt :result/value :result/error)
-                                    cmd-result)
-                                   [cmd-result nil])
-                   _ (info "xargs cmd-result" (pr-str cmd-result))]
-               (or error value cmd-result))
-             (catch Exception ex
-               (error "Exception in xargs cmd-runner:" cmd-runner
-                      (format-exception-log ex))
-               ex)))
-         itms))
+                       _ (debug "xargs cmd-result" (pr-str cmd-result))]
+                   (if (map? cmd-result)
+                     ;; if the result was already in map form return it as-is
+                     cmd-result
+                     ;; otherwise transform it to map form
+                     {:result/value cmd-result
+                      :result/data cmd-result}))
+                 (catch Exception ex
+                   (error "Exception in xargs cmd-runner:" cmd-runner
+                          (format-exception-log ex))
+                   ex)))
+             itms)]
+        {:result/value (map :result/value xargs-results)
+         :result/data-collection (map :result/data-collection xargs-results)
+         :result/data (map :result/data xargs-results)})
       {:result/error (str "Expected a collection")})))
 
 (cmd-hook #"xargs"
