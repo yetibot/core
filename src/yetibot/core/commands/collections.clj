@@ -17,6 +17,16 @@
             [yetibot.core.util.command-info :refer [command-execution-info]]
             [yetibot.core.util.format :refer [format-exception-log]]))
 
+
+;; Idea: maybe all commands should propagate all of their args. Unify things
+;; like:
+;; - the args passed to a cmd
+;; - the return map of a cmd (optionally modifying the result, data,
+;; data-collection)
+;; - the args passed to observers
+;; We'd need to identify the common denominators then spec out any differences
+;; in shape for the various purposes and contexts.
+
 (defn ensure-coll
   "Return nil if opts was set or return an error map otherwise"
   [{:keys [opts args]}]
@@ -29,13 +39,13 @@
   "Helper to define commands that operate only on collections"
   [f]
   (with-meta
-    (fn [cmd-args]
+    (fn [{:keys [data-collection] :as cmd-args}]
       (let [coll-or-error (ensure-coll cmd-args)]
         (if (error? coll-or-error)
           coll-or-error
           (let [result (f coll-or-error)]
             {:result/value result
-             :result/data result}))))
+             :result/data (f data-collection)}))))
     {:yb/cat #{:util :collection}}))
 
 ; random
@@ -43,36 +53,36 @@
   "random <list> # returns a random item from <list>
    random # generate a random number"
   {:yb/cat #{:util :collection}}
-  [{items :opts}]
+  [{:keys [data-collection] items :opts}]
   (if (not (empty? items))
-    (rand-nth (ensure-items-collection items))
+    (let [idx (rand-int (count (ensure-items-collection items)))
+          item (nth items idx)
+          data (when data-collection (nth data-collection idx))]
+     {:result/value item
+      :result/data data})
     (str (rand 100000))))
 
 (cmd-hook #"random"
           _ random)
 
-; shuffle
-(def shuffle-cmd
-  "shuffle <list>"
-  (coll-cmd shuffle))
-
-(cmd-hook #"shuffle"
-          _ shuffle-cmd)
-
 (def head-tail-regex #"(\d+).+")
 
 ; head / tail helpers
 (defn head-or-tail
-  [single-fn multi-fn n cmd-map]
+  [single-fn multi-fn n {:keys [data-collection]
+                         :as cmd-map}]
   (let [coll-or-error (ensure-coll cmd-map)
         f (if (= 1 n) single-fn (partial multi-fn n))]
     (if (error? coll-or-error)
       coll-or-error
-      (f coll-or-error))))
+      (merge
+        {:result/value (f coll-or-error)}
+        (when data-collection
+          {:result/data (f data-collection)})))))
 
-(def head (partial head-or-tail (comp str first) take))
+(def head (partial head-or-tail first take))
 
-(def tail (partial head-or-tail (comp str last) take-last))
+(def tail (partial head-or-tail last take-last))
 
 ; head
 (defn head-1
@@ -94,7 +104,7 @@
 (cmd-hook #"take"
           #"(\d+)" head-n)
 
-; tail
+;; tail
 (defn tail-1
   "tail <list> # returns the last item from the <list>"
   {:yb/cat #{:util :collection}}
@@ -110,18 +120,36 @@
           #"(\d+)" tail-n
           _ tail-1)
 
-; droplast
-(def drop-last-cmd
+;; droplast
+(defn drop-last-cmd
   "droplast <list> # drop the last item from <list>"
-  (coll-cmd drop-last))
+  {:yb/cat #{:util :collection}}
+  [{:keys [data-collection] :as cmd-args}]
+  (let [coll-or-error (ensure-coll cmd-args)]
+    (if (error? coll-or-error)
+      coll-or-error
+      (let [value (drop-last coll-or-error)]
+        {:result/value value
+         :result/data (if data-collection
+                        (drop-last data-collection)
+                        value)}))))
 
 (cmd-hook #"droplast"
   _ drop-last-cmd)
 
-; rest
-(def rest-cmd
+;; rest
+(defn rest-cmd
   "rest <list> # returns the last item from the <list>"
-  (coll-cmd rest))
+  {:yb/cat #{:util :collection}}
+  [{:keys [data-collection] :as cmd-args}]
+  (let [coll-or-error (ensure-coll cmd-args)]
+    (if (error? coll-or-error)
+      coll-or-error
+      (let [value (rest coll-or-error)]
+        {:result/value value
+         :result/data (if data-collection
+                        (rest data-collection)
+                        value)}))))
 
 (cmd-hook #"rest"
   _ rest-cmd)
@@ -137,39 +165,44 @@
     (if-let [itms (ensure-items-collection opts)]
       (let [cat (-> (str args " " (first opts))
                     command-execution-info :matched-sub-cmd meta :yb/cat)
-            cmd-runner (if (contains? cat :async) 'map 'pmap)]
-        (debug "xargs using cmd-runner:" cmd-runner "for command" (pr-str args))
-        ((resolve cmd-runner)
-         (fn [item]
-           (try
-             (let [cmd-result
-                   (apply handle-cmd
-                          ;; item could be a collection, such as when xargs is
-                          ;; used on nested collections, e.g.:
-                          ;; repeat 5 jargon | xargs words | xargs head
-                          (if (coll? item)
-                            [args (merge cmd-params {:raw item :opts item})]
-                            [(psuedo-format args item)
-                             (merge cmd-params {:raw item :opts nil})]))
+            cmd-runner (if (contains? cat :async) 'map 'pmap)
+            _ (debug "xargs using cmd-runner:" cmd-runner "for command"
+                     (pr-str args))
+            xargs-results
+            ((resolve cmd-runner)
+             (fn [item]
+               (try
+                 (let [cmd-result
+                       (apply handle-cmd
+                              ;; item could be a collection, such as when xargs
+                              ;; is used on nested collections, e.g.:
+                              ;; repeat 5 jargon | xargs words | xargs head
+                              (if (coll? item)
+                                [args (merge cmd-params {:raw item :opts item})]
+                                [(psuedo-format args item)
+                                 (merge cmd-params {:raw item :opts nil})]))
 
-                   [value error] (if (map? cmd-result)
-                                   ((juxt :result/value :result/error)
-                                    cmd-result)
-                                   [cmd-result nil])
-                   _ (info "xargs cmd-result" (pr-str cmd-result))]
-               (or error value cmd-result))
-             (catch Exception ex
-               (error "Exception in xargs cmd-runner:" cmd-runner
-                      (format-exception-log ex))
-               ex)))
-         itms))
+                       _ (debug "xargs cmd-result" (pr-str cmd-result))]
+                   (if (map? cmd-result)
+                     ;; if the result was already in map form return it as-is
+                     cmd-result
+                     ;; otherwise transform it to map form
+                     {:result/value cmd-result
+                      :result/data cmd-result}))
+                 (catch Exception ex
+                   (error "Exception in xargs cmd-runner:" cmd-runner
+                          (format-exception-log ex))
+                   ex)))
+             itms)]
+        {:result/value (map :result/value xargs-results)
+         :result/data-collection (map :result/data-collection xargs-results)
+         :result/data (map :result/data xargs-results)})
       {:result/error (str "Expected a collection")})))
 
 (cmd-hook #"xargs"
   _ xargs)
 
 ; join
-
 (defn join
   "join <list> <separator> # joins list with optional <separator> or no separator if not specified. See also `unwords`."
   {:yb/cat #{:util :collection}}
@@ -199,8 +232,10 @@
 (defn trim
   "trim <string> # remove whitespace from both ends of <string>"
   {:yb/cat #{:util :collection}}
-  [{args :args}]
-  (s/trim args))
+  [{:keys [args data data-collection]}]
+  {:result/data data
+   :result/data-collection data-collection
+   :result/value (s/trim args)})
 
 (cmd-hook #"trim"
   _ trim)
@@ -227,18 +262,19 @@
 (cmd-hook #"unwords"
   _ unwords)
 
-; flatten
+;; flatten
 (defn flatten-cmd
   "flatten <nested list> # completely flattens a nested data struture after splitting on newlines"
   {:yb/cat #{:util :collection}}
-  [{args :args opts :opts :as cmd-args}]
+  [{:keys [args opts data-collection] :as cmd-args}]
   (let [error-or-coll (ensure-coll cmd-args)]
     (if (error? error-or-coll)
       error-or-coll
-      (->> error-or-coll
-           flatten
-           (map s/split-lines)
-           flatten))))
+      {:result/value (->> error-or-coll
+                          flatten
+                          (map s/split-lines)
+                          flatten)
+       :result/data (flatten data-collection)})))
 
 (cmd-hook #"flatten"
   _ flatten-cmd)
@@ -284,7 +320,7 @@
 ; count
 (def count-cmd
   "count <list> # count the number of items in <list>"
-  (coll-cmd (comp str count)))
+  (coll-cmd count))
 
 (cmd-hook #"count"
   _ count-cmd)
@@ -300,21 +336,47 @@
 (cmd-hook #"sum"
   _ sum-cmd)
 
+(defn transform-opts-with-data
+  [f {:keys [opts data-collection] :as cmd-args}]
+  (let [coll-or-error (ensure-coll cmd-args)]
+    (if (error? coll-or-error)
+      coll-or-error
+      (let [re-ordering (->> opts
+                             (map-indexed vector)
+                             f)
+            ordering (map first re-ordering)
+            opts (map second re-ordering)
+            data (map (partial nth data-collection) ordering)]
+        {:result/value opts
+         :result/data data}))))
+
+(defn shuffle-cmd
+  "shuffle <list> # shuffle the order of a piped collection"
+  {:yb/cat #{:util :collection}}
+  [{:as cmd-args}]
+  (transform-opts-with-data shuffle cmd-args))
+
+(cmd-hook #"shuffle"
+          _ shuffle-cmd)
+
 ; sort
 (defn sort-cmd
   "sort <list> # alphabetically sort a list"
   {:yb/cat #{:util :collection}}
-  [{items :opts}]
-  (sort (ensure-items-collection items)))
+  [{items :opts :as cmd-args}]
+  (transform-opts-with-data
+    (partial sort-by second) cmd-args))
 
 (cmd-hook #"sort"
   _ sort-cmd)
 
 ; sortnum
-(def sortnum-cmd
+(defn sortnum-cmd
   "sortnum <list> # numerically sort a list"
-  (coll-cmd
-    (partial sort #(- (read-string %1) (read-string %2)))))
+  {:yb/cat #{:util :collection}}
+  [{items :opts :as cmd-args}]
+  (transform-opts-with-data
+    (partial sort-by second #(- (read-string %1) (read-string %2))) cmd-args))
 
 (cmd-hook #"sortnum"
   _ sortnum-cmd)
@@ -341,25 +403,34 @@
 (defn grep-data-structure
   "opts available:
      :context int - how many items around matched line to return"
-  [pattern d & [opts]]
+  [pattern d & [options]]
   (let [finder (partial re-find pattern)
-        context-count (or (:context opts) 0)
-        filter-fn (fn [i]
+        context-count (or (:context options) 0)
+        filter-fn (fn [[idx item]]
                     (cond
-                      (string? i) (finder i)
-                      (coll? i) (some finder (map str (flatten i)))))]
-    (flatten (sliding-filter context-count filter-fn d))))
+                      (string? item) (finder item)
+                      (coll? item) (some finder (map str (flatten item)))))]
+    (apply concat (sliding-filter context-count filter-fn d))))
 
 (defn grep-cmd
   "grep <pattern> <list> # filters the items in <list> by <pattern>
    grep -C <n> <pattern> <list> # filter items in <list> by <patttern> and include <n> items before and after each matched item"
   {:yb/cat #{:util :collection}}
-  [{:keys [match opts args]}]
+  [{:keys [match opts args data-collection]}]
   (let [[n p] (if (sequential? match) (rest match) ["0" args])
         pattern (re-pattern (str "(?i)" p))
         items (-> opts ensure-items-collection ensure-items-seqential)]
     (if items
-      (grep-data-structure pattern items {:context (read-string n)})
+      (let [matches (grep-data-structure
+                     pattern (map-indexed vector items)
+                     {:context (read-string n)})
+            ordering (map first matches)
+            value (map second matches)
+            data (when data-collection
+                   (map (partial nth data-collection) ordering))
+            ]
+        {:result/value value
+         :result/data data})
       {:result/error
        (str "Expected a collection but you only gave me `" args "`")})))
 
@@ -371,9 +442,10 @@
 (defn tee-cmd
   "tee <list-or-args> # output <list-or-args> to chat then return it (useful for pipes)"
   {:yb/cat #{:util :collection}}
-  [{:keys [opts args]}]
+  [{:keys [data opts args]}]
   (chat-data-structure (or opts args))
-  (or opts args))
+  {:result/value (or opts args)
+   :result/data data})
 
 (cmd-hook #"tee"
   _ tee-cmd)
@@ -414,12 +486,12 @@
 (defn keys-cmd
   "keys <map> # return the keys from <map>"
   {:yb/cat #{:util :collection}}
-  [{items :opts}]
-  (timbre/debug (timbre/color-str :blue "keys")
-                (timbre/color-str :green (pr-str items)))
-  (if (map? items)
-    (keys items)
-    (split-kvs-with first items)))
+  [{items :opts :keys [data data-collection]}]
+  {:result/value (if (map? items)
+                   (keys items)
+                   (split-kvs-with first items))
+   :result/data data
+   :result/data-collection data-collection})
 
 (cmd-hook #"keys"
   _ keys-cmd)
@@ -428,10 +500,13 @@
 (defn vals-cmd
   "vals <map> # return the vals from <map>"
   {:yb/cat #{:util :collection}}
-  [{items :opts}]
-  (if (map? items)
-    (vals items)
-    (split-kvs-with second items)))
+  [{items :opts :keys [data data-collection]}]
+  {:result/value
+   (if (map? items)
+     (vals items)
+     (split-kvs-with second items))
+   :result/data data
+   :result/data-collection data-collection})
 
 (cmd-hook #"vals"
   _ vals-cmd)
@@ -440,17 +515,20 @@
 (defn raw-cmd
   "raw <coll> | <args> # output a string representation of piped <coll> or <args>"
   {:yb/cat #{:util :collection}}
-  [{:keys [opts args]}]
-  (pr-str (or opts args)))
+  [{:keys [data data-collection opts args]}]
+  {:result/data data
+   :result/data-collection data-collection
+   :result/value (pr-str (or opts args))})
 
 (defn raw-all-cmd
   "raw all <coll> | <args> # output a string representation of all command context"
   {:yb/cat #{:util :collection}}
-  [{:keys [user] :as command-args}]
+  [{:keys [user data-collection] :as command-args}]
   (let [minimal-user (select-keys user min-user-keys)
         cleaned-args (merge command-args {:user minimal-user})]
     (binding [*print-right-margin* 80]
       {:result/value (with-out-str (pprint cleaned-args))
+       :result/data-collection data-collection
        :result/data cleaned-args})))
 
 (cmd-hook #"raw"
@@ -472,18 +550,20 @@
    Find many more path examples at:
    https://github.com/gga/json-path/blob/master/test/json_path/test/json_path_test.clj"
   {:yb/cat #{:util}}
-  [{path :match
+  [{[_ path] :match
     :keys [args data]}]
-  (info (timbre/color-str :blue "extra-data-cmd") path \newline
-        (timbre/color-str :blue (pr-str data)))
+  (debug (timbre/color-str :blue "extra-data-cmd")
+         \newline
+         (timbre/color-str :green {:path path})
+         \newline
+         (timbre/color-str :blue (type data) (pr-str data)))
   (if data
     (let [res (jp/at-path path data)]
+      (timbre/info "extract-data-cmd result"
+                   (timbre/color-str :blue (pr-str res)))
       {:result/data res
-       :result/value
-       (if (coll? res)
-         res
-         ;; always convert individual values to string for passing across a pipe
-         (str res))})
+       :result/value (binding [*print-right-margin* 80]
+                       (with-out-str (pprint res)))})
     {:result/error
      "There is no `data` from the previous command 🤔"}))
 
@@ -494,7 +574,8 @@
   (info "show-data-cmd" (pr-str (dissoc cmd-args :user)))
   (if data
     (binding [*print-right-margin* 80]
-      (with-out-str (pprint data)))
+      {:result/value (with-out-str (pprint data))
+       :result/data data})
     "There is no `data` from the previous command 🤔"))
 
 (defn data-cmd
@@ -502,12 +583,15 @@
   {:yb/cat #{:util}}
   [{:keys [data]}]
   (if data
-    data
+    {:result/data data
+     :result/value data}
     "There is no `data` from the previous command 🤔"))
 
 (cmd-hook #"data"
   #"show" show-data-cmd
-  #".+" extract-data-cmd
+  ;; specifically ignore any args passed since they would be appended to the
+  ;; command, but the `data` command ignores args and only looks at data
+  #"(\$\S+).*" extract-data-cmd
   _ data-cmd)
 
 (def max-repeat 10)
@@ -515,16 +599,18 @@
 (defn repeat-cmd
   "repeat <n> <cmd> # repeat <cmd> <n> times"
   {:yb/cat #{:util}}
-  [{[_ n cmd] :match user :user opts :opts chat-source :chat-source}]
+  [{[_ n cmd] :match :keys [user opts chat-source data data-collection]}]
   (let [n (read-string n)]
     (when (> n max-repeat)
       (chat-data-structure
         (format "LOL %s 🐴🐴 You can only repeat %s times 😇"
                 (:name user) max-repeat)))
-    (trace "repeat-cmd" {:chat-source chat-source
-                        :user (keys user)
-                        :opts opts
-                        :n n :cmd cmd})
+    (debug "repeat-cmd" {:chat-source chat-source
+                         :user (keys user)
+                         :data data
+                         :data-collection data-collection
+                         :opts opts
+                         :n n :cmd cmd})
     (let [n (min max-repeat n)
           results
           (repeatedly
@@ -537,16 +623,34 @@
             ;; I wonder if a parse tree could express pre-populated args somehow
             ;; 🤔
             #(handle-cmd cmd {:chat-source chat-source
-                              :user user :opts opts}))]
-      ;; flatten out the results
-      (info (pr-str results))
-      (map (fn [{:result/keys [value error] :as arg}]
-             ;; - some commands return {:result/value :result/data} structures
-             ;; - others return an error like {:result/error}
-             ;; - others just return a plain value
-             ;; so look for all 3 forms
-             (or error value arg))
-           results))))
+                              :data data
+                              :data-collection data-collection
+                              :user user
+                              :opts opts}))
+
+          ;; - some commands return {:result/value :result/data} structures
+          ;; - others return an error like {:result/error}
+          ;; - others just return a plain value
+          ;; so look for all 3 forms
+          values (map (fn [{:result/keys [value error] :as arg}]
+                        (or value error arg)) results)
+          data (map :result/data results)
+          ]
+      (info (pr-str (doall results)))
+      {:result/value values
+       :result/data data})))
 
 (cmd-hook #"repeat"
   #"(\d+)\s(.+)" repeat-cmd)
+
+(defn unquote-cmd
+  "unquote <string> # remove double quotes from the beginning and end of <string>"
+  {:yb/cat #{:util}}
+  [{:keys [args data]}]
+  {:result/value (-> "\"foo\" bar\""
+                     (s/replace #"^\"" "")
+                     (s/replace #"\"$" ""))
+   :result/data data})
+
+(cmd-hook #"unquote"
+  _ unquote-cmd)
