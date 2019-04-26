@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## 0.5.20 - 4/26/2019
+
+- Propagate data in collection commands
+
 ## 0.5.19 - 4/16/2019
 
 - Remove aliases from help docs -
