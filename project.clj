@@ -72,6 +72,9 @@
                  [instaparse "1.4.7"]
                  ; parser visualization - disable unless needed
                  ; [rhizome "0.1.9"]
+                 ;; natural language parsing
+                 [wit/duckling "0.4.24"]
+
 
                  ; http
                  [clj-http "3.9.1"]
