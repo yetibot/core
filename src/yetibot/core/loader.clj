@@ -13,6 +13,11 @@
 (def yetibot-command-namespaces
   [#"^yetibot\.(core\.)?commands.*" #"^.*plugins\.commands.*"])
 
+(comment
+  (find-namespaces
+    (first yetibot-command-namespaces))
+  )
+
 (def yetibot-observer-namespaces
   [#"^yetibot\.(core\.)?observers.*" #"^.*plugins\.observers.*"])
 

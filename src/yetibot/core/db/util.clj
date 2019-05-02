@@ -107,8 +107,11 @@
                                     (transform-where-map where-map)
                                     [where-clause where-args])
 
-        _ (info {:where-clause where-clause
-                 :where-args where-args})
+        _ (info "db query"
+                (color-str :blue
+                           {:where-clause where-clause
+                            :where-args where-args}))
+
         sql-query (into
                     [(str "SELECT " select-clause
                           " FROM " (qualified-table-name table)

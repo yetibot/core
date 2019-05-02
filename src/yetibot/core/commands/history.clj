@@ -1,9 +1,10 @@
 (ns yetibot.core.commands.history
   (:require
-    [taoensso.timbre :refer [debug info]]
-    [yetibot.core.models.history :as h]
-    [clojure.string :refer [blank? join split]]
-    [yetibot.core.hooks :refer [cmd-hook]]))
+   [clojure.tools.cli :refer [parse-opts]]
+   [taoensso.timbre :refer [debug info]]
+   [yetibot.core.models.history :as h]
+   [clojure.string :refer [blank? join split]]
+   [yetibot.core.hooks :refer [cmd-hook]]))
 
 (def consumables #{"head" "tail" "count" "grep" "random"})
 
@@ -29,6 +30,92 @@
       "grep" (h/grep chat-source (join " " args) extra-where)
       :else nil
       )))
+
+(def cli-options
+  [["-h" "--include-history-commands"]
+   ["-y" "--exclude-yetibot"]
+   ["-e" "--exclude-commands"]
+   ["-n" "--exclude-non-commands"]
+   ["-a" "--include-all"]
+   ["-c" "--channels CHANNEL1,CHANNEL2"]
+   ["-u" "--user USER1,USER2"]
+   ["-s" "--since DATE"]
+   ["-v" "--until DATE"]])
+
+
+"history # show chat history
+
+ By default all history except for `history` commands are not included, since
+ they make it too easy for a history command to query itself.
+
+ To include them, use:
+
+ -h --include-history-commands
+
+ To further specify which types of history is excluded use any combination of
+ these options:
+
+ -y --exclude-yetibot - excludes yetibot responses
+ -c --exclude-commands - excludes command requests by users
+ -e --exclude-non-commands - excludes normal chat by users
+
+ For example, to only fetch Yetibot responses:
+
+ history -cn
+
+ To only fetch commands:
+
+ history -ny
+
+ To only fetch non-Yetibot history:
+
+ history -nc
+
+ By default history will only fetch history for the channel that it was
+ requested from, but it can also fetch history across all channels within a chat
+ source by specifying:
+
+ -a --include-all
+
+ You can also specify a channel or channels (comma separated):
+
+ -c --channels
+
+ For example:
+
+ history -c #general,#random
+
+ Search history from a specific user or users (comma separated):
+
+ -u --user
+
+ For example:
+
+ history -u devth
+
+ Search within a specific date range:
+
+ -s --since <date>
+ -v --until <date>
+
+ Note: <date> can be specified in a variety of formats, such as:
+
+ - 2018-01-01
+ - 2 months ago
+ - 2 hours ago
+
+ It uses duckling to parse these from natural language.
+
+ history can be combined with pipes as usual, but it has special support for a
+ few collection commands where it will bake the expression into a single SQL
+ query instead of trying to naively evaluate in memory:
+
+ history | grep <query> - uses Postgres' ~ operator to search
+ history | tail [<n>] - uses LIMIT n and ORDER_BY
+ history | head [<n>] - uses LIMIT n and ORDER_BY
+ history | random - uses LIMIT 1 Postgres' ORDER_BY random()
+ history | count - uses COUNT(*)
+ "
 
 ;; `history` can look ahead at next command to see if there's a head/tail, count
 ;; or grep or possibly another collection operation so it can consume that
