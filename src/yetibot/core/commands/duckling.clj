@@ -26,12 +26,7 @@
       first :value :values first :value)
   ;; doesn't make sense returns empty seq
   (seq (parse "do you even" [:time]))
-
-
-  (-> (parse "2 dollars")
-      first
-      )
-  )
+  (-> (parse "2 dollars") first))
 
 (def dims {:amount-of-money "Amount of money"
            :cycle "Cycle"
