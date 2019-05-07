@@ -18,7 +18,7 @@
 
 (fact "date returns error if it can't find a date"
   (date-cmd
-    {:match "do you even"}) => (error "do you even doesn't look like a date"))
+    {:match "do you even"}) => (error "`do you even` doesn't look like a date"))
 
 (fact "duckling command parses lots of stuff"
   (duckling-cmd {:match "two dollars"}) =>
