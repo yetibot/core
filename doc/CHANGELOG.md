@@ -1,5 +1,21 @@
 # yetibot.core change log
 
+## 0.5.21 - 5/7/2019
+
+- Add `date` and `duckling` commands. `date` is essentially a specialization of
+  `duckling` - it errors if it can't parse a date out of the expression you give
+  it. Both of the commands use [Duckling](https://duckling.wit.ai) to parse a
+  natural language expression. Some things to try:
+
+  ```
+  date 2 hours ago
+  date next thanksgiving
+  date saturday
+  date summer solstice
+  date first day of fall
+  date july
+  ```
+
 ## 0.5.20 - 4/26/2019
 
 - Propagate data in collection commands
