@@ -77,7 +77,7 @@
                [(if (empty? (str previous-value))
                   cmd-with-args
                    ;; next time apply pseudo-format to support %s substitution
-                  (pseudo-format cmd-with-args previous-value))
+                  (pseudo-format cmd-with-args (str previous-value)))
                 extra]))
 
             _ (info "command-result" (color-str :green (pr-str command-result)))
