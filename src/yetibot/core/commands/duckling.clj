@@ -65,6 +65,7 @@
    duckling 2 miles
 
    See https://duckling.wit.ai/ for more information on Duckling."
+  {:yb/cat #{:util}}
   [{match :match}]
   (if-let [result (seq (parse match))]
     {:result/data result
@@ -76,30 +77,40 @@
 ;; date-cmd is a similar to duckling-cmd except it specifically parses for :time
 ;; dimensions and errors if nothing found
 
+(defn format-value [{value-type :type :as value}]
+  (condp = value-type
+    ;; return the start of the interval since date tries to return a specific
+    ;; datetime
+    "interval" (-> value :from :value)
+    (:value value)))
+
 (defn date-cmd
-  "date # date <natural language date expression # parse a date using Duckling
+  "date # date <natural language date expression> # parse an expression using Duckling and return a single date
 
    Try things like:
 
    date 2 hours ago
    date next thanksgiving
    date saturday
+   date summer solstice
+   date first day of fall
+   date july
 
    This can be used in conjunction with commands that take dates, like:
 
    !history --since `date a week ago`
 
-   See https://duckling.wit.ai/ for more information on Duckling."
+   See https://duckling.wit.ai for more information on Duckling."
+  {:yb/cat #{:util}}
   [{match :match}]
   (if-let [result (seq (parse match [:time]))]
     {:result/data result
      :result/value (or
                     ;; single value
-                    (-> result first :value :value)
+                    (-> result first :value format-value)
                     ;; or get the first when there are multiples
                     (-> result first :value :values first :value))}
-    {:result/error (str match " doesn't look like a date")}
-    ))
+    {:result/error (str "`" match "` doesn't look like a date")}))
 
 (cmd-hook #"date"
   _ date-cmd)

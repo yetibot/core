@@ -1,6 +1,6 @@
 (ns yetibot.core.test.commands.duckling
   (:require
-   [midje.sweet :refer [fact => has-prefix just]]
+   [midje.sweet :refer [fact => contains has-prefix just]]
    [matcher-combinators.midje :refer [match]]
    [yetibot.core.midje :refer [value data error]]
    [yetibot.core.commands.duckling :refer :all]))
@@ -10,7 +10,11 @@
 
 (fact "date command parses natural language dates"
   (date-cmd {:match "the first day of the year 2000"}) =>
-      (value (has-prefix "2000-01-01T00:00:00.000")))
+    (value (has-prefix "2000-01-01T00:00:00.000")))
+
+(fact "date intervals return the start date"
+  (date-cmd {:match "summer solstice"}) =>
+    (value (has-prefix #"20\d\d-06-21T00:00:00.000")))
 
 (fact "date returns error if it can't find a date"
   (date-cmd
