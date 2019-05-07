@@ -38,7 +38,8 @@
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
                    {:plugins [[lein-midje "3.2.1"]]
-                    :dependencies [[midje "1.9.6"]]}]
+                    :dependencies [[midje "1.9.6"]
+                                   [nubank/matcher-combinators "0.9.0"]]}]
              :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"
@@ -72,6 +73,8 @@
                  [instaparse "1.4.7"]
                  ; parser visualization - disable unless needed
                  ; [rhizome "0.1.9"]
+                 ;; natural language parsing
+                 [wit/duckling "0.4.24"]
 
                  ; http
                  [clj-http "3.9.1"]
@@ -88,6 +91,7 @@
                  [irclj "0.5.0-alpha4"]
                  [org.julienxx/clj-slack "0.6.3"]
                  [slack-rtm "0.1.7"]
+                 [slack-rtm "0.1.7" :exclusions [[stylefruits/gniazdo]]]
 
                  ; javascript evaluation
                  [evaljs "0.1.2"]
@@ -130,23 +134,14 @@
                  [ring.middleware.conditional "0.2.0"]
                  [ring-cors "0.1.12"]
                  [nrepl "0.6.0"]
-
-                 ; [ring/ring-jetty-adapter "1.4.0"]
                  [http-kit "2.3.0"]
-
-                 ; [ring-server "0.4.0"]
-                 ; [info.sunng/ring-jetty9-adapter "0.8.4"]
-
                  [ring/ring-defaults "0.3.2"]
                  [ring/ring-session-timeout "0.2.0"]
-
                  [ring-middleware-format "0.7.4"
                   :exclusions [org.flatland/ordered
                                clj-stacktrace]]
                  ;; use newer flatland with support for java 11
                  [org.flatland/ordered "1.5.7"]
-
-                 ;; [metosin/ring-http-response "0.9.1"]
 
                  ; web
                  [com.walmartlabs/lacinia "0.32.0"] ;; graphql
@@ -155,8 +150,6 @@
                  [prone "1.6.1"]
                  [hiccup "1.0.5"]
                  [hickory "0.7.1"] ; parse html into hiccup
-
-                 [slack-rtm "0.1.7" :exclusions [[stylefruits/gniazdo]]]
                  ]
 
   :aliases {"test" ["with-profile" "+test" "midje"]}
