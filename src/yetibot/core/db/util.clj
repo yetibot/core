@@ -104,32 +104,26 @@
           identifiers :query/identifiers}]
   (let [select-clause (or select-clause "*")
         [where-clause where-args] (combine-wheres
-                                    (transform-where-map where-map)
-                                    [where-clause where-args])
-
-        _ (info "db query"
-                (color-str :blue
-                           {:where-clause where-clause
-                            :where-args where-args}))
-
+                                   (transform-where-map where-map)
+                                   [where-clause where-args])
         sql-query (into
-                    [(str "SELECT " select-clause
-                          " FROM " (qualified-table-name table)
-                          (when-not (blank? where-clause) (str " WHERE " where-clause))
-                          (when group-clause (str " GROUP BY " group-clause))
-                          (when having-clause (str " HAVING " having-clause))
-                          (when order-clause (str " ORDER BY " order-clause))
-                          (when offset-clause (str " OFFSET " offset-clause))
-                          (when limit-clause (str " LIMIT " limit-clause)))]
-                    where-args)
-        ]
-    (debug "query" (pr-str sql-query))
+                   [(str "SELECT " select-clause
+                         " FROM " (qualified-table-name table)
+                         (when-not (blank? where-clause)
+                           (str " WHERE " where-clause))
+                         (when group-clause (str " GROUP BY " group-clause))
+                         (when having-clause (str " HAVING " having-clause))
+                         (when order-clause (str " ORDER BY " order-clause))
+                         (when offset-clause (str " OFFSET " offset-clause))
+                         (when limit-clause (str " LIMIT " limit-clause)))]
+                   where-args)]
+    (info "db query" (color-str :blue (pr-str sql-query)))
     (seq
-      (sql/with-db-connection [db-conn (:url (config))]
-        (sql/query
-          db-conn
-          sql-query
-          {:identifiers (or identifiers kebab)})))))
+     (sql/with-db-connection [db-conn (:url (config))]
+       (sql/query
+        db-conn
+        sql-query
+        {:identifiers (or identifiers kebab)})))))
 
 (defn update-where
   [table where-map attrs]
