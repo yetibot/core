@@ -114,31 +114,6 @@
      {}
      qs)))
 
-;; (apply merge-with
-;;        (fn [x y]
-;;          #_(cond
-;;              (string? x) (join
-;;                           ", "
-;;                           (concat
-;;                            (split x #",\s*")
-;;                            (split y #",\s*")))
-;;              ;; default
-;;              (into x y)))
-;;        qs)
-
-
-
-
-;; (reduce
-;;  (fn [acc i]
-;;    )
-;;  {}
-;;
-;;  )
-
-
-
-
 (defn query
   "Query with WHERE"
   [table {;; provide either where/map

@@ -37,7 +37,7 @@
 (defn obs-handler [{:keys [body reaction user yetibot-user chat-source
                            message-user event-type]
                     :as event-info}]
-  (debug "obs-handler" (color-str :blue (dissoc event-info :user)))
+  (trace "obs-handler" (color-str :blue (dissoc event-info :user)))
   (let [observers (model/find-all)
         channel (:room chat-source)
         username (:username user)

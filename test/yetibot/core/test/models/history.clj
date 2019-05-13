@@ -39,24 +39,24 @@
 
 (use-fixtures :once populate)
 
-(def extra-where {:is-yetibot false})
+(def extra-query {:where/map {:is-yetibot false}})
 
 (deftest test-count-entities
-  (count-entities chat-source extra-where))
+  (count-entities chat-source extra-query))
 
 (deftest test-head
-  (head chat-source 2 extra-where))
+  (head chat-source 2 extra-query))
 
 (deftest test-tail
   (is
     (= 2
-       (count (tail chat-source 2 extra-where)))))
+       (count (tail chat-source 2 extra-query)))))
 
 (deftest test-random
-  (is (map? (random chat-source extra-where))))
+  (is (map? (random chat-source extra-query))))
 
 (deftest test-grep
-  (grep chat-source "b.d+" extra-where))
+  (grep chat-source "b.d+" extra-query))
 
 (deftest test-cmd-only-items
   (cmd-only-items chat-source))
