@@ -6,12 +6,12 @@
     [yetibot.core.util :refer [is-command?]]
     [clojure.test :refer :all]))
 
-(def chat-source {:adapter :test :room "foo"})
+(def chat-source {:adapter :slack :uuid :test :room "foo"})
 
 (defn add-history [body]
   (add {:user-id "test"
         :user-name "test"
-        :chat-source-adapter (:adapter chat-source)
+        :chat-source-adapter (:uuid chat-source)
         :chat-source-room (:room chat-source)
         :body body}))
 
@@ -31,32 +31,33 @@
   ;;   (sql/db-set-rollback-only! db)
   ;;   (binding [db db]
   ;;     ;; add 10 normal history items
-  ;;     (run! #(add-history (str "body" %)) (range 10))
+  ;;  (run! #(add-history (str "body" %)) (range 10))
   ;;
   ;;     ;; add 3 command history items
-  ;;     (run! add-history ["!echo" "!status" "!poke"])
+  ;;  (run! add-history ["!echo" "!status" "!poke"])
   (f))
 
 (use-fixtures :once populate)
 
-(def extra-query {:where/map {:is-yetibot false}})
+(def extra-query {:where/map {:chat-source-adapter (-> chat-source :uuid pr-str)
+                              :is-yetibot false}})
 
 (deftest test-count-entities
-  (count-entities chat-source extra-query))
+  (count-entities extra-query))
 
 (deftest test-head
-  (head chat-source 2 extra-query))
+  (head 2 extra-query))
 
 (deftest test-tail
   (is
     (= 2
-       (count (tail chat-source 2 extra-query)))))
+       (count (tail 2 extra-query)))))
 
 (deftest test-random
-  (is (map? (random chat-source extra-query))))
+  (is (map? (random extra-query))))
 
 (deftest test-grep
-  (grep chat-source "b.d+" extra-query))
+  (grep "b.d+" extra-query))
 
 (deftest test-cmd-only-items
   (cmd-only-items chat-source))
