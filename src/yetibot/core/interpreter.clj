@@ -54,9 +54,10 @@
         (swap! (:skip-next-n acc) dec)
         (info
          (color-str :yellow
-                    "skipping already-consumed command" cmd-with-args
-                    "and the next"
-                    @(:skip-next-n acc) "commands"))
+                    (str
+                     "skipping already-consumed command" cmd-with-args
+                     "and the next"
+                     @(:skip-next-n acc) "commands")))
         acc)
 
       ;; if possible-opts is a string, append acc to args. otherwise send

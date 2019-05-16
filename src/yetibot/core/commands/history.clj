@@ -1,5 +1,6 @@
 (ns yetibot.core.commands.history
   (:require
+   [yetibot.core.util.command :refer [config-prefix]]
    [yetibot.core.db.util :refer [merge-queries]]
    [clojure.tools.cli :refer [parse-opts]]
    [taoensso.timbre :refer [debug info color-str]]
@@ -43,6 +44,8 @@
    ["-u" "--user USER1,USER2"]
    ["-s" "--since DATE"]
    ["-v" "--until DATE"]])
+
+(def re-comma-with-maybe-whitespace #",\s*")
 
 ;; `history` can look ahead at next command to see if there's a head/tail, count
 ;; or grep or possibly another collection operation so it can consume that
@@ -144,14 +147,17 @@
             ;; TODO remove after dev
             _ (info "history options" (color-str :green (pr-str parsed)))
 
-            ;; TODO
             ;; build up a vector of query maps using provided `options` we'll
             ;; merge these into a single map later
             extra-queries
-            ;; by default we always constrain history to the chat-source that
-            ;; requested it
-            (cond-> [{:where/map
-                      {:chat-source-adapter (-> chat-source :uuid pr-str)}}]
+            (cond-> []
+
+              ;; by default we always constrain history to the chat-source that
+              ;; requested it unless `include-all-channels` was specified
+              (not (:include-all-channels options))
+              {:where/map
+               {:chat-source-adapter (-> chat-source :uuid pr-str)}}
+
               ;; and unless the user specified `include-all-channels` or
               ;; specific `channels` then we also constrain history to the
               ;; channel that it originated from
@@ -162,16 +168,15 @@
                                                  (:room chat-source)}})
 
               ;; --channels
-              (not
-               (blank? (:channels options)))
+              (not (blank? (:channels options)))
               (conj
-               (let [cs (split (:channels options) #",\s*")]
-                 (info "channels:" (pr-str cs))
-                 (info "wat" (join " OR "
-                                   (map (constantly "chat_source_room = ?") cs)))
+               (let [cs (split (:channels options)
+                               re-comma-with-maybe-whitespace)]
                  {:where/clause
-                  (join " OR "
-                        (map (constantly "chat_source_room = ?") cs))
+                  (str "("
+                       (join " OR "
+                             (map (constantly "chat_source_room = ?") cs))
+                       ")")
                   :where/args cs}))
 
               ;; by default we exclude history commands, but this isn't super
@@ -183,18 +188,48 @@
                (not (:exclude-commands options))
                (not (:include-history-commands
                      options))) (conj
-                                 {:where/clause "body NOT LIKE ?"
-                                  :where/args ["!history%"]})
+                                 {:where/clause
+                                  "(is_command = ? OR body NOT LIKE ?)"
+                                  :where/args [false
+                                               (str config-prefix "history%")]})
 
               (:exclude-yetibot options) (conj
                                           {:where/clause "is_yetibot = ?"
                                            :where/args [false]})
-              (:exclude-commands options) (conj
-                                           {:where/map {:is_command false}}))
 
-            ;; exclude-non-commands
+              (:exclude-commands options) (conj
+                                           {:where/map {:is_command false}})
+
+              (:exclude-non-commands options) (conj
+                                               {:where/map {:is_command true}})
+
+              ;; --user USER1,USER2
+              (not (blank? (:user options)))
+              (conj
+               (let [users (split (:user options)
+                                  re-comma-with-maybe-whitespace)]
+                 {:where/clause
+                  (str "("
+                       (join " OR " (map (constantly "user_name = ?") users))
+                       ")")
+                  :where/args users}))
+
+              ;; --since DATE
+              (not (blank? (:since options)))
+              (conj
+               {:where/clause
+                "created_at AT TIME ZONE 'UTC' >= ?::TIMESTAMP WITH TIME ZONE"
+                :where/args [(:since options)]})
+
+              ;; --until DATE
+              (not (blank? (:until options)))
+              (conj
+               {:where/clause
+                "created_at AT TIME ZONE 'UTC' <= ?::TIMESTAMP WITH TIME ZONE"
+                :where/args [(:until options)]}))
 
             ;; now merge the vector of maps into one single map
+
             _ (info "extra queries to merge" (pr-str extra-queries))
             extra-query (apply merge-queries extra-queries)
             _ (info "extra query" (pr-str extra-query))
