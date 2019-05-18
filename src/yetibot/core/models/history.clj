@@ -148,8 +148,11 @@
 
 ;;;; formatting
 
-(defn format-entity [{:keys [created-at user-name body] :as e}]
-  (format "%s at %s: %s" user-name (t/format-time (from-date created-at)) body))
+(defn format-entity [{:keys [created-at user-name body chat-source-room] :as e}]
+  ;; devth in #general at 02:16 PM 12/04: !echo foo
+  (format "%s in %s at %s: %s"
+          user-name chat-source-room
+          (t/format-time (from-date created-at)) body))
 
 (defn format-all [entities]
   (if (sequential? entities)
