@@ -217,7 +217,7 @@
            :correlation-id "1550596458618-791705640",
            :body "!channel settings",
            :created-at #inst "2019-02-20T01:14:18.635678000-00:00",
-           :is-yetibot false}))))
+           :is-yetibot false})))
 
  (fact "head")
 
@@ -234,3 +234,4 @@
  (history-for-cmd-sequence ["tail"] extra-where)
 
  (count (history-for-cmd-sequence ["grep 3$"] extra-where)))
+
