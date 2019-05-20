@@ -33,7 +33,8 @@
                    ;; dashboard
                    "node_modules/yetibot-dashboard/build"]
   :main yetibot.core.init
-  :plugins [[lein-environ "1.1.0"]
+  :plugins [[com.roomkey/lein-v "7.1.0"]
+            [lein-environ "1.1.0"]
             [lein-npm "0.6.2"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
