@@ -219,7 +219,90 @@
            :created-at #inst "2019-02-20T01:14:18.635678000-00:00",
            :is-yetibot false})))
 
- (fact "head")
+ (fact "--user USER1,USER2 produces the correct query"
+       (history-cmd
+        {:chat-source chat-source
+         :match "--user devth,yetibot --include-all-channels --include-history-commands"
+         :next-cmds ["head"]
+         :skip-next-n (atom 0)}) =>
+       (value "devth in #obs at 03:50 PM 12/04: !status hi")
+       (provided
+        (query
+         {:where/clause "(user_name = ? OR user_name = ?)"
+          :where/args ["devth" "yetibot"]
+          :limit/clause "1"}) =>
+        '({:is-command true,
+           :is-private false,
+           :user-name "devth",
+           :command "",
+           :user-id "U3HSJDD1V",
+           :is-error false,
+           :chat-source-room "#obs",
+           :is-private-channel false,
+           :id 34,
+           :chat-source-adapter ":slack",
+           :correlation-id nil,
+           :body "!status hi",
+           :created-at #inst "2017-12-04T23:50:18.650314000-00:00",
+           :is-yetibot false})))
+
+ (fact "--since DATE produces the correct query"
+       (history-cmd
+        {:chat-source chat-source
+         :match "--since 2019-03-20T00:00:00.000Z --include-all-channels --include-history-commands"
+         :next-cmds ["tail"]
+         :skip-next-n (atom 0)}) =>
+       (value "yetibot-devth in local at 05:42 PM 05/16: pd teams # list PagerDuty teams\npd teams <query> # list PagerDuty teams matching <query>\npd users # list PagerDuty users\npd users <query> # list PagerDuty users matching <query>")
+       (provided
+        (query
+         {:where/clause "created_at AT TIME ZONE 'UTC' >= ?::TIMESTAMP WITH TIME ZONE"
+          :where/args ["2019-03-20T00:00:00.000Z"]
+          :limit/clause "1"
+          :order/clause "created_at DESC"}) =>
+        '({:is-command false,
+           :is-private true,
+           :user-name "yetibot-devth",
+           :command "help pd | grep query",
+           :user-id "U4H8NNYR2",
+           :is-error false,
+           :chat-source-room "local",
+           :is-private-channel false,
+           :id 7098,
+           :chat-source-adapter ":ybslack",
+           :correlation-id "1558032124431-1378822926",
+           :body
+           "pd teams # list PagerDuty teams\npd teams <query> # list PagerDuty teams matching <query>\npd users # list PagerDuty users\npd users <query> # list PagerDuty users matching <query>",
+           :created-at #inst "2019-05-17T00:42:04.518674000-00:00",
+           :is-yetibot true})))
+
+ (fact "--until DATE produces the correct query"
+       (history-cmd
+        {:chat-source chat-source
+         :match "--until 2019-03-20T00:00:00.000Z --include-all-channels --include-history-commands"
+         :next-cmds ["tail"]
+         :skip-next-n (atom 0)}) =>
+       (value "yetibot-dev in local at 04:28 PM 03/19: Yellowstone, MT (US)\n39.0°F - Clear Sky\nFeels like 35°F\nWinds 1.4 mph WSW")
+       (provided
+        (query
+         {:where/clause "created_at AT TIME ZONE 'UTC' <= ?::TIMESTAMP WITH TIME ZONE"
+          :where/args ["2019-03-20T00:00:00.000Z"]
+          :limit/clause "1"
+          :order/clause "created_at DESC"}) =>
+        '({:is-command false,
+           :is-private true,
+           :user-name "yetibot-dev",
+           :command "weather 59101",
+           :user-id "U4H8NNYR2",
+           :is-error false,
+           :chat-source-room "local",
+           :is-private-channel false,
+           :id 5242,
+           :chat-source-adapter ":ybslack",
+           :correlation-id "1553016486830--1020611489",
+           :body
+           "Yellowstone, MT (US)\n39.0°F - Clear Sky\nFeels like 35°F\nWinds 1.4 mph WSW",
+           :created-at #inst "2019-03-19T23:28:07.591446000-00:00",
+           :is-yetibot true})))
 
  (history-for-cmd-sequence ["count"] extra-where)
 
