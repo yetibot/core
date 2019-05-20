@@ -1,7 +1,8 @@
 (ns yetibot.core.db.util
   (:require
+   [clojure.set :refer [union]]
     [schema.core :as sch]
-    [clojure.string :refer [blank? join]]
+    [clojure.string :refer [blank? join split]]
     [cuerdas.core :refer [kebab snake]]
     [clojure.java.jdbc :as sql]
     [taoensso.timbre :refer [debug info color-str]]
@@ -86,6 +87,33 @@
              (into (vec w1-args)
                    (vec w2-args))])))
 
+(def merge-fn
+  "Merge functions for specific keys supported by `query`"
+  {:select/clause (fn [x y]
+                    (join ", " (concat (split x #",\s*") (split y #",\s*"))))
+   :where/clause (fn [x y] (str x " AND " y))})
+
+(defn merge-queries
+  [& qs]
+  (let [ks (reduce union (map (comp set keys) qs))]
+    (reduce
+     (fn [acc i]
+       (into acc
+             (for [k ks
+                   :let [left (k acc)
+                         right (k i)]
+                   :when (or (k acc) (k i))]
+               [k
+                (cond
+                  ;; both - merge them
+                  (and left right) ((get merge-fn k into) (k acc) (k i))
+                  ;; left only
+                  (and left (not right)) left
+                  ;; right only
+                  (and right (not left)) right)])))
+     {}
+     qs)))
+
 (defn query
   "Query with WHERE"
   [table {;; provide either where/map
@@ -104,29 +132,26 @@
           identifiers :query/identifiers}]
   (let [select-clause (or select-clause "*")
         [where-clause where-args] (combine-wheres
-                                    (transform-where-map where-map)
-                                    [where-clause where-args])
-
-        _ (info {:where-clause where-clause
-                 :where-args where-args})
+                                   (transform-where-map where-map)
+                                   [where-clause where-args])
         sql-query (into
-                    [(str "SELECT " select-clause
-                          " FROM " (qualified-table-name table)
-                          (when-not (blank? where-clause) (str " WHERE " where-clause))
-                          (when group-clause (str " GROUP BY " group-clause))
-                          (when having-clause (str " HAVING " having-clause))
-                          (when order-clause (str " ORDER BY " order-clause))
-                          (when offset-clause (str " OFFSET " offset-clause))
-                          (when limit-clause (str " LIMIT " limit-clause)))]
-                    where-args)
-        ]
-    (debug "query" (pr-str sql-query))
+                   [(str "SELECT " select-clause
+                         " FROM " (qualified-table-name table)
+                         (when-not (blank? where-clause)
+                           (str " WHERE " where-clause))
+                         (when group-clause (str " GROUP BY " group-clause))
+                         (when having-clause (str " HAVING " having-clause))
+                         (when order-clause (str " ORDER BY " order-clause))
+                         (when offset-clause (str " OFFSET " offset-clause))
+                         (when limit-clause (str " LIMIT " limit-clause)))]
+                   where-args)]
+    (info "db query" (color-str :blue (pr-str sql-query)))
     (seq
-      (sql/with-db-connection [db-conn (:url (config))]
-        (sql/query
-          db-conn
-          sql-query
-          {:identifiers (or identifiers kebab)})))))
+     (sql/with-db-connection [db-conn (:url (config))]
+       (sql/query
+        db-conn
+        sql-query
+        {:identifiers (or identifiers kebab)})))))
 
 (defn update-where
   [table where-map attrs]

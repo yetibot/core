@@ -1,5 +1,28 @@
 # yetibot.core change log
 
+## 0.5.22 - 5/20/2019
+
+- Overhaul the `history` command, adding a bunch of options to specify which
+  history to fetch:
+
+  ```clojure
+  [["-h" "--include-history-commands"]
+   ["-y" "--exclude-yetibot"]
+   ["-e" "--exclude-commands"]
+   ["-n" "--exclude-non-commands"]
+   ["-a" "--include-all-channels"]
+   ["-c" "--channels CHANNEL1,CHANNEL2"]
+   ["-u" "--user USER1,USER2"]
+   ["-s" "--since DATE"]
+   ["-v" "--until DATE"]]
+  ```
+
+  See `help history` for the full docs!
+
+- Add ability to merge query maps in `yetibot.core.db.util/merge-queries`
+- Ensure piped values are always converted to strings via
+  `(pseudo-format cmd-with-args (str previous-value))
+
 ## 0.5.21 - 5/7/2019
 
 - Add `date` and `duckling` commands. `date` is essentially a specialization of

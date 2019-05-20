@@ -1,7 +1,7 @@
 (ns yetibot.core.models.history
   (:require
     [yetibot.core.util.command :refer [extract-command]]
-    [yetibot.core.db.util :refer [transform-where-map]]
+    [yetibot.core.db.util :refer [transform-where-map merge-queries]]
     [yetibot.core.db.history :refer [create query]]
     [clojure.string :refer [join split]]
     [yetibot.core.util.time :as t]
@@ -19,69 +19,45 @@
 
 (defn flatten-one [n] (if (= 1 n) first identity))
 
-(defn history-for-chat-source
-  ([chat-source] (history-for-chat-source chat-source {}))
-  ([{:keys [uuid room] :as chat-source} extra-where]
-   "Retrieve a map of user to chat body"
-   (query {:where/map
-           (merge
-             {:chat-source-adapter (pr-str uuid)
-              :chat-source-room room}
-             extra-where)})))
-
 (defn count-entities
-  [{:keys [uuid room] :as chat-source} extra-where]
+  [extra-query]
   (-> (query
-        {:where/map
-         (merge
-           {:chat-source-adapter (pr-str uuid)
-            :chat-source-room room}
-           extra-where)
-         :select/clause "COUNT(*) as count"})
+       (merge-queries
+        extra-query
+        {:select/clause "COUNT(*) as count"}))
       first
       :count))
 
 (defn head
-  [{:keys [uuid room] :as chat-source} n extra-where]
+  [n extra-query]
   ((flatten-one n)
    (query
-     {:where/map
-      (merge
-        {:chat-source-adapter (pr-str uuid)
-         :chat-source-room room}
-        extra-where)
-      :limit/clause (str n)})))
+    (merge-queries extra-query
+                   {:limit/clause (str n)}))))
 
 (defn tail
-  [{:keys [uuid room] :as chat-source} n extra-where]
+  [n extra-query]
   ((flatten-one n)
    (-> (query
-         {:where/map
-          (merge
-            {:chat-source-adapter (pr-str uuid)
-             :chat-source-room room}
-            extra-where)
-          :order/clause "created_at DESC"
-          :limit/clause (str n)})
+        (merge-queries
+         extra-query
+         {:order/clause "created_at DESC"
+          :limit/clause (str n)}))
        reverse)))
 
 (defn random
-  [{:keys [uuid room] :as chat-source} extra-where]
-  (first (query
-           {:where/map
-            (merge
-              {:chat-source-adapter (pr-str uuid)
-               :chat-source-room room}
-              extra-where)
-            :order/clause "random()" ;; possibly slow on large tables
-            :limit/clause "1"})))
+  [extra-query]
+  (first (query (merge-queries extra-query
+                               {;; possibly slow on large tables:
+                                :order/clause "random()"
+                                :limit/clause "1"}))))
 
-(defn grep [{:keys [uuid room] :as chat-source} pattern extra-where]
+(defn grep [pattern extra-query]
   (query
-    {:where-map extra-where
-     :where/clause (str "chat_source_adapter=? AND chat_source_room=?"
-                        " AND body ~ ?")
-     :where/args  [(pr-str uuid) room pattern]}))
+   (merge-queries
+    extra-query
+    {:where/clause "body ~ ?"
+     :where/args  [pattern]})))
 
 (defn last-chat-for-channel
   "Takes chat source and returns the last chat for the channel.
@@ -172,8 +148,11 @@
 
 ;;;; formatting
 
-(defn format-entity [{:keys [created-at user-name body] :as e}]
-  (format "%s at %s: %s" user-name (t/format-time (from-date created-at)) body))
+(defn format-entity [{:keys [created-at user-name body chat-source-room] :as e}]
+  ;; devth in #general at 02:16 PM 12/04: !echo foo
+  (format "%s in %s at %s: %s"
+          user-name chat-source-room
+          (t/format-time (from-date created-at)) body))
 
 (defn format-all [entities]
   (if (sequential? entities)

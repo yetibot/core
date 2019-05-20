@@ -6,7 +6,7 @@
     [clojure.java.jdbc :as sql]
     [clojure.string :as str]
     [yetibot.core.loader :refer [find-namespaces]]
-    [taoensso.timbre :refer [debug info warn error]]))
+    [taoensso.timbre :refer [debug trace info warn error]]))
 
 (def db-ns-pattern #"(yetibot|plugins).*\.db\..+")
 
@@ -53,7 +53,7 @@
   (run!
     (fn [column-spec]
       (let [column (spec-to-string entities column-spec)]
-        (debug "Attempting to add" column)
+        (trace "Attempting to add" column)
         (try
           (do
             (sql/db-do-prepared
@@ -63,7 +63,7 @@
           (catch Throwable e
             ;; column failed to add, probably because it already existed, but
             ;; could have failed for another reason
-            (debug column "already exists on" table-name
+            (trace column "already exists on" table-name
                   "or else something bad happened:" (.getMessage e))))))
     table-specs))
 

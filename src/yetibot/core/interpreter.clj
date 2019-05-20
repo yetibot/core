@@ -6,7 +6,7 @@
                                                  configured-default-command]]
     [clojure.set :refer [difference intersection]]
     [yetibot.core.models.channel :as channel]
-    [taoensso.timbre :refer [color-str debug info warn error]]
+    [taoensso.timbre :refer [color-str debug trace info warn error]]
     [yetibot.core.util.format :refer [pseudo-format to-coll-if-contains-newlines]]))
 
 (def ^:dynamic *current-user*)
@@ -32,7 +32,7 @@
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra
    :opts"
   [acc [cmd-with-args & next-cmds]]
-  (debug "pipe-cmds" *chat-source* acc cmd-with-args next-cmds)
+  (trace "pipe-cmds" *chat-source* acc cmd-with-args next-cmds)
   (let [;; the previous accumulated value. for the first command in a series of
         ;; piped commands, preivous-value and previous-data will be empty
         {previous-value :value
@@ -52,8 +52,12 @@
     (if (pos? @(:skip-next-n acc))
       (do
         (swap! (:skip-next-n acc) dec)
-        (info "skipping already-consumed command" cmd-with-args "and the next"
-              @(:skip-next-n acc) "commands")
+        (info
+         (color-str :yellow
+                    (str
+                     "skipping already-consumed command" cmd-with-args
+                     "and the next"
+                     @(:skip-next-n acc) "commands")))
         acc)
 
       ;; if possible-opts is a string, append acc to args. otherwise send
@@ -77,7 +81,7 @@
                [(if (empty? (str previous-value))
                   cmd-with-args
                    ;; next time apply pseudo-format to support %s substitution
-                  (pseudo-format cmd-with-args previous-value))
+                  (pseudo-format cmd-with-args (str previous-value)))
                 extra]))
 
             _ (info "command-result" (color-str :green (pr-str command-result)))
