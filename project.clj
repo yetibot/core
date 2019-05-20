@@ -1,4 +1,4 @@
-(defproject yetibot.core :lein-v
+(defproject yetibot.core :project/ref-short
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/yetibot/yetibot.core"
@@ -14,18 +14,30 @@
                  (do
                    (println)
                    (println
-                     (str
-                       "\u001B[37m"
-                       "  Welcome to the Yetibot dev REPL!"
-                       \newline
-                       "  Use \u001B[35m(\u001B[34mhelp\u001B[35m) "
-                       "\u001B[37mto see available commands."
-                       \newline
-                       \newline
-                       "\u001B[35m    λλλ"
-                       "\u001B[m"
-                       ))
+                    (str
+                     "\u001B[37m"
+                     "  Welcome to the Yetibot dev REPL!"
+                     \newline
+                     "  Use \u001B[35m(\u001B[34mhelp\u001B[35m) "
+                     "\u001B[37mto see available commands."
+                     \newline
+                     \newline
+                     "\u001B[35m    λλλ"
+                     "\u001B[m"))
                    (println))}
+  :git-version
+  {:status-to-version
+   (fn [{:keys [tag version branch ahead ahead? dirty?] :as git}]
+     (println "status-to-version: " (pr-str git))
+     (assert (re-find #"\d+\.\d+\.\d+" tag)
+             "Tag is assumed to be a raw SemVer version")
+     (if (and tag (not ahead?) (not dirty?))
+       tag
+       (let [[_ prefix patch] (re-find #"(\d+\.\d+)\.(\d+)" tag)
+             patch            (Long/parseLong patch)
+             patch+           (inc patch)]
+         (format "%s.%d-%s-SNAPSHOT" prefix patch+ branch))))}
+
   ; :aot [yetibot.core.init]
   :resource-paths ["resources"
                    ;; yetibot-dashboard is an npm dep
@@ -33,7 +45,7 @@
                    ;; dashboard
                    "node_modules/yetibot-dashboard/build"]
   :main yetibot.core.init
-  :plugins [[com.roomkey/lein-v "7.1.0"]
+  :plugins [[me.arrdem/lein-git-version "2.0.8"]
             [lein-environ "1.1.0"]
             [lein-npm "0.6.2"]]
   :profiles {:profiles/dev {}
