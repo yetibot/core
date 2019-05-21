@@ -37,18 +37,12 @@
                       (java.time.Instant/now))
                     java.time.ZoneOffset/UTC)
 
-           date-part (.format
-                      (java.time.format.DateTimeFormatter/ofPattern "uuuu.MM.dd")
-                      instant)
-
-           hh (.getHour instant)
-           mm (.getMinute instant)
-           ss (.getSecond instant)
-
-           seconds-since-midnight (+ ss (* 60 (+ mm (* 60 hh)))) ]
-       (println {:hh hh :mm mm :ss ss})
-       (println (format "%s-%s-%s" date-part seconds-since-midnight ref-short))
-       (format "%s-%s-%s" date-part seconds-since-midnight ref-short)))}
+           datetime (.format
+                      (java.time.format.DateTimeFormatter/ofPattern
+                       "uuuuMMdd.HHmmss")
+                      instant)]
+       (println (format "%s.%s" datetime ref-short))
+       (format "%s.%s" datetime ref-short)))}
 
   ; :aot [yetibot.core.init]
   :resource-paths ["resources"
