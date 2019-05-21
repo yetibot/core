@@ -25,8 +25,8 @@ deploy:
   # TODO switch this to master
   on:
     branch: derived-version
-    # ensure we only attempt to deploy once
-    condition: $TRAVIS_JOB_NUMBER =~ ^\d.1$
+    # ensure we only attempt to deploy once using jdk 11
+    jdk: oraclejdk11
 
 services:
   - postgresql
