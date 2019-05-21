@@ -179,14 +179,9 @@
 
   :aliases {"test" ["with-profile" "+test" "midje"]}
 
+  ;; release is purely derived from git sha and timestamp, so there's no need to
+  ;; commit, bump, or tag anything
   :release-tasks [["vcs" "assert-committed"]
-                  ["deps"]
-                  ["change" "version" "leiningen.release/bump-version" "release"]
-                  ["vcs" "commit"]
-                  ["vcs" "tag"]
-                  ["deploy"]
-                  ["change" "version" "leiningen.release/bump-version"]
-                  ["vcs" "commit"]
-                  ["vcs" "push"]]
+                  ["deploy"]]
 
   :npm {:dependencies [[yetibot-dashboard "0.7.2"]]})

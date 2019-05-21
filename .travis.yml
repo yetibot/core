@@ -13,5 +13,12 @@ env:
 
 script: lein test
 
+deploy:
+  provider: script
+  script: lein release
+  # TODO enable
+  # on:
+  #   branch: master
+
 services:
   - postgresql
