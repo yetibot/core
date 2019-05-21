@@ -1,4 +1,4 @@
-(defproject yetibot.core :project/ref-short
+(defproject yetibot.core "_"
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/yetibot/yetibot.core"
@@ -27,16 +27,20 @@
                    (println))}
   :git-version
   {:status-to-version
-   (fn [{:keys [tag version branch ahead ahead? dirty?] :as git}]
+   (fn [{:keys [timestamp ref-short tag version branch ahead ahead? dirty?] :as git}]
      (println "status-to-version: " (pr-str git))
-     (assert (re-find #"\d+\.\d+\.\d+" tag)
-             "Tag is assumed to be a raw SemVer version")
-     (if (and tag (not ahead?) (not dirty?))
-       tag
-       (let [[_ prefix patch] (re-find #"(\d+\.\d+)\.(\d+)" tag)
-             patch            (Long/parseLong patch)
-             patch+           (inc patch)]
-         (format "%s.%d-%s-SNAPSHOT" prefix patch+ branch))))}
+     (assert (re-find #"\d+.*" tag) "Tag should start with numbers")
+     (when tag
+       (let [[_ x] (re-find #"(\d+).*" tag)
+             y ahead
+             z (.format
+                (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss'Z'")
+                  (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))
+                (if timestamp
+                  (java.util.Date. (* 1000 timestamp))
+                  (java.util.Date.)))]
+         (println (format "%s.%s.%s-%s" x y z ref-short))
+         (format "%s.%s.%s-%s" x y z ref-short))))}
 
   ; :aot [yetibot.core.init]
   :resource-paths ["resources"
