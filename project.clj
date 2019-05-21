@@ -2,7 +2,7 @@
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/yetibot/yetibot.core"
-  :scm {:name "git" :url "https://github.com/yetibot/yetibot.core.git"}
+  :scm {:name "git" :url "https://github.com/yetibot/yetibot.core"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :deploy-repositories [["releases" :clojars]]

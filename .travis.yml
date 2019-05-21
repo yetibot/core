@@ -11,19 +11,20 @@ before_script:
 env:
   - YETIBOT_DB_URL="postgresql://postgres@localhost:5432/yetibot"
 
-script:
-  - git checkout package-lock.json # ignore changes from npm
-  - git status
-  - lein test
+# TODO re-enable
+# script:
+#   - git checkout package-lock.json # ignore changes from npm
+#   - git status
+#   - lein test
 
 deploy:
   provider: script
   script:
   - git status
   - lein release
-  # TODO enable
-  # on:
-  #   branch: master
+  # TODO switch this to master
+  on:
+    branch: derived-version
 
 services:
   - postgresql
