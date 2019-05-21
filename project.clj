@@ -25,22 +25,30 @@
                      "\u001B[35m    λλλ"
                      "\u001B[m"))
                    (println))}
+
   :git-version
   {:status-to-version
    (fn [{:keys [timestamp ref-short tag version branch ahead ahead? dirty?] :as git}]
      (println "status-to-version: " (pr-str git))
-     (assert (re-find #"\d+.*" tag) "Tag should start with numbers")
-     (when tag
-       (let [[_ x] (re-find #"(\d+).*" tag)
-             y ahead
-             z (.format
-                (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss'Z'")
-                  (.setTimeZone (java.util.TimeZone/getTimeZone "UTC")))
-                (if timestamp
-                  (java.util.Date. (* 1000 timestamp))
-                  (java.util.Date.)))]
-         (println (format "%s.%s.%s-%s" x y z ref-short))
-         (format "%s.%s.%s-%s" x y z ref-short))))}
+     (assert (not dirty?) "Git workspace is dirty")
+     (let [instant (.atZone
+                    (if (and timestamp (number? (read-string timestamp)))
+                      (java.time.Instant/ofEpochMilli (* 1000 (read-string timestamp)))
+                      (java.time.Instant/now))
+                    java.time.ZoneOffset/UTC)
+
+           date-part (.format
+                      (java.time.format.DateTimeFormatter/ofPattern "uuuu.MM.dd")
+                      instant)
+
+           hh (.getHour instant)
+           mm (.getMinute instant)
+           ss (.getSecond instant)
+
+           seconds-since-midnight (+ ss (* 60 (+ mm (* 60 hh)))) ]
+       (println {:hh hh :mm mm :ss ss})
+       (println (format "%s-%s-%s" date-part seconds-since-midnight ref-short))
+       (format "%s-%s-%s" date-part seconds-since-midnight ref-short)))}
 
   ; :aot [yetibot.core.init]
   :resource-paths ["resources"
