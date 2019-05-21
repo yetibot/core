@@ -11,7 +11,10 @@ before_script:
 env:
   - YETIBOT_DB_URL="postgresql://postgres@localhost:5432/yetibot"
 
-script: lein test
+script:
+  - git status
+  - git diff
+  - lein test
 
 deploy:
   provider: script
