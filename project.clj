@@ -42,7 +42,7 @@
 
            datetime (.format
                      (java.time.format.DateTimeFormatter/ofPattern
-                      "uuuuMMdd.HHmmss")
+                      "yyyyMMdd.HHmmss")
                      instant)]
        (println (format "%s.%s" datetime ref-short))
        (format "%s.%s" datetime ref-short)))}
