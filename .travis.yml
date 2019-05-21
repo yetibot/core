@@ -14,14 +14,14 @@ before_script:
 env:
   - YETIBOT_DB_URL="postgresql://postgres@localhost:5432/yetibot"
 
+before_deploy:
+  - git status
+    # clean up annoying package-lock.json changes
+  - git reset --hard
+
 deploy:
   provider: script
-  script:
-  - git status
-  - git checkout package-lock.json # ignore changes from npm
-  - git status
-  - echo "Releasing..."
-  - lein release
+  script: lein release
   # TODO switch this to master
   on:
     branch: derived-version
