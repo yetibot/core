@@ -5,7 +5,10 @@
   :scm {:name "git" :url "https://github.com/yetibot/yetibot.core"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :deploy-repositories [["releases" :clojars]]
+  :deploy-repositories [["releases" {:url "https://clojars.org/repo"
+                                     :username :env/clojars_username
+                                     :password :env/clojars_password
+                                     :sign-releases false}]]
   :repl-options {:init-ns yetibot.core.repl
                  :timeout 120000
                  :prompt (fn [ns] (str "\u001B[35m[\u001B[34m" ns
@@ -38,9 +41,9 @@
                     java.time.ZoneOffset/UTC)
 
            datetime (.format
-                      (java.time.format.DateTimeFormatter/ofPattern
-                       "uuuuMMdd.HHmmss")
-                      instant)]
+                     (java.time.format.DateTimeFormatter/ofPattern
+                      "uuuuMMdd.HHmmss")
+                     instant)]
        (println (format "%s.%s" datetime ref-short))
        (format "%s.%s" datetime ref-short)))}
 
