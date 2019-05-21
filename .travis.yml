@@ -20,6 +20,8 @@ before_deploy:
   - git reset --hard
 
 deploy:
+  # ensure we only attempt to deploy once
+  jdk: oraclejdk11
   provider: script
   script: lein release
   # TODO switch this to master
