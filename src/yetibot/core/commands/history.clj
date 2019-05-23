@@ -150,7 +150,7 @@
             ;; build up a vector of query maps using provided `options` we'll
             ;; merge these into a single map later
             extra-queries
-            (cond-> []
+            (cond-> [{:where/map {:is_private false}}]
 
               ;; by default we always constrain history to the chat-source that
               ;; requested it unless `include-all-channels` was specified
