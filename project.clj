@@ -32,7 +32,6 @@
   :git-version
   {:status-to-version
    (fn [{:keys [timestamp ref-short tag version branch ahead ahead? dirty?] :as git}]
-     (println "status-to-version: " (pr-str git))
      ;; (assert (not dirty?) "Git workspace is dirty")
      (let [instant (.atZone
                     (if (and timestamp (number? (read-string timestamp)))
@@ -44,7 +43,6 @@
                      (java.time.format.DateTimeFormatter/ofPattern
                       "yyyyMMdd.HHmmss")
                      instant)]
-       (println (format "%s.%s" datetime ref-short))
        (format "%s.%s" datetime ref-short)))}
 
   ; :aot [yetibot.core.init]
