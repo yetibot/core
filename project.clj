@@ -1,11 +1,14 @@
-(defproject yetibot.core "0.5.22-SNAPSHOT"
+(defproject yetibot/core "_"
   :description "Core yetibot utilities, extracted for shared use among yetibot
                 and its various plugins"
   :url "https://github.com/yetibot/yetibot.core"
-  :scm {:name "git" :url "https://github.com/yetibot/yetibot.core.git"}
+  :scm {:name "git" :url "https://github.com/yetibot/yetibot.core"}
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :deploy-repositories [["releases" :clojars]]
+  :deploy-repositories [["releases" {:url "https://clojars.org/repo"
+                                     :username :env/clojars_username
+                                     :password :env/clojars_password
+                                     :sign-releases false}]]
   :repl-options {:init-ns yetibot.core.repl
                  :timeout 120000
                  :prompt (fn [ns] (str "\u001B[35m[\u001B[34m" ns
@@ -14,18 +17,34 @@
                  (do
                    (println)
                    (println
-                     (str
-                       "\u001B[37m"
-                       "  Welcome to the Yetibot dev REPL!"
-                       \newline
-                       "  Use \u001B[35m(\u001B[34mhelp\u001B[35m) "
-                       "\u001B[37mto see available commands."
-                       \newline
-                       \newline
-                       "\u001B[35m    λλλ"
-                       "\u001B[m"
-                       ))
+                    (str
+                     "\u001B[37m"
+                     "  Welcome to the Yetibot dev REPL!"
+                     \newline
+                     "  Use \u001B[35m(\u001B[34mhelp\u001B[35m) "
+                     "\u001B[37mto see available commands."
+                     \newline
+                     \newline
+                     "\u001B[35m    λλλ"
+                     "\u001B[m"))
                    (println))}
+
+  :git-version
+  {:status-to-version
+   (fn [{:keys [timestamp ref-short tag version branch ahead ahead? dirty?] :as git}]
+     ;; (assert (not dirty?) "Git workspace is dirty")
+     (let [instant (.atZone
+                    (if (and timestamp (number? (read-string timestamp)))
+                      (java.time.Instant/ofEpochMilli (* 1000 (read-string timestamp)))
+                      (java.time.Instant/now))
+                    java.time.ZoneOffset/UTC)
+
+           datetime (.format
+                     (java.time.format.DateTimeFormatter/ofPattern
+                      "yyyyMMdd.HHmmss")
+                     instant)]
+       (format "%s.%s" datetime ref-short)))}
+
   ; :aot [yetibot.core.init]
   :resource-paths ["resources"
                    ;; yetibot-dashboard is an npm dep
@@ -33,7 +52,8 @@
                    ;; dashboard
                    "node_modules/yetibot-dashboard/build"]
   :main yetibot.core.init
-  :plugins [[lein-environ "1.1.0"]
+  :plugins [[me.arrdem/lein-git-version "2.0.8"]
+            [lein-environ "1.1.0"]
             [lein-npm "0.6.2"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
@@ -154,14 +174,9 @@
 
   :aliases {"test" ["with-profile" "+test" "midje"]}
 
+  ;; release is purely derived from git sha and timestamp, so there's no need to
+  ;; commit, bump, or tag anything
   :release-tasks [["vcs" "assert-committed"]
-                  ["deps"]
-                  ["change" "version" "leiningen.release/bump-version" "release"]
-                  ["vcs" "commit"]
-                  ["vcs" "tag"]
-                  ["deploy"]
-                  ["change" "version" "leiningen.release/bump-version"]
-                  ["vcs" "commit"]
-                  ["vcs" "push"]]
+                  ["deploy"]]
 
   :npm {:dependencies [[yetibot-dashboard "0.7.2"]]})
