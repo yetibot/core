@@ -1,5 +1,14 @@
 # yetibot.core change log
 
+## `[yetibot/core "20190524.135839.3929dda"]`
+
+- Restrict access to private chat in history command
+
+## `[yetibot/core "20190523.215707.386a562"]`
+
+- Enable continuous delivery for all commits on master. A blog post with more
+  details about this and other changes is forthcoming.
+
 ## 0.5.22 - 5/20/2019
 
 - Overhaul the `history` command, adding a bunch of options to specify which
