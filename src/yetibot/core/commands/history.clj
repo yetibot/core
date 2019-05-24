@@ -150,13 +150,16 @@
             ;; build up a vector of query maps using provided `options` we'll
             ;; merge these into a single map later
             extra-queries
-            (cond-> []
-
-              ;; by default we always constrain history to the chat-source that
-              ;; requested it unless `include-all-channels` was specified
-              (not (:include-all-channels options))
-              {:where/map
-               {:chat-source-adapter (-> chat-source :uuid pr-str)}}
+            (cond-> [{:where/clause
+                      "(is_private = ? OR chat_source_room = ?)"
+                      ;; private history is only available if the commmand
+                      ;; originated from the channel that produced the private
+                      ;; history
+                      :where/args [false (:room chat-source)]
+                      ;; always constrain history to the chat-source that
+                      ;; requested it
+                      :where/map
+                      {:chat_source_adapter (-> chat-source :uuid pr-str)}}]
 
               ;; and unless the user specified `include-all-channels` or
               ;; specific `channels` then we also constrain history to the
@@ -164,7 +167,7 @@
               (and (not (:include-all-channels options))
                    (not (:channels options))) (conj
                                                {:where/map
-                                                {:chat-source-room
+                                                {:chat_source_room
                                                  (:room chat-source)}})
 
               ;; --channels
