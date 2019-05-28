@@ -59,7 +59,9 @@
              :dev [:profiles/dev
                    {:plugins [[lein-midje "3.2.1"]]
                     :dependencies [[midje "1.9.6"]
-                                   [nubank/matcher-combinators "0.9.0"]]}]
+                                   [lambdaisland/kaocha-midje "0.0-5"
+                                    :exclusions [midje/midje]]
+                                    [nubank/matcher-combinators "0.9.0"]]}]
              :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"
