@@ -42,7 +42,7 @@
                               *adapter-uuid* (read-string chat-source-adapter)]
                       (let [expr (str command/config-prefix cmd)
                             [{:keys [error? timeout? result] :as expr-result}]
-                            (record-and-run-raw expr nil nil)]
+                            (record-and-run-raw expr nil nil nil)]
                         (info "cron result" (pr-str expr-result))
                         (if (and result (not error?) (not timeout?))
                           (chat-data-structure result)

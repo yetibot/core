@@ -119,18 +119,21 @@
   "Recieve and handle messages from IRC. This can either be in channels yetibot
    is listening in, or it can be a private message. If yetibot does not
    recognize the :target, reply back to user with PRIVMSG."
-   [a irc info]
-   (log/info "handle-message" (pr-str info))
-   (let [config (:config a)
-         {yetibot-nick :nick} @irc
-         yetibot-user (construct-yetibot-from-nick yetibot-nick)
-         user-id (:user info)
-         chan (or (recognized-chan? a (:target info)) (:nick info))
-         user (users/get-user (chat-source chan) user-id)]
-     (log/info "handle message" info "from" chan yetibot-user)
-     (binding [*target* chan]
-       (handle-raw (chat-source chan)
-                   user :message yetibot-user {:body (:text info)}))))
+  [a irc info]
+  (log/info "handle-message" (pr-str info))
+  ;; TODO - call (a/resolve-users info) to ensure users are resolved, then
+  ;; pass the resulting map along to `handle-raw` below in addition to `:body`.
+  ;; Maybe we call it :resolved-users?
+  (let [config (:config a)
+        {yetibot-nick :nick} @irc
+        yetibot-user (construct-yetibot-from-nick yetibot-nick)
+        user-id (:user info)
+        chan (or (recognized-chan? a (:target info)) (:nick info))
+        user (users/get-user (chat-source chan) user-id)]
+    (log/info "handle message" info "from" chan yetibot-user)
+    (binding [*target* chan]
+      (handle-raw (chat-source chan)
+                  user :message yetibot-user {:body (:text info)}))))
 
 (defn handle-part
   "Event that fires when someone leaves a channel that Yetibot is listening in"

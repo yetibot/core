@@ -103,8 +103,9 @@
                                   ;; username and channel name with no explicit
                                   ;; piping behavior
                                   rendered-cmd))
+                      resolved-users nil ;; TODO
                       [{:keys [error? timeout? result] :as expr-result}]
-                      (record-and-run-raw expr user yetibot-user)]
+                      (record-and-run-raw expr user resolved-users yetibot-user)]
                   (if (and result (not error?) (not timeout?))
                     (chat-data-structure result)
                     (info "Skipping observer because it errored or timed out"
