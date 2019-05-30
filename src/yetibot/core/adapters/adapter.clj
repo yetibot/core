@@ -47,7 +47,7 @@
   ;; TODO implement
   (resolve-user! [_ adapter-user]
     "Takes a user in the shape that a specific adapter provides and
-     canonicallizes and persists (if not already).
+     canonicalizes and persists (if not already).
 
      See yetibot.core.models.users/create-user for the existing attempt to do
      this (in memory representation only - no persistence).
