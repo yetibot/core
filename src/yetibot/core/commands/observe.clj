@@ -103,8 +103,8 @@
                                   ;; username and channel name with no explicit
                                   ;; piping behavior
                                   rendered-cmd))
-                      [{:keys [error? timeout? result] :as expr-result}]
                       resolved-users nil ;; TODO
+                      [{:keys [error? timeout? result] :as expr-result}]
                       (record-and-run-raw expr user resolved-users yetibot-user)]
                   (if (and result (not error?) (not timeout?))
                     (chat-data-structure result)
