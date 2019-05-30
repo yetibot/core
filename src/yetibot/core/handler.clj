@@ -55,9 +55,10 @@
 (defn handle-parsed-expr
   "Top-level for already-parsed commands.
    Turns a parse tree into a string or collection result."
-  [chat-source user yetibot-user parse-tree]
+  [chat-source user resolved-users yetibot-user parse-tree]
   (binding [interp/*current-user* user
             interp/*yetibot-user* yetibot-user
+            interp/*resolved-users* resolved-users
             interp/*chat-source* chat-source]
     (transformer parse-tree)))
 
@@ -88,10 +89,10 @@
 
    Otherwise returns nil for non expressions.
    "
-  [body user yetibot-user & [{:keys [record-yetibot-response?]
-                              :or {record-yetibot-response? true}}]]
+  [body user resolved-users yetibot-user & [{:keys [record-yetibot-response?]
+                                             :or {record-yetibot-response? true}}]]
   (trace "record-and-run-raw" body record-yetibot-response?
-        interp/*chat-source*)
+         interp/*chat-source*)
   (let [{:keys [adapter room uuid is-private]
          :as chat-source} interp/*chat-source*
         timestamp (System/currentTimeMillis)
@@ -101,15 +102,15 @@
         ;; - the result that Yetibot posts back to chat
         correlation-id (str timestamp "-" (hash [chat-source user body]))
         parsed-normal-command (when-let
-                                [[_ body] (extract-command body)]
+                               [[_ body] (extract-command body)]
                                 (parser body))
 
         parsed-cmds
         (or
           ;; if it starts with a command prefix (e.g. !) it's a command
-          (and parsed-normal-command [parsed-normal-command])
+         (and parsed-normal-command [parsed-normal-command])
           ;; otherwise, check to see if there are embedded commands
-          (when (embedded-enabled?) (embedded-cmds body)))
+         (when (embedded-enabled?) (embedded-cmds body)))
         cmd? (boolean (seq parsed-cmds))]
 
     ;; record the body of users' messages if the user is not Yetibot
@@ -134,51 +135,53 @@
     (when (and cmd? (not (:yetibot? user)))
       (let [[results timeout-result]
             (alts!!
-              [(go (map
-                     (fn [parse-tree]
-                       (try
-                         (let [original-command-str (unparse parse-tree)
-                               {:keys [value error]} (handle-parsed-expr
-                                                       chat-source user
-                                                       yetibot-user
-                                                       parse-tree)
-                               result (or value error)
-                               error? (not (nil? error))
-                               [formatted-response _] (format-data-structure
-                                                        result)]
+             [(go (map
+                   (fn [parse-tree]
+                     (try
+                       (let [original-command-str (unparse parse-tree)
+                             {:keys [value error]} (handle-parsed-expr
+                                                    chat-source
+                                                    user
+                                                    resolved-users
+                                                    yetibot-user
+                                                    parse-tree)
+                             result (or value error)
+                             error? (not (nil? error))
+                             [formatted-response _] (format-data-structure
+                                                     result)]
                            ;; Yetibot should record its own response in
                            ;; `history` table before/during posting it back to
                            ;; the chat adapter. Then we can more easily
                            ;; correlate request (e.g. commands from user) and
                            ;; response (output from Yetibot)
-                           (trace
-                             record-yetibot-response?
-                             "recording history" uuid room is-private
-                                 original-command-str formatted-response)
-                           (when record-yetibot-response?
-                             (h/add {:chat-source-adapter uuid
-                                     :chat-source-room room
-                                     :is-private is-private
-                                     :correlation-id correlation-id
-                                     :user-id (-> yetibot-user :id str)
-                                     :user-name (-> yetibot-user :username str)
-                                     :is-yetibot true
-                                     :is-command false
-                                     :is-error error?
-                                     :command original-command-str
-                                     :body formatted-response}))
+                         (trace
+                          record-yetibot-response?
+                          "recording history" uuid room is-private
+                          original-command-str formatted-response)
+                         (when record-yetibot-response?
+                           (h/add {:chat-source-adapter uuid
+                                   :chat-source-room room
+                                   :is-private is-private
+                                   :correlation-id correlation-id
+                                   :user-id (-> yetibot-user :id str)
+                                   :user-name (-> yetibot-user :username str)
+                                   :is-yetibot true
+                                   :is-command false
+                                   :is-error error?
+                                   :command original-command-str
+                                   :body formatted-response}))
                            ;; don't report errors on embedded commands
-                           {:embedded? (not parsed-normal-command)
-                            :error? error?
-                            :result result})
-                         (catch Throwable ex
-                           (error "error handling expression:" body
-                                  (format-exception-log ex))
-                           {:embedded?  (not parsed-normal-command)
-                            :error? true
-                            :result (format exception-format ex)})))
-                     parsed-cmds))
-               (timeout expr-eval-timeout-ms)])]
+                         {:embedded? (not parsed-normal-command)
+                          :error? error?
+                          :result result})
+                       (catch Throwable ex
+                         (error "error handling expression:" body
+                                (format-exception-log ex))
+                         {:embedded?  (not parsed-normal-command)
+                          :error? true
+                          :result (format exception-format ex)})))
+                   parsed-cmds))
+              (timeout expr-eval-timeout-ms)])]
         (or results
             [{:timeout? true
               :result (str "Evaluation of `" body "` timed out after "
@@ -212,14 +215,14 @@
    :react"
   [{:keys [adapter room uuid is-private] :as chat-source}
    user event-type yetibot-user
-   {:keys [body reaction] :as event-info}]
+   {:keys [resolved-users body reaction] :as event-info}]
   ;; Note: only :message and :react have a body
   (when (and body (= event-type :message))
     (binding [interp/*chat-source* chat-source]
       (go
         ;; there may be multiple expr-results, as in the case of multiple
         ;; embedded commands in a single body
-        (let [expr-results (record-and-run-raw body user yetibot-user)]
+        (let [expr-results (record-and-run-raw body user resolved-users yetibot-user)]
           (run!
             (fn [{:keys [timeout? embedded? error? result]}]
               (if (or (not error?) (not embedded?))

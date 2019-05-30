@@ -22,7 +22,8 @@
           ;; evaluation of piped expressions (i.e. %s instead of $s)
           expr (binding [*subst-prefix* method-like-replacement-prefix]
                  (str command/config-prefix (pseudo-format-n cmd args)))
-          results (record-and-run-raw expr user yetibot-user
+          resolved-users nil ;; TODO
+          results (record-and-run-raw expr user resolved-users yetibot-user
                                       ;; avoid double recording the yetibot
                                       ;; response since the parent command
                                       ;; execution that evaluated the alias

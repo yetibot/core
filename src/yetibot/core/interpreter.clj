@@ -11,6 +11,7 @@
 
 (def ^:dynamic *current-user*)
 (def ^:dynamic *yetibot-user*)
+(def ^:dynamic *resolved-users*)
 (def ^:dynamic *chat-source*)
 
 (defn handle-cmd
@@ -38,6 +39,7 @@
         {previous-value :value
          previous-data-collection :data-collection
          previous-data :data} acc
+        ;; this is the context map that's passed to all command handlers
         extra {:raw previous-value
                :data (or previous-data previous-value)
                :data-collection previous-data-collection
@@ -46,6 +48,7 @@
                :next-cmds next-cmds
                :user *current-user*
                :yetibot-user *yetibot-user*
+               :resolved-users *resolved-users*
                :chat-source *chat-source*}
         possible-opts (to-coll-if-contains-newlines previous-value)]
 
