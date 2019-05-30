@@ -1,11 +1,4 @@
-{:objects {:adapter {:fields {:uuid {:type String}
-                              :platform {:type String}
-                              :is_connected {:type Boolean}
-                              :connection_latency {:type Int}
-                              :connection_last_active_timestamp {:type String}
-                              }}
-
-           :history {:fields
+{:objects {:history {:fields
                      {:chat_source_adapter {:type String}
                       :chat_source_room {:type String}
                       :user {:type :user
@@ -67,12 +60,13 @@
                    :cmd {:type String}}}
 
            ;; TODO list channels by adapter
-           :adapter_channel {:fields
-                             {:adapter {:type String}
-                              :channel {:type String}}}
+           :adapter {:fields
+                     {:chat_source_adapter {:type String}
+                      :channels {:type (list :channel)}}}
 
            :channel {:fields
-                     {:name {:type String}}}
+                     {:chat_source_adapter {:type String}
+                      :chat_source_room {:type String}}}
 
            :karma {:fields
                    {:user_id {:type String}
@@ -88,13 +82,17 @@
                   :args {:expr {:type String}}
                   :resolve :eval}
 
+           ;; Deprecated: use adapters
+           ;; :channels {:type (list :channel)
+           ;;            :resolve :channels}
+
            :adapters {:type (list :adapter)
                       :resolve :adapters}
 
            :history {:type (list :history)
                      :resolve :history
                      :args {:limit {:type Int
-                                    :default-value 20}
+                                    :default-value 50}
                             :offset {:type Int
                                      :default-value 0}
                             :chat_source_adapter {:type String}
@@ -114,9 +112,6 @@
            :history_item {:type :history
                           :resolve :history_item
                           :args {:id {:type Int}}}
-
-           :channels {:type (list :channel)
-                      :resolve :channels}
 
            :users {:type (list :user)
                    :resolve :users}
@@ -146,4 +141,5 @@
                     :args {:report {:type :karma_report}
                            :limit {:type Int
                                    :default-value 10}}}
+
            }}

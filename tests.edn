@@ -1,3 +1,5 @@
 #kaocha/v1
-{:tests [{:id :unit
+{:tests [{:source-paths ["src"]
+          :ns-patterns [".*"]
+          :test-paths ["test"]
           :type :kaocha.type/midje}]}
