@@ -234,9 +234,9 @@
           yetibot? (= yetibot-uid (:user event))
           user-model (assoc (users/get-user cs (:user event))
                             :yetibot? yetibot?)
-          ;; TODO - call (a/resolve-users info) to ensure users are resolved,
-          ;; then pass the resulting map along to `handle-raw` below in addition
-          ;; to `:body`.
+          ;; TODO - call (a/resolve-users event) to ensure users are resolved,
+          ;; then pass the resulting map along to `handle-raw` as
+          ;; `:resolved-users` below in addition to `:body`.
           body (if (s/blank? (:text event))
                  ;; if text is blank attempt to read an attachment fallback
                  (->> event :attachments (map :text) (s/join \newline))
