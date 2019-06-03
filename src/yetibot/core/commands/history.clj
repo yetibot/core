@@ -120,7 +120,7 @@
    few collection commands where it will bake the expression into a single SQL
    query instead of trying to naively evaluate in memory:
 
-   history | grep <query> - uses Postgres' ~ operator to search
+   history | grep <query> - search history using Postgres ~ operator
    history | tail [<n>] - uses LIMIT n and ORDER_BY
    history | head [<n>] - uses LIMIT n and ORDER_BY
    history | random - uses LIMIT 1 Postgres' ORDER_BY random()

@@ -41,10 +41,11 @@
 (def context {})
 
 (defn graphql
-  [query variables]
-  (let [keyword-vars (keywordize-keys variables)]
-    (debug "graphql" {:query query :variables keyword-vars})
-    (execute @schema query keyword-vars context)))
+  ([query] (graphql query {}))
+  ([query variables]
+   (let [keyword-vars (keywordize-keys variables)]
+     (debug "graphql" {:query query :variables keyword-vars})
+     (execute @schema query keyword-vars context))))
 
 (defroutes graphql-routes
   (POST "/graphql" [query variables] (json/write-str (graphql query variables))))

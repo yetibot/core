@@ -1,145 +1,177 @@
-{:objects {:history {:fields
-                     {:chat_source_adapter {:type String}
-                      :chat_source_room {:type String}
-                      :user {:type :user
-                             :resolve :user}
-                      :user_id {:type String}
-                      :user_name {:type String}
-                      :body {:type String}
-                      :is_command {:type Boolean}
-                      :is_yetibot {:type Boolean}
-                      :id {:type Int}
-                      :command {:type String}
-                      :correlation_id {:type String}
-                      :created_at {:type String}}}
+{:objects
+ {:history {:fields
+            {:chat_source_adapter {:type String}
+             :chat_source_room {:type String}
+             :user {:type :user
+                    :resolve :user}
+             :user_id {:type String}
+             :user_name {:type String}
+             :body {:type String}
+             :is_command {:type Boolean}
+             :is_yetibot {:type Boolean}
+             :id {:type Int}
+             :command {:type String}
+             :correlation_id {:type String}
+             :created_at {:type String}}}
 
-           :stats {:fields
-                   {:uptime {:type String}
-                    :adapter_count {:type Int}
-                    :user_count {:type Int}
-                    :history_count {:type Int}
-                    :history_count_today {:type Int}
-                    :command_count_today {:type Int}
-                    :command_count {:type Int}
-                    :alias_count {:type Int}
-                    :observer_count {:type Int}
-                    :cron_count {:type Int}
-                    }}
+  :page_info {:fields
+              {:total_results {:type Int}
+               :next_page_cursor {:type String}
+               :has_next_page {:type Boolean}}}
 
-           :user {:fields
-                  {:username {:type String}
-                   :is_active {:type Boolean}
-                   :id {:type String}
-                   :last_active {:type String}
-                   :karma {:type Int}}}
+  :paged_history {:fields
+                  {:page_info {:type :page_info}
+                   :history {:type (list :history)}}}
 
-           :alias {:fields
-                   {:id {:type Int}
-                    :user_id {:type String}
-                    :cmd_name {:type String}
-                    :cmd {:type String}
-                    :created_at {:type String}}}
+  ;; {
+  ;;   hero {
+  ;;     name
+  ;;     friendsConnection(first:2 after:"Y3Vyc29yMQ==") {
+  ;;       totalCount
+  ;;       edges {
+  ;;         node {
+  ;;           name
+  ;;         }
+  ;;         cursor
+  ;;       }
+  ;;       pageInfo {
+  ;;         endCursor
+  ;;         hasNextPage
+  ;;       }
+  ;;     }
+  ;;   }
+  ;; }
 
-           :observer {:fields
-                      {:id {:type Int}
-                       :user_id {:type String}
-                       :pattern {:type String}
-                       :user_pattern {:type String}
-                       :channel_pattern {:type String}
-                       :event_type {:type String}
-                       :cmd {:type String}
-                       :created_at {:type String}}}
+  :stats {:fields
+          {:uptime {:type String}
+           :adapter_count {:type Int}
+           :user_count {:type Int}
+           :history_count {:type Int}
+           :history_count_today {:type Int}
+           :command_count_today {:type Int}
+           :command_count {:type Int}
+           :alias_count {:type Int}
+           :observer_count {:type Int}
+           :cron_count {:type Int}
+           }}
 
-           :cron {:fields
-                  {:id {:type Int}
-                   :created_at {:type String}
-                   :chat_source_adapter {:type String}
-                   :chat_source_room {:type String}
-                   :user_id {:type String}
-                   :schedule {:type String}
-                   :cmd {:type String}}}
+  :user {:fields
+         {:username {:type String}
+          :is_active {:type Boolean}
+          :id {:type String}
+          :last_active {:type String}
+          :karma {:type Int}}}
 
-           ;; TODO list channels by adapter
-           :adapter {:fields
-                     {:chat_source_adapter {:type String}
-                      :channels {:type (list :channel)}}}
+  :alias {:fields
+          {:id {:type Int}
+           :user_id {:type String}
+           :cmd_name {:type String}
+           :cmd {:type String}
+           :created_at {:type String}}}
 
-           :channel {:fields
-                     {:chat_source_adapter {:type String}
-                      :chat_source_room {:type String}}}
+  :observer {:fields
+             {:id {:type Int}
+              :user_id {:type String}
+              :pattern {:type String}
+              :user_pattern {:type String}
+              :channel_pattern {:type String}
+              :event_type {:type String}
+              :cmd {:type String}
+              :created_at {:type String}}}
 
-           :karma {:fields
-                   {:user_id {:type String}
-                    :score {:type Int}}}
-           }
+  :cron {:fields
+         {:id {:type Int}
+          :created_at {:type String}
+          :chat_source_adapter {:type String}
+          :chat_source_room {:type String}
+          :user_id {:type String}
+          :schedule {:type String}
+          :cmd {:type String}}}
+
+  ;; TODO add adapter info back
+  :adapter {:fields
+            {:chat_source_adapter {:type String}
+             :channels {:type (list :channel)}}}
+
+  :channel {:fields
+            {:chat_source_adapter {:type String}
+             :chat_source_room {:type String}}}
+
+  :karma {:fields
+          {:user_id {:type String}
+           :score {:type Int}}}}
 
  :enums {:karma_report {:values [{:enum-value :SCORES
                                   :description "Users with the most amassed karma"}
                                  {:enum-value :GIVERS
                                   :description "User who have bestored the most karma"}]}}
 
- :queries {:eval {:type (list String)
-                  :args {:expr {:type String}}
-                  :resolve :eval}
+ :queries
+ {:eval {:type (list String)
+         :args {:expr {:type String}}
+         :resolve :eval}
 
-           ;; Deprecated: use adapters
-           ;; :channels {:type (list :channel)
-           ;;            :resolve :channels}
+  :adapters {:type (list :adapter)
+             :resolve :adapters}
 
-           :adapters {:type (list :adapter)
-                      :resolve :adapters}
+  :history {:type :paged_history
+            :resolve :history
+            :args {;; pagination
+                   :first {:type Int
+                           :default-value 50}
+                   :cursor {:type Int
+                            :default-value nil}
 
-           :history {:type (list :history)
-                     :resolve :history
-                     :args {:limit {:type Int
-                                    :default-value 50}
-                            :offset {:type Int
-                                     :default-value 0}
-                            :chat_source_adapter {:type String}
-                            :chat_source_room {:type String}
-                            :commands_only {:type Boolean
-                                            :default-value false}
-                            :yetibot_only {:type Boolean
-                                           :default-value false}
-                            :search_query {:type String
-                                           :default-value nil}
-                            :user_filter {:type String
-                                          :default-value nil}
-                            :channel_filter {:type String
-                                             :default-value nil}
-                            }}
+                   ;; filtering
+                   :include_history_commands {:type Boolean
+                                              :default-value false}
+                   :exclude_yetibot {:type Boolean
+                                     :default-valule false}
+                   :exclude_commands {:type Boolean
+                                      :default-valule false}
+                   :exclude_non_commands {:type Boolean
+                                          :default-valule false}
 
-           :history_item {:type :history
-                          :resolve :history_item
-                          :args {:id {:type Int}}}
+                   :search_query {:type String
+                                  :default-value nil}
+                   :users_filter {:type (list String)
+                                  :default-value nil}
+                   :adapters_filter {:type (list String)
+                                     :default-value nil}
+                   :channels_filter {:type (list String)
+                                     :default-value nil}}}
 
-           :users {:type (list :user)
-                   :resolve :users}
+  :history_item {:type :history
+                 :resolve :history_item
+                 :args {:id {:type Int}}}
 
-           :user {:type :user
-                  :resolve :user
-                  :args {:id {:type String}}}
+  :users {:type (list :user)
+          :resolve :users}
 
-           :stats {:type :stats
-                   :resolve :stats
-                   :args {:timezone_offset_hours {:type Int
-                                                  ;; default UTC
-                                                  :default-value 0}
-                          }}
+  :user {:type :user
+         :resolve :user
+         :args {:id {:type String}}}
 
-           :aliases {:type (list :alias)
-                     :resolve :aliases}
+  :stats {:type :stats
+          :resolve :stats
+          :args {:timezone_offset_hours {:type Int
+                                         ;; default UTC
+                                         :default-value 0}
+                 }}
 
-           :observers {:type (list :observer)
-                       :resolve :observers}
+  :aliases {:type (list :alias)
+            :resolve :aliases}
 
-           :crons {:type (list :cron)
-                       :resolve :crons}
+  :observers {:type (list :observer)
+              :resolve :observers}
 
-           :karmas {:type (list :karma)
-                    :resolve :karmas
-                    :args {:report {:type :karma_report}
-                           :limit {:type Int
-                                   :default-value 10}}}
+  :crons {:type (list :cron)
+          :resolve :crons}
 
-           }}
+  :karmas {:type (list :karma)
+           :resolve :karmas
+           :args {:report {:type :karma_report}
+                  :limit {:type Int
+                          :default-value 10}}}
+
+  }}
