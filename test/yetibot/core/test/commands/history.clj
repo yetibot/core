@@ -29,9 +29,10 @@
                      :skip-next-n (atom 0)}) => "336"
        (provided
         (query
-         {:where/clause "(is_private = ? OR chat_source_room = ?) AND (is_command = ? OR body NOT LIKE ?) AND is_yetibot = ?"
-          :where/args [false "foo" false "!history%" false]
-          :where/map {:chat_source_adapter ":test"
+         {:where/clause "(is_command = ? OR body NOT LIKE ?) AND (is_private = ? OR chat_source_room = ?)"
+          :where/args [false "!history%" false "foo"]
+          :where/map {:is_yetibot false
+                      :chat_source_adapter ":test"
                       :chat_source_room "foo"}
           :select/clause "COUNT(*) as count"}) => '({:count 336})))
 
@@ -70,9 +71,10 @@
          :skip-next-n (atom 0)}) => (value "test in foo at 05:03 PM 05/13: !poke")
        (provided
         (query
-         {:where/clause "(is_private = ? OR chat_source_room = ?) AND (is_command = ? OR body NOT LIKE ?) AND is_yetibot = ?"
-          :where/args [false "foo" false "!history%" false]
-          :where/map {:chat_source_adapter ":test"
+         {:where/clause "(is_command = ? OR body NOT LIKE ?) AND (is_private = ? OR chat_source_room = ?)"
+          :where/args [false "!history%" false "foo"]
+          :where/map {:is_yetibot false
+                      :chat_source_adapter ":test"
                       :chat_source_room "foo"}
           :limit/clause "1"
           :order/clause "created_at DESC"}) =>
@@ -129,11 +131,11 @@
          :skip-next-n (atom 0)}) => (value "test in foo at 02:16 PM 12/04: !echo")
        (provided
         (query
-         {:where/clause "(is_private = ? OR chat_source_room = ?) AND (is_command = ? OR body NOT LIKE ?)"
-          :where/args [false "foo" false "!history%"]
-          :where/map {:chat_source_adapter ":test"
-                      :chat_source_room "foo"
-                      :is_command true}
+         {:where/clause "(is_command = ? OR body NOT LIKE ?) AND (is_private = ? OR chat_source_room = ?)"
+          :where/args [false "!history%" false "foo"]
+          :where/map {:is_command true
+                      :chat_source_adapter ":test"
+                      :chat_source_room "foo"}
           :limit/clause "1"
           :order/clause "random()"}) =>
         '({:is-command true,
@@ -162,8 +164,8 @@
                 "devth in local at 03:09 PM 03/19: !foo  | echo bar %s baz"))
        (provided
         (query
-         #:where{:clause "(is_private = ? OR chat_source_room = ?) AND (is_command = ? OR body NOT LIKE ?) AND body ~ ?"
-                 :args [false "foo" false "!history%" "foo"]
+         #:where{:clause "(is_command = ? OR body NOT LIKE ?) AND (is_private = ? OR chat_source_room = ?) AND body ~ ?"
+                 :args [false "!history%" false "foo" "foo"]
                  :map {:chat_source_adapter ":test"}}) =>
         '({:is-command true,
            :is-private true,
@@ -217,8 +219,8 @@
        (value "devth in local at 05:14 PM 02/19: !channel settings")
        (provided
         (query
-         {:where/clause "(is_private = ? OR chat_source_room = ?) AND (chat_source_room = ?) AND (is_command = ? OR body NOT LIKE ?)"
-          :where/args [false "foo" "local" false "!history%"]
+         {:where/clause "(is_command = ? OR body NOT LIKE ?) AND (chat_source_room = ?) AND (is_private = ? OR chat_source_room = ?)"
+          :where/args [false "!history%" "local" false "foo"]
           :where/map {:chat_source_adapter ":test"}
           :limit/clause "1"}) =>
         '({:is-command true,
@@ -245,8 +247,8 @@
        (value "devth in #obs at 03:50 PM 12/04: !status hi")
        (provided
         (query
-         {:where/clause "(is_private = ? OR chat_source_room = ?) AND (user_name = ? OR user_name = ?)"
-          :where/args [false "foo" "devth" "yetibot"]
+         {:where/clause "(user_name = ? OR user_name = ?) AND (is_private = ? OR chat_source_room = ?)"
+          :where/args ["devth" "yetibot" false "foo"]
           :where/map {:chat_source_adapter ":test"}
           :limit/clause "1"}) =>
         '({:is-command true,
@@ -273,8 +275,8 @@
        (value "yetibot-devth in local at 05:42 PM 05/16: pd teams # list PagerDuty teams\npd teams <query> # list PagerDuty teams matching <query>\npd users # list PagerDuty users\npd users <query> # list PagerDuty users matching <query>")
        (provided
         (query
-         {:where/clause "(is_private = ? OR chat_source_room = ?) AND created_at AT TIME ZONE 'UTC' >= ?::TIMESTAMP WITH TIME ZONE"
-          :where/args [false "foo" "2019-03-20T00:00:00.000Z"]
+         {:where/clause "created_at AT TIME ZONE 'UTC' >= ?::TIMESTAMP WITH TIME ZONE AND (is_private = ? OR chat_source_room = ?)"
+          :where/args ["2019-03-20T00:00:00.000Z" false "foo"]
           :where/map {:chat_source_adapter ":test"}
           :limit/clause "1"
           :order/clause "created_at DESC"}) =>
@@ -303,8 +305,8 @@
        (value "yetibot-dev in local at 04:28 PM 03/19: Yellowstone, MT (US)\n39.0°F - Clear Sky\nFeels like 35°F\nWinds 1.4 mph WSW")
        (provided
         (query
-         {:where/clause "(is_private = ? OR chat_source_room = ?) AND created_at AT TIME ZONE 'UTC' <= ?::TIMESTAMP WITH TIME ZONE"
-          :where/args [false "foo" "2019-03-20T00:00:00.000Z"]
+         {:where/clause "created_at AT TIME ZONE 'UTC' <= ?::TIMESTAMP WITH TIME ZONE AND (is_private = ? OR chat_source_room = ?)"
+          :where/args [nil false "foo"]
           :where/map {:chat_source_adapter ":test"}
           :limit/clause "1"
           :order/clause "created_at DESC"}) =>

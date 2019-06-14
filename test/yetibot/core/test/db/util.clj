@@ -48,3 +48,8 @@
           :where/clause "command LIKE ? AND created_at > ? AND is_yetibot IS ?",
           :where/args ["likethis" "yesterday" "false"],
           :select/clause "foo, bar, baz"}))))
+
+(deftest where-eq-any-test
+  (is
+   (= (db.util/where-eq-any "foo" [1 2 3])
+      #:where{:clause "(foo = ? OR foo = ? OR foo = ?)", :args [1 2 3]})))

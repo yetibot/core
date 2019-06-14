@@ -119,7 +119,7 @@
             :args {;; pagination
                    :first {:type Int
                            :default-value 50}
-                   :cursor {:type Int
+                   :cursor {:type String
                             :default-value nil}
 
                    ;; filtering
@@ -139,7 +139,13 @@
                    :adapters_filter {:type (list String)
                                      :default-value nil}
                    :channels_filter {:type (list String)
-                                     :default-value nil}}}
+                                     :default-value nil}
+                   ;; date filtering
+                   :until_datetime {:type String
+                                    :default-value nil}
+                   :since_datetime {:type String
+                                    :default-value nil}
+                   }}
 
   :history_item {:type :history
                  :resolve :history_item

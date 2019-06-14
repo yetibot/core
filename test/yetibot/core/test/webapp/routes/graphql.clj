@@ -29,22 +29,25 @@
 
 (fact "graphql can filter history"
   (graphql "
-    history(limit: 30,
-            offset: 0,
-            commands_only: $commands_only,
-            yetibot_only: $yetibot_only,
-            search_query: $search_query
-    ) {
-      id
-      chat_source_adapter
-      chat_source_room
-      command
-      correlation_id
-      created_at
-      user_name
-      is_command
-      is_yetibot
-      body
-      user_id
-      user_name
+    query {
+      history(first: 50, exclude_yetibot: true) {
+        page_info {
+          total_results
+        }
+        history {
+          id
+          chat_source_adapter
+          chat_source_room
+          command
+          correlation_id
+          created_at
+          user_name
+          is_command
+          is_yetibot
+          body
+          user_id
+          user_name
+        }
+      }
     }")
+  )
