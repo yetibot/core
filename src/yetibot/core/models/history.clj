@@ -14,10 +14,21 @@
                   to-time-zone after?
                   default-time-zone now time-zone-for-id date-time utc
                   ago hours days weeks years months]]]
+   [clojure.data.codec.base64 :as b64]
    [yetibot.core.models.users :as u]
    [taoensso.timbre :refer [info color-str warn error spy]]))
 
 ;;;; read
+
+(defn cursor->id [cursor]
+  (try
+    (read-string (String. (b64/decode (.getBytes cursor))))
+    (catch Exception e
+      (throw (ex-info "Invalid cursor"
+                      {:cursor cursor})))))
+
+(defn id->cursor [id]
+  (String. (b64/encode (.getBytes (str id)))))
 
 (defn build-query
   "Given a bunch of options specific to history return a query data structure"
@@ -42,7 +53,8 @@
            extra-query]
     :as options}]
   (info "build query with" (pr-str options))
-  (let [queries-to-merge
+  (let [id-from-cursor (when cursor (cursor->id cursor))
+        queries-to-merge
         ;; Start with an empty vector and conditionally conj a bunch of query
         ;; maps onto it depending on provided options. This vector will then be
         ;; merged into a single combined query map.
@@ -70,7 +82,9 @@
           search-query (conj {:where/clause "body ~ ?"
                               :where/args  [search-query]})
 
-          cursor "TODO"
+          id-from-cursor (conj {:where/clause "id >= ?"
+                                :where/args [id-from-cursor]})
+
           adapters-filter (conj (where-eq-any "chat_source_adapter"
                                               adapters-filter))
           channels-filter (conj (where-eq-any "chat_source_room"

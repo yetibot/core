@@ -2,8 +2,7 @@
   (:require
    [yetibot.core.db :as db]
    [yetibot.core.midje :refer [value data]]
-   [midje.sweet :refer [namespace-state-changes with-state-changes fact =>
-                        facts truthy]]
+   [midje.sweet :refer [fact => facts]]
    [yetibot.core.models.history :as h]
    [yetibot.core.db.history :refer [query]]
    [yetibot.core.commands.history :refer :all]))

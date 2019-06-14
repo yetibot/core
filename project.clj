@@ -130,6 +130,7 @@
                  [json-path "1.0.1"]
 
                  ; utils
+                 [org.clojure/data.codec "0.1.1"] ; base64
                  [funcool/cuerdas "2.1.0"]
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.4.1"]
