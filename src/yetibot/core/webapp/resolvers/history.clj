@@ -50,7 +50,13 @@
                         :until-datetime until_datetime})]
     {:history
      (query (merge {:query/identifiers identity}
-                   history-query))}))
+                   history-query))
+     ;; TODO lazily retrieve these
+     :page_info {:total_results (history/count-entities history-query)
+                 :next_page_cursor "TODO"
+                 :has_next_page "TODO"
+                 }
+     }))
 
 
 (defn history-item-resolver
