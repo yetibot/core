@@ -101,6 +101,9 @@
    ;; INFOs
    ;;
 
+   ;; Alpha Vantage (stock data)
+   :yetibot-alphavantage-key ""
+
    ;; `google`
    :yetibot-google-api-key ""
    :yetibot-google-custom-search-engine-id ""
