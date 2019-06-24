@@ -263,13 +263,3 @@
   (create
     (assoc history-item
            :chat-source-adapter (pr-str chat-source-adapter))))
-
-
-(comment
-  (count-entities {})
-  (count-entities
-   {:where/map {:is_private false}
-    :where/clause "(is_command = ? OR body NOT LIKE ?)"
-    :where/args [false "!history%"]
-    :limit/clause 51
-    :order/clause "created_at DESC"}))
