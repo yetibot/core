@@ -82,7 +82,17 @@
           search-query (conj {:where/clause "body ~ ?"
                               :where/args  [search-query]})
 
-          id-from-cursor (conj {:where/clause "id >= ?"
+          ;; >= for ASC
+          ;; <= for DESC
+          id-from-cursor (conj {:where/clause
+                                (str
+                                 "id "
+                                 (if (re-find
+                                      #"DESC"
+                                      (or (:order/clause extra-query) ""))
+                                   "<=" ;; DESC
+                                   ">=") ;; ASC
+                                 " ?")
                                 :where/args [id-from-cursor]})
 
           adapters-filter (conj (where-eq-any "chat_source_adapter"
@@ -253,3 +263,13 @@
   (create
     (assoc history-item
            :chat-source-adapter (pr-str chat-source-adapter))))
+
+
+(comment
+  (count-entities {})
+  (count-entities
+   {:where/map {:is_private false}
+    :where/clause "(is_command = ? OR body NOT LIKE ?)"
+    :where/args [false "!history%"]
+    :limit/clause 51
+    :order/clause "created_at DESC"}))

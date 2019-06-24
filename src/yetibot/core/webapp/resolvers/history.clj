@@ -1,6 +1,8 @@
 (ns yetibot.core.webapp.resolvers.history
   (:require
-   [com.walmartlabs.lacinia.executor :refer [selections-seq selects-field?]]
+   [com.walmartlabs.lacinia.executor :refer [selections-tree
+                                             selections-seq
+                                             selects-field?]]
    [taoensso.timbre :refer [error debug info color-str]]
    [yetibot.core.adapters.adapter :as adapter]
    [yetibot.core.commands.uptime :as uptime]
@@ -31,32 +33,52 @@
            until_datetime]
     :as args}
    value]
-  (info "history resolver. args" args)
-  (let [extra-query {:order/clause "created_at DESC"
-                     :limit/clause (or limit 50)}
-        history-query (history/build-query
-                       {:extra-query extra-query
-                        :cursor cursor
-                        :exclude-private? true
-                        :include-history-commands? include_history_commands
-                        :exclude-yetibot? exclude_yetibot
-                        :exclude-commands? exclude_commands
-                        :exclude-non-commands? exclude_non_commands
-                        :search-query search_query
-                        :adapters-filter adapters_filter
-                        :channels-filter channels_filter
-                        :users-filter users_filter
-                        :since-datetime since_datetime
-                        :until-datetime until_datetime})]
-    {:history
-     (query (merge {:query/identifiers identity}
-                   history-query))
-     ;; TODO lazily retrieve these
-     :page_info {:total_results (history/count-entities history-query)
-                 :next_page_cursor "TODO"
-                 :has_next_page "TODO"
-                 }
-     }))
+  (info "history resolver"
+        {:args args
+         :selections-seq (selections-seq context)
+         :selections-tree (selections-tree context)})
+  (let [limit (or limit 50)
+        extra-query {:order/clause "created_at DESC"
+                     ;; fetch one extra record so we can compute the next hash
+                     :limit/clause (inc limit)}
+
+        ;; history query without extra-query or cursor for counting
+        base-query-options {:exclude-private? true
+                            :include-history-commands? include_history_commands
+                            :exclude-yetibot? exclude_yetibot
+                            :exclude-commands? exclude_commands
+                            :exclude-non-commands? exclude_non_commands
+                            :search-query search_query
+                            :adapters-filter adapters_filter
+                            :channels-filter channels_filter
+                            :users-filter users_filter
+                            :since-datetime since_datetime
+                            :until-datetime until_datetime}
+
+        history-query (history/build-query (merge base-query-options
+                                                  {:extra-query extra-query
+                                                   :cursor cursor}))
+
+        results (query (merge {:query/identifiers identity}
+                              history-query))
+        has-next-page? (> (count results) limit)
+        next-page-cursor (when has-next-page?
+                           (-> results
+                               last
+                               :id
+                               history/id->cursor))]
+
+    (info "history-query" (pr-str history-query))
+
+    {;; only take up to the limit since there may be an extra record in the
+     ;; result set
+     :history (take limit results)
+     :page_info {:total_results (when (selects-field?
+                                       context :page_info/total_results)
+                                  (history/count-entities
+                                   (history/build-query base-query-options)))
+                 :next_page_cursor next-page-cursor
+                 :has_next_page has-next-page?}}))
 
 
 (defn history-item-resolver

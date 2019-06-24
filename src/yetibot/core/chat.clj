@@ -56,7 +56,8 @@
       :uuid (a/uuid *adapter*)})
 
 (defn chat-source
-  "Data structure representing the chat adapter and channel that a message came from"
+  "Data structure representing the chat adapter and channel that a message came
+   from"
   [channel] (merge (base-chat-source) {:room channel}))
 
 ; (defn set-room-broadcast [room broadcast?] ((:set-room-broadcast *messaging-fns*) room broadcast?))

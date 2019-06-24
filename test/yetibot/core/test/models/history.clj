@@ -40,7 +40,7 @@
   ;;  (run! add-history ["!echo" "!status" "!poke"])
   (f))
 
-(use-fixtures :once populate)
+;; (use-fixtures :once populate)
 
 (def extra-query
   {:where/map {:chat-source-adapter (-> chat-source :uuid pr-str)
