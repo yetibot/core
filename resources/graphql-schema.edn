@@ -23,25 +23,6 @@
                   {:page_info {:type :page_info}
                    :history {:type (list :history)}}}
 
-  ;; {
-  ;;   hero {
-  ;;     name
-  ;;     friendsConnection(first:2 after:"Y3Vyc29yMQ==") {
-  ;;       totalCount
-  ;;       edges {
-  ;;         node {
-  ;;           name
-  ;;         }
-  ;;         cursor
-  ;;       }
-  ;;       pageInfo {
-  ;;         endCursor
-  ;;         hasNextPage
-  ;;       }
-  ;;     }
-  ;;   }
-  ;; }
-
   :stats {:fields
           {:uptime {:type String}
            :adapter_count {:type Int}
