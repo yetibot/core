@@ -1,0 +1,5 @@
+#kaocha/v1
+{:tests [{:source-paths ["src"]
+          :ns-patterns [".*"]
+          :test-paths ["test"]
+          :type :kaocha.type/midje}]}

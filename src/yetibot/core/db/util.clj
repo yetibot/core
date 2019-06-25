@@ -169,3 +169,9 @@
   (-> (query table {:select/clause "COUNT(*) as count"})
       first
       :count))
+
+(defn where-eq-any
+  [column values]
+  {:where/clause
+   (str "(" (join " OR " (map (constantly (str column " = ?")) values)) ")")
+   :where/args values})

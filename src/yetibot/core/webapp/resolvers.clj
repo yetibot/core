@@ -3,7 +3,6 @@
     [yetibot.core.models.users :as users]
     [yetibot.core.chat :as chat]
     [yetibot.core.models.channel :as channel]
-    [yetibot.core.webapp.resolvers.stats :as stats]
     [cuerdas.core :refer [kebab snake]]
     [yetibot.core.adapters.adapter :as adapter]
     [yetibot.core.db.history :as history]
@@ -38,6 +37,7 @@
     "echo hi")
   )
 
+
 (defn adapters-resolver
   [context {:keys [] :as args} value]
   (->>
@@ -50,34 +50,6 @@
                     :connection_last_active_timestamp
                     (adapter/connection-last-active-timestamp %)))))
 
-(defn history-resolver
-  [context
-   {:keys [offset limit chat_source_room chat_source_adapter commands_only
-           yetibot_only search_query user_filter channel_filter]
-    :as args}
-   value]
-  (info "history resolver. args" args)
-  (let [where-map (merge {"is_private" false}
-                         (when commands_only {"is_command" true})
-                         (when yetibot_only {"is_yetibot" true}))
-        where-clause (when search_query
-                       {:where/clause
-                        "to_tsvector(body) @@ plainto_tsquery(?)"
-                        :where/args [search_query]})
-        ]
-    (history/query (merge {:query/identifiers identity
-                           :where/map where-map
-                           :limit/clause limit
-                           :offset/clause offset
-                           :order/clause "created_at DESC"}
-                          where-clause))))
-
-(defn history-item-resolver
-  [_ {:keys [id] :as args} _]
-  (let [where-map {"id" id}]
-    (first 
-      (history/query (merge {:query/identifiers identity
-                             :where/map where-map})))))
 
 (defn channels-resolver
   [context args value]
@@ -86,8 +58,6 @@
       (binding [chat/*adapter* adapter]
         (map #(hash-map :name %) (chat/channels))))
     (adapter/active-adapters)))
-
-(def stats-resolver (partial stats/stats-resolver))
 
 (defn users-resolver
   [context {:keys [] :as args} value]

@@ -1,21 +1,119 @@
 (ns yetibot.core.models.history
   (:require
-    [yetibot.core.util.command :refer [extract-command]]
-    [yetibot.core.db.util :refer [transform-where-map merge-queries]]
-    [yetibot.core.db.history :refer [create query]]
-    [clojure.string :refer [join split]]
-    [yetibot.core.util.time :as t]
-    [clj-time
-     [coerce :refer [from-date to-sql-time]]
-     [format :refer [formatter unparse]]
-     [core :refer [day year month
-                   to-time-zone after?
-                   default-time-zone now time-zone-for-id date-time utc
-                   ago hours days weeks years months]]]
-    [yetibot.core.models.users :as u]
-    [taoensso.timbre :refer [info color-str warn error spy]]))
+   [yetibot.core.util.command :refer [config-prefix extract-command]]
+   [yetibot.core.db.util :refer [merge-queries
+                                 where-eq-any
+                                 transform-where-map merge-queries]]
+   [yetibot.core.db.history :refer [create query]]
+   [clojure.string :refer [join split]]
+   [yetibot.core.util.time :as t]
+   [clj-time
+    [coerce :refer [from-date to-sql-time]]
+    [format :refer [formatter unparse]]
+    [core :refer [day year month
+                  to-time-zone after?
+                  default-time-zone now time-zone-for-id date-time utc
+                  ago hours days weeks years months]]]
+   [clojure.data.codec.base64 :as b64]
+   [yetibot.core.models.users :as u]
+   [taoensso.timbre :refer [info color-str warn error spy]]))
 
 ;;;; read
+
+(defn cursor->id [cursor]
+  (try
+    (read-string (String. (b64/decode (.getBytes cursor))))
+    (catch Exception e
+      (throw (ex-info "Invalid cursor"
+                      {:cursor cursor})))))
+
+(defn id->cursor [id]
+  (String. (b64/encode (.getBytes (str id)))))
+
+(defn build-query
+  "Given a bunch of options specific to history return a query data structure"
+  [{:keys [cursor
+           exclude-private?
+           ;; history commands are not included by default
+           include-history-commands?
+           exclude-yetibot?
+           exclude-commands?
+           exclude-non-commands?
+           search-query
+           ;; collection of adapter strings to filter on
+           adapters-filter
+           ;; collection of channel strings to filter on
+           channels-filter
+           ;; collection of user name strings to filter on
+           users-filter
+           ;; datetime
+           since-datetime
+           until-datetime
+           ;; allow caller to pass in additional queries to merge
+           extra-query]
+    :as options}]
+  (info "build query with" (pr-str options))
+  (let [id-from-cursor (when cursor (cursor->id cursor))
+        queries-to-merge
+        ;; Start with an empty vector and conditionally conj a bunch of query
+        ;; maps onto it depending on provided options. This vector will then be
+        ;; merged into a single combined query map.
+        (cond-> []
+          exclude-private? (conj {:where/map {:is_private false}})
+
+          ;; by default we exclude history commands, but this isn't super
+          ;; cheap, so only exclude history commands if both:
+          ;; - exclude-commands? is not true - since this is much cheaper and
+          ;;   will cover excluding history anyway
+          ;; - include-history-commands? isn't true
+          (and
+           (not exclude-commands?)
+           (not include-history-commands?))
+          (conj
+           {:where/clause
+            "(is_command = ? OR body NOT LIKE ?)"
+            :where/args [false
+                         (str config-prefix "history%")]})
+
+          exclude-yetibot? (conj {:where/map {:is_yetibot false}})
+          exclude-commands? (conj {:where/map {:is_command false}})
+          exclude-non-commands? (conj {:where/map {:is_command true}})
+
+          search-query (conj {:where/clause "body ~ ?"
+                              :where/args  [search-query]})
+
+          ;; >= for ASC
+          ;; <= for DESC
+          id-from-cursor (conj {:where/clause
+                                (str
+                                 "id "
+                                 (if (re-find
+                                      #"DESC"
+                                      (or (:order/clause extra-query) ""))
+                                   "<=" ;; DESC
+                                   ">=") ;; ASC
+                                 " ?")
+                                :where/args [id-from-cursor]})
+
+          adapters-filter (conj (where-eq-any "chat_source_adapter"
+                                              adapters-filter))
+          channels-filter (conj (where-eq-any "chat_source_room"
+                                              channels-filter))
+          users-filter (conj (where-eq-any "user_name" users-filter))
+          ;; datetime
+          since-datetime
+          (conj
+           {:where/clause
+            "created_at AT TIME ZONE 'UTC' >= ?::TIMESTAMP WITH TIME ZONE"
+            :where/args [since-datetime]})
+
+          until-datetime
+          (conj
+           {:where/clause
+            "created_at AT TIME ZONE 'UTC' <= ?::TIMESTAMP WITH TIME ZONE"
+            :where/args [(:until options)]}))]
+    (info "queries-to-merge" (pr-str queries-to-merge))
+    (apply merge-queries (conj queries-to-merge extra-query))))
 
 (defn flatten-one [n] (if (= 1 n) first identity))
 

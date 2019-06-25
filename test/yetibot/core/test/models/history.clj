@@ -1,10 +1,13 @@
 (ns yetibot.core.test.models.history
   (:require
-    [clojure.java.jdbc :as sql]
-    [yetibot.core.models.history :refer :all]
-    [yetibot.core.db :as db]
-    [yetibot.core.util :refer [is-command?]]
-    [clojure.test :refer :all]))
+   [clojure.java.jdbc :as sql]
+   [yetibot.core.models.history :refer :all]
+   [yetibot.core.db :as db]
+   [yetibot.core.util :refer [is-command?]]
+   [yetibot.core.midje :refer [value data]]
+   [clojure.test.check.generators :as gen]
+   [midje.experimental :refer [for-all]]
+   [midje.sweet :refer [fact => facts]]))
 
 (def chat-source {:adapter :slack :uuid :test :room "foo"})
 
@@ -19,7 +22,7 @@
 ;; investigate embedded postgres as a solution:
 ;; https://eli.naeher.name/embedded-postgres-in-clojure/
 ;; we need a database
-(db/start)
+(defonce db-start (db/start))
 
 ;; Another quick option would be to use a fixture to populate then rollback
 ;; after the tests, something like:
@@ -37,36 +40,26 @@
   ;;  (run! add-history ["!echo" "!status" "!poke"])
   (f))
 
-(use-fixtures :once populate)
+;; (use-fixtures :once populate)
 
-(def extra-query {:where/map {:chat-source-adapter (-> chat-source :uuid pr-str)
-                              :is-yetibot false}})
+(def extra-query
+  {:where/map {:chat-source-adapter (-> chat-source :uuid pr-str)
+               :is-yetibot false}})
 
-(deftest test-count-entities
-  (count-entities extra-query))
+(for-all [positive-num gen/s-pos-int]
+         (fact "cursor to id transformations are isomorphic"
+               (-> positive-num id->cursor cursor->id) => positive-num))
 
-(deftest test-head
-  (head 2 extra-query))
+(fact "build query works with cursors"
+  (build-query {:cursor (id->cursor 10)}))
 
-(deftest test-tail
-  (count (tail 2 extra-query)))
-
-(deftest test-random
-  (map? (random extra-query)))
-
-(deftest test-grep
-  (grep "b.d+" extra-query))
-
-(deftest test-cmd-only-items
-  (cmd-only-items chat-source))
-
-(deftest test-non-cmd-items
-  (non-cmd-items chat-source))
-
-(deftest history-should-be-in-order
-  ;; TODO
-  )
-
-(deftest last-chat-for-channel-test
+(comment
+  ;; scratch - these could be ported to tests
+  (head 2 extra-query)
+  (count (tail 2 extra-query))
+  (grep "b.d+" extra-query)
+  (cmd-only-items chat-source)
+  (non-cmd-items chat-source)
   (last-chat-for-channel chat-source true)
-  (last-chat-for-channel chat-source false))
+  (last-chat-for-channel chat-source false)
+  (map? (random extra-query)))

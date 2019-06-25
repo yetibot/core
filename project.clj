@@ -59,7 +59,9 @@
              :dev [:profiles/dev
                    {:plugins [[lein-midje "3.2.1"]]
                     :dependencies [[midje "1.9.6"]
-                                   [nubank/matcher-combinators "0.9.0"]]}]
+                                   [lambdaisland/kaocha-midje "0.0-5"
+                                    :exclusions [midje/midje]]
+                                    [nubank/matcher-combinators "0.9.0"]]}]
              :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"
@@ -128,6 +130,7 @@
                  [json-path "1.0.1"]
 
                  ; utils
+                 [org.clojure/data.codec "0.1.1"] ; base64
                  [funcool/cuerdas "2.1.0"]
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.4.1"]
