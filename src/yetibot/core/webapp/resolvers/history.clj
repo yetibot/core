@@ -88,7 +88,8 @@
      (query (merge {:query/identifiers identity
                     :where/map where-map})))))
 
-(defn adapters-resolver
+(defn adapter-channels-resolver
+  "List the channels by grouped by adapter"
   [_ _ _]
   (for [[k v] (group-by
                :chat_source_adapter

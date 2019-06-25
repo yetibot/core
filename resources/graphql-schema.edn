@@ -23,6 +23,12 @@
                   {:page_info {:type :page_info}
                    :history {:type (list :history)}}}
 
+  :adapter {:fields {:uuid {:type String}
+                     :platform {:type String}
+                     :is_connected {:type Boolean}
+                     :connection_latency {:type Int}
+                     :connection_last_active_timestamp {:type String}}}
+
   :stats {:fields
           {:uptime {:type String}
            :adapter_count {:type Int}
@@ -69,10 +75,9 @@
           :schedule {:type String}
           :cmd {:type String}}}
 
-  ;; TODO add adapter info back
-  :adapter {:fields
-            {:chat_source_adapter {:type String}
-             :channels {:type (list :channel)}}}
+  :adapter_channel {:fields
+                    {:chat_source_adapter {:type String}
+                     :channels {:type (list :channel)}}}
 
   :channel {:fields
             {:chat_source_adapter {:type String}
@@ -92,8 +97,14 @@
          :args {:expr {:type String}}
          :resolve :eval}
 
+  ;; info about the configured adapters and their connection status
+  ;; :adapters
   :adapters {:type (list :adapter)
              :resolve :adapters}
+
+  ;; the list of channels by adapter
+  :adapter_channels {:type (list :adapter_channel)
+                     :resolve :adapter_channels}
 
   :history {:type :paged_history
             :resolve :history
