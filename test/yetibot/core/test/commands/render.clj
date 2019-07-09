@@ -1,36 +1,37 @@
 (ns yetibot.core.test.commands.render
   (:require
+    [midje.sweet :refer [fact => contains has-prefix just]]
+    [yetibot.core.midje :refer [value data error]]
     [yetibot.core.commands.render :refer :all]
-    [yetibot.core.util.command-info :refer [command-execution-info]]
-    [clojure.test :refer :all]))
+    [yetibot.core.util.command-info :refer [command-execution-info]]))
 
 (def execution-opts {:run-command? true
                      :data {:adj "lazy" :noun "water buffalo"}})
 
-(deftest test-render-cmd
-  (testing "A simple template"
-    (is (= (-> (command-execution-info
-                 "render the {{adj}} brown {{noun}}" execution-opts)
-               :result :result/value)
-           "the lazy brown water buffalo")))
+(fact
+ "a simple template works"
+ (:result
+  (command-execution-info "render the {{adj}} brown {{noun}}" execution-opts))
+ => (value "the lazy brown water buffalo"))
 
-  (testing "A template operating over a sequential produces a sequential"
-    (is (= ["item 1" "item 2"]
-           (-> (command-execution-info
-                 "render item {{.}}"
-                 (assoc execution-opts
-                        :data [1 2]
-                        :raw [1 2]))
-               :result :result/value))))
+(fact
+ "A template operating over a sequential produces a sequential"
+ (:result (command-execution-info "render item {{.}}"
+                                  (assoc execution-opts
+                                         :data [1 2]
+                                         :raw [1 2])))
+ => (value ["item 1" "item 2"]))
 
-  (testing "An invalid template that throws an error"
-    (is (= {:result/error "No filter defined with the name 'lol'"}
-           (:result (command-execution-info
-                      "render the {{adj|lol}} brown {{noun}}"
-                      execution-opts)))))
+(fact
+ "An invalid template that throws an error"
+ (:result (command-execution-info
+           "render the {{adj|lol}} brown {{noun}}"
+           execution-opts))
+ (error  "No filter defined with the name 'lol'"))
 
-  (testing "Some cool selmer filters"
-    (is (= "the LAZY brown Water buffalo"
-           (-> (command-execution-info
-                 "render the {{adj|upper}} brown {{noun|capitalize}}"
-                 execution-opts) :result :result/value)))))
+(fact
+ "Some cool selmer filters"
+ (:result (command-execution-info
+           "render the {{adj|upper}} brown {{noun|capitalize}}"
+           execution-opts))
+ => (value "the LAZY brown Water buffalo"))

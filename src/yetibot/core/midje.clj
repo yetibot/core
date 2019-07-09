@@ -11,6 +11,7 @@
   [expected key]
   (checker
    [actual]
+   (pr-str actual)
    (extended-= (key actual) expected)))
 
 (defchecker value [expected] (mk-checker expected :result/value))
