@@ -1,5 +1,8 @@
 (ns yetibot.core.test.parser
   (:require
+    yetibot.core.commands.echo
+    yetibot.core.commands.help
+    yetibot.core.commands.category
     [clojure.pprint :refer [pprint]]
     [midje.sweet :refer [fact facts =>]]
     [yetibot.core.models.karma :refer :all]

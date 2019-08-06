@@ -99,6 +99,7 @@
         (callback cmd-with-args extra)))))
 
 ;; Hook the actual handle-cmd called during interpretation.
+;; TODO remove completely
 (rh/add-hook #'handle-cmd #'handle-with-hooked-cmds)
 
 (defn lockdown-prefix-regex

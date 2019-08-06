@@ -11,6 +11,17 @@
 (def ^:dynamic *current-user*)
 (def ^:dynamic *yetibot-user*)
 (def ^:dynamic *chat-source*)
+(def
+  ^{:dynamic true
+    :doc
+    "Alternate source for data when data across a pipe is not provided. This
+     allows a previous command to propagate data into a subsequent sub-command,
+     e.g.:
+
+     !scores | echo
+       `render {{score}}` with weather
+       `render {{zip}} | weather | render {{weather.description}}`"}
+  *contextual-data*)
 
 (defn handle-cmd
   "Hooked entry point for all command handlers. If no handlers intercept, it
@@ -27,6 +38,8 @@
     ;; return nothing when fallbacks are disabled
     (suppress {})))
 
+;; TODO could pipe-cmds take unevaluated cmd trees so that it could eval them
+;; left to right?
 (defn pipe-cmds
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra
    :opts"
@@ -38,7 +51,7 @@
          previous-data-collection :data-collection
          previous-data :data} acc
         extra {:raw previous-value
-               :data (or previous-data previous-value)
+               :data (or previous-data *contextual-data* previous-value)
                :data-collection previous-data-collection
                :settings (:settings acc)
                :skip-next-n (:skip-next-n acc)
@@ -122,6 +135,10 @@
                    :data-collection data-collection
                    :data data)
             (assoc acc :value command-result)))))))
+(comment
+  (def test-coll [1 2 3])
+  ;; allows peaking into the full seq of subsequent items
+  (partition-all (count test-coll) 1 test-coll))
 
 (defn handle-expr
   "Entry point for Yetibot expression evaluation. An expression is the

@@ -55,7 +55,8 @@
       (let [agent (ssh-agent {:use-system-ssh-agent false})]
         (add-identity agent {:private-key-path key-file})
         (let [session
-              (session agent host {:strict-host-key-checking :no :username user})]
+              (session agent host {:strict-host-key-checking :no
+                                   :username user})]
           (with-connection session
                            (let [result (ssh session {:cmd command})]
                              (or (:out result) (:error result)))))))
