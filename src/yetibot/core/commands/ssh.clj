@@ -47,5 +47,5 @@
     {:result/error (str "No servers found for " server-name)}))
 
 (cmd-hook #"ssh"
-  #"^(\w+)\s(.+)" run-command
+  #"^(\S+)\s(.+)" run-command
   #"^servers" list-servers)
