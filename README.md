@@ -11,7 +11,7 @@ Yetibot plugins, private or public.
 The majority of Yetibot commands live in the [main Yetibot
 repo](https://github.com/yetibot/yetibot).
 
-[<img src="http://clojars.org/yetibot.core/latest-version.svg" />](https://clojars.org/yetibot.core)
+[![Clojars Project](https://img.shields.io/clojars/v/yetibot/core.svg)](https://clojars.org/yetibot/core)
 
 - [CHANGELOG](doc/CHANGELOG.md)
 - [Docs](doc/)
