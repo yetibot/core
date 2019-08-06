@@ -1,7 +1,6 @@
 # yetibot.core
 
-[![Build Status](https://travis-ci.org/yetibot/yetibot.core.svg?branch=master)](https://travis-ci.org/yetibot/yetibot.core)
-[![CrossClj](https://img.shields.io/badge/CrossClj%20Docs-yetibot.core-blue.svg)](https://crossclj.info/doc/yetibot.core/latest/index.html)
+[![Build Status](https://img.shields.io/travis/com/yetibot/yetibot.core?style=for-the-badge)](https://travis-ci.org/yetibot/yetibot.core.svg?branch=master)](https://travis-ci.com/yetibot/yetibot.core)
 
 Core Yetibot utilities, extracted for shared use among Yetibot and its various
 plugins. yetibot.core is not meant to be run standalone, but instead used as a
