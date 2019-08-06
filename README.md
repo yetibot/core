@@ -12,7 +12,7 @@ The majority of Yetibot commands live in the [main Yetibot
 repo](https://github.com/yetibot/yetibot).
 
 - [CHANGELOG](doc/CHANGELOG.md)
-- [Docs](doc/)
+- [yetibot.com](https://yetibot.com)
 
 ## Usage
 
