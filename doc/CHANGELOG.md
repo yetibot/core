@@ -664,6 +664,11 @@ It also works for `leave` events:
 
 ## 0.4.0
 
+0.4.0 decomplects mutable and immutable configuration in a
+non-backward-compatible way. Please see [config
+docs](https://yetibot.com/ops-guide#configuration) docs and port your existing
+config to the new structure.
+
 - Refactor configuration:
   It was getting quite unweidly and inconsistent with somewhat arbitrary
   hierarchies.

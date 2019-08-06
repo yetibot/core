@@ -1,6 +1,7 @@
 # yetibot.core
 
 [![Build Status](https://img.shields.io/travis/com/yetibot/yetibot.core?style=for-the-badge)](https://travis-ci.com/yetibot/yetibot.core)
+[![Clojars](https://img.shields.io/clojars/v/yetibot/core?style=for-the-badge)](https://clojars.org/yetibot/core)
 
 Core Yetibot utilities, extracted for shared use among Yetibot and its various
 plugins. yetibot.core is not meant to be run standalone, but instead used as a
@@ -10,16 +11,8 @@ Yetibot plugins, private or public.
 The majority of Yetibot commands live in the [main Yetibot
 repo](https://github.com/yetibot/yetibot).
 
-[![Clojars Project](https://img.shields.io/clojars/v/yetibot/core.svg)](https://clojars.org/yetibot/core)
-
 - [CHANGELOG](doc/CHANGELOG.md)
 - [Docs](doc/)
-
-## Changes in 0.4.0
-
-0.4.0 decomplects mutable and immutable configuration in a
-non-backward-compatible way. Please see [CONFIGURATION](doc/CONFIGURATION.md)
-docs and port your existing config to the new structure.
 
 ## Usage
 
