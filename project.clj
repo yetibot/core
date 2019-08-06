@@ -117,7 +117,7 @@
                  [evaljs "0.1.2"]
 
                  ; ssh
-                 [clj-ssh "0.5.14"]
+                 [clj-commons/clj-ssh "0.5.15"]
 
                  ; wordnik dictionary
                  [clj-wordnik "0.1.0-alpha1"]
