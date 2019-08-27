@@ -1,7 +1,6 @@
 (ns yetibot.core.parser
   (:require
     [taoensso.timbre :refer [info warn error]]
-    [clojure.core.match :refer [match]]
     [yetibot.core.interpreter :refer [handle-expr]]
     [clojure.string :refer [join]]
     [instaparse.core :as insta]))

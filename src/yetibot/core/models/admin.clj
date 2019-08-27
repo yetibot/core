@@ -1,12 +1,15 @@
 (ns yetibot.core.models.admin
   (:require
-    [schema.core :as s]
+    [clojure.spec.alpha :as s]
     [yetibot.core.config :refer [get-config]]))
 
-(defn config [] (get-config
-                  {(s/optional-key :users ) [s/Str]
-                   (s/optional-key :commands) [s/Str]}
-                  [:admin]))
+(s/def ::users (s/coll-of string? :kind vector?))
+
+(s/def ::commands (s/coll-of string? :kind vector?))
+
+(s/def ::config (s/keys :opt-un [::users ::commands]))
+
+(defn config [] (get-config ::config [:admin]))
 
 (defn admin-only-command? [cmd]
   (boolean ((-> (config) :value :commands set) cmd)))

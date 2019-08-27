@@ -1,8 +1,8 @@
 (ns yetibot.core.test.adapters.slack
   (:require
     [clojure.string :as s]
+    [yetibot.core.adapters :as adapters]
     [yetibot.core.adapters.adapter :as a]
-    [yetibot.core.adapters.init :as ai]
     [yetibot.core.adapters.slack :refer :all]
     [clj-slack
      [users :as slack-users]
@@ -17,7 +17,7 @@
 (defn slack-configs []
   (filter
     (fn [c] (= "slack" (:type c)))
-    (vals (ai/adapters-config))))
+    (vals (adapters/adapters-config))))
 
 
 (def config (slack-config (last (slack-configs))))

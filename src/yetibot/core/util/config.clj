@@ -1,13 +1,13 @@
 (ns yetibot.core.util.config
   (:require
-    [clojure.java.io :refer [make-parents]]
+    [clojure.java.io :refer [as-file make-parents]]
     [taoensso.timbre :refer [color-str trace debug info warn error]]
-    [clojure.java.io :refer [as-file]]
     [clojure.edn :as edn]
-    [schema.core :as s]))
+    [clojure.spec.alpha :as s]
+    [expound.alpha :as expound]))
 
 ;; for human consumption
-(defonce schema-by-path (atom {}))
+(defonce spec-by-path (atom {}))
 
 (def default-config {:yetibot {}})
 
@@ -41,26 +41,23 @@
   "Lookup configuration in a config tree.
    Returns one of:
    {:error :invalid
-    :message \"$value does not validate against schema: $schema\"
-    :schema $schema}
+    :message \"$value does not validate against spec: $spec\"
+    :spec $spec}
    {:error :not-found :message $path}
    {:value $valid-value}"
-  [config schema path]
-  ;; store up all schemas to build a complete schema-by-path representation as
+  [config spec path]
+  ;; store up all specs to build a complete spec-by-path representation as
   ;; a convenient reference
-  (swap! schema-by-path assoc path schema)
-  (trace "get-config" schema path)
+  (swap! spec-by-path assoc path spec)
+  (trace "get-config" spec path)
   (let [path (if (coll? path) path [path])]
     (if-let [value (get-in config path)]
-      (try
-        (s/validate schema value)
+      (if (s/valid? spec value)
         ;; valid and found
         {:value value}
-        (catch Exception e
-          ;; invalid against schema
-          ;; (warn e)
-          {:error :invalid
-           :message (str value " does not validate against schema: " (pr-str schema))
-           :schema schema}))
+        ;; invalid against spec
+        {:error :invalid
+         :message (expound/expound-str spec value)
+         :spec spec})
       ;; not found
       {:error :not-found :message path})))

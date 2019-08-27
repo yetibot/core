@@ -1,11 +1,13 @@
 (ns yetibot.core.commands.duckling
-  (:require [duckling.core :as duckling]
+  (:require [clojure.spec.alpha :as s]
+            [duckling.core :as duckling]
             [yetibot.core.hooks :refer [cmd-hook]]
-            [schema.core :as sch]
             [yetibot.core.config :refer [get-config]]))
 
+(s/def ::languages-config (s/coll-of string? :kind vector?))
+
 (defn languages []
-  (or (:value (get-config [sch/Str] [:duckling :languages]))
+  (or (:value (get-config ::languages-config [:duckling :languages]))
       ["en"]))
 
 (def parse (partial duckling/parse :en$core))
