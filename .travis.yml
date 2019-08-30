@@ -15,6 +15,7 @@ env:
   - YETIBOT_DB_URL="postgresql://postgres@localhost:5432/yetibot"
 
 before_deploy:
+  - lein deps # ensure npm deps are fetched
   - git status
     # clean up annoying package-lock.json changes
   - git reset --hard
