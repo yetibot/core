@@ -20,13 +20,13 @@ before_deploy:
   - git reset --hard
   - lein deps # ensure npm deps are fetched
   - ls -al node_modules/yetibot-dashboard/build
+  - git stash
+  - git status
 
 deploy:
   provider: script
-  script:
-    - git stash
-    - git status
-    - lein release
+  # deploy is a single script to run - not an array of commands
+  script: lein release
   # keep node_modules so it's included as a resource in the jar
   skip_cleanup: true
   on:
