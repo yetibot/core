@@ -19,12 +19,12 @@ before_deploy:
     # clean up annoying package-lock.json changes
   - git reset --hard
   - lein deps # ensure npm deps are fetched
-  - ls -al node_modules
   - ls -al node_modules/yetibot-dashboard/build
 
 deploy:
   provider: script
   script:
+    - git stash
     - git status
     - lein release
   # keep node_modules so it's included as a resource in the jar
