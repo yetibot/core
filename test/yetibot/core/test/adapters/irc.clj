@@ -1,6 +1,6 @@
 (ns yetibot.core.test.adapters.irc
   (:require
-    [yetibot.core.adapters.init :as ai]
+    [yetibot.core.adapters :as adapters]
     [yetibot.core.adapters.irc :refer :all]
     [yetibot.core.chat :as chat]
     [clojure.test :refer :all]))
@@ -18,7 +18,7 @@
 (defn irc-config []
   (filter
     (fn [c] (= :irc (:type c)))
-    (ai/adapters-config)))
+    (adapters/adapters-config)))
 
 (deftest channels-for-last-config
   (comment

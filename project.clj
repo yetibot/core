@@ -75,7 +75,6 @@
                  [org.clojure/java.classpath "0.3.0"]
                  [org.clojure/core.cache "0.7.2"]
                  [org.clojure/core.memoize "0.7.1"]
-                 [org.clojure/core.match "0.3.0-alpha5"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.3"]
                  [org.clojure/java.jdbc "0.7.9"]
@@ -124,7 +123,6 @@
 
                  ; json parsing / schema
                  [com.bigml/closchema "0.1.8"]
-                 [prismatic/schema "1.1.10"]
                  [json-path "1.0.1"]
 
                  ; utils
@@ -134,6 +132,7 @@
                  [robert/hooke "1.3.0"]
                  [clj-time "0.14.4"] ; includes joda-time
                  [rate-gate "1.3.1"]
+                 [expound "0.7.2"]
                  ; scheduling used for mail. could be replaced by
                  ; hara.io.scheduler
                  [overtone/at-at "1.2.0"]

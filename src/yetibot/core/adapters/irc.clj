@@ -1,7 +1,7 @@
 (ns yetibot.core.adapters.irc
   (:require
-    [schema.core :as s]
     [clojure.set :refer [difference union intersection]]
+    [clojure.spec.alpha :as s]
     [yetibot.core.adapters.adapter :as a]
     [taoensso.timbre :as log :refer [info debug]]
     [rate-gate.core :refer [rate-limit]]
@@ -11,12 +11,29 @@
     [yetibot.core.models.users :as users]
     [yetibot.core.models.channel :as channel]
     [clojure.string :refer [split-lines join]]
-    [yetibot.core.config :as config]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure send-msg-for-each
                                *target* *adapter*] :as chat]
-    [yetibot.core.util.format :as fmt]
     [yetibot.core.handler :refer [handle-raw]]))
+
+(s/def ::type string?)
+
+(s/def ::host string?)
+
+(s/def ::port string?)
+
+(s/def ::ssl string?)
+
+(s/def ::username string?)
+
+(s/def ::password string?)
+
+(s/def ::config (s/keys :req-un [::type
+                                 ::host
+                                 ::port
+                                 ::username]
+                        :opt-un [::ssl
+                                 ::password]))
 
 (declare join-or-part-with-current-channels connect start)
 

@@ -1,6 +1,5 @@
 (ns yetibot.core.commands.karma
   (:require
-   [schema.core :as sch]
    [yetibot.core.config :refer [get-config]]
    [yetibot.core.hooks :refer [cmd-hook]]
    [yetibot.core.models.karma :as model]
@@ -15,11 +14,13 @@
 ;; modified string version).  Without an exhaustive mapping there's no
 ;; reliable way for us to support configrable emoji reaction
 ;; processing in Slack, which we have prioritized.  Unfortunately,
-;; this breaks IRC, where response emjoi are then rendered as the
+;; this breaks IRC, where response emoji are then rendered as the
 ;; shortcode string instead of the character.  We hope to improve this
 ;; in the future.
 
-(def config (:value (get-config sch/Any [:karma])))
+(s/def ::config any?)
+
+(def config (:value (get-config ::config [:karma])))
 
 (def pos-emoji (or (-> config :emoji :positive) ":rainbow:"))  ;; 🌈
 (def neg-emoji (or (-> config :emoji :negative) ":thunder_cloud_and_rain:"))  ;; ⛈

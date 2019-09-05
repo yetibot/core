@@ -4,7 +4,6 @@
     [yetibot.core.chat :refer [suppress]]
     [yetibot.core.models.default-command :refer [fallback-enabled?
                                                  configured-default-command]]
-    [clojure.set :refer [difference intersection]]
     [yetibot.core.models.channel :as channel]
     [taoensso.timbre :refer [color-str debug trace info warn error]]
     [yetibot.core.util.format :refer [pseudo-format to-coll-if-contains-newlines]]))
@@ -125,7 +124,7 @@
             (assoc acc :value command-result)))))))
 
 (defn handle-expr
-  "Entry point for Yetibot expression evaluation  An expression is the
+  "Entry point for Yetibot expression evaluation. An expression is the
    top-level construct. It contains 1 or more commands. Commands are reduced
    to a single output by sequentially piping the output from one command to the
    next until there are no more commands to evaluate.

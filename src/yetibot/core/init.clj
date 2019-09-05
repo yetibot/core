@@ -1,7 +1,7 @@
 (ns yetibot.core.init
   (:require
     [yetibot.core.chat :as chat]
-    [yetibot.core.adapters.init :as ai]
+    [yetibot.core.adapters :as adapters]
     [clojure.stacktrace :refer [print-stack-trace]]
     [nrepl.server :as nrepl]
     [yetibot.core.db :as db]
@@ -11,16 +11,17 @@
     [yetibot.core.loader :refer [load-commands-and-observers]]
     [yetibot.core.logo :refer [logo]]
     [yetibot.core.config :refer [get-config]]
-    [schema.core :as s])
+    [clojure.spec.alpha :as s])
   (:gen-class))
 
 (defn welcome-message! []
   (println logo))
 
-(def nrepl-schema
-  {(s/optional-key :port) s/Int})
+(s/def ::port int?)
 
-(defn- config [] (:value (get-config nrepl-schema [:nrepl])))
+(s/def ::nrepl-config (s/keys :opt-un [::port]))
+
+(defn- config [] (:value (get-config ::nrepl-config [:nrepl])))
 
 (def nrepl-port (or (:port (config)) 65432))
 
@@ -46,5 +47,5 @@
     (start-nrepl!)
     (db/start)
     (logging/start)
-    (ai/start)
+    (adapters/start)
     (load-commands-and-observers)))

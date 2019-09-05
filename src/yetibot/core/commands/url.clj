@@ -1,11 +1,13 @@
 (ns yetibot.core.commands.url
   (:require
-    [clojure.string :as s]
+    [clojure.spec.alpha :as s]
     [yetibot.core.config :refer [get-config]]
     [cemerick.url :refer [url]]
     [yetibot.core.hooks :refer [cmd-hook]]))
 
-(defn config [] (get-config String [:url]))
+(s/def ::config string?)
+
+(defn config [] (get-config ::config [:url]))
 
 (defn yetibot-url
   "Given a path build a fully qualified URL"

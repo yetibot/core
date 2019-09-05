@@ -1,10 +1,8 @@
 (ns yetibot.core.handler
   (:require
-    [schema.core :as sch]
     [yetibot.core.config :refer [get-config]]
     [clojure.core.async :refer [timeout alts!! alts! chan go <! >! >!! <!!]]
-    [clojure.core.match :refer [match]]
-    [clojure.stacktrace :as st]
+    [clojure.spec.alpha :as s]
     [clojure.string :refer [blank? join]]
     [taoensso.timbre :refer [debug trace info warn error]]
     [yetibot.core.chat :refer [chat-data-structure]]
@@ -15,6 +13,8 @@
     [yetibot.core.util.format :refer [to-coll-if-contains-newlines
                                       format-data-structure
                                       format-exception-log]]))
+
+(s/def ::embedded-commands-enabled-config string?)
 
 (defn embedded-enabled?
   "Determine whether or not embedded commands are enabled.
@@ -40,7 +40,8 @@
 
    It is enabled by default."
   []
-  (let [{value :value} (get-config sch/Str [:command :embedded :enabled])]
+  (let [{value :value} (get-config ::embedded-commands-enabled-config
+                                   [:command :embedded :enabled])]
     (if-not (blank? value)
       (not (= "false" value))
       ;; enabled by default

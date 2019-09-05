@@ -9,7 +9,7 @@
     [yetibot.core.models.users :as users]
     [yetibot.core.webapp.handler :as web]
     [yetibot.core.loader :refer [load-commands-and-observers load-ns]]
-    [yetibot.core.adapters.init :as ai]))
+    [yetibot.core.adapters :as adapters]))
 
 ; use a few non-network commands for dev
 (defn load-minimal []
@@ -41,7 +41,7 @@
   (init/start-nrepl!)
   (web/start-web-server)
   (db/start)
-  (ai/start)
+  (adapters/start)
   ;; commands should be loaded last, just like in yetibot.core.init
   ;; otherwise multiple hooks can get registered somehow
   (load-minimal))
@@ -59,7 +59,7 @@
 (defn stop []
   (web/stop-web-server)
   (init/stop-nrepl!)
-  (ai/stop))
+  (adapters/stop))
 
 (defn reset []
   (stop)

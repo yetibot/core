@@ -1,15 +1,21 @@
 (ns yetibot.core.db.util
   (:require
-   [clojure.set :refer [union]]
-    [schema.core :as sch]
+    [clojure.set :refer [union]]
+    [clojure.spec.alpha :as s]
     [clojure.string :refer [blank? join split]]
     [cuerdas.core :refer [kebab snake]]
     [clojure.java.jdbc :as sql]
     [taoensso.timbre :refer [debug info color-str]]
     [yetibot.core.config :refer [get-config]]))
 
-(def config-shape {:url String
-                   (sch/optional-key :table) {:prefix String}})
+(s/def ::url string?)
+
+(s/def ::prefix string?)
+
+(s/def ::table (s/keys :req-un [::prefix]))
+
+(s/def ::db-config (s/keys :req-un [::url]
+                           :opt-un [::table]))
 
 (def default-db-url "postgresql://localhost:5432/yetibot")
 
@@ -26,7 +32,7 @@
     ;; default
     {:url default-db-url
      :table {:prefix default-table-prefix}}
-    (:value (get-config config-shape [:db]))))
+    (:value (get-config ::db-config [:db]))))
 
 (defn qualified-table-name
   [table-name]

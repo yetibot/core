@@ -1,10 +1,7 @@
 (ns yetibot.core.models.channel
   (:require
-    [yetibot.core.db.channel :as db]
-    [schema.core :as sch]
-    [yetibot.core.adapters.adapter :refer [active-adapters uuid]]
-    [taoensso.timbre :refer [debug info warn error]]
-    [clojure.string :as s]))
+   [yetibot.core.db.channel :as db]
+   [taoensso.timbre :refer [debug info warn error]]))
 
 (def cat-settings-key "disabled-categories")
 (def channel-is-member-key "is-member")

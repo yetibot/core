@@ -1,23 +1,29 @@
 (ns yetibot.core.models.mail
   (:require
-    [yetibot.core.schema :as ys]
-    [schema.core :as sc]
+    [clojure.spec.alpha :as s]
     [overtone.at-at :refer [mk-pool every stop show-schedule]]
-    [clojure.string :as s]
+    [clojure.string :as string]
     [inflections.core :refer [pluralize]]
     [yetibot.core.config :refer [get-config]]
+    [yetibot.core.spec :as yspec]
     [clojure-mail
      [core :as mail]
      [message :as msg]]))
 
-(def mail-schema
-  {:host ys/non-empty-str
-   :user ys/non-empty-str
-   :pass ys/non-empty-str
-   :from ys/non-empty-str
-   (sc/optional-key :bcc) sc/Str})
+(s/def ::host ::yspec/non-blank-string)
 
-(defn config [] (get-config mail-schema [:mail]))
+(s/def ::user ::yspec/non-blank-string)
+
+(s/def ::pass ::yspec/non-blank-string)
+
+(s/def ::from ::yspec/non-blank-string)
+
+(s/def ::bcc string?)
+
+(s/def ::config (s/keys :req-un [::host ::user ::pass ::from]
+                        :opt-un [::bcc]))
+
+(defn config [] (get-config ::config [:mail]))
 
 (defn configured? [] (nil? (:error (config))))
 
@@ -32,7 +38,7 @@
 
 ; reading helpers
 (defn- clean-newlines [body]
-  (s/replace body #"\r\n" "\n"))
+  (string/replace body #"\r\n" "\n"))
 
 (defn- plain-key [m] (first (filter #(re-find #"TEXT/PLAIN" %) (keys m))))
 (defn- plain-body [m]

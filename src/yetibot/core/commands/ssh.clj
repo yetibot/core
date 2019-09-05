@@ -1,15 +1,30 @@
 (ns yetibot.core.commands.ssh
   (:require
-    [schema.core :as sch]
-    [clojure.string :as s]
+    [clojure.spec.alpha :as s]
     [taoensso.timbre :refer [info warn error]]
     [clj-ssh.ssh :refer [ssh ssh-agent add-identity session with-connection]]
     [yetibot.core.hooks :refer [cmd-hook]]
     [yetibot.core.config :refer [get-config]]))
 
-(def schema {:groups [sch/Any]})
+(s/def ::host string?)
 
-(def ^:private config (:value (get-config schema [:ssh])))
+(s/def ::name string?)
+
+(s/def ::server (s/keys :req-un [::host ::name]))
+
+(s/def ::servers (s/coll-of ::server :kind vector?))
+
+(s/def ::user string?)
+
+(s/def ::key string?)
+
+(s/def ::group (s/keys :req-un [::user ::servers ::key]))
+
+(s/def ::groups (s/coll-of ::group :kind vector?))
+
+(s/def ::config (s/keys :req-un [::groups]))
+
+(def ^:private config (:value (get-config ::config [:ssh])))
 
 (def ^:private servers-by-key
   (->>

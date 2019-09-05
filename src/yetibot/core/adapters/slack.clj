@@ -3,11 +3,11 @@
     [clojure.core.async :as async]
     [clojure.pprint :refer [pprint]]
     [clojure.core.memoize :as memo]
+    [clojure.spec.alpha :as s]
     [yetibot.core.adapters.adapter :as a]
     [robert.bruce :refer [try-try-again] :as rb]
     [gniazdo.core :as ws]
-    [clojure.string :as s]
-    [schema.core :as sch]
+    [clojure.string :as string]
     [yetibot.core.interpreter :refer [*chat-source*]]
     [yetibot.core.models.users :as users]
     [yetibot.core.util.http :refer [html-decode]]
@@ -26,6 +26,12 @@
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure *thread-ts* *target* *adapter*]]
     [yetibot.core.util :as util :refer [image?]]))
+
+(s/def ::type string?)
+
+(s/def ::token string?)
+
+(s/def ::config (s/keys :req-un [::type ::token]))
 
 (def channel-cache-ttl 60000)
 
@@ -137,9 +143,9 @@
    Why are you gross, Slack"
   [body]
   (-> body
-    (s/replace  #"\<\!(here|channel)\>" "@$1")
-    (s/replace #"\<(.+)\|(\S+)\>" "$2")
-    (s/replace #"\<(\S+)>" "$1")
+    (string/replace  #"\<\!(here|channel)\>" "@$1")
+    (string/replace #"\<(.+)\|(\S+)\>" "$2")
+    (string/replace #"\<(\S+)>" "$1")
     html-decode))
 
 (defn entity-with-name-by-id
@@ -234,9 +240,9 @@
           yetibot? (= yetibot-uid (:user event))
           user-model (assoc (users/get-user cs (:user event))
                             :yetibot? yetibot?)
-          body (if (s/blank? (:text event))
+          body (if (string/blank? (:text event))
                  ;; if text is blank attempt to read an attachment fallback
-                 (->> event :attachments (map :text) (s/join \newline))
+                 (->> event :attachments (map :text) (string/join \newline))
                  ;; else use the much more common `text` property
                  (:text event))]
       (binding [*thread-ts* thread-ts
@@ -294,7 +300,7 @@
       (binding [*target* (:channel item)
                 *thread-ts* parent-ts]
         (handle-raw cs user-model :react yetibot-user
-                    {:reaction (s/replace reaction "_" " ")
+                    {:reaction (string/replace reaction "_" " ")
                      ;; body of the message reacted to
                      :body (:text message)
                      ;; user of the message that was reacted to
@@ -487,7 +493,7 @@
         hist (history adapter channel)
         non-yb-non-cmd (->> (:messages hist)
                             (filter #(not= yb-id (:user %)))
-                            (filter #(not (s/starts-with? (:text %) "!"))))
+                            (filter #(not (string/starts-with? (:text %) "!"))))
         msg (first non-yb-non-cmd)
         ts (:ts msg)]
     (debug "react with"

@@ -1,6 +1,6 @@
 (ns yetibot.core.util.command
   (:require
-    [schema.core :as sch]
+    [clojure.spec.alpha :as s]
     [yetibot.core.config :refer [get-config]]
     [yetibot.core.models.help :as help]
     [yetibot.core.parser :refer [parser]]))
@@ -11,8 +11,10 @@
   (and (map? x)
        (contains? x :result/error)))
 
+(s/def ::prefix-config string?)
+
 (def config-prefix
-  (or (:value (get-config sch/Str [:command :prefix])) "!"))
+  (or (:value (get-config ::prefix-config [:command :prefix])) "!"))
 
 (defn command?
   "Returns true if prefix matches a built-in command or alias"

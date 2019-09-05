@@ -1,29 +1,22 @@
-(ns yetibot.core.adapters.init
+(ns yetibot.core.adapters
   "Manages the lifecycle of adapters"
   (:require
-    [schema.core :as s]
-    [yetibot.core.adapters.slack :as slack]
+    [clojure.spec.alpha :as s]
     [yetibot.core.adapters.irc :as irc]
+    [yetibot.core.adapters.slack :as slack]
     [taoensso.timbre :as log :refer [info debug warn error]]
     [clojure.stacktrace :refer [print-stack-trace]]
     [yetibot.core.adapters.adapter :as a]
     [yetibot.core.config :refer [get-config]]
     [yetibot.core.adapters.irc :as irc]))
 
-(def adapters-schema
-  {s/Keyword {:type s/Str
-              ;; different types of adapters require different keys - make them optional
-              ;; Slack
-              (s/optional-key :token) s/Str
-              ;; IRC
-              (s/optional-key :host) s/Str
-              (s/optional-key :port) s/Str
-              (s/optional-key :ssl) s/Str
-              (s/optional-key :username) s/Str
-              (s/optional-key :password) s/Str}})
+(s/def ::adapter (s/or :slack ::slack/config
+                       :irc ::irc/config))
+
+(s/def ::config (s/map-of keyword? ::adapter))
 
 (defn adapters-config []
-  (let [c (get-config adapters-schema [:adapters])]
+  (let [c (get-config ::config [:adapters])]
     (if (:error c)
       (throw (ex-info "Invalid adapters config" c))
       (:value c))))
@@ -41,21 +34,12 @@
     :irc (irc/make-irc config)
     (throw (ex-info (str "Unknown adapter type " (:type config)) config))))
 
-(defn validate-adapter-config!
-  "Logs an error if this adapter config does not contain :name and :type keys."
-  [config]
-  (when-not (:type config)
-    (throw (ex-info ":type is required" {:config config})))
-  (when-not (:name config)
-    (throw (ex-info ":name is required" {:config config}))))
-
 (defn register-adapters! []
   (dorun
     (map
       (fn [[uuid adapter-config]]
         (let [adapter-config (assoc adapter-config :name uuid)]
           (debug "Registering" (pr-str adapter-config))
-          (validate-adapter-config! adapter-config)
           (a/register-adapter! uuid (make-adapter adapter-config))))
       (adapters-config))))
 
