@@ -1,5 +1,11 @@
 # yetibot.core change log
 
+## `[yetibot/core "20190905.175835.fe16ae2"]`
+
+- Switch from schema to clojure.spec -
+  [#106](https://github.com/yetibot/yetibot.core/pull/106)
+  by [anthonygalea](https://github.com/anthonygalea)
+
 ## `[yetibot/core "20190524.135839.3929dda"]`
 
 - Restrict access to private chat in history command
