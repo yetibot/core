@@ -70,47 +70,107 @@
    :literal str
    :space str
    :parened str
-   :cmd identity #_(fn [cmd]
-                     (let [result (handle-cmd cmd {})]
-                       (info "eval cmd" cmd "result" result)
-                       result))
+   ;; i think this needs to happen lazily by the expr handler
+   :cmd (fn [cmd]
+          (info "eval cmd" cmd)
+          cmd
+          #_(let [result (handle-cmd cmd {})]
+              (info "eval cmd" cmd "result" result)
+              result))
    :sub-expr identity #_(fn [{:keys [value error] :as se}]
                           (info "sub-expr" se)
                           (if (map? se)
                             (or value error)
                             se))
-   :expr #'handle-expr
-   #_(fn [& cmds]
-       (info "expr cmds:" (pr-str cmds))
-           ;; (handle-expr cmds)
-           ;; pipe the result of each command
-       (reduce
+   :expr ;; #'handle-expr
+   (fn [& cmds]
+     (info "expr cmds:" (pr-str cmds))
+       ;; (handle-expr cmds)
+       ;; pipe the result of each command
+
+     cmds
+     #_(reduce
         (fn [acc result]
           (if (sequential? result)
-                 ;; ignore collection results for now but in reality these
-                 ;; would need to be piped in
-                 ;; which means we can't do the reducing at this level
-                 ;; maybe :expr should be left untransformed and have a separate
-                 ;; transformer for the children of an expr? that way this
-                 ;; handler can fully realize each command one at a time and
-                 ;; pipe a result into the next.
+            ;; ignore collection results for now but in reality these
+            ;; would need to be piped in
+            ;; which means we can't do the reducing at this level
+            ;; maybe :expr should be left untransformed and have a separate
+            ;; transformer for the children of an expr? that way this
+            ;; handler can fully realize each command one at a time and
+            ;; pipe a result into the next.
             acc
-                 ;; pseudo format would go here
+            ;; pseudo format would go here
             (str acc " " result)))
         ""
         cmds)
 
-       #_(join " " cmds))
-   ;; :expr #'handle-expr
-   })
+     #_(join " " cmds))})
+
+
+(defn handle-expr [expr])
+
+
+(defn eval-yb-expression [expr]
+  (info "eval" expr)
+  (if (vector? expr)
+    (let [[tag & nodes] expr
+          head (first nodes)]
+      (info "tag" tag)
+      (info "head" head)
+      (info "nodes" nodes)
+      (cons head (map eval-yb-expression nodes))
+
+      (condp = tag
+        :cmd ;; TODO actually handle command
+        (apply str (map eval-yb-expression nodes))
+
+        ;; this is where the magic happens ✨
+        ;; eval cmds in order of left to right (lazily)
+        ;; piping the result of one to the next
+        :expr (let [head-cmd-result (eval-yb-expression head)]
+                (info "fully evaluate" head)
+                (info "result was" (pr-str head-cmd-result))
+                (info "then pipe the result to" (second nodes))
+                )
+
+        :words (join (map eval-yb-expression nodes))
+        :space (apply str nodes)
+        :parened (apply str nodes)
+        :sub-expr nodes
+        )
+      )
+    ;; literal
+    expr))
+
+(eval-yb-expression
+ [:cmd [:words "category" [:space " "] "names"]])
+
+
+#_(eval-yb-expression
+ [:expr
+  [:cmd [:words "category" [:space " "] "names"]]
+  [:cmd
+   [:words
+    "echo"
+    [:space " "]
+    [:sub-expr
+     [:expr [:cmd [:words "render" [:space " "] "{{async}}"]]]]]]
+  [:cmd [:words "echo" [:space " "] "lol"]]])
+
 
 (defn yetibot-transform
   "Transform a hiccup-form Instaparse parse tree by evaluating it"
   [parse-tree]
-  ;; (info "yetibot-transform" (pr-str parse-tree))
+  (println)
+  (println " ")
+  (println " ")
+  (info "yetibot-transform" (pr-str parse-tree))
   (if-let [transform (eval-map (first parse-tree))]
     (let [tag (first parse-tree)
           [head & nodes] (rest parse-tree)
+          _ (info "head" head)
+          _ (info "nodes" nodes)
           first-node (yetibot-transform head)]
       ;; special handling for expr piping its commands
       (info "tag" tag)
@@ -120,13 +180,7 @@
         (apply transform
                (cons
                 first-node
-                (map yetibot-transform nodes))))
-      #_(condp = tag
-          :expr (do
-                  (info "expr" (pr-str nodes))
-                  (handle-expr nodes))
-            ;; else
-          ))
+                (map yetibot-transform nodes)))))
     ;; return it as is
     parse-tree))
 
@@ -159,14 +213,45 @@
 
 (comment
 
+  (parse-and-eval "category names")
+
+  ;; this is an example of what we want to achieve:
+  ;; propagating the data from `category names`
   (parse-and-eval
-   "category | echo `render {{async}}`")
+   "category names | echo `render {{async}}`")
+
+  (parse-and-eval "category names | echo hi ")
 
   (parse-and-eval
    "echo num one `echo one.a` | echo num two `echo two.a`")
 
   (parse-and-eval
     "echo num one `echo one.a` | echo num two `echo two.a`")
+
+  (tap> (parser
+    "category names | echo `render {{async}}`"))
+
+  (parser
+   "category names | echo `render {{async}}` | echo lol")
+  ;; =>
+  [:expr
+   [:cmd [:words "category" [:space " "] "names"]]
+   [:cmd
+    [:words
+     "echo"
+     [:space " "]
+     [:sub-expr
+      [:expr [:cmd [:words "render" [:space " "] "{{async}}"]]]]]]]
+
+
+[:expr
+   [:cmd [:words "category" [:space " "] "names"]]
+   [:cmd
+    [:words
+     "echo"
+     [:space " "]
+     [:sub-expr
+      [:expr [:cmd [:words "render" [:space " "] "{{async}}"]]]]]]]
 
   (yetibot-transform
     [:expr

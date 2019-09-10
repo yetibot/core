@@ -4,6 +4,7 @@
     [yetibot.core.init :as init]
     [yetibot.core.chat :as chat]
     [clojure.stacktrace :refer [print-stack-trace]]
+    [punk.adapter.jvm :as paj]
     [yetibot.core.db :as db]
     [yetibot.core.logging :as logging] ; enable logging to file
     [yetibot.core.models.users :as users]
@@ -37,6 +38,7 @@
 (defn start
   "Load a minimal set of commands, start the database and connect to chat adapters"
   []
+  (paj/start)
   (logging/start)
   (init/start-nrepl!)
   (web/start-web-server)

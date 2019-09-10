@@ -58,7 +58,8 @@
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
                    {:plugins [[lein-midje "3.2.1"]]
-                    :dependencies [[midje "1.9.6"]
+                    :dependencies [[lilactown/punk-adapter-jvm "0.0.10"]
+                                   [midje "1.9.6"]
                                    [nubank/matcher-combinators "0.9.0"]]}]
              :test
              {:resource-paths ["test/resources"]
