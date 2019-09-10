@@ -20,8 +20,9 @@ before_deploy:
   - git reset --hard
   - lein deps # ensure npm deps are fetched
   - ls -al node_modules/yetibot-dashboard/build
-  - git stash
+  - ls -al node_modules/yetibot-dashboard/build/index.html
   - git status
+  - git stash
 
 deploy:
   provider: script
