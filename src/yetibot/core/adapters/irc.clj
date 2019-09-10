@@ -28,11 +28,11 @@
 
 (s/def ::password string?)
 
-(s/def ::config (s/keys :req-un [::type
+(s/def ::config (s/keys :req-un [::type]
+                        :opt-un [::username
+                                 ::ssl
                                  ::host
                                  ::port
-                                 ::username]
-                        :opt-un [::ssl
                                  ::password]))
 
 (declare join-or-part-with-current-channels connect start)
