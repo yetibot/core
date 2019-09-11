@@ -1,7 +1,7 @@
 (ns yetibot.core.parser
   (:require
     [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.interpreter :refer [pipe-cmds handle-cmd handle-expr]]
+    [yetibot.core.interpreter :refer [handle-cmd handle-expr]]
     [clojure.string :refer [join]]
     [instaparse.transform :refer [merge-meta]]
     [instaparse.core :as insta]))
@@ -248,7 +248,7 @@
 
 
 (defn parse-and-eval [input]
-  (-> input parser yetibot-transform))
+  (-> input parser eval-yb-expression))
 
 (comment
 
