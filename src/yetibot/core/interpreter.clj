@@ -38,8 +38,6 @@
     ;; return nothing when fallbacks are disabled
     (suppress {})))
 
-;; TODO could pipe-cmds take unevaluated cmd trees so that it could eval them
-;; left to right?
 (defn pipe-cmds
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra
    :opts"
@@ -139,14 +137,7 @@
                     :data-collection data-collection
                     :data data)
              (assoc acc :value command-result))))))))
-(comment
-  (def test-coll [1 2 3])
-  ;; allows peaking into the full seq of subsequent items
-  (partition-all (count test-coll) 1 test-coll))
 
-;; called by the parser
-;; the parser passes a collection of raw AST nodes representing commands to
-;; handle-expr
 (defn handle-expr
   "Called by the parser AST transformer with a partially-evaluated AST.
 
