@@ -38,7 +38,7 @@
      <rparen> = ')'
      <backtick> = <'`'>"))
 
-(defn eval-yb-expression
+(defn transformer
   "This is the AST interpreter. It's an alternative to the transformer that
    comes with Instaparse insta/transform which simply evaluates the tree depth
    first."
@@ -48,16 +48,16 @@
           head (first nodes)]
       ;; handle the AST nodes adcording to the type of tag
       (condp = tag
-        :cmd (apply str (map eval-yb-expression nodes))
+        :cmd (apply str (map transformer nodes))
         ;; this is where the magic happens ✨
         ;; eval cmds in order of left to right (lazily)
         ;; piping the result of one to the next
-        :expr (handle-expr #'eval-yb-expression nodes)
-        :words (join (map eval-yb-expression nodes))
+        :expr (handle-expr #'transformer nodes)
+        :words (join (map transformer nodes))
         :space (apply str nodes)
         :parened (apply str nodes)
         :sub-expr (let [{:keys [value error] :as evaled}
-                        (eval-yb-expression head)]
+                        (transformer head)]
                     ;; extract either the error or the value out of the sub-expr
                     (info "sub-expr" head evaled)
                     (or error value))))
@@ -66,7 +66,7 @@
 
 (comment
   (require 'yetibot.core.hooks)
-  (eval-yb-expression
+  (transformer
    [:expr
     [:cmd [:words "category" [:space " "] "names"]]
     [:cmd
@@ -79,7 +79,7 @@
     [:cmd [:words "echo" [:space " "] "lol"]]])
 
   (-> "category names | echo async: `render {{async}}` ci: `render {{ci}}`"
-      parser eval-yb-expression)
+      parser transformer)
 
 
   (parser
@@ -87,12 +87,12 @@
   )
 
   (-> "category names | data show"
-      parser eval-yb-expression)
+      parser transformer)
 
 
   (-> "echo there | echo `echo hi`"
       parser
-      eval-yb-expression)
+      transformer)
 
   [:expr
    [:cmd [:words "echo" [:space " "] "there"]]
@@ -104,7 +104,7 @@
 
 
 (defn parse-and-eval [input]
-  (-> input parser eval-yb-expression))
+  (-> input parser transformer))
 
 (comment
 
