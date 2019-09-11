@@ -38,131 +38,31 @@
      <rparen> = ')'
      <backtick> = <'`'>"))
 
-(defn- hiccup-transform
-  [transform-map parse-tree]
-  (info "transform" (pr-str parse-tree))
-  (if (and (sequential? parse-tree) (seq parse-tree))
-    (do
-      #_(when (= :expr (first parse-tree))
-          (info "  seq - transform: " (pr-str parse-tree) (transform-map (first parse-tree))))
-      (if-let [transform (transform-map (first parse-tree))]
-        (merge-meta
-          (apply transform (map (partial hiccup-transform transform-map)
-                                (next parse-tree)))
-          (meta parse-tree))
-        (with-meta
-          (into [(first parse-tree)]
-                (map (partial hiccup-transform transform-map)
-                     (next parse-tree)))
-          (meta parse-tree))))
-    (do
-      #_(info "  non sequential pass through" (pr-str parse-tree))
-      parse-tree)))
-
-;; current hypothesis:
-
-;; 2 phase parse tree evaluation. sub-expressions are left unexpanded on the
-;; first pass so that `pipe-cmd` can lazily expand them. (note: could we put a
-;; delay on it or something so that we can keep expansion logic up here?)
-
-(def eval-map
-  {:words (fn [& words] (join words))
-   :literal str
-   :space str
-   :parened str
-   ;; i think this needs to happen lazily by the expr handler
-   :cmd (fn [cmd]
-          (info "eval cmd" cmd)
-          cmd
-          #_(let [result (handle-cmd cmd {})]
-              (info "eval cmd" cmd "result" result)
-              result))
-   :sub-expr identity #_(fn [{:keys [value error] :as se}]
-                          (info "sub-expr" se)
-                          (if (map? se)
-                            (or value error)
-                            se))
-   :expr ;; #'handle-expr
-   (fn [& cmds]
-     (info "expr cmds:" (pr-str cmds))
-       ;; (handle-expr cmds)
-       ;; pipe the result of each command
-
-     cmds
-     #_(reduce
-        (fn [acc result]
-          (if (sequential? result)
-            ;; ignore collection results for now but in reality these
-            ;; would need to be piped in
-            ;; which means we can't do the reducing at this level
-            ;; maybe :expr should be left untransformed and have a separate
-            ;; transformer for the children of an expr? that way this
-            ;; handler can fully realize each command one at a time and
-            ;; pipe a result into the next.
-            acc
-            ;; pseudo format would go here
-            (str acc " " result)))
-        ""
-        cmds)
-
-     #_(join " " cmds))})
-
-
-;; (defn handle-expr [expr])
-
-(defn eval-yb-expression [expr]
-  (info "eval" expr)
+(defn eval-yb-expression
+  "This is the AST interpreter. It's an alternative to the transformer that
+   comes with Instaparse insta/transform which simply evaluates the tree depth
+   first."
+  [expr]
   (if (vector? expr)
     (let [[tag & nodes] expr
           head (first nodes)]
-      ;; (info "tag" tag)
-      ;; (info "head" head)
-      ;; (info "nodes" nodes)
-      ;; (cons head (map eval-yb-expression nodes))
-
+      ;; handle the AST nodes adcording to the type of tag
       (condp = tag
         :cmd (apply str (map eval-yb-expression nodes))
-
         ;; this is where the magic happens ✨
         ;; eval cmds in order of left to right (lazily)
         ;; piping the result of one to the next
-
         :expr (handle-expr #'eval-yb-expression nodes)
-
-        ;; :expr (let [head-cmd-result (eval-yb-expression head)]
-        ;;         ;; (info "fully evaluate" head)
-        ;;         ;; (info "ready to run" (pr-str head-cmd-result))
-        ;;         ;; (info "then pipe the result to" (second nodes))
-        ;;         ;; this is where we handle piping
-        ;;         (reduce
-        ;;          (fn [acc [cmd-ast & next-cmds]]
-        ;;            (let [{previous-value :value
-        ;;                   previous-data-collection :data-collection
-        ;;                   previous-data :data} acc
-        ;;                  cmd (eval-yb-expression cmd-ast)]
-        ;;              (info "eval" cmd-ast)
-        ;;              (info "eval'd" cmd)
-        ;;              (info "next is" next-cmds)
-        ;;              cmd))
-        ;;          {:settings {} ;; TODO
-        ;;           :skip-next-n (atom 0)
-        ;;           :value ""
-        ;;           :data nil}
-        ;;          (partition-all (count nodes) 1 nodes)))
-
         :words (join (map eval-yb-expression nodes))
         :space (apply str nodes)
         :parened (apply str nodes)
-        :sub-expr (let [{:keys [value error] :as evaled} (eval-yb-expression head)]
+        :sub-expr (let [{:keys [value error] :as evaled}
+                        (eval-yb-expression head)]
                     ;; extract either the error or the value out of the sub-expr
                     (info "sub-expr" head evaled)
                     (or error value))))
     ;; literal
     expr))
-
-;; (eval-yb-expression
-;;  [:cmd [:words "category" [:space " "] "names"]])
-
 
 (comment
   (require 'yetibot.core.hooks)

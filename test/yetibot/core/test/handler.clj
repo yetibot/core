@@ -1,42 +1,50 @@
 (ns yetibot.core.test.handler
   (:require
-    [yetibot.core.parser :refer [parser]]
-    [yetibot.core.handler :refer :all]
-    [yetibot.core.commands.history]
-    [yetibot.core.util.command :refer [extract-command]]
-    [clojure.string :as s]
-    [yetibot.core.repl :refer [load-minimal]]
-    [instaparse.core :as insta]
-    [clojure.test :refer :all]))
+   yetibot.core.commands.echo
+   yetibot.core.commands.help
+   yetibot.core.commands.category
+   yetibot.core.commands.collections
+   yetibot.core.commands.render
+
+   [midje.sweet :refer [fact facts =>]]
+   [yetibot.core.parser :refer [parse-and-eval parser]]
+   [yetibot.core.handler :refer :all]
+   [yetibot.core.commands.history]
+   [yetibot.core.util.command :refer [extract-command]]
+   [clojure.string :as s]
+   [yetibot.core.repl :refer [load-minimal]]))
 
 (load-minimal)
 
-;; generate some history
+(comment
+  ;; generate some history
+  (dotimes [i 10]
+    (handle-raw
+     {:adapter :test :room "foo"}
+     {:id "yetitest"}
+     :message
+     {:username "yetibot" :id "123"}
+     {:body (str "test history: " i)})))
 
-(dotimes [i 10]
-  (handle-raw
-    {:adapter :test :room "foo"}
-    {:id "yetitest"}
-    :message
-    {:username "yetibot" :id "123"}
-    {:body (str "test history: " i)}))
+(def multiline-str (s/join \newline [1 2 3]))
 
-(deftest test-newline-cmd
-  (let [multi-str (s/join \newline [1 2 3])]
-    (is (= multi-str
-        (:value (handle-unparsed-expr (str "echo " multi-str)))))))
+(fact
+ "Newlines are preserved in command handling"
+ (:value (handle-unparsed-expr (str "echo " multiline-str))) => multiline-str)
 
-(deftest test-is-a-command
-  (let [prefix "?"
-        body (str prefix "command arg1 arg2")]
-    (is (= (extract-command body prefix) ["?command arg1 arg2" "command arg1 arg2"]))))
+(fact
+ "Extracting commands allows specifying a prefix"
+ (let [prefix "?"
+       body (str prefix "command arg1 arg2")]
+   (extract-command body prefix) => [body (subs body 1)]))
 
-(deftest test-is-not-a-command
-  (let [prefix "?"
-        body "|command arg1 arg2"]
-    (is (nil? (extract-command body prefix)))))
+(fact
+ "Nothing is extracted from a potential command if the prefix does not match"
+ (let [prefix "?"
+       body "|command arg1 arg2"]
+   (extract-command body prefix) => nil?))
 
-;; this freezes!
-#_(handle-unparsed-expr "echo Action ansible.command completed.
-                       {\"failed\": false, \"stderr\": \"\", \"return_code\": 0, \"succeeded\": true, \"stdout\": \"si-cluster-zk3 . success >> {\n    \"changed\": false,\n    \"ping\": \"pong\"\n}\n\nsi-cluster-zk2 . success >> {\n    \"changed\": false,\n    \"ping\": \"pong\"\n}\n\nsi-cluster-zk1 . success >> {\n    \"changed\": false,\n    \"ping\": \"pong\"\n}\n\"}\""
-                      )
+(fact
+ "Commands can be piped in succession"
+ (:value (parse-and-eval "echo there | echo `echo hi`")) =>
+ "hi there")

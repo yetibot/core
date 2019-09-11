@@ -1,15 +1,6 @@
 (ns yetibot.core.test.parser
-  (:require
-   yetibot.core.commands.echo
-   yetibot.core.commands.help
-   yetibot.core.commands.category
-   yetibot.core.commands.collections
-   yetibot.core.commands.render
-   [clojure.pprint :refer [pprint]]
-   [midje.sweet :refer [fact facts =>]]
-   [yetibot.core.models.karma :refer :all]
-   [yetibot.core.parser :refer :all]
-   [instaparse.core :as insta]))
+  (:require [midje.sweet :refer [=> fact facts]]
+            [yetibot.core.parser :refer :all]))
 
 (facts "single commands should be parsed"
   (parser "uptime") => [:expr [:cmd [:words "uptime"]]]
