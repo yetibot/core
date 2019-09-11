@@ -82,6 +82,10 @@
       parser eval-yb-expression)
 
 
+  (parser
+  "category names | echo async: `render {{async}}` ci: `render {{ci}}`"
+  )
+
   (-> "category names | data show"
       parser eval-yb-expression)
 
@@ -97,54 +101,6 @@
      "echo"
      [:space " "]
      [:sub-expr [:expr [:cmd [:words "echo" [:space " "] "hi"]]]]]]])
-
-
-
-(defn yetibot-transform
-  "Transform a hiccup-form Instaparse parse tree by evaluating it"
-  [parse-tree]
-  (println)
-  (println " ")
-  (println " ")
-  ;; (info "yetibot-transform" (pr-str parse-tree))
-  (if-let [transform (eval-map (first parse-tree))]
-    (let [tag (first parse-tree)
-          [head & nodes] (rest parse-tree)
-          first-node (yetibot-transform head)]
-      ;; special handling for expr piping its commands
-      (info "tag" tag)
-      (do
-        (info "transform" (pr-str parse-tree) transform)
-        (info "first-node" first-node)
-        (apply transform
-               (cons
-                first-node
-                (map yetibot-transform nodes)))))
-    ;; return it as is
-    parse-tree))
-
-;; problem: we currently can't support a feature like:
-;; !cmd-with-data | echo `render {{x.foo}}` - `render {{x.bar}}`
-;; because evaluation of a parse tree would need to evaluate all sub-expressions
-;; before finally being able to pipe simple expressions `A | B`.
-;;
-;; a possible solution:
-;;
-;; 1. always break :expr trees into separate parse trees to be evaluated
-;;    separately
-;; 2. the output of the first :expr gets propagated as input to the next :expr -
-;;
-;; note that we need to propagate all :result/* fields:
-;; - :result/value
-;; - :result/data
-;; - :result/error
-
-;; (doall (map yetibot-transform (next parse-tree)))
-
-(def transformer yetibot-transform)
-  ;; (partial
-  ;;   transformer
-  ;;   eval-map))
 
 
 (defn parse-and-eval [input]
@@ -246,15 +202,10 @@
        [:cmd [:words "echo" [:space " "] "num" [:space " "] "two"]]]]]]]
 
   (parse-and-eval
-    "range 2 | data show | echo "
-
-    )
+    "range 2 | data show | echo ")
 
   (parse-and-eval
-    "echo foo | echo bar"
-
-    )
-  )
+    "echo foo | echo bar"))
 
 (defn reconstruct-pipe [cmds] (join " | " cmds))
 
