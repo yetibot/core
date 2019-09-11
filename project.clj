@@ -57,7 +57,8 @@
             [lein-npm "0.6.2"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
-                   {:plugins [[lein-midje "3.2.1"]]
+                   {:plugins [[lein-midje "3.2.1"]
+                              [lein-cloverage "1.1.1"]]
                     :dependencies [[lilactown/punk-adapter-jvm "0.0.10"]
                                    [midje "1.9.6"]
                                    [nubank/matcher-combinators "0.9.0"]]}]

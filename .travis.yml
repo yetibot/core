@@ -37,3 +37,7 @@ deploy:
 
 services:
   - postgresql
+
+after_success:
+- CLOVERAGE_VERSION=1.1.1 lein cloverage --codecov --runner midje
+- bash <(curl -s https://codecov.io/bash)
