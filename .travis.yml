@@ -39,5 +39,5 @@ services:
   - postgresql
 
 after_success:
-- CLOVERAGE_VERSION=1.1.1 lein cloverage --codecov --runner midje
+- CLOVERAGE_VERSION=1.1.1 lein with-profile +test cloverage --codecov --runner midje
 - bash <(curl -s https://codecov.io/bash)
