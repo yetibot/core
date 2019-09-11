@@ -1,7 +1,7 @@
 (ns yetibot.core.parser
   (:require
     [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.interpreter :refer [handle-cmd handle-expr]]
+    [yetibot.core.interpreter :refer [pipe-cmds handle-cmd handle-expr]]
     [clojure.string :refer [join]]
     [instaparse.transform :refer [merge-meta]]
     [instaparse.core :as insta]))
@@ -108,55 +108,96 @@
      #_(join " " cmds))})
 
 
-(defn handle-expr [expr])
-
+;; (defn handle-expr [expr])
 
 (defn eval-yb-expression [expr]
   (info "eval" expr)
   (if (vector? expr)
     (let [[tag & nodes] expr
           head (first nodes)]
-      (info "tag" tag)
-      (info "head" head)
-      (info "nodes" nodes)
-      (cons head (map eval-yb-expression nodes))
+      ;; (info "tag" tag)
+      ;; (info "head" head)
+      ;; (info "nodes" nodes)
+      ;; (cons head (map eval-yb-expression nodes))
 
       (condp = tag
-        :cmd ;; TODO actually handle command
-        (apply str (map eval-yb-expression nodes))
+        :cmd (apply str (map eval-yb-expression nodes))
 
         ;; this is where the magic happens ✨
         ;; eval cmds in order of left to right (lazily)
         ;; piping the result of one to the next
-        :expr (let [head-cmd-result (eval-yb-expression head)]
-                (info "fully evaluate" head)
-                (info "result was" (pr-str head-cmd-result))
-                (info "then pipe the result to" (second nodes))
-                )
+
+        :expr (handle-expr #'eval-yb-expression nodes)
+
+        ;; :expr (let [head-cmd-result (eval-yb-expression head)]
+        ;;         ;; (info "fully evaluate" head)
+        ;;         ;; (info "ready to run" (pr-str head-cmd-result))
+        ;;         ;; (info "then pipe the result to" (second nodes))
+        ;;         ;; this is where we handle piping
+        ;;         (reduce
+        ;;          (fn [acc [cmd-ast & next-cmds]]
+        ;;            (let [{previous-value :value
+        ;;                   previous-data-collection :data-collection
+        ;;                   previous-data :data} acc
+        ;;                  cmd (eval-yb-expression cmd-ast)]
+        ;;              (info "eval" cmd-ast)
+        ;;              (info "eval'd" cmd)
+        ;;              (info "next is" next-cmds)
+        ;;              cmd))
+        ;;          {:settings {} ;; TODO
+        ;;           :skip-next-n (atom 0)
+        ;;           :value ""
+        ;;           :data nil}
+        ;;          (partition-all (count nodes) 1 nodes)))
 
         :words (join (map eval-yb-expression nodes))
         :space (apply str nodes)
         :parened (apply str nodes)
-        :sub-expr nodes
-        )
-      )
+        :sub-expr (let [{:keys [value error] :as evaled} (eval-yb-expression head)]
+                    ;; extract either the error or the value out of the sub-expr
+                    (info "sub-expr" head evaled)
+                    (or error value))))
     ;; literal
     expr))
 
-(eval-yb-expression
- [:cmd [:words "category" [:space " "] "names"]])
+;; (eval-yb-expression
+;;  [:cmd [:words "category" [:space " "] "names"]])
 
 
-#_(eval-yb-expression
- [:expr
-  [:cmd [:words "category" [:space " "] "names"]]
-  [:cmd
-   [:words
-    "echo"
-    [:space " "]
-    [:sub-expr
-     [:expr [:cmd [:words "render" [:space " "] "{{async}}"]]]]]]
-  [:cmd [:words "echo" [:space " "] "lol"]]])
+(comment
+  (require 'yetibot.core.hooks)
+  (eval-yb-expression
+   [:expr
+    [:cmd [:words "category" [:space " "] "names"]]
+    [:cmd
+     [:words
+      "echo"
+      [:space " "]
+      "async:"
+      [:sub-expr
+       [:expr [:cmd [:words "render" [:space " "] "{{async}}"]]]]]]
+    [:cmd [:words "echo" [:space " "] "lol"]]])
+
+  (-> "category names | echo async: `render {{async}}` ci: `render {{ci}}`"
+      parser eval-yb-expression)
+
+
+  (-> "category names | data show"
+      parser eval-yb-expression)
+
+
+  (-> "echo there | echo `echo hi`"
+      parser
+      eval-yb-expression)
+
+  [:expr
+   [:cmd [:words "echo" [:space " "] "there"]]
+   [:cmd
+    [:words
+     "echo"
+     [:space " "]
+     [:sub-expr [:expr [:cmd [:words "echo" [:space " "] "hi"]]]]]]])
+
 
 
 (defn yetibot-transform
@@ -165,12 +206,10 @@
   (println)
   (println " ")
   (println " ")
-  (info "yetibot-transform" (pr-str parse-tree))
+  ;; (info "yetibot-transform" (pr-str parse-tree))
   (if-let [transform (eval-map (first parse-tree))]
     (let [tag (first parse-tree)
           [head & nodes] (rest parse-tree)
-          _ (info "head" head)
-          _ (info "nodes" nodes)
           first-node (yetibot-transform head)]
       ;; special handling for expr piping its commands
       (info "tag" tag)
