@@ -20,6 +20,9 @@
      which means `render {{async}}` and `render {{ci}}` would be evaluated
      before `category names`.
 
+     The new interpreter evaluates commands left to right, and resulting data is
+     bound to a dynamic var, letting sub expresesions access that data.
+
   2. Add the ability to execute Yetibot commands from Selmer expressions in
      `render`. This allos you to render custom data as normal, but now you can
      pipe those into a Yetibot command from Selmer. As an example, consider a
