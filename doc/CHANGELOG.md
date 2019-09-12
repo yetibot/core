@@ -43,6 +43,13 @@
      scores | render Score {{score}} - {{zip|yetibot-data:weather|get:weather|get:description}}
      ```
 
+     And with data propagation to sub expressions, the same could be expressed
+     as:
+
+     ```
+     scores | echo Score `render {{score}` - `render {{zip}} | weather | render {{weather.description}}
+     ```
+
   This PR also enabled Code Coverage reporting via
   [codecov.io](https://codecov.io). As an example, check out [this codecov
   report](https://codecov.io/gh/yetibot/yetibot.core/pull/104?src=pr&el=continue).
