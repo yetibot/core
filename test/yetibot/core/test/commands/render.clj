@@ -1,12 +1,8 @@
 (ns yetibot.core.test.commands.render
-  (:require
-   yetibot.core.commands.duckling
-   yetibot.core.commands.error
-   [yetibot.core.hooks :refer [cmd-hook]]
-   [midje.sweet :refer [fact => contains has-prefix just]]
-   [yetibot.core.midje :refer [value data error]]
-   [yetibot.core.commands.render :refer :all]
-   [yetibot.core.util.command-info :refer [command-execution-info]]))
+  (:require [midje.sweet :refer [=> fact]]
+            [yetibot.core.hooks :refer [cmd-hook]]
+            [yetibot.core.midje :refer [error value]]
+            [yetibot.core.util.command-info :refer [command-execution-info]]))
 
 (def execution-opts {:run-command? true
                      :data {:adj "lazy" :noun "water buffalo"}})

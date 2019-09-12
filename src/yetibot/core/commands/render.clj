@@ -1,12 +1,11 @@
 (ns yetibot.core.commands.render
-  (:require
-    [clojure.string :as string]
-    [yetibot.core.hooks :refer [cmd-hook]]
-    [yetibot.core.interpreter :refer [handle-cmd]]
-    [taoensso.timbre :refer [debug info warn error]]
-    selmer.util
-    [selmer.filters :refer [add-filter!]]
-    [selmer.parser :refer [render]]))
+  (:require [clojure.string :as string]
+            [selmer.filters :refer [add-filter!]]
+            [selmer.parser :refer [render]]
+            selmer.util
+            [taoensso.timbre :refer [info]]
+            [yetibot.core.hooks :refer [cmd-hook]]
+            [yetibot.core.interpreter :refer [handle-cmd]]))
 
 ;; configure html unescaping in Selmer since our target is not HTML:
 (selmer.util/turn-off-escaping!)

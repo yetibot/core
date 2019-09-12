@@ -1,10 +1,8 @@
 (ns yetibot.core.parser
-  (:require
-    [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.interpreter :refer [handle-cmd handle-expr]]
-    [clojure.string :refer [join]]
-    [instaparse.transform :refer [merge-meta]]
-    [instaparse.core :as insta]))
+  (:require [clojure.string :refer [join]]
+            [instaparse.core :as insta]
+            [taoensso.timbre :refer [error info]]
+            [yetibot.core.interpreter :refer [handle-expr]]))
 
 (def parser
   "Major components of the parser:
