@@ -48,3 +48,37 @@
  "Commands can be piped in succession"
  (:value (parse-and-eval "echo there | echo `echo hi`")) =>
  "hi there")
+
+(fact
+ "Commands with data work as expected"
+ (:data (parse-and-eval "category names")) =>
+ {:async "commands that execute asynchronously",
+  :broken
+  "known to be broken, probably due to an API that disappeared",
+  :chart "returns a chart of some kind",
+  :ci "continuous integration",
+  :collection "operates on collections",
+  :crude
+  "may return crude, racy and potentially NSFW results (e.g. urban)",
+  :fun "generally fun and not work-related",
+  :gif "returns a gif",
+  :img "returns an image url",
+  :info "information lookups (e.g. wiki, wolfram, weather)",
+  :infra "infrastructure automation",
+  :issue "issue tracker",
+  :meme "returns a meme",
+  :repl "language REPLs",
+  :util
+  "utilities that help transform expressions or operate Yetibot"})
+
+(facts
+ "Sub expressions can access the data propagated from the previos pipe"
+ ;;
+ (:value (parse-and-eval
+          "category names | echo async: `render {{async}}`")) =>
+ "async: commands that execute asynchronously"
+ ;; slightly more compleex
+ (:value
+  (parse-and-eval
+   "category names | echo async: `render {{async}}` ci: `render {{ci}}`")) =>
+ "async: commands that execute asynchronously ci: continuous integration")
