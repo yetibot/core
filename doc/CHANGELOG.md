@@ -5,8 +5,7 @@
 - Support data propagation into sub expressions from a previous command in a
   pipeline [#104](https://github.com/yetibot/yetibot.core/pull/104).
 
-  This PR increases the expressiveness of command pipelines in Yetibot via two
-  primary ways:
+  This PR increases the expressiveness of command pipelines in Yetibot two ways:
 
   1. Allow sub expressions to access data propagated by the previous command in
      a pipeline, e.g.:
