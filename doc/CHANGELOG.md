@@ -1,5 +1,59 @@
 # yetibot.core change log
 
+## Next
+
+- Support data propagation into sub expressions from a previous command in a
+  pipeline [#104](https://github.com/yetibot/yetibot.core/pull/104).
+
+  This PR significantly increases the expressiveness of command pipelines in
+  Yetibot two ways:
+
+  1. Allow sub expressions to access data propagated by the previous command in
+     a pipeline, e.g.:
+
+     ```
+     category names | echo async: `render {{async}}` ci: `render {{ci}}`
+     ```
+
+     Previously, the sub expressions on the right side would not be able to
+     access the data from `category names`. This is because the AST interpreter
+     we were using (provided by Instaparse) would evaluate ASTs depth first,
+     which means `render {{async}}` and `render {{ci}}` would be evaluated
+     before `category names`.
+
+     The new interpreter evaluates commands left to right, and resulting data is
+     bound to a dynamic var, letting sub expresesions access that data.
+
+  2. Add the ability to execute Yetibot commands from Selmer expressions in
+     `render`. This allos you to render custom data as normal, but now you can
+     pipe those into a Yetibot command from Selmer. As an example, consider a
+     command `scores` that outputs data in the shape:
+
+     ```edn
+     [{:score 123 :zip 90001}
+      {:score 198 :zip 95125}]
+     ```
+
+     What if we wanted to render the score next to the current weather
+     description for the zip code?
+
+     Now we can, like:
+
+     ```
+     scores | render Score {{score}} - {{zip|yetibot-data:weather|get:weather|get:description}}
+     ```
+
+     And with data propagation to sub expressions, the same could be expressed
+     as:
+
+     ```
+     scores | echo Score `render {{score}` - `render {{zip}} | weather | render {{weather.description}}
+     ```
+
+  This PR also enabled Code Coverage reporting via
+  [codecov.io](https://codecov.io). As an example, check out [this codecov
+  report](https://codecov.io/gh/yetibot/yetibot.core/pull/104?src=pr&el=continue).
+
 ## `[yetibot/core "20190905.175835.fe16ae2"]`
 
 - Switch from schema to clojure.spec -

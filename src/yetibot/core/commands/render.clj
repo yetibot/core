@@ -1,13 +1,37 @@
 (ns yetibot.core.commands.render
-  (:require
-    [clojure.string :as string]
-    [yetibot.core.hooks :refer [cmd-hook]]
-    [taoensso.timbre :refer [debug info warn error]]
-    selmer.util
-    [selmer.parser :refer [render]]))
+  (:require [clojure.string :as string]
+            [selmer.filters :refer [add-filter!]]
+            [selmer.parser :refer [render]]
+            selmer.util
+            [taoensso.timbre :refer [info]]
+            [yetibot.core.hooks :refer [cmd-hook]]
+            [yetibot.core.interpreter :refer [handle-cmd]]))
 
 ;; configure html unescaping in Selmer since our target is not HTML:
 (selmer.util/turn-off-escaping!)
+
+(defn yetibot-filter
+  [result-key args cmd]
+  (info "yetibot-filter" (str cmd " " args))
+  (let [cmd-result (handle-cmd (str cmd " " args) {:opts args})]
+    (info "yetibot-filter result" (pr-str cmd-result))
+    (if (map? cmd-result)
+      (if-let [err (:result/error cmd-result)]
+        (str "Error: " err)
+        (result-key cmd-result))
+      cmd-result)))
+
+(add-filter! :yetibot (partial yetibot-filter :result/value))
+
+(add-filter! :yetibot-data (partial yetibot-filter :result/data))
+
+(add-filter! :get (fn [m k] (m (keyword k))))
+
+(add-filter! :prn pr-str)
+
+(comment
+  (render "{{shout|yetibot:\"echo lol\"}}" {:shout "hello"})
+  )
 
 ;; alternatively, we could install a filter to unescape:
 (comment

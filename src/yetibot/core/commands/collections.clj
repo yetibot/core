@@ -159,10 +159,14 @@
 (defn xargs
   "xargs <cmd> <list> # run <cmd> for every item in <list> in parallel; behavior is similar to xargs(1)'s xargs -n1"
   {:yb/cat #{:util :collection}}
-  [{:keys [args opts user] :as cmd-params}]
+  [{:keys [args opts user data data-collection] :as cmd-params}]
   (if (s/blank? args)
-    opts ; passthrough if no args
-    (if-let [itms (ensure-items-collection opts)]
+    ;; passthrough if no args
+    {:result/value opts
+     :result/data data
+     :result/data-collection data-collection}
+    (if-let [itms (or (ensure-items-collection opts)
+                      (ensure-items-collection data-collection))]
       (let [cat (-> (str args " " (first opts))
                     command-execution-info :matched-sub-cmd meta :yb/cat)
             cmd-runner (if (contains? cat :async) 'map 'pmap)

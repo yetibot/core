@@ -1,9 +1,8 @@
 (ns yetibot.core.parser
-  (:require
-    [taoensso.timbre :refer [info warn error]]
-    [yetibot.core.interpreter :refer [handle-expr]]
-    [clojure.string :refer [join]]
-    [instaparse.core :as insta]))
+  (:require [clojure.string :refer [join]]
+            [instaparse.core :as insta]
+            [taoensso.timbre :refer [error info]]
+            [yetibot.core.interpreter :refer [handle-expr]]))
 
 (def parser
   "Major components of the parser:
@@ -37,18 +36,31 @@
      <rparen> = ')'
      <backtick> = <'`'>"))
 
-(def transformer
-  (partial
-    insta/transform
-    {:words (fn [& words] (join words))
-     :literal str
-     :space str
-     :parened str
-     :cmd identity
-     :sub-expr (fn [{:keys [value error]}]
-                 (or value error))
-     :expr #'handle-expr
-     }))
+(defn transformer
+  "This is the AST interpreter. It's an alternative to the transformer that
+   comes with Instaparse insta/transform which simply evaluates the tree depth
+   first."
+  [expr]
+  (if (vector? expr)
+    (let [[tag & nodes] expr
+          head (first nodes)]
+      ;; handle the AST nodes adcording to the type of tag
+      (condp = tag
+        :cmd (apply str (map transformer nodes))
+        ;; this is where the magic happens ✨
+        ;; eval cmds in order of left to right (lazily)
+        ;; piping the result of one to the next
+        :expr (handle-expr #'transformer nodes)
+        :words (join (map transformer nodes))
+        :space (apply str nodes)
+        :parened (apply str nodes)
+        :sub-expr (let [{:keys [value error] :as evaled}
+                        (transformer head)]
+                    ;; extract either the error or the value out of the sub-expr
+                    (info "sub-expr" head evaled)
+                    (or error value))))
+    ;; literal
+    expr))
 
 (defn parse-and-eval [input]
   (-> input parser transformer))

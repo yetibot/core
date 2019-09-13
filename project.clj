@@ -57,8 +57,10 @@
             [lein-npm "0.6.2"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
-                   {:plugins [[lein-midje "3.2.1"]]
-                    :dependencies [[midje "1.9.6"]
+                   {:plugins [[lein-midje "3.2.1"]
+                              [lein-cloverage "1.1.1"]]
+                    :dependencies [[lilactown/punk-adapter-jvm "0.0.10"]
+                                   [midje "1.9.6"]
                                    [nubank/matcher-combinators "0.9.0"]]}]
              :test
              {:resource-paths ["test/resources"]
@@ -164,7 +166,7 @@
 
                  ; web
                  [com.walmartlabs/lacinia "0.32.0"] ;; graphql
-                 [selmer "1.12.11"]
+                 [selmer "1.12.17"]
                  [compojure "1.6.1"]
                  [prone "1.6.1"]
                  [hiccup "1.0.5"]

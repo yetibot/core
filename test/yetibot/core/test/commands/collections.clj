@@ -174,16 +174,16 @@
 
   (testing "droplast and rest should propagate data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "droplast" params)]
+                                                 "droplast" params)]
       (is (= data (map value->data value))))
 
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "rest" params)]
-    (is (= data (map value->data value)))))
+                                                 "rest" params)]
+      (is (= data (map value->data value)))))
 
   (testing "sort propagates sorted data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "sort" params)]
+                                                 "sort" params)]
       (info "sorted data" (pr-str data))
       (info "sorted opts" (pr-str value))
       (is (= ["blue" "green" "red"] value))
@@ -191,27 +191,27 @@
 
   (testing "sortnum propagates sorted data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "sortnum"
-                                                  (assoc params
-                                                         :opts ["2" "1" "3"]))]
+                                                 "sortnum"
+                                                 (assoc params
+                                                        :opts ["2" "1" "3"]))]
       (is (= ["1" "2" "3"] value))
       (is (= [{"green" "green"} {"red" "red"} {"blue" "blue"}] data))))
 
   (testing "shuffle propagates shuffled data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "shuffle" params)]
+                                                 "shuffle" params)]
       (is (= data (map value->data value)))))
 
   (testing "reverse propagates reversed data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
-                                                  "reverse" params)]
+                                                 "reverse" params)]
       (is (= data (map value->data value)))))
 
   (testing "grep propagates matched data"
     (let [{{:result/keys [value data]} :result} (command-execution-info
                                                   ;; only matches "red" and
                                                   ;; "green"
-                                                  "grep e.$" params)]
+                                                 "grep e.$" params)]
       (is (= data (map value->data value)))))
 
   (testing "xargs still works on simple commands that don't return a map"
@@ -219,7 +219,7 @@
            (-> (command-execution-info
                             ;; only matches "red" and
                             ;; "green"
-                            "xargs echo value is" params)
+                "xargs echo value is" params)
                :result
                :result/value))))
 
@@ -239,5 +239,26 @@
            (-> (command-execution-info
                  ;; only matches "red" and
                  ;; "green"
-                 "xargs trim" params)
-               :result)))))
+                "xargs trim" params)
+               :result))))
+
+  (testing "xargs falls back to data if opts not passed in"
+    (is
+     (=
+      (-> (command-execution-info
+           "xargs keys"
+           ;; remove opts, forcing it to fallback to data
+           (-> params (dissoc :opts)))
+          :result)
+      #:result{:value [["red"] ["green"] ["blue"]],
+               :data-collection
+               [[{"red" "red"} {"green" "green"} {"blue" "blue"}]
+                [{"red" "red"} {"green" "green"} {"blue" "blue"}]
+                [{"red" "red"} {"green" "green"} {"blue" "blue"}]],
+               :data
+               [{:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
+                 :count 3}
+                {:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
+                 :count 3}
+                {:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
+                 :count 3}]}))))
