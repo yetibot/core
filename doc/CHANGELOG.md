@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## Next
+## `[yetibot/core "20190913.182757.1838a79"]`
 
 - Support data propagation into sub expressions from a previous command in a
   pipeline [#104](https://github.com/yetibot/yetibot.core/pull/104).
