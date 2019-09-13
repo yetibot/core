@@ -2,6 +2,7 @@
 
 [![Build Status](https://img.shields.io/travis/com/yetibot/yetibot.core?style=for-the-badge)](https://travis-ci.com/yetibot/yetibot.core)
 [![Clojars](https://img.shields.io/clojars/v/yetibot/core?style=for-the-badge)](https://clojars.org/yetibot/core)
+[![Codecov](https://img.shields.io/codecov/c/github/yetibot/yetibot.core?style=for-the-badge)](https://codecov.io/gh/yetibot/yetibot.core)
 
 Core Yetibot utilities, extracted for shared use among Yetibot and its various
 plugins. yetibot.core is not meant to be run standalone, but instead used as a
