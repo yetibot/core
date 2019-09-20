@@ -11,6 +11,7 @@
     [yetibot.core.loader :refer [load-commands-and-observers]]
     [yetibot.core.logo :refer [logo]]
     [yetibot.core.config :refer [get-config]]
+    [yetibot.core.monitoring :as monitoring]
     [clojure.spec.alpha :as s])
   (:gen-class))
 
@@ -47,5 +48,6 @@
     (start-nrepl!)
     (db/start)
     (logging/start)
+    (monitoring/start)
     (adapters/start)
     (load-commands-and-observers)))

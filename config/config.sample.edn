@@ -23,6 +23,7 @@
          :subtask {:issue {:type {:id "27"}}},
          :domain "",
          :password ""},
+  :monitoring {:host "" :port 5555 :interval 10}
   :adapters {:myteam {:type "slack",
                       :token "xoxb-111111111111111111111111111111111111"}
              :k8s {:type "slack",

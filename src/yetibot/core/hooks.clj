@@ -5,6 +5,7 @@
     [taoensso.timbre :refer [color-str trace debug info warn error]]
     [yetibot.core.handler]
     [clojure.string :as s]
+    [metrics.timers :as timers]
     [yetibot.core.models.channel :as c]
     [yetibot.core.interpreter :refer [handle-cmd]]
     [yetibot.core.models.help :as help]
@@ -91,7 +92,9 @@
               (str
                 (s/join ", " (map name matched-disabled-cats))
                 " commands are disabled in this channel🖐")
-              (sub-fn (merge extra {:cmd cmd :args args :match match}))))
+              (timers/time!
+               (timers/timer ["yetibot" cmd (str (:name (meta sub-fn)))])
+               (sub-fn (merge extra {:cmd cmd :args args :match match})))))
           ;; couldn't find any sub commands so default to help.
           (:value
             (yetibot.core.handler/handle-unparsed-expr
