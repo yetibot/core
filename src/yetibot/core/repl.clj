@@ -8,6 +8,7 @@
     [yetibot.core.db :as db]
     [yetibot.core.logging :as logging] ; enable logging to file
     [yetibot.core.models.users :as users]
+    [yetibot.core.monitoring :as monitoring]
     [yetibot.core.webapp.handler :as web]
     [yetibot.core.loader :refer [load-commands-and-observers load-ns]]
     [yetibot.core.adapters :as adapters]))
@@ -40,6 +41,7 @@
   []
   (paj/start)
   (logging/start)
+  (monitoring/start)
   (init/start-nrepl!)
   (web/start-web-server)
   (db/start)
@@ -61,7 +63,8 @@
 (defn stop []
   (web/stop-web-server)
   (init/stop-nrepl!)
-  (adapters/stop))
+  (adapters/stop)
+  (monitoring/stop))
 
 (defn reset []
   (stop)

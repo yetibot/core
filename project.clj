@@ -148,6 +148,10 @@
                  [com.cemerick/url "0.1.1"]
                  ;; [io.aviso/pretty "0.1.34"] ; pretty stacktraces
 
+                 ;monitoring
+                 [metrics-clojure "2.10.0"]
+                 [metrics-clojure-riemann "2.10.0"]
+
                  ; web/ring
                  [ring/ring-json "0.4.0"]
                  [ring/ring-core "1.6.3"]
