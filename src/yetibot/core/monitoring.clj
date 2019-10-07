@@ -22,15 +22,16 @@
 
 (defn start
   []
-  (if-let [{:keys [host port interval]} (config/get-config ::config [:monitoring])]
-    (let [reporter (-> (riemann/make-riemann host (or port 5555))
-                       (riemann/reporter {:rate-unit TimeUnit/SECONDS
-                                          :duration-unit TimeUnit/MILLISECONDS
-                                          :filter MetricFilter/ALL}))]
-      (log/info "starting monitoring")
-      (reset! riemann-reporter reporter)
-      (riemann/start reporter (or interval 1)))
-    (log/debug "monitoring is not configured")))
+  (let [{:keys [host port interval]} (config/get-config ::config [:monitoring])]
+    (if (and host port interval)
+      (let [reporter (-> (riemann/make-riemann host (or port 5555))
+                         (riemann/reporter {:rate-unit TimeUnit/SECONDS
+                                            :duration-unit TimeUnit/MILLISECONDS
+                                            :filter MetricFilter/ALL}))]
+        (log/info "starting monitoring")
+        (reset! riemann-reporter reporter)
+        (riemann/start reporter (or interval 1)))
+      (log/debug "monitoring is not configured"))))
 
 (defn stop
   []
