@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## `[yetibot/core "20191009.221933.8c538c8"]`
+
+- Fix missing literal transformer and busted cmd command -
+  [#108](https://github.com/yetibot/yetibot.core/pull/108)
+
 ## `[yetibot/core "20190913.182757.1838a79"]`
 
 - Support data propagation into sub expressions from a previous command in a
