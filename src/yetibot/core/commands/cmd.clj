@@ -1,8 +1,8 @@
 (ns yetibot.core.commands.cmd
   (:require
-    [yetibot.core.hooks :refer [cmd-hook]]
-    [yetibot.core.util.command :refer [extract-command config-prefix]]
-    [yetibot.core.handler :refer [handle-unparsed-expr]]))
+   [yetibot.core.hooks :refer [cmd-hook]]
+   [yetibot.core.util.command :refer [extract-command config-prefix]]
+   [yetibot.core.handler :refer [handle-unparsed-expr]]))
 
 (def command-pattern (re-pattern (str "^" config-prefix)))
 
@@ -17,8 +17,7 @@
   "cmd # evaluate a literal command. Strips configured cmd prefix (default !) from the beginning if present"
   {:yb/cat #{:util}}
   [{match :match}]
-  (handle-unparsed-expr
-    (strip-prefix match)))
+  (:value (handle-unparsed-expr (strip-prefix match))))
 
 (cmd-hook #"cmd"
-  _ cmd)
+          _ cmd)
