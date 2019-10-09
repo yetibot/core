@@ -54,6 +54,7 @@
         :words (join (map transformer nodes))
         :space (apply str nodes)
         :parened (apply str nodes)
+        :literal (apply str nodes)
         :sub-expr (let [{:keys [value error] :as evaled}
                         (transformer head)]
                     ;; extract either the error or the value out of the sub-expr

@@ -72,7 +72,7 @@
   "utilities that help transform expressions or operate Yetibot"})
 
 (facts
- "Sub expressions can access the data propagated from the previos pipe"
+ "Sub expressions can access the data propagated from the previous pipe"
  ;;
  (:value (parse-and-eval
           "category names | echo async: `render {{async}}`")) =>
@@ -82,3 +82,7 @@
   (parse-and-eval
    "category names | echo async: `render {{async}}` ci: `render {{ci}}`")) =>
  "async: commands that execute asynchronously ci: continuous integration")
+
+(fact
+ "Commands with literals can be transformed"
+ (:value (parse-and-eval "echo \"hi\"")) => "\"hi\"")
