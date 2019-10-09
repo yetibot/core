@@ -21,7 +21,9 @@
      !scores | echo
        `render {{score}}` with weather
        `render {{zip}} | weather | render {{weather.description}}`"}
-  *contextual-data*)
+  *contextual-data* nil)
+
+(or nil *contextual-data* 1)
 
 (defn handle-cmd
   "Hooked entry point for all command handlers. If no handlers intercept, it
