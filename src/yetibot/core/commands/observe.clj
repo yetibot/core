@@ -5,7 +5,7 @@
     [clojure.string :as s :refer [split trim]]
     [clojure.tools.cli :refer [parse-opts]]
     [taoensso.timbre :refer [color-str debug trace info warn error]]
-    [yetibot.core.chat :refer [chat-data-structure]]
+    [yetibot.core.chat :refer [*thread-ts* chat-data-structure]]
     [yetibot.core.db.observe :as model]
     [yetibot.core.handler :refer [record-and-run-raw all-event-types]]
     [yetibot.core.hooks :refer [cmd-hook obs-hook]]
@@ -35,9 +35,9 @@
 ;; Use a single obs-hook to monitor all dynamic observers. That way when it's
 ;; removed from the database, it won't be checked here either.
 (defn obs-handler [{:keys [body reaction user yetibot-user chat-source
-                           message-user event-type]
+                           thread-ts message-user event-type]
                     :as event-info}]
-  (trace "obs-handler" (color-str :blue (dissoc event-info :user)))
+  (info "obs-handler" (color-str :blue (dissoc event-info :user :yetibot-user)))
   (let [observers (model/find-all)
         channel (:room chat-source)
         username (:username user)
@@ -76,16 +76,21 @@
                           (or (s/blank? pattern)
                               (re-find (re-pattern pattern) match-text)))]
 
-          (debug "observer" (pr-str
-                              {:match? match?
-                               :user-match? user-match?
-                               :channel-match? channel-match?
-                               :channel channel
-                               :blank-pattern? (s/blank? pattern)}))
-
           (when match?
             (go
-              (binding [*chat-source* chat-source]
+              (info "obs matched"
+                    (color-str
+                     :yellow
+                     (pr-str
+                      {:match? match?
+                       :*thread-ts* *thread-ts*
+                       :thread-ts thread-ts
+                       :user-match? user-match?
+                       :channel-match? channel-match?
+                       :channel channel
+                       :blank-pattern? (s/blank? pattern)})))
+              (binding [*chat-source* chat-source
+                        *thread-ts* (or *thread-ts* thread-ts)]
                 ;; apply templating to the cmd with selmer
                 (let [rendered-cmd (render cmd {:username username
                                                 :message-username

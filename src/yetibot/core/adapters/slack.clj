@@ -213,7 +213,12 @@
                     yetibot-user
                     {:body (unencode-message text)})))))
 
-(defn on-message [{:keys [conn config] :as adapter} {:keys [subtype] :as event}]
+(defn on-message [{:keys [conn config] :as adapter}
+                  {:keys [subtype ts]
+                   chan-id :channel
+                   thread-ts :thread_ts
+                   :as event}]
+  (info "on-message" (color-str :blue (pr-str event)))
   ;; allow bot_message events to be treated as normal messages
   (if (and (not= "bot_message" subtype) subtype)
     (do
@@ -227,8 +232,7 @@
         "message_changed" (on-message-changed event conn config)
         ; do nothing if we don't understand
         (info "Don't know how to handle message subtype" subtype)))
-    (let [{chan-id :channel thread-ts :thread_ts} event
-          [chan-name entity] (entity-with-name-by-id config event)
+    (let [[chan-name entity] (entity-with-name-by-id config event)
           {:keys [is_channel]} entity
           ;; _ (info "channel entity:" (pr-str entity))
           ;; _ (info "event entity:" (color-str :red (pr-str event)))
@@ -248,13 +252,18 @@
                  (->> event :attachments (map :text) (string/join \newline))
                  ;; else use the much more common `text` property
                  (:text event))]
+      (info (color-str :green {:thread-ts thread-ts :ts ts}))
+
       (binding [*thread-ts* thread-ts
                 *target* chan-id]
         (handle-raw cs
                     user-model
                     :message
                     yetibot-user
-                    {:body (unencode-message body)})))))
+                    {:body (unencode-message body)
+                     ;; allow chatters (like obs) to optionally reply in-thread
+                     ;; by propagating the thread-ts
+                     :thread-ts (or thread-ts ts)})))))
 
 (defn on-reaction-added
   "https://api.slack.com/events/reaction_added"
@@ -294,8 +303,7 @@
                                 :limit "1"})
                              :messages
                              (filter (fn [{:keys [ts]}] (= ts child-ts)))
-                             first
-                             ))
+                             first))
 
         message (if is-parent? parent-message child-message)]
     ;; only support reactions on message types
@@ -450,18 +458,18 @@
    config is a map"
   [{:keys [conn config connected?] :as adapter}]
   (reset! conn (slack/start (slack-config config)
-                            :on-connect (partial on-connect adapter)
+                            :on-connect (partial #'on-connect adapter)
                             :on-error on-error
-                            :on-close (partial on-close adapter)
+                            :on-close (partial #'on-close adapter)
                             :presence_change on-presence-change
                             :channel_joined on-channel-joined
                             :group_joined on-channel-joined
                             :channel_left on-channel-left
                             :group_left on-channel-left
                             :manual_presence_change on-manual-presence-change
-                            :message (partial on-message adapter)
-                            :reaction_added (partial on-reaction-added adapter)
-                            :pong (partial on-pong adapter)
+                            :message (partial #'on-message adapter)
+                            :reaction_added (partial #'on-reaction-added adapter)
+                            :pong (partial #'on-pong adapter)
                             :hello on-hello))
   (info "Slack (re)connected as Yetibot with id" (:id (self conn)))
   (reset-users-from-conn conn))
