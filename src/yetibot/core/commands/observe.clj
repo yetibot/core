@@ -175,7 +175,6 @@
    Observers can be easily abused. Use them with caution & restraint 🙏"
   {:yb/cat #{:util}}
   [{[_ opts-str cmd] :match user :user}]
-
   (info "observer user" (pr-str user))
   (let [parsed-opts (parse-observe-opts opts-str)]
     (if-let [parse-errs (:errors parsed-opts)]

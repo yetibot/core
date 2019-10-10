@@ -187,9 +187,11 @@
       (timbre/info "channel leave" e)
       (handle-raw cs user-model :leave yetibot-user {}))))
 
-(defn on-message-changed [{:keys [channel] {:keys [user text]} :message}
+(defn on-message-changed [{:keys [channel]
+                           :as event
+                           {:keys [user text thread_ts]} :message}
                           conn config]
-  (timbre/info "message changed")
+  (timbre/info "message changed" \newline (pr-str event))
   ;; ignore message changed events from Yetibot - it's probably just Slack
   ;; unfurling stuff and we need to ignore it or it will result in double
   ;; history
@@ -203,7 +205,8 @@
                           :yetibot? yetibot?)]
     (if yetibot?
       (info "ignoring message changed event from Yetibot user" yetibot-uid)
-      (binding [*target* channel]
+      (binding [*target* channel
+                *thread-ts* thread_ts]
         (handle-raw cs
                     user-model
                     :message
