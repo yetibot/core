@@ -14,16 +14,6 @@ before_script:
 env:
   - YETIBOT_DB_URL="postgresql://postgres@localhost:5432/yetibot"
 
-before_deploy:
-  - git status
-    # clean up annoying package-lock.json changes
-  - git reset --hard
-  - lein deps # ensure npm deps are fetched
-  - ls -al node_modules/yetibot-dashboard/build
-  - ls -al node_modules/yetibot-dashboard/build/index.html
-  - git status
-  - git stash
-
 deploy:
   provider: script
   # deploy is a single script to run - not an array of commands

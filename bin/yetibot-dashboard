@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# download the latest yetibot-dashboard release and extract
+# by convention, it extracts into a `package/` dir
+version=`npm view yetibot-dashboard version`
+echo "Downloading yetibot-dashboard@${version}..."
+curl `npm view yetibot-dashboard dist.tarball` | tar xz
+
+# now copy the resources we want from package/build to resources/public subdir where
+# they'll be committed in git (essentially vendoring)
+cp -R package/build/* resources/public/
+
+# cleanup
+rm -rf package/
+
+# now commit any changes
+git add resources/
+git ci -m \
+  "Bump yetibot-dashboard to latest @ ${version}"

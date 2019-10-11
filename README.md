@@ -49,16 +49,17 @@ Or replace `localhost` with the remote network address.
 ## yetibot-dashboard
 
 `yetibot-dashboard` is an NPM module that contains static HTML/JS/CSS for the
-Yetibot dashboard. It's used by yetibot.core via
-[`lein-npm`](https://github.com/RyanMcG/lein-npm) and served by
-yetibot.core's Ring server. A public example can be seen at
-[public.yetibot.com](https://public.yetibot.com).
+Yetibot dashboard. It's served by yetibot.core's Ring server. A public example
+can be seen at [public.yetibot.com](https://public.yetibot.com).
 
-To update to a newer version:
+To update to the latest version run:
 
-1. Bump the `yetibot-dashboard` dep in `project.clj`
-1. Run `lein deps`
-1. Commit the updated `package-lock.json`
+```bash
+./bin/yetibot-dashboard
+```
+
+This downloads the lateset `yetibot-dashboard` from NPM, extracts it, copies the
+build into `resources/public` then creates a git commit with the changes.
 
 ## Docs
 
