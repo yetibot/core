@@ -46,15 +46,10 @@
        (format "%s.%s" datetime ref-short)))}
 
   ; :aot [yetibot.core.init]
-  :resource-paths ["resources"
-                   ;; yetibot-dashboard is an npm dep
-                   ;; we serve the static html/css/js out of it to run the SPA
-                   ;; dashboard
-                   "node_modules/yetibot-dashboard/build"]
+  :resource-paths ["resources"]
   :main yetibot.core.init
   :plugins [[me.arrdem/lein-git-version "2.0.8"]
-            [lein-environ "1.1.0"]
-            [lein-npm "0.6.2"]]
+            [lein-environ "1.1.0"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
                    {:plugins [[lein-midje "3.2.1"]
@@ -179,9 +174,7 @@
 
   :aliases {"test" ["with-profile" "+test" "midje"]}
 
-  ;; release is purely derived from git sha and timestamp, so there's no need to
-  ;; commit, bump, or tag anything
+  ;; release is purely derived from git sha and timestamp 😑,
+  ;; so there's no need to commit, bump, or tag anything
   :release-tasks [["vcs" "assert-committed"]
-                  ["deploy"]]
-
-  :npm {:dependencies [[yetibot-dashboard "0.7.2"]]})
+                  ["deploy"]])

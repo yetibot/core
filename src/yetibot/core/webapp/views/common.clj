@@ -10,14 +10,14 @@
     [hiccup.page :refer [include-css include-js html5]]
     [hiccup.element :refer :all]))
 
-;; Parses index.html from node_modules/yetibot-dashboard/build/index.html,
+;; Parses index.html from resources/public/index.html,
 ;; then adds a JS snippet and converts back to HTML.
 (defonce index
   (delay
     (let [index-zip (hickory-zip
                       (hickory/as-hickory
                         (hickory/parse
-                          (slurp (io/resource "index.html")))))
+                          (slurp (io/resource "public/index.html")))))
           head-zip (s/select-next-loc (s/tag :head) index-zip)
           url (:value (url/config))]
       (-> head-zip
