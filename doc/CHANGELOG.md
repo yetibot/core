@@ -1,5 +1,13 @@
 # yetibot.core change log
 
+## `[yetibot/core "20191011.182438.972beb3"]`
+
+- Reply in-thread for observers and in-thread message edits
+  [#109](https://github.com/yetibot/yetibot.core/pull/109)
+
+- Remove `lein-npm` and vendor `yetibot-dashboard` resources instead
+  [#110](https://github.com/yetibot/yetibot.core/pull/110)
+
 ## `[yetibot/core "20191009.221933.8c538c8"]`
 
 - Fix missing literal transformer and busted cmd command -
