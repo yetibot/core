@@ -7,7 +7,7 @@ Sometimes the build fails. Here are the steps to debug.
 ```bash
 read -s token
 
-id=244405005
+read id
 
 curl -s -X POST \
        -H "Content-Type: application/json" \

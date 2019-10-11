@@ -15,7 +15,6 @@ repo](https://github.com/yetibot/yetibot).
 - [CHANGELOG](doc/CHANGELOG.md)
 - [yetibot.com](https://yetibot.com)
 
-
 ## Usage
 
 You can depend on this library to build your own Yetibot plugins.
