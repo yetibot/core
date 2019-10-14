@@ -4,13 +4,13 @@
     [clojure.spec.alpha :as s]
     [yetibot.core.adapters.adapter :as a]
     [taoensso.timbre :as log :refer [info debug]]
-    [rate-gate.core :refer [rate-limit]]
+    [throttler.core :refer [throttle-fn]]
     [irclj
      [core :as irc]
      [connection :as irc-conn]]
     [yetibot.core.models.users :as users]
     [yetibot.core.models.channel :as channel]
-    [clojure.string :refer [split-lines join]]
+    [clojure.string :refer [split-lines join includes?]]
     [yetibot.core.chat :refer [base-chat-source chat-source
                                chat-data-structure send-msg-for-each
                                *target* *adapter*] :as chat]
@@ -52,7 +52,7 @@
 (def send-msg
   "Rate-limited function for sending messages to IRC. It's rate limited in order
    to prevent 'Excess Flood' kicks"
-  (rate-limit
+  (throttle-fn
     (fn [{:keys [conn] :as adapter} msg]
       (log/info "send message to channel" *target*)
       (try
@@ -68,7 +68,7 @@
           (Thread/sleep wait-before-reconnect)
           (connect adapter)
           (start adapter))))
-    3 900))
+    1 :second 5))
 
 (defn- create-user [info]
   (let [username (:nick info)
@@ -186,6 +186,12 @@
   (log/info "handle invite" info)
   (join-channel a (second (:params info))))
 
+(defn handle-notice [a _ info]
+  (log/debug "handle notice" info)
+  (let [info-msg (second (:params info))]
+    (when (includes? info-msg "throttled due to flooding")
+      (log/warn "NOTICE: " info-msg))))
+
 (defn handle-raw-log [adapter _ b c]
   (log/trace b c))
 
@@ -215,6 +221,7 @@
                :part #'handle-part
                :kick #'handle-kick
                :join #'handle-join
+               :notice #'handle-notice
                :nick #'handle-nick
                :invite #'handle-invite
                :366 #'handle-end-of-names
