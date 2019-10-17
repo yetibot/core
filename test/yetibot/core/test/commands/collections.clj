@@ -1,10 +1,11 @@
 (ns yetibot.core.test.commands.collections
   (:require
-    [yetibot.core.commands.collections :refer :all]
-    yetibot.core.commands.about
-    [taoensso.timbre :refer [info]]
-    [yetibot.core.util.command-info :refer [command-execution-info]]
-    [clojure.test :refer :all]))
+   [yetibot.core.commands.collections :refer :all]
+   yetibot.core.commands.render
+   yetibot.core.commands.about
+   [taoensso.timbre :refer [info]]
+   [yetibot.core.util.command-info :refer [command-execution-info]]
+   [clojure.test :refer :all]))
 
 (deftest random-test
   (testing "Random with no args"
@@ -241,6 +242,20 @@
                  ;; "green"
                 "xargs trim" params)
                :result))))
+
+  (testing
+   "xargs should properly propagate data for each item when data-collection is
+    present"
+    (is
+     (= (-> (command-execution-info
+             "xargs render {{name}}"
+             {:data [{:name "foo"} {:name "bar"} {:name "qux"}]
+              :data-collection [{:name "foo"} {:name "bar"} {:name "qux"}]
+              :opts ["foo" "bar" "qux"]
+              :run-command? true})
+            :result
+            :result/value)
+        ["foo" "bar" "qux"])))
 
   (testing "xargs falls back to data if opts not passed in"
     (is
