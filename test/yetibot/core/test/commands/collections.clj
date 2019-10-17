@@ -3,6 +3,7 @@
    [yetibot.core.commands.collections :refer :all]
    yetibot.core.commands.render
    yetibot.core.commands.about
+   yetibot.core.commands.echo
    [taoensso.timbre :refer [info]]
    [yetibot.core.util.command-info :refer [command-execution-info]]
    [clojure.test :refer :all]))
@@ -218,30 +219,21 @@
   (testing "xargs still works on simple commands that don't return a map"
     (is (= ["value is red" "value is green" "value is blue"]
            (-> (command-execution-info
-                            ;; only matches "red" and
-                            ;; "green"
+                 ;; only matches "red" and "green"
                 "xargs echo value is" params)
                :result
                :result/value))))
 
   (testing "xargs accumulates and propagates data when it exists"
-    (is (= #:result{:value ["red" "green" "blue"],
-                    :data-collection
-                    [[{"red" "red"} {"green" "green"} {"blue" "blue"}]
-                     [{"red" "red"} {"green" "green"} {"blue" "blue"}]
-                     [{"red" "red"} {"green" "green"} {"blue" "blue"}]],
-                    :data
-                    [{:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
-                      :count 3}
-                     {:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
-                      :count 3}
-                     {:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
-                      :count 3}]}
-           (-> (command-execution-info
+    (is (=
+         (-> (command-execution-info
                  ;; only matches "red" and
                  ;; "green"
-                "xargs trim" params)
-               :result))))
+              "xargs trim" params)
+             :result)
+         #:result{:value ["red" "green" "blue"],
+                  :data-collection [nil nil nil],
+                  :data [{"red" "red"} {"green" "green"} {"blue" "blue"}]})))
 
   (testing
    "xargs should properly propagate data for each item when data-collection is
@@ -266,14 +258,5 @@
            (-> params (dissoc :opts)))
           :result)
       #:result{:value [["red"] ["green"] ["blue"]],
-               :data-collection
-               [[{"red" "red"} {"green" "green"} {"blue" "blue"}]
-                [{"red" "red"} {"green" "green"} {"blue" "blue"}]
-                [{"red" "red"} {"green" "green"} {"blue" "blue"}]],
-               :data
-               [{:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
-                 :count 3}
-                {:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
-                 :count 3}
-                {:items [{"red" "red"} {"green" "green"} {"blue" "blue"}],
-                 :count 3}]}))))
+               :data-collection [nil nil nil],
+               :data [{"red" "red"} {"green" "green"} {"blue" "blue"}]}))))
