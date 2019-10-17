@@ -1,5 +1,16 @@
 # yetibot.core change log
 
+## `[yetibot/core "20191017.211644.6ee48e9"]`
+
+- Fix data propagation for collections in xargs 
+  [#112](https://github.com/yetibot/yetibot.core/pull/112)
+
+## `[yetibot/core "20191015.195424.5066036"]`
+
+- Throttle send-msg for IRC to prevent flooding.
+  [#111](https://github.com/yetibot/yetibot.core/pull/111) by
+  [@sarg](https://github.com/sarg)
+
 ## `[yetibot/core "20191011.182438.972beb3"]`
 
 - Reply in-thread for observers and in-thread message edits
