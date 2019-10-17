@@ -44,10 +44,10 @@
 
    See https://github.com/yogthos/Selmer for docs on templating."
   [{data :data match :match raw :raw :as args}]
-  (info "render-cmd" match raw)
+  (info "render-cmd" {:data data :match match :raw raw})
   (try
     (let [template (if (and raw (not (coll? raw)))
-                     (string/replace match raw "") ;; remove piped args
+                     (string/replace match (str " " raw) "") ;; remove piped args
                      match)
           rendered (if (sequential? data)
                      (map (partial render template) data)

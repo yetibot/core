@@ -167,24 +167,34 @@
      :result/data-collection data-collection}
     (if-let [itms (or (ensure-items-collection opts)
                       (ensure-items-collection data-collection))]
-      (let [cat (-> (str args " " (first opts))
+      (let [indexed-itms (map-indexed (comp identity vector) itms)
+            cat (-> (str args " " (first opts))
                     command-execution-info :matched-sub-cmd meta :yb/cat)
+            ;; do not propagate top-level data or data-collection args to the
+            ;; cmd that xargs is running for each item
+            params (dissoc cmd-params :data :data-collection)
             cmd-runner (if (contains? cat :async) 'map 'pmap)
             _ (debug "xargs using cmd-runner:" cmd-runner "for command"
                      (pr-str args))
             xargs-results
             ((resolve cmd-runner)
-             (fn [item]
+             (fn [[idx item]]
                (try
-                 (let [cmd-result
-                       (apply handle-cmd
-                              ;; item could be a collection, such as when xargs
-                              ;; is used on nested collections, e.g.:
-                              ;; repeat 5 jargon | xargs words | xargs head
-                              (if (coll? item)
-                                [args (merge cmd-params {:raw item :opts item})]
-                                [(psuedo-format args item)
-                                 (merge cmd-params {:raw item :opts nil})]))
+                 (let [params-with-data (if data-collection
+                                          (assoc params
+                                                 :data (nth data-collection
+                                                            idx)))
+                       _ (info "data for" idx (nth data-collection idx))
+                       cmd-result
+                       (apply
+                        handle-cmd
+                        ;; item could be a collection, such as when xargs is
+                        ;; used on nested collections, e.g.:
+                        ;; repeat 5 jargon | xargs words | xargs head
+                        (if (coll? item)
+                          [args (merge params-with-data {:raw item :opts item})]
+                          [(psuedo-format args item)
+                           (merge params-with-data {:raw item :opts nil})]))
 
                        _ (debug "xargs cmd-result" (pr-str cmd-result))]
                    (if (map? cmd-result)
@@ -197,7 +207,7 @@
                    (error "Exception in xargs cmd-runner:" cmd-runner
                           (format-exception-log ex))
                    ex)))
-             itms)]
+             indexed-itms)]
         {:result/value (map :result/value xargs-results)
          :result/data-collection (map :result/data-collection xargs-results)
          :result/data (map :result/data xargs-results)})
