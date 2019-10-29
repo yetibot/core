@@ -6,22 +6,50 @@
     [yetibot.core.parser :refer [parse-and-eval transformer parser]]
     [taoensso.timbre :refer [color-str debug info]]))
 
-(defn simple-command? [parsed-expr]
+(defn simple-command?
+  "Helper for command-execution-info.
+
+   We only support single expressions (not pipes) so that command info can
+   properly extract the meta-data for it.
+
+   Complex expressions could be supported by either:
+
+   1. Ignoring all expressions except the first
+   2. Walking the parse tree and computing meta for all expressions and returning
+      an appropriate corresponding data structure."
+  [parsed-expr]
   (every?
-    identity
-    ;; simple expressions only have 2 items in the top level parse tree
-    [(= 2 (count parsed-expr))
-     ;; simple expressions only have 1 :expr
-     (= 1 (->> parsed-expr
-               flatten
-               (filter (partial = :expr))
-               count))]))
+   identity
+   ;; simple expressions only have 2 items in the top level parse tree
+   ;; 1. the first is `:expr`
+   ;; 2. the second is a vector
+   [(= 2 (count parsed-expr))
+    (= :expr (first parsed-expr))
+    (vector? (second parsed-expr))]))
+
+(comment
+  ;; NOTE: this is no longer true:
+  ;; simple expressions only have 1 :expr
+  ;; we changed `simple-command?` to return true for expressions that contain
+  ;; sub-expressions
+  (= 1 (->> parsed-expr
+            flatten
+            (filter (partial = :expr))
+            count))
+
+  (simple-command?
+   [:expr
+    [:cmd
+     [:words
+      "echo"
+      [:space " "]
+      [:sub-expr [:expr [:cmd [:words "bar"]]]]]]]))
 
 (defn command-execution-info
   "Obtain parsing results and a data structure representing the command and
    subcommand that was executed and optionally its result.
 
-   Only supports single command expressions (no pipes or sub expressions).
+   Only supports single command expressions (no pipes).
 
    Required arguments:
 

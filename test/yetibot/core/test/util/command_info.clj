@@ -15,8 +15,8 @@
  (simple-command? (parser "echo | echo")) => falsey)
 
 (fact
- "simple-command? should be false on commands with sub-expressions"
- (simple-command? (parser "echo `bar`")) => falsey)
+ "simple-command? should be true on commands with sub-expressions"
+ (simple-command? (parser "echo `bar`")) => truthy)
 
 (fact
  "command-execution-info returns partial data on an unknown command"
@@ -27,6 +27,12 @@
      :match nil
      :command "foo"
      :command-args "bar"})
+
+(fact
+ "command-execution-info runs top level command even when a sub-expr is included"
+ (command-execution-info
+  "echo foo bar `echo qux`"
+  {:run-command? true}) => truthy)
 
 (fact
  "command-execution-info returns correct data for a known command with opts"
