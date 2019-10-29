@@ -1,8 +1,19 @@
 # yetibot.core change log
 
+## `[yetibot/core "20191029.192841.d316d17"]`
+
+Allow sub expressions in xargs -
+[#114](https://github.com/yetibot/yetibot.core/pull/114)
+
+## `[yetibot/core "20191029.181729.026a04c"]`
+
+Handle "Nick in use" notice in IRC adapter -
+[#113](https://github.com/yetibot/yetibot.core/pull/113) by
+[@sarg](https://github.com/sarg)
+
 ## `[yetibot/core "20191017.211644.6ee48e9"]`
 
-- Fix data propagation for collections in xargs 
+- Fix data propagation for collections in xargs
   [#112](https://github.com/yetibot/yetibot.core/pull/112)
 
 ## `[yetibot/core "20191015.195424.5066036"]`
