@@ -35,7 +35,7 @@
                                  ::port
                                  ::password]))
 
-(declare join-or-part-with-current-channels connect start)
+(declare join-or-part-with-current-channels connect start stop)
 
 (defn channels [{:keys [current-channels] :as a}] @current-channels)
 
@@ -48,6 +48,12 @@
 
 (defn split-msg-into-irc-max-length-chunks [msg]
   (map join (partition-all irc-max-message-length msg)))
+
+(defn reconnect [adapter reason]
+  (log/info reason ", trying to reconnect in" wait-before-reconnect "ms")
+  (stop adapter)
+  (Thread/sleep wait-before-reconnect)
+  (start adapter))
 
 (def send-msg
   "Rate-limited function for sending messages to IRC. It's rate limited in order
@@ -64,10 +70,7 @@
         (catch java.net.SocketException e
           ; it must have disconnect, try reconnecting again
           ; TODO add better retry, like Slack
-          (log/info "SocketException, trying to reconnect in" wait-before-reconnect "ms")
-          (Thread/sleep wait-before-reconnect)
-          (connect adapter)
-          (start adapter))))
+          (reconnect adapter "SocketException"))))
     1 :second 5))
 
 (defn- create-user [info]
@@ -182,6 +185,39 @@
     (users/add-user (chat-source channel)
                     (create-user {:user user :nick nick}))))
 
+(defn next-nick [nick]
+  "Select next alternative nick"
+
+  ;; rfc1459:
+  ;; Each client is distinguished from other clients by a unique
+  ;; nickname having a maximum length of nine (9) characters.
+  (let [nick-len (count nick)]
+    (if (< nick-len 9)
+      (str nick "_")
+
+      (loop [nick (vec nick) i (dec nick-len)]
+        (when (>= i 0)
+          (let [c (Character/digit (nth nick i) 10)
+                overflow? (= c 9)
+                next-nick (assoc nick i (mod (inc c) 10))]
+            (if overflow?
+              (recur next-nick (dec i))
+              (clojure.string/join next-nick))))))))
+
+(defn handle-nick-in-use [a _ info]
+  (log/debug "433" info)
+  (let [{[_ nick] :params} info
+        {:keys [nick-state]} a
+        {:keys [retries nick]} @nick-state
+        can-retry? (< retries 10)
+        next-nick (when can-retry? (next-nick nick))
+        next-state (when next-nick {:retries (inc retries) :nick next-nick})]
+
+    (reset! nick-state next-state)
+    (if next-state
+      (reconnect a (str "nick " nick " is already in use"))
+      (log/info "Nick retries exhausted."))))
+
 (defn handle-invite [a _ info]
   (log/info "handle invite" info)
   (join-channel a (second (:params info))))
@@ -225,7 +261,8 @@
                :nick #'handle-nick
                :invite #'handle-invite
                :366 #'handle-end-of-names
-               :352 #'handle-who-reply}]
+               :352 #'handle-who-reply
+               :433 #'handle-nick-in-use}]
           [event-name
            ;; these are the args passed from irclj event fire
            (fn [& event-args]
@@ -233,8 +270,16 @@
              (binding [*adapter* adapter]
                (apply (partial event-handler adapter) event-args)))])))
 
-(defn connect [{:keys [config conn] :as a}]
-  (let [username (or (:username config) (str "yetibot_" (rand-int 1000)))
+
+
+(defn connect [{:keys [config conn nick-state] :as a}]
+  (when-not @nick-state
+    (reset!
+     nick-state
+     {:retries 0
+      :nick (or (:username config) (str "yetibot_" (rand-int 1000)))}))
+
+  (let [username (:nick @nick-state)
         host (or (:host config) "irc.freenode.net")
         port (read-string (or (:port config) "6667"))
         ssl? (boolean (:ssl config))]
@@ -270,7 +315,7 @@
 
 (defn start
   "Join and fetch all users with WHO <channel>"
-  [{:keys [channel-config config conn] :as adapter}]
+  [{:keys [channel-config config conn nick-state] :as adapter}]
   (binding [*adapter* adapter]
     (info "starting IRC with" config)
     (info "*adapter* is" (log/color-str :blue (pr-str *adapter*)))
@@ -280,11 +325,12 @@
 
 (defn stop
   "Kill the irc conection"
-  [{:keys [conn]}]
+  [{:keys [current-channels conn]}]
   (when-let [c @conn] (irc/kill c))
+  (reset! current-channels #{})
   (reset! conn nil))
 
-(defrecord IRC [config channel-config current-channels conn]
+(defrecord IRC [config channel-config current-channels conn nick-state]
 
   ; config
   ; Holds the immutable configuration for a single IRC Adapter instance.
@@ -333,4 +379,4 @@
 
 (defn make-irc
   [config]
-  (->IRC config (atom {}) (atom #{}) (atom nil)))
+  (->IRC config (atom {}) (atom #{}) (atom nil) (atom nil)))

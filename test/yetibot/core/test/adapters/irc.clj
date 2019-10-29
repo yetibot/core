@@ -1,5 +1,6 @@
 (ns yetibot.core.test.adapters.irc
   (:require
+    [midje.sweet :refer [=> fact facts]]
     [yetibot.core.adapters :as adapters]
     [yetibot.core.adapters.irc :refer :all]
     [yetibot.core.chat :as chat]
@@ -30,3 +31,11 @@
       (:groups (list-groups)))
 
     ))
+
+(facts "next-nick should produce correct value"
+  (next-nick "yetibot") => "yetibot_"
+  (next-nick "yetibot_") => "yetibot__"
+  (next-nick "yetibot__") => "yetibot_0"
+  (next-nick "yetibot_0") => "yetibot_1"
+  (next-nick "yetibot_9") => "yetibot00"
+  (next-nick "999999999") => nil)
