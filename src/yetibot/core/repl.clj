@@ -61,6 +61,7 @@
   (load-minimal-with-db))
 
 (defn stop []
+  (paj/stop)
   (web/stop-web-server)
   (init/stop-nrepl!)
   (adapters/stop)
