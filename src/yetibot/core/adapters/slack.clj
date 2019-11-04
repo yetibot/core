@@ -446,10 +446,10 @@
 ;; lifecycle
 
 (defn stop [{:keys [should-ping? conn] :as adapter}]
-  (timbre/info "Stop Slack" (pr-str should-ping? conn))
+  (timbre/info "Stop Slack" (pr-str should-ping?))
   (reset! should-ping? false)
   (when @conn
-    (timbre/info "Closing" @conn)
+    (timbre/info "Closing Slack")
     (slack/send-event (:dispatcher @conn) :close))
   (reset! conn nil))
 
