@@ -55,8 +55,8 @@
                    {:plugins [[lein-midje "3.2.1"]
                               [lein-cloverage "1.1.1"]]
                     :dependencies [[lilactown/punk-adapter-jvm "0.0.10"]
-                                   [midje "1.9.6"]
-                                   [nubank/matcher-combinators "0.9.0"]]}]
+                                   [midje "1.9.9"]
+                                   [nubank/matcher-combinators "1.2.4"]]}]
              :test
              {:resource-paths ["test/resources"]
               :env {:yb-adapters-freenode-type "irc"
@@ -68,7 +68,7 @@
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.4.2"]
                  [org.clojure/tools.trace "0.7.10"]
-                 [org.clojure/tools.namespace "0.2.11"]
+                 [org.clojure/tools.namespace "0.3.1"]
                  [org.clojure/java.classpath "0.3.0"]
                  [org.clojure/core.cache "0.8.2"]
                  [org.clojure/core.memoize "0.8.2"]
@@ -120,22 +120,22 @@
 
                  ; json parsing / schema
                  [com.bigml/closchema "0.1.8"]
-                 [json-path "1.0.1"]
+                 [json-path "2.1.0"]
 
                  ; utils
-                 [funcool/cuerdas "2.1.0"]
+                 [funcool/cuerdas "2.2.0"]
                  [clj-stacktrace "0.2.8"]
                  [clj-fuzzy "0.4.1"]
                  [robert/hooke "1.3.0"]
-                 [clj-time "0.14.4"] ; includes joda-time
+                 [clj-time "0.15.2"] ; includes joda-time
                  [throttler "1.0.0"]
                  [expound "0.7.2"]
                  ; scheduling used for mail. could be replaced by
                  ; hara.io.scheduler
                  [overtone/at-at "1.2.0"]
                  ; scheduling to support `cron` command
-                 [zcaudate/hara.io.scheduler "2.8.2"]
-                 [inflections "0.13.0"]
+                 [zcaudate/hara.io.scheduler "2.8.7"]
+                 [inflections "0.13.2"]
                  [environ "1.1.0"]
                  [dec "1.0.1"]
                  ; retry
@@ -148,11 +148,11 @@
                  [metrics-clojure-riemann "2.10.0"]
 
                  ; web/ring
-                 [ring/ring-json "0.4.0"]
-                 [ring/ring-core "1.6.3"]
+                 [ring/ring-json "0.5.0"]
+                 [ring/ring-core "1.7.1"]
                  [ring-logger-timbre "0.7.6"]
                  [ring.middleware.conditional "0.2.0"]
-                 [ring-cors "0.1.12"]
+                 [ring-cors "0.1.13"]
                  [nrepl "0.6.0"]
                  [http-kit "2.3.0"]
                  [ring/ring-defaults "0.3.2"]
@@ -164,10 +164,10 @@
                  [org.flatland/ordered "1.5.7"]
 
                  ; web
-                 [com.walmartlabs/lacinia "0.32.0"] ;; graphql
+                 [com.walmartlabs/lacinia "0.35.0"] ;; graphql
                  [selmer "1.12.17"]
                  [compojure "1.6.1"]
-                 [prone "1.6.1"]
+                 [prone "2019-07-08"]
                  [hiccup "1.0.5"]
                  [hickory "0.7.1"] ; parse html into hiccup
                  ]
