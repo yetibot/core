@@ -80,28 +80,28 @@
                  [stylefruits/gniazdo-jsr356 "1.0.0"]
 
                  ; DurationFormatUtils for uptime
-                 [org.apache.commons/commons-lang3 "3.6"]
+                 [org.apache.commons/commons-lang3 "3.9"]
 
                  ; logging
                  [com.taoensso/timbre "4.10.0"]
 
                  ; parsing
-                 [instaparse "1.4.7"]
+                 [instaparse "1.4.10"]
                  ; parser visualization - disable unless needed
                  ; [rhizome "0.1.9"]
                  ;; natural language parsing
                  [wit/duckling "0.4.24"]
 
                  ; http
-                 [clj-http "3.9.1"]
+                 [clj-http "3.10.0"]
 
                  ; github
-                 [irresponsible/tentacles "0.6.2"]
+                 [irresponsible/tentacles "0.6.6"]
 
                  ; email
-                 [com.draines/postal "2.0.2"]
-                 [io.forward/clojure-mail "1.0.7" :exclusions [medley]]
-                 [medley "1.1.0"]
+                 [com.draines/postal "2.0.3"]
+                 [io.forward/clojure-mail "1.0.8" :exclusions [medley]]
+                 [medley "1.2.0"]
 
                  ; chat protocols
                  [irclj "0.5.0-alpha4"]
