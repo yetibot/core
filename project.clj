@@ -74,8 +74,8 @@
                  [org.clojure/core.memoize "0.8.2"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.3"]
-                 [org.clojure/java.jdbc "0.7.9"]
-                 [org.postgresql/postgresql "42.2.5"]
+                 [org.clojure/java.jdbc "0.7.10"]
+                 [org.postgresql/postgresql "42.2.8"]
 
                  [stylefruits/gniazdo-jsr356 "1.0.0"]
 
