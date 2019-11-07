@@ -64,14 +64,14 @@
                     :yb-adapters-freenode-port "6667"
                     :yb-adapters-freenode-username "yetibot-test"}}}
   :dependencies [[org.clojure/clojure "1.10.0"]
-                 [org.clojure/core.async "0.4.490"]
+                 [org.clojure/core.async "0.4.500"]
                  [org.clojure/data.json "0.2.6"]
-                 [org.clojure/tools.cli "0.4.1"]
+                 [org.clojure/tools.cli "0.4.2"]
                  [org.clojure/tools.trace "0.7.10"]
                  [org.clojure/tools.namespace "0.2.11"]
                  [org.clojure/java.classpath "0.3.0"]
-                 [org.clojure/core.cache "0.7.2"]
-                 [org.clojure/core.memoize "0.7.1"]
+                 [org.clojure/core.cache "0.8.2"]
+                 [org.clojure/core.memoize "0.8.2"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.3"]
                  [org.clojure/java.jdbc "0.7.9"]
