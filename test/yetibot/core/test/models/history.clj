@@ -3,7 +3,7 @@
     [clojure.java.jdbc :as sql]
     [yetibot.core.models.history :refer :all]
     [yetibot.core.db :as db]
-    [yetibot.core.util :refer [is-command?]]
+    [yetibot.core.util.command :refer [command?]]
     [clojure.test :refer :all]))
 
 (def chat-source {:adapter :slack :uuid :test :room "foo"})

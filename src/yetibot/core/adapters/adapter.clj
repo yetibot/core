@@ -22,10 +22,12 @@
          case the adapter should return instructions for its method of joining
          (e.g. /invite in Slack).")
 
-  (leave [_ channel] "leave channel - may not be supported - should give instructions
-                   just like join.")
+  (leave [_ channel]
+         "leave channel - may not be supported - should give instructions just
+          like join.")
 
-  (chat-source [_ channel] "Define a chat-source map specific to this adapter")
+  (chat-source [_ channel] "Define a chat-source map specific to this adapter
+                            and provided channel")
 
   (start [_] "Start the chat adapter")
 

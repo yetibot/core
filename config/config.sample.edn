@@ -25,6 +25,8 @@
          :domain "",
          :password ""},
   :monitoring {:host "" :port 5555 :interval 10}
+  ;; the keys in adapters can be named anything you like so long as they do not
+  ;; container "-" and are globally unique.
   :adapters {:myteam {:type "slack",
                       :token "xoxb-111111111111111111111111111111111111"}
              :k8s {:type "slack",
@@ -33,7 +35,12 @@
                         :username "yetibot",
                         :host "chat.freenode.net",
                         :port "7070",
-                        :ssl "true"}},
+                        :ssl "true"}
+             :mymattermost {:type "mattermost"
+                            :host "yetibot-mattermost.herokuapp.com"
+                            :token "h1111111111111111111111111"
+                            :secure "true" ;; true by default
+                            }},
   :ssh {:groups
         [{:user "",
           :servers [{:host "", :name ""} {:host "", :name ""}],

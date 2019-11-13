@@ -51,6 +51,11 @@
    :yetibot-adapters-freenode-ssl "true"
    :yetibot-adapters-freenode-username "yetibot"
 
+   :yetibot-adapters-mymattermost-type "mattermost"
+   :yetibot-adapters-mymattermost-host "yetibot-mattermost.herokuapp.com"
+   :yetibot-adapters-mymattermost-token "h1111111111111111111111111"
+   :yetibot-adapters-mymattermost-secure "true" ;; true by default
+
    ;; Listens on port 3000 but this may be different for you if you (e.g. if you
    ;; use a load balancer or map ports in Docker).
    :yetibot-url "http://localhost:3000"

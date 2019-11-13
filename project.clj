@@ -76,8 +76,7 @@
                  [org.clojure/data.zip "0.1.3"]
                  [org.clojure/java.jdbc "0.7.10"]
                  [org.postgresql/postgresql "42.2.8"]
-
-                 [stylefruits/gniazdo-jsr356 "1.0.0"]
+                 [clojure-interop/java.nio "1.0.5"]
 
                  ; DurationFormatUtils for uptime
                  [org.apache.commons/commons-lang3 "3.9"]
@@ -92,10 +91,15 @@
                  ;; natural language parsing
                  [wit/duckling "0.4.24"]
 
-                 ; http
+                 ;; http
                  [clj-http "3.10.0"]
+                 ;; sockets
+                 [http.async.client "1.3.1"]
+                 ;; web sockets
+                 [stylefruits/gniazdo "1.1.2"] ;; TODO remove in favor of java-http-clj
+                 [java-http-clj "0.4.1"]
 
-                 ; github
+                 ;; github
                  [irresponsible/tentacles "0.6.6"]
 
                  ; email
@@ -108,6 +112,8 @@
                  [org.julienxx/clj-slack "0.6.3"]
                  [slack-rtm "0.1.7"]
                  [slack-rtm "0.1.7" :exclusions [[stylefruits/gniazdo]]]
+                 [mattermost-clj "4.0.3"]
+
 
                  ; javascript evaluation
                  [evaljs "0.1.2"]
@@ -140,7 +146,9 @@
                  [dec "1.0.1"]
                  ; retry
                  [robert/bruce "0.8.0"]
+                 ;; TODO remove com.cemerick/url in favor of lambdaisland/uri
                  [com.cemerick/url "0.1.1"]
+                 [lambdaisland/uri "1.1.0"]
                  ;; [io.aviso/pretty "0.1.34"] ; pretty stacktraces
 
                  ;monitoring
