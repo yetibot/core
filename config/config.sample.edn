@@ -11,6 +11,7 @@
            :options {:safe "high"}}
   :db {:url "postgresql://localhost:5432/yetibot"
        :table {:prefix "yetibot_"}},
+  :history {:disabled "false"},
   :twitter {:search {:lang "en"},
             :consumer {:secret "", :key ""},
             :secret "",
