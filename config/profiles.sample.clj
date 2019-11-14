@@ -26,6 +26,9 @@
    :yetibot-db-url "postgresql://localhost:5432/yetibot"
    :yetibot-db-table-prefix "yetibot_"
 
+   ;; Storing of channel history in the history table is on by default
+   :yetibot-history-disabled "false"
+
    ;; ADAPTERS
 
    ;; Yetibot can listen on multiple instances of each adapters type. Current

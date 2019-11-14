@@ -5,6 +5,7 @@
     [yetibot.core.db.history :refer [create query]]
     [clojure.string :refer [join split]]
     [yetibot.core.util.time :as t]
+    [yetibot.core.config :refer [get-config]]
     [clj-time
      [coerce :refer [from-date to-sql-time]]
      [format :refer [formatter unparse]]
@@ -13,9 +14,12 @@
                    default-time-zone now time-zone-for-id date-time utc
                    ago hours days weeks years months]]]
     [yetibot.core.models.users :as u]
-    [taoensso.timbre :refer [info color-str warn error spy]]))
+    [taoensso.timbre :refer [info color-str warn error spy]]
+    [clojure.spec.alpha :as s]))
 
 ;;;; read
+(s/def ::yetibot-history-disabled string?)
+(defn history-enabled [] (not (= (:value (get-config ::yetibot-history-disabled [:history :disabled])) "true")))
 
 (defn flatten-one [n] (if (= 1 n) first identity))
 
@@ -162,6 +166,8 @@
 ;;;; write
 
 (defn add [{:keys [chat-source-adapter] :as history-item}]
-  (create
-    (assoc history-item
-           :chat-source-adapter (pr-str chat-source-adapter))))
+  (when 
+    (history-enabled)
+    (create
+      (assoc history-item
+             :chat-source-adapter (pr-str chat-source-adapter)))))
