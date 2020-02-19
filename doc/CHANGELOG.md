@@ -1,5 +1,13 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200219.184121.8aef96d"]`
+
+This upgrade gets us ready for moving to Java 11 as the minimum version for
+Yetibot.
+
+Use cp/system-classpath for java > 8 since we are switching to 11+
+[#118](https://github.com/yetibot/yetibot.core/pull/118)
+
 ## `[yetibot/core "20191029.192841.d316d17"]`
 
 Allow sub expressions in xargs -
