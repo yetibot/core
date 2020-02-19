@@ -6,9 +6,11 @@
     [clojure.tools.namespace.find :as ns]
     [clojure.java.classpath :as cp]))
 
+(defn all-namespaces []
+  (ns/find-namespaces (cp/system-classpath)))
+
 (defn find-namespaces [pattern]
-  (let [all-ns (ns/find-namespaces (cp/classpath))]
-    (filter #(re-matches pattern (str %)) all-ns)))
+  (filter #(re-matches pattern (str %)) (all-namespaces)))
 
 (def yetibot-command-namespaces
   [#"^yetibot\.(core\.)?commands.*" #"^.*plugins\.commands.*"])
