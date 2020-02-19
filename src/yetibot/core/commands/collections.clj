@@ -5,7 +5,7 @@
             [taoensso.timbre :as timbre :refer [trace debug error info]]
             [yetibot.core.chat :refer [chat-data-structure]]
             [yetibot.core.hooks :refer [cmd-hook]]
-            [yetibot.core.interpreter :refer [handle-cmd]]
+            [yetibot.core.interpreter :refer [handle-cmd *contextual-data*]]
             [yetibot.core.models.users :refer [min-user-keys]]
             [yetibot.core.util
              :refer
@@ -180,21 +180,24 @@
             ((resolve cmd-runner)
              (fn [[idx item]]
                (try
-                 (let [params-with-data (if data-collection
-                                          (assoc params
-                                                 :data (nth data-collection
-                                                            idx)))
+                 (let [;; there may or may not be data from the previous pipe
+                       possible-data (nth data-collection idx)
+                       params-with-data (when data-collection
+                                          (assoc params :data possible-data))
                        _ (info "data for" idx (nth data-collection idx))
                        cmd-result
-                       (apply
-                        handle-cmd
-                        ;; item could be a collection, such as when xargs is
-                        ;; used on nested collections, e.g.:
-                        ;; repeat 5 jargon | xargs words | xargs head
-                        (if (coll? item)
-                          [args (merge params-with-data {:raw item :opts item})]
-                          [(psuedo-format args item)
-                           (merge params-with-data {:raw item :opts nil})]))
+                       ;; allow the data to "leak" into sub commands of the
+                       ;; expression passed to xargs
+                       (binding [*contextual-data* possible-data]
+                         (apply
+                         handle-cmd
+                         ;; item could be a collection, such as when xargs is
+                         ;; used on nested collections, e.g.:
+                         ;; repeat 5 jargon | xargs words | xargs head
+                         (if (coll? item)
+                           [args (merge params-with-data {:raw item :opts item})]
+                           [(psuedo-format args item)
+                            (merge params-with-data {:raw item :opts nil})])))
 
                        _ (debug "xargs cmd-result" (pr-str cmd-result))]
                    (if (map? cmd-result)
