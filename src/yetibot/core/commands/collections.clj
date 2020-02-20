@@ -184,20 +184,28 @@
                        possible-data (nth data-collection idx)
                        params-with-data (when data-collection
                                           (assoc params :data possible-data))
-                       _ (info "data for" idx (nth data-collection idx))
+                       _ (info "data for" idx possible-data
+                               {:current-contextual *contextual-data*
+                                :params-with-data params-with-data})
+
                        cmd-result
                        ;; allow the data to "leak" into sub commands of the
-                       ;; expression passed to xargs
+                       ;; expression passed to xargs - although at this point
+                       ;; those subcommands would have been evaluated too early,
+                       ;; so this achieves nothing. perhaps it will be useful in
+                       ;; the future. see this issue for more info:
+                       ;; https://github.com/yetibot/yetibot/issues/995
                        (binding [*contextual-data* possible-data]
+                         (info "inner contextual-data" *contextual-data*)
                          (apply
-                         handle-cmd
+                          handle-cmd
                          ;; item could be a collection, such as when xargs is
                          ;; used on nested collections, e.g.:
                          ;; repeat 5 jargon | xargs words | xargs head
-                         (if (coll? item)
-                           [args (merge params-with-data {:raw item :opts item})]
-                           [(psuedo-format args item)
-                            (merge params-with-data {:raw item :opts nil})])))
+                          (if (coll? item)
+                            [args (merge params-with-data {:raw item :opts item})]
+                            [(psuedo-format args item)
+                             (merge params-with-data {:raw item :opts nil})])))
 
                        _ (debug "xargs cmd-result" (pr-str cmd-result))]
                    (if (map? cmd-result)

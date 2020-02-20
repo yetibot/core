@@ -78,6 +78,7 @@
 
       ;; bind data so that it "leaks" into evaluation of sub expressions
       (binding [*contextual-data* previous-data]
+        (debug "piping with *contextual-data*" *contextual-data*)
         (let [cmd-with-args (evaluator cmd-ast)
 
              ;; the result of a commad handler can either be:
