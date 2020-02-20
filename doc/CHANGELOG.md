@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200219.223432.7b72073"]`
+
+Prevent potential NPE by ensuring `connection-last-active-timestamp` is not nil
+in Slack's `connected?` function.
+
 ## `[yetibot/core "20200219.184121.8aef96d"]`
 
 This upgrade gets us ready for moving to Java 11 as the minimum version for

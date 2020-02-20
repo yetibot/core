@@ -542,13 +542,14 @@
 
   (a/connected? [{:keys [connected?
                          connection-last-active-timestamp]}]
-    (let [now (System/currentTimeMillis)
-          time-since-last-active (- now @connection-last-active-timestamp)
-          surpassed-timeout? (> time-since-last-active
-                                (+ slack-ping-pong-timeout-ms
-                                   slack-ping-pong-interval-ms))]
-      (and @connected?
-           (not surpassed-timeout?))))
+    (when @connection-last-active-timestamp
+      (let [now (System/currentTimeMillis)
+           time-since-last-active (- now @connection-last-active-timestamp)
+           surpassed-timeout? (> time-since-last-active
+                                 (+ slack-ping-pong-timeout-ms
+                                    slack-ping-pong-interval-ms))]
+       (and @connected?
+            (not surpassed-timeout?)))))
 
 
   (a/connection-last-active-timestamp [_] @connection-last-active-timestamp)
