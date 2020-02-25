@@ -2,7 +2,6 @@
   "This can be used to start/stop a Mattermost adapter for the purpose of manual
    testing during development."
   (:require
-   [gniazdo.core :as ws]
    [yetibot.core.repl :refer [load-minimal-with-db]]
    [yetibot.core.logging :as logging]
    [midje.sweet :refer [=> fact facts]]
@@ -203,7 +202,6 @@
   (:members (r/reflect @(:conn adapter)))
   @(:conn adapter)
 
-  (ws/close @(:conn adapter))
 
   (binding [*config* (last (mattermost-config))]
     (channels))

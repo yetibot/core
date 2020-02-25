@@ -96,7 +96,6 @@
                  ;; sockets
                  [http.async.client "1.3.1"]
                  ;; web sockets
-                 [stylefruits/gniazdo "1.1.2"] ;; TODO remove in favor of java-http-clj
                  [java-http-clj "0.4.1"]
 
                  ;; github
