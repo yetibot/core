@@ -5,6 +5,9 @@
 Add chat adapter for [Mattermost](https://mattermost.org/)
 [#117](https://github.com/yetibot/yetibot.core/pull/117)
 
+Check out the [config sample](https://github.com/yetibot/yetibot.core/blob/a1b0ae9407aed046531e1f9b3002a1a161f6b459/config/profiles.sample.clj#L54-L57)
+to get started!
+
 ## `[yetibot/core "20200219.223432.7b72073"]`
 
 Prevent potential NPE by ensuring `connection-last-active-timestamp` is not nil
