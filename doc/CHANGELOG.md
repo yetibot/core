@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200226.184017.75c0157"]`
+
+Add chat adapter for [Mattermost](https://mattermost.org/)
+[#117](https://github.com/yetibot/yetibot.core/pull/117)
+
 ## `[yetibot/core "20200219.223432.7b72073"]`
 
 Prevent potential NPE by ensuring `connection-last-active-timestamp` is not nil

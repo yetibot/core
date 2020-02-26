@@ -214,7 +214,7 @@
     (condp = event
       "posted" (on-posted adapter message)
       "reaction_added" (on-reaction-added adapter message)
-      (debug "Don't know how to handle Mattermost event" event))))
+      (debug "Unhandled Mattermost event:" event))))
 
 (defn start-pinger!
   "Start pinging the ws. This should be idempotent to handle reconnects
