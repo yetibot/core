@@ -90,14 +90,6 @@
     (map (comp s/trim f) kvs)
     items))
 
-
-;; patterns
-
-(defn is-command? [h]
-  (info (pr-str h))
-  (and h (re-find #"^\!" h)))
-
-
 ;; image detection
 
 (def image-pattern #"\.(png|jpe?g|gif|webp|svg)$")

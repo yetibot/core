@@ -6,7 +6,6 @@
     [clojure.spec.alpha :as s]
     [yetibot.core.adapters.adapter :as a]
     [robert.bruce :refer [try-try-again] :as rb]
-    [gniazdo.core :as ws]
     [clojure.string :as string]
     [yetibot.core.interpreter :refer [*chat-source*]]
     [yetibot.core.models.users :as users]
@@ -449,7 +448,7 @@
   (timbre/info "Stop Slack" (pr-str should-ping?))
   (reset! should-ping? false)
   (when @conn
-    (timbre/info "Closing Slack")
+    (timbre/info "Closing Slack" (a/uuid adapter))
     (slack/send-event (:dispatcher @conn) :close))
   (reset! conn nil))
 

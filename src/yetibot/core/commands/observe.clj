@@ -9,7 +9,6 @@
     [yetibot.core.db.observe :as model]
     [yetibot.core.handler :refer [record-and-run-raw all-event-types]]
     [yetibot.core.hooks :refer [cmd-hook obs-hook]]
-    [yetibot.core.util :refer [is-command?]]
     [yetibot.core.util.command :as command]
     [yetibot.core.interpreter :refer [*chat-source*]]
     [yetibot.core.models.help :as help]
@@ -46,7 +45,7 @@
         message-username (:username message-user)]
     ;; ignore commands on message types
     (when-not (and (= event-type :message)
-                   (is-command? body))
+                   (command/extract-command body))
       ;; (info "obs-handler" (color-str :blue event-info))
       ;; check all known observers from the db to see if any fired
       (doseq [observer observers]

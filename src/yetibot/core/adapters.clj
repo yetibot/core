@@ -1,17 +1,19 @@
 (ns yetibot.core.adapters
   "Manages the lifecycle of adapters"
   (:require
-    [clojure.spec.alpha :as s]
-    [yetibot.core.adapters.irc :as irc]
-    [yetibot.core.adapters.slack :as slack]
-    [taoensso.timbre :as log :refer [info debug warn error]]
-    [clojure.stacktrace :refer [print-stack-trace]]
-    [yetibot.core.adapters.adapter :as a]
-    [yetibot.core.config :refer [get-config]]
-    [yetibot.core.adapters.irc :as irc]))
+   [clojure.spec.alpha :as s]
+   [yetibot.core.adapters.irc :as irc]
+   [yetibot.core.adapters.slack :as slack]
+   [taoensso.timbre :as log :refer [info debug warn error]]
+   [clojure.stacktrace :refer [print-stack-trace]]
+   [yetibot.core.adapters.adapter :as a]
+   [yetibot.core.config :refer [get-config]]
+   [yetibot.core.adapters.mattermost :as mattermost]
+   [yetibot.core.adapters.irc :as irc]))
 
 (s/def ::adapter (s/or :slack ::slack/config
-                       :irc ::irc/config))
+                       :irc ::irc/config
+                       :mattermost ::mattermost/config))
 
 (s/def ::config (s/map-of keyword? ::adapter))
 
@@ -32,6 +34,7 @@
   (condp = (keyword (:type config))
     :slack (slack/make-slack config)
     :irc (irc/make-irc config)
+    :mattermost (mattermost/make-mattermost config)
     (throw (ex-info (str "Unknown adapter type " (:type config)) config))))
 
 (defn register-adapters! []
@@ -57,3 +60,8 @@
 (defn stop []
   (dorun (map a/stop (a/active-adapters)))
   (reset! a/adapters {}))
+
+(comment
+  (register-adapters!)
+  (adapters-config))
+
