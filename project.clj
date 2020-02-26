@@ -110,9 +110,7 @@
                  [irclj "0.5.0-alpha4"]
                  [org.julienxx/clj-slack "0.6.3"]
                  [slack-rtm "0.1.7"]
-                 [slack-rtm "0.1.7" :exclusions [[stylefruits/gniazdo]]]
                  [mattermost-clj "4.0.3"]
-
 
                  ; javascript evaluation
                  [evaljs "0.1.2"]
