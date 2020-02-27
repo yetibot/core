@@ -3,6 +3,7 @@ on: push
 
 
 jobs:
+
   test:
     name: Test yetibot/core
     runs-on: ubuntu-latest
@@ -31,7 +32,8 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: create database
-        uses: docker://postgres:11
+        # can't use uses and run at the same time
+        # uses: docker://postgres:11
         env:
           PGPASSWORD: postgres
           PGUSER: postgres
