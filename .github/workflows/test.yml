@@ -41,7 +41,7 @@ jobs:
           PGPORT: ${{ job.services.postgres.ports['5432'] }}
         run: |
           env
-          psql -c 'create database yetibot;'
+          # psql -c 'create database yetibot;'
 
       - name: debug
         run: |
