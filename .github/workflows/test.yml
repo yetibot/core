@@ -22,6 +22,7 @@ jobs:
       - name: Check out
         # checkout@v2 does not pull the .git directory into the working dir
         uses: actions/checkout@v2
+        lfs: true
       - name: git status
         run: |
           ls -al
