@@ -13,7 +13,7 @@ jobs:
         ports:
           # assigns a random free host port
           - 5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 10
+        # options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 10
         env:
           POSTGRES_DB: yetibot
           POSTGRES_USER: postgres
