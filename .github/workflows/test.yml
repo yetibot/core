@@ -29,9 +29,9 @@ jobs:
           echo $SHELL
           which git
         env:
-          YETIBOT_DB_URL: postgres://postgres@localhost:${{ job.services.postgres.ports['5432'] }}/yetibot
+          YETIBOT_DB_URL: postgres://postgres@postgres:${{ job.services.postgres.ports['5432'] }}/yetibot
       - name: lein test
         run: lein test
         env:
-          YETIBOT_DB_URL: postgres://postgres@localhost:${{ job.services.postgres.ports['5432'] }}/yetibot
+          YETIBOT_DB_URL: postgres://postgres@postgres:${{ job.services.postgres.ports['5432'] }}/yetibot
 
