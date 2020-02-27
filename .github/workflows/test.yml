@@ -17,7 +17,7 @@ jobs:
         env:
           POSTGRES_DB: yetibot
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ''
+          POSTGRES_PASSWORD: postgres
     steps:
       - name: Check out
         # checkout@v2 does not pull the .git directory into the working dir
@@ -30,6 +30,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: create database
+        uses: docker://postgres:11
+        env:
+          PGPASSWORD: postgres
+          PGUSER: postgres
+          PGHOST: postgres
+        run: |
+          psql -c 'create database yetibot;'
+
       - name: debug
         run: |
           echo $YETIBOT_DB_URL
@@ -37,9 +46,9 @@ jobs:
           echo $SHELL
           which git
         env:
-          YETIBOT_DB_URL: postgres://postgres@postgres:${{ job.services.postgres.ports['5432'] }}/yetibot
+          YETIBOT_DB_URL: postgres://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/yetibot
       - name: lein test
         run: lein test
         env:
-          YETIBOT_DB_URL: postgres://postgres@postgres:${{ job.services.postgres.ports['5432'] }}/yetibot
+          YETIBOT_DB_URL: postgres://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/yetibot
 
