@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200227.180915.e29cec8"]`
+
+Fix Slack websocket dependency by using latest at `stylefruits/gniazdo "1.1.3"`.
+This broke Slack adapter in the previous version.
+
 ## `[yetibot/core "20200226.184017.75c0157"]`
 
 Add chat adapter for [Mattermost](https://mattermost.org/)
