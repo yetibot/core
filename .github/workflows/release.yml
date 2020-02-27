@@ -1,0 +1,11 @@
+name: release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    name: Release to Clojars
+    runs-on: ubuntu-latest
