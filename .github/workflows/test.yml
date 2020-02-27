@@ -7,8 +7,6 @@ jobs:
     name: Test yetibot/core
     runs-on: ubuntu-latest
     container: clojure:openjdk-11
-    env:
-      YETIBOT_DB_URL: postgres://postgres@localhost:${{ job.services.postgres.ports['5432'] }}/yetibot
     services:
       postgres:
         image: postgres:11
@@ -30,6 +28,10 @@ jobs:
           ls -al
           echo $SHELL
           which git
+        env:
+          YETIBOT_DB_URL: postgres://postgres@localhost:${{ job.services.postgres.ports['5432'] }}/yetibot
       - name: lein test
         run: lein test
+        env:
+          YETIBOT_DB_URL: postgres://postgres@localhost:${{ job.services.postgres.ports['5432'] }}/yetibot
 
