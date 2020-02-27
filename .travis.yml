@@ -11,6 +11,9 @@ jdk:
 before_script:
   - psql -c 'create database yetibot;' -U postgres
 
+git:
+  depth: false
+
 env:
   - YETIBOT_DB_URL="postgresql://postgres@localhost:5432/yetibot"
 
