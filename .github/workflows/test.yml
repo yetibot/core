@@ -10,11 +10,11 @@ jobs:
     container: clojure:openjdk-11
     services:
       postgres:
-        image: postgres:11
+        image: postgres:10.8
         ports:
           # assigns a random free host port
           - 5432
-        # options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 10
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 10
         env:
           POSTGRES_DB: yetibot
           POSTGRES_USER: postgres
@@ -52,7 +52,9 @@ jobs:
           YETIBOT_DB_URL: postgres://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/yetibot
 
       - name: lein test
-        run: lein test
+        run: |
+          env
+          lein test
         env:
           YETIBOT_DB_URL: postgres://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/yetibot
 
