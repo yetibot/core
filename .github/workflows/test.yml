@@ -21,6 +21,10 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v2
+      - name: git status
+        run: |
+          git status
+          git show HEAD
       - name: lein test
         run: lein test
 
