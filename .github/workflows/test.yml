@@ -2,8 +2,6 @@ name: test
 
 on: push
 
-uses: docker://docker.pkg.github.com/peaceiris/actions-gh-pages/action:latest
-
 jobs:
   test:
     name: Test yetibot/core
