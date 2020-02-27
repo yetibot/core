@@ -24,33 +24,33 @@ jobs:
         # checkout@v2 does not pull the .git directory into the working dir
         uses: actions/checkout@v1
 
-      - uses: actions/cache@v1
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/project.clj') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+      # - uses: actions/cache@v1
+      #   with:
+      #     path: ~/.m2/repository
+      #     key: ${{ runner.os }}-maven-${{ hashFiles('**/project.clj') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-maven-
 
-      - name: create database
-        # can't use uses and run at the same time
-        # uses: docker://postgres:11
-        env:
-          PGPASSWORD: postgres
-          PGUSER: postgres
-          PGHOST: postgres
-          PGPORT: ${{ job.services.postgres.ports['5432'] }}
-        run: |
-          env
-          # psql -c 'create database yetibot;'
+      # - name: create database
+      #   # can't use uses and run at the same time
+      #   # uses: docker://postgres:11
+      #   env:
+      #     PGPASSWORD: postgres
+      #     PGUSER: postgres
+      #     PGHOST: postgres
+      #     PGPORT: ${{ job.services.postgres.ports['5432'] }}
+      #   run: |
+      #     env
+      #     # psql -c 'create database yetibot;'
 
       - name: debug
         run: |
-          echo $YETIBOT_DB_URL
           ls -al
-          echo $SHELL
-          which git
+          env
+          # which git && git --version
         env:
           YETIBOT_DB_URL: postgres://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/yetibot
+
       - name: lein test
         run: lein test
         env:
