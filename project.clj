@@ -108,8 +108,8 @@
 
                  ; chat protocols
                  [irclj "0.5.0-alpha4"]
-                 ;; use newer version of gniazdo than slack-rtm requires:
-                 [stylefruits/gniazdo "1.1.3"]
+                 ;; use this fork which uses javax.websockets for compatability with Yetibot
+                 [stylefruits/gniazdo-jsr356 "1.0.0"]
                  [slack-rtm "0.1.7" :exclusions [[stylefruits/gniazdo]]]
                  [org.julienxx/clj-slack "0.6.3"]
                  [mattermost-clj "4.0.3"]
