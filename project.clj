@@ -72,7 +72,7 @@
                  [org.clojure/java.classpath "0.3.0"]
                  [org.clojure/core.cache "0.8.2"]
                  [org.clojure/core.memoize "0.8.2"]
-                 [org.clojure/data.xml "0.0.8"]
+                 [org.clojure/data.xml "0.2.0-alpha6"]
                  [org.clojure/data.zip "0.1.3"]
                  [org.clojure/java.jdbc "0.7.10"]
                  [org.postgresql/postgresql "42.2.8"]
