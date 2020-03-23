@@ -129,7 +129,7 @@
     :SCORES (map (fn [{:keys [user-id score]}]
                    {:user_id user-id
                     :score score})
-                 (karma/get-high-scores limit))
+                 (karma/get-high-scores {:cnt limit}))
     :GIVERS (map (fn [{:keys [voter-id score]}]
                    {:user_id voter-id
                     :score score})
