@@ -22,8 +22,8 @@
     (if (nil? score) 0 score)))
 
 (defn get-notes
-  ([{uuid :uuid room :room} user-id]
-   (get-notes {uuid :uuid room :room} user-id 3))
+  ([chat-source user-id]
+   (get-notes chat-source user-id 3))
   ([{uuid :uuid room :room} user-id cnt]
    (let [cnt (if (or (<= cnt 0) (> cnt 100)) 3 cnt)]
      (map #(update % :created-at time.coerce/from-date)
@@ -36,9 +36,12 @@
                      :limit/clause cnt})))))
 
 (defn get-high-scores
-  ([] (get-high-scores nil 10))
-  ([chat-source] (get-high-scores chat-source 10))
-  ([{uuid :uuid room :room :as chat-source} cnt]
+  ([] (get-high-scores 10 nil))
+  ([cnt] (get-high-scores cnt nil))
+  ([cnt {uuid :uuid room :room :as chat-source}]
+
+   [{:keys [chat-source cnt] :or {cnt 10}}]
+
    (let [cnt (if (or (<= cnt 0) (> cnt 100)) 10 cnt)]
      (db/query (merge {:select/clause "user_id, SUM(points) as score"
                        :group/clause "user_id"
@@ -49,7 +52,6 @@
                         {:where/map {:chat-source-adapter (pr-str uuid)
                                      :chat-source-room room}}))))))
 
-;; TODO add chat source
 (defn get-high-givers
   ([] (get-high-givers 10))
   ([cnt]
