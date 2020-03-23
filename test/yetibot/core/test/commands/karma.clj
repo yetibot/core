@@ -1,7 +1,8 @@
 (ns yetibot.core.test.commands.karma
   (:require
    [midje.sweet :refer [namespace-state-changes with-state-changes fact => truthy]]
-   [yetibot.core.commands.karma :refer [get-high-scores
+   [yetibot.core.commands.karma :refer [error
+                                        get-high-scores
                                         get-score
                                         adjust-score]]
    [yetibot.core.models.karma :as model]
