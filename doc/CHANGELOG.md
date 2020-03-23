@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200323.223524.9b17527"]`
+
+[Make karma channel-local by default #123](https://github.com/yetibot/yetibot.core/pull/123)
+
 ## `[yetibot/core "20200227.180915.e29cec8"]`
 
 Fix Slack websocket dependency by using latest at `stylefruits/gniazdo "1.1.3"`.
