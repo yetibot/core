@@ -1,7 +1,9 @@
 (ns yetibot.core.test.commands.karma
   (:require
    [midje.sweet :refer [namespace-state-changes with-state-changes fact => truthy]]
-   [yetibot.core.commands.karma :refer :all]
+   [yetibot.core.commands.karma :refer [get-high-scores
+                                        get-score
+                                        adjust-score]]
    [yetibot.core.models.karma :as model]
    [yetibot.core.db :as db]
    [clj-time.core :as time]
@@ -12,10 +14,12 @@
 (def test-voter (str "test-voter-" epoch))
 (def test-note (str "test-note-" epoch))
 (def test-score 1000000)
+(def test-chat-source {:uuid :test :room "test-channel"})
 (def _ "entire-match not used by test")
 
 ;; The context passed to our command handlers
-(def ctx {:user {:id test-voter :name test-voter}})
+(def ctx {:chat-source test-chat-source
+          :user {:id test-voter :name test-voter}})
 
 (namespace-state-changes (before :contents (db/start)))
 
@@ -23,9 +27,9 @@
 
   ;; Our DB could have other users' scores so we make the assumption
   ;; that a high enough `test-score' will keep our `test-user' in the
-  ;; leaderboard.  Dodgy.
+  ;; leaderboard. Dodgy.
   (fact get-score
-        (model/add-score-delta! test-user test-voter test-score test-note)
+        (model/add-score-delta! test-chat-source test-user test-voter test-score test-note)
         (let [data (-> (get-score (assoc ctx :match [_ test-user]))
                        :result/data)]
           (:user-id data)                  => test-user
@@ -34,7 +38,7 @@
           (-> data :notes first :voter-id) => test-voter))
 
   (fact get-high-score
-        (model/add-score-delta! test-user test-voter test-score test-note)
+        (model/add-score-delta! test-chat-source test-user test-voter test-score test-note)
         (let [data (->> (get-high-scores ctx)
                         :result/data
                         (filter #(= (:user-id %) test-user))

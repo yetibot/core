@@ -65,7 +65,7 @@
   "karma # get leaderboard for current channel"
   {:yb/cat #{:fun}}
   [{chat-source :chat-source}]
-  (let [scores (model/get-high-scores chat-source)]
+  (let [scores (model/get-high-scores {:chat-source chat-source})]
     {:result/data scores
      :result/value (fmt-high-scores scores)}))
 
@@ -109,6 +109,6 @@
 (cmd-hook
  "karma"
  #"^(?x) \s* @(\w[-\w]*\w) \s*$" get-score
- #"^(?x) \s* @(\w[-\w]*\w) \s{0,2} (--|\+\+) (?: \s+(.+) )? \s*$" adjust-score
+#"^(?x) \s* @(\w[-\w]*\w) \s{0,2} (--|\+\+) (?: \s+(.+) )? \s*$" adjust-score
  #"all" get-all-high-scores
  _ get-high-scores)

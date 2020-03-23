@@ -35,22 +35,22 @@
                      :order/clause "created_at DESC"
                      :limit/clause cnt})))))
 
+  ;; ([] (get-high-scores 10 nil))
+  ;; ([cnt] (get-high-scores cnt nil))
+  ;; ([cnt {uuid :uuid room :room :as chat-source}]
+
 (defn get-high-scores
-  ([] (get-high-scores 10 nil))
-  ([cnt] (get-high-scores cnt nil))
-  ([cnt {uuid :uuid room :room :as chat-source}]
-
-   [{:keys [chat-source cnt] :or {cnt 10}}]
-
-   (let [cnt (if (or (<= cnt 0) (> cnt 100)) 10 cnt)]
-     (db/query (merge {:select/clause "user_id, SUM(points) as score"
-                       :group/clause "user_id"
-                       :having/clause "SUM(points) > 0"
-                       :order/clause "score DESC"
-                       :limit/clause cnt}
-                      (when chat-source
-                        {:where/map {:chat-source-adapter (pr-str uuid)
-                                     :chat-source-room room}}))))))
+  [{:keys [chat-source cnt] :or {cnt 10}}]
+  (let [cnt (if (or (<= cnt 0) (> cnt 100)) 10 cnt)]
+    (db/query (merge {:select/clause "user_id, SUM(points) as score"
+                      :group/clause "user_id"
+                      :having/clause "SUM(points) > 0"
+                      :order/clause "score DESC"
+                      :limit/clause cnt}
+                     (when chat-source
+                       {:where/map
+                        {:chat-source-adapter (pr-str (:uuid chat-source))
+                         :chat-source-room (:room chat-source)}})))))
 
 (defn get-high-givers
   ([] (get-high-givers 10))
