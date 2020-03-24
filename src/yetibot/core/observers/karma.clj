@@ -7,13 +7,11 @@
    [yetibot.core.commands.karma :as karma]))
 
 (defn- emoji-shortcode->reaction
-  "When Slack delivers reaction events it reformats the emoji
-  shortcodes, removing colons and replacing underscores with spaces.
-  We provide that same functionality, here, so we can more easily
-  compare delivered events.
+  "When Slack delivers reaction events it reformats the emoji shortcodes,
+   removing colons and replacing underscores with spaces. We provide that same
+   functionality, here, so we can more easily compare delivered events.
 
-  :thunder_cloud_and_rain: is delivered as 'thunder cloud and rain'
-  "
+   :thunder_cloud_and_rain: is delivered as 'thunder cloud and rain'"
   [emoji-shortcode]
   (-> (re-matches #":(.+):" emoji-shortcode)
       second
@@ -29,24 +27,28 @@
                   "(?: \\s+(.+) )? \\s*$")))
 
 (defn- parse-react-event
-  [e]
-  {:voter-name (-> e :user :name)
+  [{:keys [chat-source] :as e}]
+  (log/info (log/color-str :yellow "parse-react-event" (pr-str e)))
+  {:chat-source chat-source
+   :voter-name (-> e :user :name)
    :voter-id   (-> e :user :id)
    :user-id    (-> e :message-user :id)})
 
 (defn- parse-message-event
-  [{body :body user :user}]
+  [{body :body user :user chat-source :chat-source}]
   (when-let [[_ action user-id note] (re-matches cmd-re body)]
     (let [action (if (= action karma/pos-emoji) "++" "--")]
       [action
-       {:voter-name (:name user)
+       {:chat-source chat-source
+        :voter-name (:name user)
         :voter-id   (:id user)
         :user-id    user-id
         :note       note}])))
 
 (defn- adjust-karma
-  [action {:keys [voter-id voter-name user-id note]}]
-  (karma/adjust-score {:user {:id voter-id :name voter-name}
+  [action {:keys [voter-id voter-name user-id note chat-source]}]
+  (karma/adjust-score {:chat-source chat-source
+                       :user {:id voter-id :name voter-name}
                        :match ["_" user-id action note]}))
 
 (def inc-karma (partial adjust-karma "++"))

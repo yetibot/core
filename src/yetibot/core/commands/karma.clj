@@ -81,7 +81,6 @@
   "karma <user>(++|--) <note> # adjust karma for <user> with optional <note>"
   {:yb/cat #{:fun}}
   [{chat-source :chat-source :as ctx}]
-  (info "adjust-score" (pr-str (:chat-source ctx)))
   (let [parsed (s/conform ::karma.spec/adjust-score-ctx ctx)]
     (if (= parsed ::s/invalid)
       {:result/error (:parse error)}
