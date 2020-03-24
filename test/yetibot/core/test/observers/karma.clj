@@ -1,8 +1,11 @@
 (ns yetibot.core.test.observers.karma
   (:require
-   [midje.sweet :refer [namespace-state-changes with-state-changes fact => truthy]]
-   [yetibot.core.observers.karma :refer [pos-reaction neg-reaction reaction-hook message-hook]]
-   [yetibot.core.models.karma :as model ]
+   [midje.sweet :refer [namespace-state-changes with-state-changes fact =>]]
+   [yetibot.core.observers.karma :refer [pos-reaction
+                                         neg-reaction
+                                         reaction-hook
+                                         message-hook]]
+   [yetibot.core.models.karma :as model]
    [yetibot.core.commands.karma :refer [pos-emoji neg-emoji error]]
    [yetibot.core.db :as db]
    [clj-time.core :as time]
@@ -12,6 +15,7 @@
 (def test-user (str "test-user-" epoch))
 (def test-voter (str "test-voter-" epoch))
 (def test-note (str "test-note-" epoch))
+(def test-chat-source {:uuid :test :room "test-channel"})
 
 ;; Mock reaction event passed to our observers
 (def reaction-event {:user {:id test-voter :name test-voter}
@@ -33,7 +37,6 @@
 
 (def inc-success? (partial reply-is? pos-emoji))
 (def dec-success? (partial reply-is? neg-emoji))
-
 
 (namespace-state-changes (before :contents (db/start)))
 
