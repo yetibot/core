@@ -1,5 +1,6 @@
 (ns yetibot.core.observers.karma
   (:require
+   [yetibot.core.models.channel :as channel]
    [taoensso.timbre :as log]
    [clojure.string :as str]
    [yetibot.core.chat :refer [chat-data-structure]]
@@ -70,9 +71,11 @@
 ;; chat-data-structure requires some run-time state so we're pulling
 ;; it out of our hook fns so they can be tested.
 (defn hook-wrapper
-  [f event]
-  (when-let [response (f event)]
-    (chat-data-structure response)))
+  [f {:keys [settings] :as event}]
+  ;; only enable karma obs on a per channel basis
+  (when (= (settings channel/karma-enabled-key) "true")
+    (when-let [response (f event)]
+      (chat-data-structure response))))
 
 (obs-hook #{:react} (partial hook-wrapper reaction-hook))
 (obs-hook #{:message} (partial hook-wrapper message-hook))
