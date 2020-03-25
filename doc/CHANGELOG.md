@@ -1,5 +1,13 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200325.004847.aa02185"]`
+
+[Disable karma obs by default and allow it to be enabled on a per-channel basis #125](https://github.com/yetibot/yetibot.core/pull/125)
+
+## `[yetibot/core "20200324.234827.4af25ac"]`
+
+[Ensure chat-source is propagated in emoji based karma obs (#124)](https://github.com/yetibot/yetibot.core/commit/4af25acb6e973bbb63bc03285cb2889cb9b31762)
+
 ## `[yetibot/core "20200227.180915.e29cec8"]`
 
 Fix Slack websocket dependency by using latest at `stylefruits/gniazdo "1.1.3"`.
