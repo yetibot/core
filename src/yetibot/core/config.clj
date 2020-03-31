@@ -2,11 +2,24 @@
   "Config is made available via
    [environ](https://github.com/weavejester/environ)"
   (:require [dec :refer [explode]]
+            [clojure.string :refer [blank?]]
             [environ.core :refer [env]]
             [taoensso.timbre :refer [info]]
             [yetibot.core.util.config :as uc]))
 
-(def config-prefixes [:yb :yetibot])
+(def config-prefixes
+  (if (not (blank? (env :yetibot-env-prefix)))
+    ;; Allow providing the env prefix key from env overriding the default `:yb`
+    ;; or `:yetibot` prefixes. This allows the user to specify their own env
+    ;; namespace. This was necessary when using the Yetibot Helm Chart, because
+    ;; Kubernetes sets a bunch of env vars using the metadata from the pod as a
+    ;; prefix (i.e. )
+    [(keyword (env :yetibot-env-prefix))]
+    ;; default env prefixes. For example, these pick up env vars like:
+    ;; - YB_FOO="bar"
+    ;; - YETIBOT_QUX="baz"
+    ;; and combine them into a single map without prefixes
+    [:yb :yetibot]))
 
 (def config-from-env-disabled? (env :yetibot-env-config-disabled))
 
