@@ -3,10 +3,14 @@ lein: lein
 cache:
   directories:
     - $HOME/.m2
+
 jdk:
   # - oraclejdk8
   # - oraclejdk9
   - oraclejdk11
+
+services:
+  - postgresql
 
 before_script:
   - psql -c 'create database yetibot;' -U postgres
@@ -16,6 +20,11 @@ git:
 
 env:
   - YETIBOT_DB_URL="postgresql://postgres@localhost:5432/yetibot"
+
+# run the tests and report the coverage to codecov.io
+script:
+  - CLOVERAGE_VERSION=1.1.1 lein with-profile +test cloverage --codecov --runner midje
+  - bash <(curl -s https://codecov.io/bash)
 
 deploy:
   provider: script
@@ -27,10 +36,3 @@ deploy:
     branch: master
     # ensure we only attempt to deploy once using jdk 11
     jdk: oraclejdk11
-
-services:
-  - postgresql
-
-after_success:
-- CLOVERAGE_VERSION=1.1.1 lein with-profile +test cloverage --codecov --runner midje
-- bash <(curl -s https://codecov.io/bash)
