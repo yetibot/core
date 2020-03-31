@@ -2,6 +2,10 @@
 
 ## `[yetibot/core "20200325.004847.aa02185"]`
 
+[Allow env var prefix overrides (#126)](https://github.com/yetibot/yetibot.core/pull/126)
+
+## `[yetibot/core "20200325.004847.aa02185"]`
+
 [Disable karma obs by default and allow it to be enabled on a per-channel basis #125](https://github.com/yetibot/yetibot.core/pull/125)
 
 ## `[yetibot/core "20200324.234827.4af25ac"]`
