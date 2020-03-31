@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## `[yetibot/core "20200325.004847.aa02185"]`
+## `[yetibot/core "20200331.205253.1ad65ba"]`
 
 [Allow env var prefix overrides (#126)](https://github.com/yetibot/yetibot.core/pull/126)
 
