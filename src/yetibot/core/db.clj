@@ -7,7 +7,7 @@
     [clojure.string :as string]
     [clojure.spec.alpha :as s]
     [yetibot.core.loader :refer [find-namespaces]]
-    [taoensso.timbre :refer [debug trace info warn error]]))
+    [taoensso.timbre :refer [trace info error]]))
 
 (def db-ns-pattern #"(yetibot|plugins).*\.db\..+")
 
@@ -95,6 +95,7 @@
             qualified-table table-specs
             opts))))))
 
+(defonce connected? (atom false))
 
 (defn start []
   (info "☐ Loading db schemas against" (:url (config)))
@@ -104,4 +105,5 @@
       (fn [{:keys [schema/table schema/specs]}]
         (idempotent-create-table! table specs))
       schemas-to-migrate)
-    (info "☑ Database loaded")))
+    (info "☑ Database loaded")
+    (reset! connected? true)))
