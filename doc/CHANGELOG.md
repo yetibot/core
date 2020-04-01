@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200401.183007.dbc3597"]`
+
+[Check db connection in healthz endpoint in addition to adapter connections (#128)](https://github.com/yetibot/yetibot.core/pull/128)
+
 ## `[yetibot/core "20200331.205253.1ad65ba"]`
 
 [Allow env var prefix overrides (#126)](https://github.com/yetibot/yetibot.core/pull/126)
