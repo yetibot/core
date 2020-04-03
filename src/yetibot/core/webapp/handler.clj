@@ -58,9 +58,12 @@
             (run-server (app) {:join? false :daemon? true :port port}))))
 
 (defn stop-web-server []
-  (when-not (nil? @web-server)
-    (@web-server :timeout 100)
-    (reset! web-server nil)))
+  (if-let [server @web-server]
+    (do
+      (timbre/info "Stopping web server")
+      (server :timeout 100)
+      (reset! web-server nil))
+    (timbre/info "Unable to stop web server")))
 
 (defn restart-web-server []
   (stop-web-server)

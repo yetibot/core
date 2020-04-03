@@ -169,6 +169,12 @@
 ;; TODO make obs-hooks reloadable - maybe each one should have some metadata
 ;; like name and description of intent assocaited with it?
 
+(comment
+  ;; during dev use this to remove all the hooks, then reload the ns to re-hook
+  (rh/clear-hooks #'yetibot.core.handler/handle-raw)
+
+  )
+
 (defn obs-hook
   "Pass a collection of event-types you're interested in and an observer
    function that accepts a single arg. If an event occurs that matches the
@@ -176,22 +182,23 @@
    json."
   [event-types observer]
   (rh/add-hook
-    #'yetibot.core.handler/handle-raw
-    (let [event-types (set event-types)]
-      (fn [callback chat-source user event-type yetibot-user
-           {:keys [body reaction] :as event-info}]
-        #_(debug "observed" (:yetibot? user)
-               (color-str :blue chat-source)
-               {:user user}
-               {:event-type event-type}
-               (color-str :blue (pr-str event-info)))
-        (when (and
-                (not (:yetibot? user))
-                (contains? event-types event-type))
-          (observer (merge event-info
-                           {:chat-source chat-source
-                            :event-type event-type
-                            :user user
-                            :yetibot-user yetibot-user})))
+   #'yetibot.core.handler/handle-raw
+   (let [event-types (set event-types)]
+     (fn [callback chat-source user event-type yetibot-user
+          {:keys [body reaction] :as event-info}]
+       #_(debug "observed" (:yetibot? user)
+                (color-str :blue chat-source)
+                {:user user}
+                {:event-type event-type}
+                (color-str :blue (pr-str event-info)))
+       (when (and
+              (not (:yetibot? user))
+              (contains? event-types event-type))
+         (observer (merge event-info
+                          {:chat-source chat-source
+                           :settings (c/settings-for-chat-source chat-source)
+                           :event-type event-type
+                           :user user
+                           :yetibot-user yetibot-user})))
         ;; observers always pass through to the callback
-        (callback chat-source user event-type yetibot-user event-info)))))
+       (callback chat-source user event-type yetibot-user event-info)))))

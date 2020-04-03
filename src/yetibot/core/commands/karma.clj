@@ -1,22 +1,23 @@
 (ns yetibot.core.commands.karma
+  "The Karma feature is presently only available for use in Slack.
+
+   Slack delivers reaction events by shortcode (actually a slightly modified
+   string version). Without an exhaustive mapping there's no reliable way for
+   us to support configrable emoji reaction processing in Slack, which we have
+   prioritized. Unfortunately, this breaks IRC, where response emoji are then
+   rendered as the shortcode string instead of the character. We hope to
+   improve this in the future.
+
+   Support has not yet been added to Mattermost, though it could support it."
   (:require
    [yetibot.core.config :refer [get-config]]
    [yetibot.core.hooks :refer [cmd-hook]]
    [yetibot.core.models.karma :as model]
    [yetibot.core.commands.karma.specs :as karma.spec]
+   [taoensso.timbre :refer [info]]
    [clojure.string :as str]
    [clj-time.format :as t]
    [clojure.spec.alpha :as s]))
-
-;; The Karma feature is presently only available for use in Slack.
-;;
-;; Slack delivers reaction events by shortcode (actually a slightly
-;; modified string version).  Without an exhaustive mapping there's no
-;; reliable way for us to support configrable emoji reaction
-;; processing in Slack, which we have prioritized.  Unfortunately,
-;; this breaks IRC, where response emoji are then rendered as the
-;; shortcode string instead of the character.  We hope to improve this
-;; in the future.
 
 (s/def ::config any?)
 
@@ -50,18 +51,26 @@
 (defn get-score
   "karma <user> # get score and recent notes for <user>"
   {:yb/cat #{:fun}}
-  [ctx]
+  [{chat-source :chat-source :as ctx}]
   (if-not (s/valid? ::karma.spec/get-score-ctx ctx)
     {:result/error (:parse error)}
     (let [{[_ user-id] :match} ctx
-          score (model/get-score user-id)
-          notes (model/get-notes user-id)]
+          score (model/get-score chat-source user-id)
+          notes (model/get-notes chat-source user-id)]
       {:result/data {:user-id user-id, :score score, :notes notes}
        :result/value (str (fmt-user-score user-id score)
                           (fmt-user-notes notes))})))
 
 (defn get-high-scores
-  "karma # get leaderboard"
+  "karma # get leaderboard for current channel"
+  {:yb/cat #{:fun}}
+  [{chat-source :chat-source}]
+  (let [scores (model/get-high-scores {:chat-source chat-source})]
+    {:result/data scores
+     :result/value (fmt-high-scores scores)}))
+
+(defn get-all-high-scores
+  "karma all # get global leaderboard for all channels across all chat adapters"
   {:yb/cat #{:fun}}
   [_]
   (let [scores (model/get-high-scores)]
@@ -71,7 +80,7 @@
 (defn adjust-score
   "karma <user>(++|--) <note> # adjust karma for <user> with optional <note>"
   {:yb/cat #{:fun}}
-  [ctx]
+  [{chat-source :chat-source :as ctx}]
   (let [parsed (s/conform ::karma.spec/adjust-score-ctx ctx)]
     (if (= parsed ::s/invalid)
       {:result/error (:parse error)}
@@ -83,16 +92,22 @@
                          :user-id user-id
                          :voter-id voter-id}
            :result/value (:karma error)}
-          (let [[score-delta reply-emoji] (if positive-karma? [1 pos-emoji] [-1 neg-emoji])]
-            (model/add-score-delta! user-id voter-name score-delta note)
-            (let [score (model/get-score user-id)
-                  notes (model/get-notes user-id)]
+          (let [[score-delta reply-emoji] (if positive-karma?
+                                            [1 pos-emoji]
+                                            [-1 neg-emoji])]
+            (model/add-score-delta!
+             chat-source user-id voter-name score-delta note)
+            (let [score (model/get-score chat-source user-id)
+                  notes (model/get-notes chat-source user-id)]
               {:result/data {:user-id user-id
                              :score score
                              :notes notes}
-               :result/value (format "%s <@%s>: %d" reply-emoji user-id score)})))))))
+               :result/value (format "%s <@%s>: %d"
+                                     reply-emoji user-id score)})))))))
 
-(cmd-hook "karma"
-          #"^(?x) \s* @(\w[-\w]*\w) \s*$" get-score
-          #"^(?x) \s* @(\w[-\w]*\w) \s{0,2} (--|\+\+) (?: \s+(.+) )? \s*$" adjust-score
-          _ get-high-scores)
+(cmd-hook
+ "karma"
+ #"^(?x) \s* @(\w[-\w]*\w) \s*$" get-score
+#"^(?x) \s* @(\w[-\w]*\w) \s{0,2} (--|\+\+) (?: \s+(.+) )? \s*$" adjust-score
+ #"all" get-all-high-scores
+ _ get-high-scores)

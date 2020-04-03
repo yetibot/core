@@ -3,7 +3,9 @@
    [yetibot.core.db.util :as db.util]))
 
 (def schema {:schema/table "karma"
-             :schema/specs (into [[:user-id :text "NOT NULL"]
+             :schema/specs (into [[:chat-source-adapter :text]
+                                  [:chat-source-room :text]
+                                  [:user-id :text "NOT NULL"]
                                   [:points :integer "NOT NULL"]
                                   [:voter-id :text "NOT NULL"]
                                   [:note :text]]

@@ -13,6 +13,9 @@
     yetibot-channels-key
     channel-is-member-key})
 
+;; known channel keys
+(def karma-enabled-key "karma-observers-enabled")
+
 (def channel-config-defaults
   "Provides both a list of all available default settings as well as their
    defaults. These are settings known to work with built in commands. Other
@@ -24,7 +27,9 @@
    ;; JIRA project
    "jira-project" ""
    ;; default Jenkins project
-   "jenkins-default" ""})
+   "jenkins-default" ""
+   ;; whether to enable karma observers
+   karma-enabled-key "false"})
 
 (defn merge-defaults [channel-config]
   (merge channel-config-defaults channel-config))
