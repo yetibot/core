@@ -28,6 +28,8 @@
       (not= enabled "false")
       true)))
 
+(s/def ::log-file-path string?)
+
 (defn start []
   (timbre/set-config!
     {:level (log-level)
@@ -37,5 +39,5 @@
       ;; rolling log files
       :rolling-appender (rolling-appender
                           {:enabled? (rolling-appender-enabled?)
-                           :path "/var/log/yetibot/yetibot.log"
+                           :path (get-config ::log-file-path [:log :path])
                            :pattern :daily})}}))
