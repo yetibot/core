@@ -1,5 +1,13 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200406.172829.a046615"]`
+
+Upgrade to `[lambdaisland/uri "1.2.1"]`
+
+## `[yetibot/core "20200403.184508.cab0823"]`
+
+[Make yetibot log file path configurable (#129)](https://github.com/yetibot/yetibot.core/pull/129)
+
 ## `[yetibot/core "20200401.183007.dbc3597"]`
 
 [Check db connection in healthz endpoint in addition to adapter connections (#128)](https://github.com/yetibot/yetibot.core/pull/128)
