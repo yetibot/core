@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200407.002225.87b98de"]`
+
+Provide default log location if not provied. Related to the changes in:
+`yetibot/core "20200403.184508.cab0823"`.
+
 ## `[yetibot/core "20200406.172829.a046615"]`
 
 Upgrade to `[lambdaisland/uri "1.2.1"]`
