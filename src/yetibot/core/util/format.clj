@@ -118,9 +118,9 @@
     (st/print-stack-trace (st/root-cause ex) 50)))
 
 (defn remove-surrounding-quotes
-  "applies to literals;chop off the surrounding quotes"
+  "applies to literals; chop off the surrounding quotes"
   [literal]
-  (-> literal s/trim (s/replace #"^\"([^\"]+)\"$" "$1")))
+  (-> literal s/trim (s/replace #"^\"(.+)\"$" "$1")))
 
 (defn limit-and-trim-string-lines [n s]
   (->> (s/split s #"\n")
