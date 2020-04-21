@@ -142,7 +142,7 @@
     [:space " "]
     "="
     [:space " "]
-    [:literal "'" "echo bar | echo foo" "'"]]]])
+    [:literal "'" "echo bar | echo foo" "'"]]]]
 
  (parser "meme foo: \"lol") =>
  [:expr [:cmd [:words "meme" [:space " "] "foo:" [:space " "] "\"" "lol"]]]
