@@ -28,7 +28,8 @@
      parened = lparen words rparen
      <regex-pipe> = word-chars pipe word-chars (pipe word-chars)*
      <quote> = '\"'
-     literal = quote #'[^\"]+' quote
+     <squote> = \"'\"
+     literal = quote #'[^\"]+' quote | squote #\"[^']+\" squote
      space = ' '
      <pipe> = #'[|]'
      <dollar> = '$'

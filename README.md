@@ -37,6 +37,20 @@ adds two numbers:
 See Yetibot's own [commands](https://github.com/devth/yetibot/tree/master/src/yetibot/commands)
 for more complex and diverse examples.
 
+## Dev postgres
+
+To quickly provision a postgresql database to work against, run:
+
+```bash
+docker-compose -f docker-compose-dev.yml up -d
+```
+
+And use the corresponding connection string in config:
+
+```edn
+:yetibot-db-url "postgresql://yetibot:yetibot@postgres:5432/yetibot"
+```
+
 ## Remote REPL
 
 Yetibot runs an embedded nREPL server on port `65432`. Connect to it via:
