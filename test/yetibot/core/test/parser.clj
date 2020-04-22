@@ -118,18 +118,40 @@
            [:cmd [:words "head" [:space " "] "2"]]
            [:cmd [:words "tail"]]]]]]]]]]])
 
-(facts "literals should be parsed"
-  (parser "alias foo = \"bar\"") =>
-  [:expr [:cmd [:words "alias" [:space " "] "foo" [:space " "] "=" [:space " "] [:literal "\"" "bar" "\""]]]]
+(facts
+ "both double-quote and single-quote literals should be parsed"
+ (parser "alias foo = \"bar\"") =>
+ [:expr
+  [:cmd
+   [:words
+    "alias"
+    [:space " "]
+    "foo"
+    [:space " "]
+    "="
+    [:space " "]
+    [:literal "\"" "bar" "\""]]]]
 
-  (parser "meme foo: \"lol") =>
-  [:expr [:cmd [:words "meme" [:space " "] "foo:" [:space " "] "\"" "lol"]]]
+ (parser "alias foo = 'echo bar | echo foo'") =>
+ [:expr
+  [:cmd
+   [:words
+    "alias"
+    [:space " "]
+    "foo"
+    [:space " "]
+    "="
+    [:space " "]
+    [:literal "'" "echo bar | echo foo" "'"]]]]
 
-  (parser "foo \"lol | foo\"") =>
-  [:expr [:cmd [:words "foo" [:space " "] [:literal "\"" "lol | foo" "\""]]]]
+ (parser "meme foo: \"lol") =>
+ [:expr [:cmd [:words "meme" [:space " "] "foo:" [:space " "] "\"" "lol"]]]
 
-  (parser "foo \"lol | foo") =>
-  [:expr [:cmd [:words "foo" [:space " "] "\"" "lol"]] [:cmd [:words "foo"]]])
+ (parser "foo \"lol | foo\"") =>
+ [:expr [:cmd [:words "foo" [:space " "] [:literal "\"" "lol | foo" "\""]]]]
+
+ (parser "foo \"lol | foo") =>
+ [:expr [:cmd [:words "foo" [:space " "] "\"" "lol"]] [:cmd [:words "foo"]]])
 
 (facts "unmatched parens should be ignored by the parser"
   (parser " foo)") =>

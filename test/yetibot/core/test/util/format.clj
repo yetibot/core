@@ -1,7 +1,8 @@
 (ns yetibot.core.test.util.format
   (:require
-    [yetibot.core.util.format :refer :all]
-    [clojure.test :refer :all]))
+   [midje.sweet :refer [=> =not=> contains fact facts]]
+   [yetibot.core.util.format :refer :all]
+   [clojure.test :refer :all]))
 
 (def nested-list
   [["meme generator"
@@ -13,61 +14,56 @@
 
 (def formatted-list (format-data-structure nested-list))
 
-(deftest format-nested-list
-  (let [[formatted flattened] formatted-list]
-    (is
-      (not-any? coll? flattened)
-      "the flattened representation should not contain collections")))
+(fact
+ "the flattened representation should not contain collections"
+ (let [[formatted flattened] formatted-list]
+   flattened =not=> (contains coll?)))
 
+;; TODO port the rest of this to Midje
 
-(deftest format-n-test
-  (is (= "foo 2" (format-n "foo %1" [2])))
-  (is (= (format-n "foo" [2 3 4])
-         "foo"))
-  (is (= (format-n "list %1 | head" [1])
-         "list 1 | head")))
+(facts
+ "format-n"
+ (format-n "foo %1" [2]) => "foo 2"
+ (format-n "foo" [2 3 4]) => "foo"
+ (format-n "list %1 | head" [1]) => "list 1 | head")
 
-(deftest pseudo-format-n-test
-  (let [args ["foo" "bar" "baz"]]
-    (is (= (pseudo-format-n "all --> %s <-- there" args)
-           "all --> foo bar baz <-- there"))
-    (is (= (pseudo-format-n "just the second --> %2 <--" args)
-           "just the second --> bar <--"))
-    (is (= (pseudo-format-n "append to end -->" args)
-           "append to end --> foo bar baz")))
-  (is (= (pseudo-format-n "echo hi | echo bar" [])
-         "echo hi | echo bar")
-      "It shouldn't have a space at the end when args is empty"))
+(facts
+ pseudo-format-n-test
+ (let [args ["foo" "bar" "baz"]]
+   (pseudo-format-n
+    "all --> %s <-- there" args) => "all --> foo bar baz <-- there"
+   (pseudo-format-n "just the second --> %2 <--" args) =>
+   "just the second --> bar <--"
+   (pseudo-format-n "append to end -->" args) =>
+   "append to end --> foo bar baz")
+ (pseudo-format-n "echo hi | echo bar" []) =>
+ "echo hi | echo bar")
 
-(deftest pseudo-format-n-with-rebound-prefix
+(facts
+  pseudo-format-n-with-rebound-prefix
   (binding [*subst-prefix* "\\$"]
-    (is (= (pseudo-format-n "foo --> $2 <-- two" [1 2])
-           "foo --> 2 <-- two")
-        "It should work with a new prefix.")
-    (is (= (pseudo-format-n "--> %s <--" [1 2])
-           "--> %s <-- 1 2")
-        "It shouldn't work with the old prefix after a new one is bound.")))
+    ;; It should work with a new prefix.
+    (pseudo-format-n "foo --> $2 <-- two" [1 2]) =>
+    "foo --> 2 <-- two"
+    ;; It shouldn't work with the old prefix after a new one is bound.
+    (pseudo-format-n "--> %s <--" [1 2])
+    "--> %s <-- 1 2"))
 
-(deftest pseudo-format-test
-  (testing "Basic pseudo-format usage"
-    (is
-      (=
-       "foo bar"
-       (pseudo-format "foo" "bar"))
-      "pseudo-format appends to the end by default")
-    (is
-      (=
-       "foo bar baz"
-       (pseudo-format "foo %s baz" "bar"))
-      "It substitutes in the middle when it's supposed to")))
+(facts
+ "Basic pseudo-format usage"
+ (pseudo-format "foo" "bar") => "foo bar"
+ (fact
+  "It substitutes in the middle when it's supposed to")
+ (pseudo-format "foo %s baz" "bar") => "foo bar baz")
 
-(deftest replace-even-if-nothing-to-replace-with
-  (binding [*subst-prefix* "\\$"]
-    (is (= (pseudo-format-n "qux --> $s <-- should b empty" [])
-           "qux -->  <-- should b empty"))))
+(facts
+ "replace-even-if-nothing-to-replace-with"
+ (binding [*subst-prefix* "\\$"]
+   (pseudo-format-n "qux --> $s <-- should b empty" []) =>
+   "qux -->  <-- should b empty"))
 
-
-(deftest limit-and-trim-string-lines-test
+(fact
+ "limit-and-trim-string-lines-test"
   (let [s "foo
            bar
            baz
@@ -75,4 +71,14 @@
            ok
            hi"
         expected "foo\nbar"]
-    (is (= (limit-and-trim-string-lines 2 s) expected))))
+    (limit-and-trim-string-lines 2 s) => expected))
+
+(facts
+ "remove-surrounding-quotes"
+ (fact
+  "it removes surrounding double quotes"
+  (remove-surrounding-quotes "\"foo bar smack\"") => "foo bar smack")
+ (fact
+  "it removes surrounding single quotes"
+  (remove-surrounding-quotes "'bbq lolwat'") => "bbq lolwat"))
+

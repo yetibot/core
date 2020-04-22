@@ -1,0 +1,15 @@
+
+version: '3'
+
+services:
+
+  # provision a postgres to run yetibot against
+  postgres:
+    image: postgres
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=yetibot
+      - POSTGRES_PASSWORD=yetibot
+    ports:
+      - 5432:5432

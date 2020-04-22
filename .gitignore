@@ -14,3 +14,4 @@ profiles.clj
 .idea
 browser
 node_modules
+postgres-data/

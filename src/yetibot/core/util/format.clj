@@ -120,7 +120,12 @@
 (defn remove-surrounding-quotes
   "applies to literals; chop off the surrounding quotes"
   [literal]
-  (-> literal s/trim (s/replace #"^\"(.+)\"$" "$1")))
+  (-> literal
+      s/trim
+      ;; yetibot supports literals with both double quotes:
+      (s/replace #"^\"(.+)\"$" "$1")
+      ;; and single quotes:
+      (s/replace #"^'(.+)'$" "$1")))
 
 (defn limit-and-trim-string-lines [n s]
   (->> (s/split s #"\n")
