@@ -1,8 +1,12 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200422.204847.52f8203"]`
+
+- [Add support for single quote literals in the parse #131](https://github.com/yetibot/yetibot.core/pull/131)
+
 ## `[yetibot/core "20200407.002225.87b98de"]`
 
-Provide default log location if not provied. Related to the changes in:
+Provide default log location if not provided. Related to the changes in:
 `yetibot/core "20200403.184508.cab0823"`.
 
 ## `[yetibot/core "20200406.172829.a046615"]`
