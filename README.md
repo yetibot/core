@@ -42,7 +42,7 @@ for more complex and diverse examples.
 To quickly provision a postgresql database to work against, run:
 
 ```bash
-docker-compose -f docker-compose-dev.yml up -d
+docker-compose up -d
 ```
 
 And use the corresponding connection string in config:
