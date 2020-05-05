@@ -9,7 +9,6 @@
     [yetibot.core.logging :as logging] ; enable logging to file
     [yetibot.core.models.users :as users]
     [yetibot.core.monitoring :as monitoring]
-    [yetibot.core.webapp.handler :as web]
     [yetibot.core.loader :refer [load-commands-and-observers load-ns]]
     [yetibot.core.adapters :as adapters]))
 
@@ -43,26 +42,21 @@
   (logging/start)
   (monitoring/start)
   (init/start-nrepl!)
-  (web/start-web-server)
   (db/start)
   (adapters/start)
   ;; commands should be loaded last, just like in yetibot.core.init
   ;; otherwise multiple hooks can get registered somehow
   (load-minimal))
 
-(defn start-web
-  []
-  (load-minimal-with-db)
-  (web/start-web-server))
-
 (defn start-offline
   "Offline repl-driven dev mode"
   []
+  (paj/start)
+  (logging/start)
   (load-minimal-with-db))
 
 (defn stop []
   (paj/stop)
-  (web/stop-web-server)
   (init/stop-nrepl!)
   (adapters/stop)
   (monitoring/stop))

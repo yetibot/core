@@ -45,6 +45,8 @@
 ; Instances of Adapters. If there are multiple configurations for an Adapter
 ; (e.g. currently Slack can have multiple configs) there will be an instance
 ; for each one. Key is uuid of config, val is the instance.
+
+;; these exists here to avoid cyclical deps
 (defonce adapters (atom {}))
 
 (defn register-adapter!
@@ -56,8 +58,15 @@
 
 (defn active-adapters [] (vals @adapters))
 
+(defn web-adapter
+  []
+  (->> (active-adapters)
+       (filter #(= "web" (-> % :config :type)))
+       first))
+
 (comment
   ;; play with adapters here
+  (web-adapter)
 
   (-> (active-adapters)
       first
