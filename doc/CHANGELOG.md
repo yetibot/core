@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200506.175620.6cd5d91"]`
+
+- [Add web adapter #132](https://github.com/yetibot/yetibot.core/pull/132)
+
 ## `[yetibot/core "20200422.204847.52f8203"]`
 
 - [Add support for single quote literals in the parse #131](https://github.com/yetibot/yetibot.core/pull/131)
