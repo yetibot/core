@@ -351,7 +351,7 @@
 
   a/Adapter
 
-  (a/uuid [_] (prn config) (:name config))
+  (a/uuid [_] (:name config))
 
   (a/platform-name [_] "IRC")
 
