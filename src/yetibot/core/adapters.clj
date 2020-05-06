@@ -71,22 +71,27 @@
 (comment
   (start)
 
-(a/active-adapters)
+  (a/active-adapters)
 
-
-(map
- (fn [[uuid adapter-config]]
-   (let [adapter-config (assoc adapter-config :name uuid)]
-     (debug "Registering" \newline (pr-str adapter-config))))
- (adapters-config))
-
-  )
+  (map
+   (fn [[uuid adapter-config]]
+     (let [adapter-config (assoc adapter-config :name uuid)]
+       (debug "Registering" \newline (pr-str adapter-config))))
+   (adapters-config)))
 
 (defn stop []
   (dorun (map a/stop (a/active-adapters)))
   (reset! a/adapters {}))
 
 (comment
+  (type (first (a/active-adapters)))
+
+  (type (last (a/active-adapters)))
+
+  (a/platform-name (first (a/active-adapters)))
+  (a/platform-name (last (a/active-adapters)))
+
+  (a/stop (first (a/active-adapters)))
   (register-adapters!)
   (adapters-config))
 
