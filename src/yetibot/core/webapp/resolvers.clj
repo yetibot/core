@@ -34,9 +34,11 @@
   (debug "eval-resolver" args)
   ;; bind the web adapter
   (binding [chat/*adapter* (adapter/web-adapter)]
-    ;; stub in a fake chat-source and user so commands that depend on these
-    ;; still work
-    (let [cs (chat/chat-source "graphql")
+    ;; stub in a chat-source and user if the web-adapter is present so commands
+    ;; that depend on these still work
+    (let [cs (and
+              (adapter/web-adapter)
+               (chat/chat-source "graphql"))
           {:keys [value error]} (handle-unparsed-expr
                                  cs eval-user expr)
           result (or value error)
