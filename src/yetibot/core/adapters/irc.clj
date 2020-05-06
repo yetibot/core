@@ -330,7 +330,8 @@
   (reset! current-channels #{})
   (reset! conn nil))
 
-(defrecord IRC [config channel-config current-channels conn nick-state]
+(defrecord IRC
+  [config channel-config current-channels conn nick-state]
 
   ; config
   ; Holds the immutable configuration for a single IRC Adapter instance.
