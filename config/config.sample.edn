@@ -23,7 +23,8 @@
          :projects [{:default {:version {:id "42"}}, :key "FOO"}],
          :subtask {:issue {:type {:id "27"}}},
          :domain "",
-         :password ""},
+         :password ""
+         :cloud "true"},
   :monitoring {:host "" :port 5555 :interval 10}
   ;; the keys in adapters can be named anything you like so long as they do not
   ;; container "-" and are globally unique.

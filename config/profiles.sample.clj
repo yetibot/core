@@ -79,6 +79,7 @@
    :yetibot-jira-default-issue-type-id "3"
    :yetibot-jira-subtask-issue-type-id "27"
    :yetibot-jira-default-project-key "Optional"
+   :yetibot-jira-cloud "true"
 
    ;; s3
    :yetibot-s3-access-key ""
