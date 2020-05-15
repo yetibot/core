@@ -5,6 +5,11 @@
     [yetibot.core.models.help :as help]
     [yetibot.core.parser :refer [parser]]))
 
+
+(defn command-whitelist 
+  []
+  "TODO")
+
 (defn error?
   "Determine whether a value is an error map"
   [x]
