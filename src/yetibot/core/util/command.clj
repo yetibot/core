@@ -22,10 +22,21 @@
 (defn blacklist []
   (pattern-config-set ::blacklist-config [:command :blacklist]))
 
+(defn throw-config-error! []
+  (throw
+   (ex-info
+    "Invalid configuration: whitelist and blacklist cannot both be specified"
+    {:whitelist whitelist
+     :blacklist blacklist})))
+
+;; check config and error on startup if invalid
+(when (and (seq (whitelist)) (seq (blacklist)))
+  (throw-config-error!))
+
 (defn any-match? [patterns s]
   (some #(re-find % s) patterns))
 
-(defn is-command-enabled?
+(defn command-enabled?
   "Given a command prefix, determine whether or not it is enabled.
 
    Users can specify either a whitelist collection of command patterns or a
