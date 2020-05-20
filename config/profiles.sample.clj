@@ -22,6 +22,23 @@
    ;; Whether to enable having a fallback command. Default is true.
    :yetibot-command-fallback-enabled "true"
 
+   ;; Whitelists and blackists: these can be used to enable/disable specific
+   ;; commands. Only one of these must be specified. If both are specified, it
+   ;; is considered an error and will crash Yetibot on startup. By default there
+   ;; is no whitelist or blacklist.
+   ;;
+   ;; Whitelist: when whitelist is specified, all commands are disabled except
+   ;; those present in the `whitelist` collection. Example:
+   ;;
+   ;; :yetibot-command-whitelist-0 "echo"
+   ;; :yetibot-command-whitelist-1 "list"
+   ;;
+   ;; Blacklist: when blacklist is specified, all commands are enabled except
+   ;; those present in the `blacklist` collection. Example:
+   ;;
+   ;; :yetibot-command-blacklist-0 "echo"
+   ;; :yetibot-command-blacklist-1 "list"
+
    ;; Yetibot needs a Postgres instance to run against.
    :yetibot-db-url "postgresql://localhost:5432/yetibot"
    :yetibot-db-table-prefix "yetibot_"

@@ -50,15 +50,13 @@
   [command]
   (boolean
    (cond
-     (and (seq (whitelist)) (seq (blacklist)))
-     (throw
-      (ex-info
-       "Invalid configuration: whitelist and blacklist cannot both be specified"
-       {:whitelist whitelist
-        :blacklist blacklist}))
+     ;; blow up if both
+     (and (seq (whitelist)) (seq (blacklist))) (throw-config-error!)
+     ;; whitelist checking
      (seq (whitelist)) (any-match? (whitelist) command)
+     ;; blacklist checking
      (seq (blacklist)) (not (any-match? (blacklist) command))
-     ;; neither blacklist nor hitelist are configured
+     ;; neither blacklist nor whitelist are configured
      :else true)))
 
 (defn error?

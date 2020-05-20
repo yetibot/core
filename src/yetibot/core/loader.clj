@@ -32,7 +32,7 @@
 
 (defn load-ns [arg]
   (debug "Loading" arg)
-  (try (require arg :reload)
+  (try (require arg)
        arg
        (catch Exception e
          (warn "WARNING: problem requiring" arg "hook:" (.getMessage e))

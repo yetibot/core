@@ -1,13 +1,9 @@
 (ns yetibot.core.test.util.command
   (:require
    yetibot.core.commands.echo
-   [midje.sweet :refer [fact facts => provided against-background]]
+   [midje.sweet :refer [fact facts => against-background]]
    [yetibot.core.util.command :refer [whitelist blacklist
                                       embedded-cmds command-enabled?]]))
-
-(defn hi
-  []
-  "yes")
 
 (facts "About embedded commands"
        (fact "Embedded commands that aren't actually known commands are not parsed"
