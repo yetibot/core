@@ -1,5 +1,12 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200520.173714.45bb274"]`
+
+- [Add command whitelist/blacklist support #133](https://github.com/yetibot/yetibot.core/pull/133)
+
+See [Configuration](https://yetibot.com/ops-guide#configuration) samples for
+more info on how to configure these.
+
 ## `[yetibot/core "20200506.175620.6cd5d91"]`
 
 - [Add web adapter #132](https://github.com/yetibot/yetibot.core/pull/132)
