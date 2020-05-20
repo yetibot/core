@@ -20,7 +20,7 @@
         [(whitelist) => #{#"list"} (blacklist) => #{}]
         (fact "echo is not whitelisted"
               (command-enabled? "echo") => false)
-        (fact "echo is not whitelisted"
+        (fact "list is whitelisted"
               (command-enabled? "list") => true))
 
        (against-background
@@ -28,4 +28,11 @@
         (fact "echo is not blacklisted"
               (command-enabled? "echo") => true)
         (fact "list is blacklisted"
-              (command-enabled? "list") => false)))
+              (command-enabled? "list") => false))
+
+       (against-background
+        [(whitelist) => #{} (blacklist) => #{}]
+        (fact "echo is enabled by default"
+              (command-enabled? "echo") => true)
+        (fact "list is enabled by default"
+              (command-enabled? "list") => true)))
