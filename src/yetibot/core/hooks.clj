@@ -1,16 +1,16 @@
 (ns yetibot.core.hooks
   (:require
-    [yetibot.core.models.admin :as admin]
-    [clojure.set :refer [difference intersection]]
-    [taoensso.timbre :refer [color-str trace debug info warn error]]
-    [yetibot.core.handler]
-    [clojure.string :as s]
-    [metrics.timers :as timers]
-    [yetibot.core.models.channel :as c]
-    [yetibot.core.interpreter :refer [handle-cmd]]
-    [yetibot.core.models.help :as help]
-    [robert.hooke :as rh]
-    [clojure.stacktrace :as st]))
+   [yetibot.core.models.admin :as admin]
+   [clojure.set :refer [intersection]]
+   [taoensso.timbre :refer [color-str trace debug info warn error]]
+   [yetibot.core.handler]
+   [clojure.string :as s]
+   [metrics.timers :as timers]
+   [yetibot.core.models.channel :as c]
+   [yetibot.core.interpreter :refer [handle-cmd]]
+   [yetibot.core.models.help :as help]
+   [robert.hooke :as rh]
+   [yetibot.core.util.command :refer [command-enabled?]]))
 
 (def ^:private Pattern java.util.regex.Pattern)
 
@@ -80,25 +80,28 @@
     ;; ensure the user is allowed to run this command
     (if (and admin-only-command? (not user-is-admin?))
       {:result/error (format
-                       "Only admins are allowed to execute %s commands" cmd)}
+                      "Only admins are allowed to execute %s commands" cmd)}
       ;; find the top level command and its corresponding sub-cmds
       (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
         ;; Now try to find a matching sub-commands
         (if-let [[match sub-fn] (match-sub-cmds args sub-cmds)]
+          ;; TODO check if command is whitelisted or blacklisted
           ;; extract category settings
-          (let [disabled-cats (if settings (settings c/cat-settings-key) #{})
-                fn-cats (set (:yb/cat (meta sub-fn)))]
-            (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
-              (str
-                (s/join ", " (map name matched-disabled-cats))
-                " commands are disabled in this channel🖐")
-              (timers/time!
-               (timers/timer ["yetibot" cmd (str (:name (meta sub-fn)))])
-               (sub-fn (merge extra {:cmd cmd :args args :match match})))))
+          (if (command-enabled? cmd)
+            (let [disabled-cats (if settings (settings c/cat-settings-key) #{})
+                  fn-cats (set (:yb/cat (meta sub-fn)))]
+              (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
+                (str
+                 (s/join ", " (map name matched-disabled-cats))
+                 " commands are disabled in this channel🖐")
+                (timers/time!
+                 (timers/timer ["yetibot" cmd (str (:name (meta sub-fn)))])
+                 (sub-fn (merge extra {:cmd cmd :args args :match match})))))
+            {:result/error (format "`%s` is disabled in this Yetibot" cmd)})
           ;; couldn't find any sub commands so default to help.
           (:value
-            (yetibot.core.handler/handle-unparsed-expr
-              (str "help " (get @re-prefix->topic (str cmd-re))))))
+           (yetibot.core.handler/handle-unparsed-expr
+            (str "help " (get @re-prefix->topic (str cmd-re))))))
         (callback cmd-with-args extra)))))
 
 ;; Hook the actual handle-cmd called during interpretation.

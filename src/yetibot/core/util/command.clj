@@ -5,6 +5,60 @@
     [yetibot.core.models.help :as help]
     [yetibot.core.parser :refer [parser]]))
 
+(s/def ::whitelist-config (s/coll-of string?))
+(s/def ::blacklist-config (s/coll-of string?))
+
+(defn pattern-config-set
+  [spec path]
+  (set
+   (->>
+    (get-config spec path)
+    :value
+    (map re-pattern))))
+
+(defn whitelist []
+  (pattern-config-set ::whitelist-config [:command :whitelist]))
+
+(defn blacklist []
+  (pattern-config-set ::blacklist-config [:command :blacklist]))
+
+(defn throw-config-error! []
+  (throw
+   (ex-info
+    "Invalid configuration: whitelist and blacklist cannot both be specified"
+    {:whitelist whitelist
+     :blacklist blacklist})))
+
+;; check config and error on startup if invalid
+(when (and (seq (whitelist)) (seq (blacklist)))
+  (throw-config-error!))
+
+(defn any-match? [patterns s]
+  (some #(re-find % s) patterns))
+
+(defn command-enabled?
+  "Given a command prefix, determine whether or not it is enabled.
+
+   Users can specify either a whitelist collection of command patterns or a
+   blacklist collection of patterns, but not both.
+
+   If a whitelist is specified, all commands are disabled *except* those in the
+   whitelist.
+
+   If a blacklist is specified, all commands are enabled *except* those in the
+   blacklist."
+  [command]
+  (boolean
+   (cond
+     ;; blow up if both
+     (and (seq (whitelist)) (seq (blacklist))) (throw-config-error!)
+     ;; whitelist checking
+     (seq (whitelist)) (any-match? (whitelist) command)
+     ;; blacklist checking
+     (seq (blacklist)) (not (any-match? (blacklist) command))
+     ;; neither blacklist nor whitelist are configured
+     :else true)))
+
 (defn error?
   "Determine whether a value is an error map"
   [x]
