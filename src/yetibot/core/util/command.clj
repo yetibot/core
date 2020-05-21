@@ -1,9 +1,9 @@
 (ns yetibot.core.util.command
   (:require
-    [clojure.spec.alpha :as s]
-    [yetibot.core.config :refer [get-config]]
-    [yetibot.core.models.help :as help]
-    [yetibot.core.parser :refer [parser]]))
+   [clojure.spec.alpha :as s]
+   [yetibot.core.config :refer [get-config]]
+   [yetibot.core.models.help :as help]
+   [yetibot.core.parser :refer [parser]]))
 
 (s/def ::whitelist-config (s/coll-of string?))
 (s/def ::blacklist-config (s/coll-of string?))
