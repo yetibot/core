@@ -24,15 +24,19 @@
               (command-enabled? "list") => true))
 
        (against-background
-        [(whitelist) => #{} (blacklist) => #{#"list"}]
+        [(whitelist) => #{} (blacklist) => #{#"help" #"list"}]
         (fact "echo is not blacklisted"
               (command-enabled? "echo") => true)
         (fact "list is blacklisted"
-              (command-enabled? "list") => false))
+              (command-enabled? "list") => false)
+        (fact "help ignores blacklist"
+              (command-enabled? "help") => true))
 
        (against-background
         [(whitelist) => #{} (blacklist) => #{}]
         (fact "echo is enabled by default"
               (command-enabled? "echo") => true)
         (fact "list is enabled by default"
-              (command-enabled? "list") => true)))
+              (command-enabled? "list") => true)
+        (fact "help ignores whitelist"
+              (command-enabled? "help") => true)))

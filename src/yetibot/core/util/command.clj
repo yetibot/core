@@ -49,15 +49,17 @@
    blacklist."
   [command]
   (boolean
-   (cond
-     ;; blow up if both
-     (and (seq (whitelist)) (seq (blacklist))) (throw-config-error!)
-     ;; whitelist checking
-     (seq (whitelist)) (any-match? (whitelist) command)
-     ;; blacklist checking
-     (seq (blacklist)) (not (any-match? (blacklist) command))
-     ;; neither blacklist nor whitelist are configured
-     :else true)))
+    (cond
+      ;; exclude help as it's more of a meta-command
+      (= "help" command) true
+      ;; blow up if both
+      (and (seq (whitelist)) (seq (blacklist))) (throw-config-error!)
+      ;; whitelist checking
+      (seq (whitelist)) (any-match? (whitelist) command)
+      ;; blacklist checking
+      (seq (blacklist)) (not (any-match? (blacklist) command))
+      ;; neither blacklist nor whitelist are configured
+      :else true)))
 
 (defn error?
   "Determine whether a value is an error map"
