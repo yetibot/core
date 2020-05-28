@@ -36,6 +36,14 @@
 (defn any-match? [patterns s]
   (some #(re-find % s) patterns))
 
+(def always-enabled-commmands
+  "The set of meta / foundational commands that should never be disabled via
+   whitelist or blacklist.
+
+   Note: a better way to control this list might be via yb/cat metadata on
+   commands themselves."
+  #{"help" "alias" "channel" "category"})
+
 (defn command-enabled?
   "Given a command prefix, determine whether or not it is enabled.
 
@@ -50,8 +58,8 @@
   [command]
   (boolean
     (cond
-      ;; exclude help as it's more of a meta-command
-      (= "help" command) true
+      ;; exclude meta/foundational commands from black/white-lists
+      (always-enabled-commmands command) true
       ;; blow up if both
       (and (seq (whitelist)) (seq (blacklist))) (throw-config-error!)
       ;; whitelist checking
