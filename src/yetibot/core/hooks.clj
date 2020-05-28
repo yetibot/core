@@ -128,27 +128,29 @@
   ;;
   ;; normalize it into the map form:
   (let [topics->patterns (condp #(%1 %2) topic-and-pattern
-                               vector? (let [[topic pattern] topic-and-pattern]
-                                         {topic pattern})
+                           vector? (let [[topic pattern] topic-and-pattern]
+                                     {topic pattern})
                                ;; already in correct form
-                               map? topic-and-pattern
+                           map? topic-and-pattern
                                ;; else - just the pattern
-                               {(str topic-and-pattern) topic-and-pattern})
+                           {(str topic-and-pattern) topic-and-pattern})
         cmd-pairs (partition 2 cmds)]
 
     (run!
-      (fn [[topic re-prefix]]
-        (let [re-prefix (lockdown-prefix-regex re-prefix)]
+     (fn [[topic re-prefix]]
+       (let [re-prefix (lockdown-prefix-regex re-prefix)]
           ;; store a mapping of re-prefix (string representation) to topic
-          (swap! re-prefix->topic conj {(str re-prefix) topic})
+         (swap! re-prefix->topic conj {(str re-prefix) topic})
           ;; add to help docs
-          (help/add-docs
+         (if (command-enabled? topic)
+           (help/add-docs
             topic
-            ;; extract the docstring from each subcommand
+             ;; extract the docstring from each subcommand
             (map (fn [[_ cmd-fn]] (:doc (meta cmd-fn))) cmd-pairs))
+           (info "skipping docs for disabled command:" topic))
           ;; store the hooks to match
-          (swap! hooks conj {(str re-prefix) cmds})))
-      topics->patterns)))
+         (swap! hooks conj {(str re-prefix) cmds})))
+     topics->patterns)))
 
 (defmacro cmd-hook
   "Takes potentially special syntax and resolves it to symbols for

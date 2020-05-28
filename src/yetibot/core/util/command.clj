@@ -1,9 +1,9 @@
 (ns yetibot.core.util.command
   (:require
-    [clojure.spec.alpha :as s]
-    [yetibot.core.config :refer [get-config]]
-    [yetibot.core.models.help :as help]
-    [yetibot.core.parser :refer [parser]]))
+   [clojure.spec.alpha :as s]
+   [yetibot.core.config :refer [get-config]]
+   [yetibot.core.models.help :as help]
+   [yetibot.core.parser :refer [parser]]))
 
 (s/def ::whitelist-config (s/coll-of string?))
 (s/def ::blacklist-config (s/coll-of string?))
@@ -36,6 +36,14 @@
 (defn any-match? [patterns s]
   (some #(re-find % s) patterns))
 
+(def always-enabled-commmands
+  "The set of meta / foundational commands that should never be disabled via
+   whitelist or blacklist.
+
+   Note: a better way to control this list might be via yb/cat metadata on
+   commands themselves."
+  #{"help" "alias" "channel" "category"})
+
 (defn command-enabled?
   "Given a command prefix, determine whether or not it is enabled.
 
@@ -49,15 +57,17 @@
    blacklist."
   [command]
   (boolean
-   (cond
-     ;; blow up if both
-     (and (seq (whitelist)) (seq (blacklist))) (throw-config-error!)
-     ;; whitelist checking
-     (seq (whitelist)) (any-match? (whitelist) command)
-     ;; blacklist checking
-     (seq (blacklist)) (not (any-match? (blacklist) command))
-     ;; neither blacklist nor whitelist are configured
-     :else true)))
+    (cond
+      ;; exclude meta/foundational commands from black/white-lists
+      (always-enabled-commmands command) true
+      ;; blow up if both
+      (and (seq (whitelist)) (seq (blacklist))) (throw-config-error!)
+      ;; whitelist checking
+      (seq (whitelist)) (any-match? (whitelist) command)
+      ;; blacklist checking
+      (seq (blacklist)) (not (any-match? (blacklist) command))
+      ;; neither blacklist nor whitelist are configured
+      :else true)))
 
 (defn error?
   "Determine whether a value is an error map"

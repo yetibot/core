@@ -15,8 +15,16 @@
        "Use `category` to list command by their category, "
        " e.g. `category list fun`."
        \newline
-       (s/join ", "
-               (sort (keys (get-docs))))))
+       \newline
+       "Available commands:"
+       \newline
+       \newline
+       (->>
+        (get-docs)
+        keys
+        sort
+        (map #(str "`" % "`"))
+        (s/join ", "))))
 
 (defn help-for-topic
   "help <topic> # get help for <topic>. If no exact matches are found for topic, it will fallback to the topic with the smallest Levenshtein distance < 2"

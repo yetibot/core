@@ -21,14 +21,19 @@
         (fact "echo is not whitelisted"
               (command-enabled? "echo") => false)
         (fact "list is whitelisted"
-              (command-enabled? "list") => true))
+              (command-enabled? "list") => true)
+        (fact "help and alias ignore whitelist"
+              (command-enabled? "help") => true
+              (command-enabled? "category") => true))
 
        (against-background
-        [(whitelist) => #{} (blacklist) => #{#"list"}]
+        [(whitelist) => #{} (blacklist) => #{#"help" #"list"}]
         (fact "echo is not blacklisted"
               (command-enabled? "echo") => true)
         (fact "list is blacklisted"
-              (command-enabled? "list") => false))
+              (command-enabled? "list") => false)
+        (fact "help ignores blacklist"
+              (command-enabled? "help") => true))
 
        (against-background
         [(whitelist) => #{} (blacklist) => #{}]
