@@ -1,6 +1,6 @@
 # yetibot.core change log
 
-## ``
+## `[yetibot/core "20200528.202014.9d1403f"]`
 
 - [Exclude help from white black lists #135](https://github.com/yetibot/yetibot.core/pull/135)
 
