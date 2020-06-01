@@ -29,7 +29,8 @@
   "Hooked entry point for all command handlers. If no handlers intercept, it
    falls back to image search when available."
   [cmd-with-args extra]
-  (info "nothing handled" cmd-with-args)
+  (info "nothing handled" cmd-with-args
+        \newline (pr-str extra))
   (if (fallback-enabled?)
     (if-not (:fallback? extra)
       (handle-cmd (str (configured-default-command) " " cmd-with-args)

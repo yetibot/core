@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## ``
+
+- [Exclude help from white black lists #135](https://github.com/yetibot/yetibot.core/pull/135)
+
 ## `[yetibot/core "20200520.173714.45bb274"]`
 
 - [Add command whitelist/blacklist support #133](https://github.com/yetibot/yetibot.core/pull/133)
