@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200602.191918.7afd3ad"]`
+
+[Fallback to default command handling when a command is disabled #137](https://github.com/yetibot/yetibot.core/pull/137)
+
 ## `[yetibot/core "20200528.202014.9d1403f"]`
 
 - [Exclude help from white black lists #135](https://github.com/yetibot/yetibot.core/pull/135)
