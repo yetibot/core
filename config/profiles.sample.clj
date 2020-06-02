@@ -21,6 +21,8 @@
    :yetibot-command-embedded-enabled "false"
    ;; Whether to enable having a fallback command. Default is true.
    :yetibot-command-fallback-enabled "true"
+   ;; the default command to fall back to if no other commands match
+   :yetibot-default-command "giphy"
 
    ;; Whitelists and blackists: these can be used to enable/disable specific
    ;; commands. Only one of these must be specified. If both are specified, it
@@ -115,9 +117,6 @@
 
    ;;  `giphy`
    :yetibot-giphy-key ""
-
-   ;; the default command to fall back to if no other commands match
-   :yetibot-default-command "giphy"
 
    ;; `meme`
    :yetibot-imgflip-username ""

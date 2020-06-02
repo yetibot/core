@@ -76,33 +76,44 @@
         admin-only-command? (admin/admin-only-command? cmd)
         user-is-admin? (admin/user-is-admin? user)
         _ (info "admin only?" admin-only-command?
-                "user is admin?" user-is-admin?)]
-    ;; ensure the user is allowed to run this command
-    (if (and admin-only-command? (not user-is-admin?))
-      {:result/error (format
-                      "Only admins are allowed to execute %s commands" cmd)}
-      ;; find the top level command and its corresponding sub-cmds
-      (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
-        ;; Now try to find a matching sub-commands
-        (if-let [[match sub-fn] (match-sub-cmds args sub-cmds)]
-          ;; TODO check if command is whitelisted or blacklisted
-          ;; extract category settings
-          (if (command-enabled? cmd)
-            (let [disabled-cats (if settings (settings c/cat-settings-key) #{})
-                  fn-cats (set (:yb/cat (meta sub-fn)))]
-              (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
-                (str
-                 (s/join ", " (map name matched-disabled-cats))
-                 " commands are disabled in this channel🖐")
-                (timers/time!
-                 (timers/timer ["yetibot" cmd (str (:name (meta sub-fn)))])
-                 (sub-fn (merge extra {:cmd cmd :args args :match match})))))
-            {:result/error (format "`%s` is disabled in this Yetibot" cmd)})
-          ;; couldn't find any sub commands so default to help.
-          (:value
-           (yetibot.core.handler/handle-unparsed-expr
-            (str "help " (get @re-prefix->topic (str cmd-re))))))
-        (callback cmd-with-args extra)))))
+                "user is admin?" user-is-admin?)
+        [cmd-re sub-cmds] (find-sub-cmds cmd)
+        [match sub-fn] (match-sub-cmds args sub-cmds)
+        ;; disabled categories for channel
+        disabled-cats (if settings (settings c/cat-settings-key) #{})
+        fn-cats (set (:yb/cat (meta sub-fn)))
+        matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
+
+    ;; possible ways to handle an incoming command:
+
+    (cond
+      ;; 1. deny if command is admin only
+      (and admin-only-command? (not user-is-admin?))
+      {:result/error (format "Only admins are allowed to execute %s commands" cmd)}
+
+      ;; 2. command and sub command found, but category is disabled
+      matched-disabled-cats
+      (str
+       (s/join ", " (map name matched-disabled-cats))
+       " commands are disabled in this channel🖐")
+
+      ;; 3. no command found, fallback
+      (not sub-cmds) (callback cmd-with-args extra)
+
+      ;; 4. command is disabled, fallback
+      (not (command-enabled? cmd)) (callback cmd-with-args extra)
+
+      ;; 5. command found, but no sub commands found, run help on it
+      (not sub-fn)
+      (:value
+       (yetibot.core.handler/handle-unparsed-expr
+        (str "help " (get @re-prefix->topic (str cmd-re)))))
+
+      ;; 6. command and sub command found, execute it!
+      :else
+      (timers/time!
+       (timers/timer ["yetibot" cmd (str (:name (meta sub-fn)))])
+       (sub-fn (merge extra {:cmd cmd :args args :match match}))))))
 
 ;; Hook the actual handle-cmd called during interpretation.
 ;; TODO remove completely
