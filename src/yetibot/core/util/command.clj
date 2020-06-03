@@ -60,6 +60,10 @@
     (cond
       ;; exclude meta/foundational commands from black/white-lists
       (always-enabled-commmands command) true
+      ;; exclude aliases from black/white-lists since they simply compose other
+      ;; commands
+
+
       ;; blow up if both
       (and (seq (whitelist)) (seq (blacklist))) (throw-config-error!)
       ;; whitelist checking

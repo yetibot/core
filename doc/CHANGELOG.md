@@ -2,7 +2,7 @@
 
 ## `[yetibot/core "20200602.191918.7afd3ad"]`
 
-[Fallback to default command handling when a command is disabled #137](https://github.com/yetibot/yetibot.core/pull/137)
+- [Fallback to default command handling when a command is disabled #137](https://github.com/yetibot/yetibot.core/pull/137)
 
 ## `[yetibot/core "20200528.202014.9d1403f"]`
 
