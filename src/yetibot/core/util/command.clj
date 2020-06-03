@@ -9,6 +9,7 @@
 (s/def ::blacklist-config (s/coll-of string?))
 
 (defn pattern-config-set
+  "Transform list of strings from config into a list of regex pattern"
   [spec path]
   (set
    (->>
@@ -54,7 +55,15 @@
    whitelist.
 
    If a blacklist is specified, all commands are enabled *except* those in the
-   blacklist."
+   blacklist.
+
+   Some foundation commands, the set of which is defined in
+   `always-enabled-commmands`, are always enabled.
+
+   Aliases are also always enabled as they simply compose other commands. If an
+   alias attempts to compose a command that is not enabled, it would simply
+   fallback depending on whether fallback is enabled (it is by default), and
+   what the fallback command is (`help`, by default)."
   [command]
   (boolean
     (cond
@@ -62,8 +71,7 @@
       (always-enabled-commmands command) true
       ;; exclude aliases from black/white-lists since they simply compose other
       ;; commands
-
-
+      (@help/alias-docs command) true
       ;; blow up if both
       (and (seq (whitelist)) (seq (blacklist))) (throw-config-error!)
       ;; whitelist checking
