@@ -1,10 +1,11 @@
 (ns yetibot.core.commands.help
   (:require
-    [clojure.string :as s]
-    [yetibot.core.models.default-command :refer [fallback-enabled?
-                                                 configured-default-command]]
-    [yetibot.core.models.help :refer [fuzzy-get-docs-for get-docs get-docs-for]]
-    [yetibot.core.hooks :refer [cmd-hook]]))
+   [clojure.string :as s]
+   [yetibot.core.models.default-command :refer [fallback-enabled?
+                                                configured-default-command]]
+   [yetibot.core.models.help :refer [fuzzy-get-docs-for get-docs get-docs-for
+                                     get-alias-docs]]
+   [yetibot.core.hooks :refer [cmd-hook]]))
 
 (def separator "▬▬▬")
 
@@ -18,11 +19,26 @@
      "and passes whatever the user entered as args to the fallback command.")
     "🚫 Fallback commands are disabled"))
 
+(defn alias-help-text
+  []
+  (let [ads (get-alias-docs)]
+    (when-not (empty? ads)
+      (str
+       \newline
+       \newline
+       "Available aliases:"
+       \newline
+       \newline
+       (->>
+        ads
+        keys
+        sort
+        (map #(str "`" % "`"))
+        (s/join ", "))))))
+
 (defn help-topics
   [_]
   (str "Use `help <command>` on any of the following for more details."
-       \newline
-       "Use `alias` command to list available aliases"
        \newline
        "Use `category` to list command by their category, "
        " e.g. `category list fun`."
@@ -38,7 +54,8 @@
         keys
         sort
         (map #(str "`" % "`"))
-        (s/join ", "))))
+        (s/join ", "))
+       (alias-help-text)))
 
 (defn help-for-topic
   "help <topic> # get help for <topic>. If no exact matches are found for topic, it will fallback to the topic with the smallest Levenshtein distance < 2"
