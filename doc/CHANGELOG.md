@@ -1,5 +1,9 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200603.183252.31b57fa"]`
+
+- [Exclude aliases from white and black lists #138](https://github.com/yetibot/yetibot.core/pull/138)
+
 ## `[yetibot/core "20200602.191918.7afd3ad"]`
 
 - [Fallback to default command handling when a command is disabled #137](https://github.com/yetibot/yetibot.core/pull/137)
