@@ -21,6 +21,8 @@
    :yetibot-command-embedded-enabled "false"
    ;; Whether to enable having a fallback command. Default is true.
    :yetibot-command-fallback-enabled "true"
+   ;; Override the default fallback help text. Default is empty.
+   :yetibot-command-fallback-help-text "Welcome to Yetibot 👋"
    ;; the default command to fall back to if no other commands match
    :yetibot-default-command "giphy"
 

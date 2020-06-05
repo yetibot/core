@@ -12,6 +12,13 @@
     (:value (get-config ::config [:default :command]))
     "help"))
 
+(s/def ::text string?)
+
+(defn fallback-help-text-override
+  "Optional config, may be nil"
+  []
+  (:value (get-config ::text [:command :fallback :help :text])))
+
 (s/def ::fallback-commands-enabled-config string?)
 
 (defn fallback-enabled?

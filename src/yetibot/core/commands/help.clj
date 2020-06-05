@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as s]
    [yetibot.core.models.default-command :refer [fallback-enabled?
+                                                fallback-help-text-override
                                                 configured-default-command]]
    [yetibot.core.models.help :refer [fuzzy-get-docs-for get-docs get-docs-for
                                      get-alias-docs]]
@@ -12,11 +13,13 @@
 (defn fallback-help-text
   []
   (if (fallback-enabled?)
-    (str
-     "✅ Fallback commands are enabled, and the default command is `"
-     (configured-default-command)
-     "`. This is triggered when a user enters a command that does not exist, "
-     "and passes whatever the user entered as args to the fallback command.")
+    (or
+      (fallback-help-text-override)
+      (str
+       "✅ Fallback commands are enabled, and the default command is `"
+       (configured-default-command)
+       "`. This is triggered when a user enters a command that does not exist, "
+       "and passes whatever the user entered as args to the fallback command."))
     "🚫 Fallback commands are disabled"))
 
 (defn alias-help-text

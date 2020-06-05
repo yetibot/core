@@ -55,7 +55,10 @@
             ;; (enabled by default)
             :embedded {:enabled "false"}
             ;; Whether to enable having a fallback command. Default is true.
-            :fallback {:enabled "true"}
+            :fallback {:enabled "true"
+                       ;; Override the default fallback help text. Default is
+                       ;; empty.
+                       :help {:text "Welcome to Yetibot 👋"}}
 
             ;; Whitelists and blackists: these can be used to enable/disable
             ;; specific commands. Only one of these must be specified. If both
