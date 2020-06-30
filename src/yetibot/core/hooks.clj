@@ -2,7 +2,7 @@
   (:require
    [yetibot.core.models.admin :as admin]
    [clojure.set :refer [intersection]]
-   [taoensso.timbre :refer [color-str trace debug info warn error]]
+   [taoensso.timbre :refer [trace info]]
    [yetibot.core.handler]
    [clojure.string :as s]
    [metrics.timers :as timers]
@@ -11,8 +11,6 @@
    [yetibot.core.models.help :as help]
    [robert.hooke :as rh]
    [yetibot.core.util.command :refer [command-enabled?]]))
-
-(def ^:private Pattern java.util.regex.Pattern)
 
 ; Stores the mapping of prefix-regex -> sub-commands.
 (defonce hooks (atom {}))
