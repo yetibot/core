@@ -17,7 +17,7 @@
 
 (defn cmds-for-cat
   "Return collection of vars for cmd handler functions whose :yb/cat meta
-   includes `search-cat`"
+   includes `search-cat` and are enabled"
   [search-cat]
   (let [search-cat (keyword search-cat)]
     (->> @hooks vals
@@ -25,11 +25,26 @@
            ;; take every other, dropping the left side of the pair (i.e. the
            ;; regex that triggers the cmd)
            (comp (partial take-nth 2) rest))
+         ;; filter down to commands in the provided `search-cat` category
          (filter
            (fn [cmd] ((set (:yb/cat (meta cmd))) search-cat)))
+
+         ;; filter down to enabled commands
+         (filter
+           (fn [cmd] (-> cmd meta :doc (s/split #" ") first command-enabled?)))
+
          ;; remove duplicates since multiple regexes can trigger the same
          ;; command
          set)))
+
+(comment
+  (map meta (cmds-for-cat "util"))
+
+  (->> (cmds-for-cat "util")
+       (filter (fn [cmd] (-> cmd meta :doc (s/split #" ") first command-enabled?)))
+       )
+
+  )
 
 (defonce re-prefix->topic (atom {}))
 
