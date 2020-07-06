@@ -1,34 +1,34 @@
 (ns yetibot.core.webapp.routes.graphql
   (:require
-    [clojure.walk :refer [keywordize-keys]]
-    [clojure.edn :as edn]
-    [clojure.data.json :as json]
-    [clojure.java.io :as io]
-    [com.walmartlabs.lacinia :refer [execute]]
-    [com.walmartlabs.lacinia.schema :as lacina.schema]
-    [com.walmartlabs.lacinia.util :as lacina.util]
-    [compojure.core :refer [defroutes POST OPTIONS]]
-    [taoensso.timbre :refer [error debug info color-str]]
-    [yetibot.core.webapp.resolvers :as resolvers]))
+   [clojure.walk :refer [keywordize-keys]]
+   [clojure.edn :as edn]
+   [clojure.data.json :as json]
+   [clojure.java.io :as io]
+   [com.walmartlabs.lacinia :refer [execute]]
+   [com.walmartlabs.lacinia.schema :as lacina.schema]
+   [com.walmartlabs.lacinia.util :as lacina.util]
+   [compojure.core :refer [defroutes POST OPTIONS]]
+   [taoensso.timbre :refer [error debug info color-str]]
+   [yetibot.core.webapp.resolvers :as resolvers]))
 
 (defn load-schema!
   []
   (-> (io/resource "graphql-schema.edn")
       slurp
       edn/read-string
-      (lacina.util/attach-resolvers {:eval resolvers/eval-resolver
-                                     :adapters resolvers/adapters-resolver
-                                     :history resolvers/history-resolver
-                                     :history_item resolvers/history-item-resolver
-                                     :users resolvers/users-resolver
-                                     :user resolvers/user-resolver
-                                     :stats resolvers/stats-resolver
-                                     :aliases resolvers/aliases-resolver
-                                     :observers resolvers/observers-resolver
-                                     :crons resolvers/crons-resolver
-                                     :channels resolvers/channels-resolver
-                                     :karmas resolvers/karmas-resolver
-                                     })
+      (lacina.util/attach-resolvers
+       {:eval resolvers/eval-resolver
+        :adapters resolvers/adapters-resolver
+        :history resolvers/history-resolver
+        :history_item resolvers/history-item-resolver
+        :users resolvers/users-resolver
+        :user resolvers/user-resolver
+        :stats resolvers/stats-resolver
+        :aliases resolvers/aliases-resolver
+        :observers resolvers/observers-resolver
+        :crons resolvers/crons-resolver
+        :channels resolvers/channels-resolver
+        :karmas resolvers/karmas-resolver})
       lacina.schema/compile))
 
 ;; note this is not reloadable

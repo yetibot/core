@@ -23,7 +23,8 @@
          :projects [{:default {:version {:id "42"}}, :key "FOO"}],
          :subtask {:issue {:type {:id "27"}}},
          :domain "",
-         :password ""},
+         :password ""
+         :cloud "true"},
   :monitoring {:host "" :port 5555 :interval 10}
   ;; the keys in adapters can be named anything you like so long as they do not
   ;; container "-" and are globally unique.
@@ -54,7 +55,25 @@
             ;; (enabled by default)
             :embedded {:enabled "false"}
             ;; Whether to enable having a fallback command. Default is true.
-            :fallback {:enabled "true"}
+            :fallback {:enabled "true"
+                       ;; Override the default fallback help text. Default is
+                       ;; empty.
+                       :help {:text "Welcome to Yetibot 👋"}}
+
+            ;; Whitelists and blackists: these can be used to enable/disable
+            ;; specific commands. Only one of these must be specified. If both
+            ;; are specified, it is considered an error and will crash Yetibot
+            ;; on startup. By default there is no whitelist or blacklist.
+            ;;
+            ;; Whitelist: when whitelist is specified, all commands are disabled
+            ;; except those present in the `whitelist` collection. Example:
+            ;;
+            ;; :whitelist ["echo" "list"]
+            ;;
+            ;; Blacklist: when blacklist is specified, all commands are enabled
+            ;; except those present in the `blacklist` collection. Example:
+            ;;
+            ;; :blackist ["echo" "list"]
             }
   ;; the default command to fall back to if no other commands match
   :default {:command "giphy"}

@@ -11,7 +11,7 @@
 ;; TODO: remove dupe between loader ns and this
 (defn load-ns [arg]
   (info "Loading" arg)
-  (try (require arg :reload)
+  (try (require arg)
        arg
        (catch Exception e
          (warn "WARNING: problem requiring" arg (.getMessage e))

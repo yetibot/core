@@ -1,10 +1,7 @@
 (ns yetibot.core.commands.category
   (:require
-    [taoensso.timbre :refer [info warn error]]
+    [yetibot.core.util.command :refer [command-enabled?]]
     [yetibot.core.models.channel :as c]
-    [yetibot.core.adapters.adapter :as a]
-    [yetibot.core.chat :as chat]
-    [clojure.string :as s]
     [yetibot.core.hooks :refer [cmd-hook] :as h]))
 
 (def categories
@@ -85,7 +82,7 @@
   {:yb/cat #{:util}}
   [{[_ c] :match}]
   (if (valid-cat? c)
-    {:result/value (map (comp :doc meta) (h/cmds-for-cat c))}
+    {:result/value (sort (map (comp :doc meta) (h/cmds-for-cat c)))}
     {:result/error (str c " is not a valid category. Use `category names` to view the list.")}))
 
 (defn category-names-cmd
@@ -101,4 +98,10 @@
   #"list\s+(\S+)" category-list-cmd
   #"names" category-names-cmd
   _ show-all-cmd)
+
+(comment
+  (show-all-cmd {})
+  (category-list-cmd {:match [nil "util"]})
+  )
+
 

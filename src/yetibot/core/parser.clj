@@ -1,7 +1,7 @@
 (ns yetibot.core.parser
   (:require [clojure.string :refer [join]]
             [instaparse.core :as insta]
-            [taoensso.timbre :refer [error info]]
+            [taoensso.timbre :refer [info]]
             [yetibot.core.interpreter :refer [handle-expr]]))
 
 (def parser
@@ -28,7 +28,8 @@
      parened = lparen words rparen
      <regex-pipe> = word-chars pipe word-chars (pipe word-chars)*
      <quote> = '\"'
-     literal = quote #'[^\"]+' quote
+     <squote> = \"'\"
+     literal = quote #'[^\"]+' quote | squote #\"[^']+\" squote
      space = ' '
      <pipe> = #'[|]'
      <dollar> = '$'

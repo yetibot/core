@@ -21,6 +21,27 @@
    :yetibot-command-embedded-enabled "false"
    ;; Whether to enable having a fallback command. Default is true.
    :yetibot-command-fallback-enabled "true"
+   ;; Override the default fallback help text. Default is empty.
+   :yetibot-command-fallback-help-text "Welcome to Yetibot 👋"
+   ;; the default command to fall back to if no other commands match
+   :yetibot-default-command "giphy"
+
+   ;; Whitelists and blackists: these can be used to enable/disable specific
+   ;; commands. Only one of these must be specified. If both are specified, it
+   ;; is considered an error and will crash Yetibot on startup. By default there
+   ;; is no whitelist or blacklist.
+   ;;
+   ;; Whitelist: when whitelist is specified, all commands are disabled except
+   ;; those present in the `whitelist` collection. Example:
+   ;;
+   ;; :yetibot-command-whitelist-0 "echo"
+   ;; :yetibot-command-whitelist-1 "list"
+   ;;
+   ;; Blacklist: when blacklist is specified, all commands are enabled except
+   ;; those present in the `blacklist` collection. Example:
+   ;;
+   ;; :yetibot-command-blacklist-0 "echo"
+   ;; :yetibot-command-blacklist-1 "list"
 
    ;; Yetibot needs a Postgres instance to run against.
    :yetibot-db-url "postgresql://localhost:5432/yetibot"
@@ -79,6 +100,7 @@
    :yetibot-jira-default-issue-type-id "3"
    :yetibot-jira-subtask-issue-type-id "27"
    :yetibot-jira-default-project-key "Optional"
+   :yetibot-jira-cloud "true"
 
    ;; s3
    :yetibot-s3-access-key ""
@@ -97,9 +119,6 @@
 
    ;;  `giphy`
    :yetibot-giphy-key ""
-
-   ;; the default command to fall back to if no other commands match
-   :yetibot-default-command "giphy"
 
    ;; `meme`
    :yetibot-imgflip-username ""

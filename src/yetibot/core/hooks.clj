@@ -1,25 +1,23 @@
 (ns yetibot.core.hooks
   (:require
-    [yetibot.core.models.admin :as admin]
-    [clojure.set :refer [difference intersection]]
-    [taoensso.timbre :refer [color-str trace debug info warn error]]
-    [yetibot.core.handler]
-    [clojure.string :as s]
-    [metrics.timers :as timers]
-    [yetibot.core.models.channel :as c]
-    [yetibot.core.interpreter :refer [handle-cmd]]
-    [yetibot.core.models.help :as help]
-    [robert.hooke :as rh]
-    [clojure.stacktrace :as st]))
-
-(def ^:private Pattern java.util.regex.Pattern)
+   [yetibot.core.models.admin :as admin]
+   [clojure.set :refer [intersection]]
+   [taoensso.timbre :refer [trace info]]
+   [yetibot.core.handler]
+   [clojure.string :as s]
+   [metrics.timers :as timers]
+   [yetibot.core.models.channel :as c]
+   [yetibot.core.interpreter :refer [handle-cmd]]
+   [yetibot.core.models.help :as help]
+   [robert.hooke :as rh]
+   [yetibot.core.util.command :refer [command-enabled?]]))
 
 ; Stores the mapping of prefix-regex -> sub-commands.
 (defonce hooks (atom {}))
 
 (defn cmds-for-cat
   "Return collection of vars for cmd handler functions whose :yb/cat meta
-   includes `search-cat`"
+   includes `search-cat` and are enabled"
   [search-cat]
   (let [search-cat (keyword search-cat)]
     (->> @hooks vals
@@ -27,11 +25,26 @@
            ;; take every other, dropping the left side of the pair (i.e. the
            ;; regex that triggers the cmd)
            (comp (partial take-nth 2) rest))
+         ;; filter down to commands in the provided `search-cat` category
          (filter
            (fn [cmd] ((set (:yb/cat (meta cmd))) search-cat)))
+
+         ;; filter down to enabled commands
+         (filter
+           (fn [cmd] (-> cmd meta :doc (s/split #" ") first command-enabled?)))
+
          ;; remove duplicates since multiple regexes can trigger the same
          ;; command
          set)))
+
+(comment
+  (map meta (cmds-for-cat "util"))
+
+  (->> (cmds-for-cat "util")
+       (filter (fn [cmd] (-> cmd meta :doc (s/split #" ") first command-enabled?)))
+       )
+
+  )
 
 (defonce re-prefix->topic (atom {}))
 
@@ -76,30 +89,44 @@
         admin-only-command? (admin/admin-only-command? cmd)
         user-is-admin? (admin/user-is-admin? user)
         _ (info "admin only?" admin-only-command?
-                "user is admin?" user-is-admin?)]
-    ;; ensure the user is allowed to run this command
-    (if (and admin-only-command? (not user-is-admin?))
-      {:result/error (format
-                       "Only admins are allowed to execute %s commands" cmd)}
-      ;; find the top level command and its corresponding sub-cmds
-      (if-let [[cmd-re sub-cmds] (find-sub-cmds cmd)]
-        ;; Now try to find a matching sub-commands
-        (if-let [[match sub-fn] (match-sub-cmds args sub-cmds)]
-          ;; extract category settings
-          (let [disabled-cats (if settings (settings c/cat-settings-key) #{})
-                fn-cats (set (:yb/cat (meta sub-fn)))]
-            (if-let [matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
-              (str
-                (s/join ", " (map name matched-disabled-cats))
-                " commands are disabled in this channel🖐")
-              (timers/time!
-               (timers/timer ["yetibot" cmd (str (:name (meta sub-fn)))])
-               (sub-fn (merge extra {:cmd cmd :args args :match match})))))
-          ;; couldn't find any sub commands so default to help.
-          (:value
-            (yetibot.core.handler/handle-unparsed-expr
-              (str "help " (get @re-prefix->topic (str cmd-re))))))
-        (callback cmd-with-args extra)))))
+                "user is admin?" user-is-admin?)
+        [cmd-re sub-cmds] (find-sub-cmds cmd)
+        [match sub-fn] (match-sub-cmds args sub-cmds)
+        ;; disabled categories for channel
+        disabled-cats (if settings (settings c/cat-settings-key) #{})
+        fn-cats (set (:yb/cat (meta sub-fn)))
+        matched-disabled-cats (seq (intersection disabled-cats fn-cats))]
+
+    ;; possible ways to handle an incoming command:
+
+    (cond
+      ;; 1. deny if command is admin only
+      (and admin-only-command? (not user-is-admin?))
+      {:result/error (format "Only admins are allowed to execute %s commands" cmd)}
+
+      ;; 2. command and sub command found, but category is disabled
+      matched-disabled-cats
+      (str
+       (s/join ", " (map name matched-disabled-cats))
+       " commands are disabled in this channel🖐")
+
+      ;; 3. no command found, fallback
+      (not sub-cmds) (callback cmd-with-args extra)
+
+      ;; 4. command is disabled, fallback
+      (not (command-enabled? cmd)) (callback cmd-with-args extra)
+
+      ;; 5. command found, but no sub commands found, run help on it
+      (not sub-fn)
+      (:value
+       (yetibot.core.handler/handle-unparsed-expr
+        (str "help " (get @re-prefix->topic (str cmd-re)))))
+
+      ;; 6. command and sub command found, execute it!
+      :else
+      (timers/time!
+       (timers/timer ["yetibot" cmd (str (:name (meta sub-fn)))])
+       (sub-fn (merge extra {:cmd cmd :args args :match match}))))))
 
 ;; Hook the actual handle-cmd called during interpretation.
 ;; TODO remove completely
@@ -125,26 +152,28 @@
   ;;
   ;; normalize it into the map form:
   (let [topics->patterns (condp #(%1 %2) topic-and-pattern
-                               vector? (let [[topic pattern] topic-and-pattern]
-                                         {topic pattern})
+                           vector? (let [[topic pattern] topic-and-pattern]
+                                     {topic pattern})
                                ;; already in correct form
-                               map? topic-and-pattern
+                           map? topic-and-pattern
                                ;; else - just the pattern
-                               {(str topic-and-pattern) topic-and-pattern})
+                           {(str topic-and-pattern) topic-and-pattern})
         cmd-pairs (partition 2 cmds)]
     (run!
-      (fn [[topic re-prefix]]
-        (let [re-prefix (lockdown-prefix-regex re-prefix)]
+     (fn [[topic re-prefix]]
+       (let [re-prefix (lockdown-prefix-regex re-prefix)]
           ;; store a mapping of re-prefix (string representation) to topic
-          (swap! re-prefix->topic conj {(str re-prefix) topic})
+         (swap! re-prefix->topic conj {(str re-prefix) topic})
           ;; add to help docs
-          (help/add-docs
+         (if (command-enabled? topic)
+           (help/add-docs
             topic
-            ;; extract the docstring from each subcommand
+             ;; extract the docstring from each subcommand
             (map (fn [[_ cmd-fn]] (:doc (meta cmd-fn))) cmd-pairs))
+           (info "skipping docs for disabled command:" topic))
           ;; store the hooks to match
-          (swap! hooks conj {(str re-prefix) cmds})))
-      topics->patterns)))
+         (swap! hooks conj {(str re-prefix) cmds})))
+     topics->patterns)))
 
 (defmacro cmd-hook
   "Takes potentially special syntax and resolves it to symbols for

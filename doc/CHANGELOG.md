@@ -1,8 +1,35 @@
 # yetibot.core change log
 
+## `[yetibot/core "20200630.181106.8100b22"]`
+
+- [Add my command #145](https://github.com/yetibot/yetibot.core/pull/145)
+
+## `[yetibot/core "20200602.191918.7afd3ad"]`
+
+- [Fallback to default command handling when a command is disabled #137](https://github.com/yetibot/yetibot.core/pull/137)
+
+## `[yetibot/core "20200528.202014.9d1403f"]`
+
+- [Exclude help from white black lists #135](https://github.com/yetibot/yetibot.core/pull/135)
+
+## `[yetibot/core "20200520.173714.45bb274"]`
+
+- [Add command whitelist/blacklist support #133](https://github.com/yetibot/yetibot.core/pull/133)
+
+See [Configuration](https://yetibot.com/ops-guide#configuration) samples for
+more info on how to configure these.
+
+## `[yetibot/core "20200506.175620.6cd5d91"]`
+
+- [Add web adapter #132](https://github.com/yetibot/yetibot.core/pull/132)
+
+## `[yetibot/core "20200422.204847.52f8203"]`
+
+- [Add support for single quote literals in the parse #131](https://github.com/yetibot/yetibot.core/pull/131)
+
 ## `[yetibot/core "20200407.002225.87b98de"]`
 
-Provide default log location if not provied. Related to the changes in:
+Provide default log location if not provided. Related to the changes in:
 `yetibot/core "20200403.184508.cab0823"`.
 
 ## `[yetibot/core "20200406.172829.a046615"]`
