@@ -44,7 +44,6 @@
 (defn -main [& args]
   (do
     (welcome-message!)
-    (web/start-web-server)
     (start-nrepl!)
     (db/start)
     (logging/start)
