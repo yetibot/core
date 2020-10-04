@@ -407,7 +407,9 @@
   _ sortnum-cmd)
 
 ; grep
-(defn slide-context [coll i n]
+(defn slide-context
+  "Return a vector containing n elements before and after element i of collection coll."
+  [coll i n]
   (reduce
     (fn [acc i]
       (if-let [v (nth coll i nil)]
@@ -416,7 +418,9 @@
     []
     (range (- i n) (+ i n 1))))
 
-(defn sliding-filter [slide-n filter-fn coll]
+(defn sliding-filter
+  "Return a vector where each element is a vector containing an element that passed filter-fn and additionally slide-n elements from before and after in coll."
+  [slide-n filter-fn coll]
   (reduce
     (fn [acc i]
       (if (filter-fn (nth coll i))
@@ -427,28 +431,27 @@
 
 (defn grep-data-structure
   "opts available:
-     :context int - how many items around matched line to return"
-  [pattern d & [options]]
-  (let [finder (partial re-find pattern)
+     :context int - how many items around matched line to return
+     :inverted bool - perform inverted search"
+  [pattern indexed-items & [options]]
+  (let [finder (comp (if (:inverted options) not identity) (partial re-find pattern))
         context-count (or (:context options) 0)
         filter-fn (fn [[idx item]]
                     (cond
                       (string? item) (finder item)
                       (coll? item) (some finder (map str (flatten item)))))]
-    (apply concat (sliding-filter context-count filter-fn d))))
+    (apply concat (sliding-filter context-count filter-fn indexed-items))))
 
 (defn grep-cmd
-  "grep <pattern> <list> # filters the items in <list> by <pattern>
-   grep -C <n> <pattern> <list> # filter items in <list> by <patttern> and include <n> items before and after each matched item"
+  "grep <pattern> <list> # filters the items in <list> by <pattern>"
   {:yb/cat #{:util :collection}}
-  [{:keys [match opts args data-collection]}]
-  (let [[n p] (if (sequential? match) (rest match) ["0" args])
-        pattern (re-pattern (str "(?i)" p))
+  [{:keys [match opts args data-collection]} & [grep-options]]
+  (let [pattern (re-pattern (str "(?i)" match)) ;; enable case insensitive search
         items (-> opts ensure-items-collection ensure-items-seqential)]
     (if items
       (let [matches (grep-data-structure
                      pattern (map-indexed vector items)
-                     {:context (read-string n)})
+                     grep-options)
             ordering (map first matches)
             value (map second matches)
             data (when data-collection
@@ -459,8 +462,21 @@
       {:result/error
        (str "Expected a collection but you only gave me `" args "`")})))
 
+(defn grep-surrounding
+  "grep -C <n> <pattern> <list> # filter items in <list> by <pattern> and include <n> items before and after each matched item"
+  {:yb/cat #{:util :collection}}
+  [{[_ n p] :match :as input}]
+  (grep-cmd (assoc input :match p) {:context (read-string n)}))
+
+(defn inverted-grep
+  "grep -V <pattern> <list> # filter items in <list> not matching <pattern>"
+  {:yb/cat #{:util :collection}}
+  [{[_ p] :match :as input}]
+  (grep-cmd (assoc input :match p) {:inverted true}))
+
 (cmd-hook #"grep"
-  #"-C\s+(\d+)\s+(.+)" grep-cmd
+  #"-C\s+(\d+)\s+(.+)" grep-surrounding
+  #"-v\s+(.+)" inverted-grep
   _ grep-cmd)
 
 ; tee
