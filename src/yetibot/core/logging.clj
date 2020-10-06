@@ -35,6 +35,7 @@
       "/var/log/yetibot/yetibot.log"))
 
 (defn start []
+  (info "Setting log level to" (log-level))
   (timbre/set-config!
     {:level (log-level)
      :appenders

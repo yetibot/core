@@ -32,7 +32,6 @@
        vals
        (reduce merge)))
 
-
 (defn prefixed-env-vars
   "Return a map of all env vars with known prefixes"
   []
