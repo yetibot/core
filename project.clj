@@ -59,8 +59,13 @@
                     :dependencies [[lilactown/punk-adapter-jvm "0.0.10"]
                                    [midje "1.9.9"]
                                    [nubank/matcher-combinators "1.2.4"]]}]
+             :midje
+             {:injections [(require 'yetibot.core.logging)
+                           (yetibot.core.logging/start)]}
              :test
              {:resource-paths ["test/resources"]
+              :injections [(require 'yetibot.core.logging)
+                           (yetibot.core.logging/start)]
               :env {:yb-adapters-freenode-type "irc"
                     :yb-adapters-freenode-host "irc.freenode.net"
                     :yb-adapters-freenode-port "6667"
