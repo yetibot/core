@@ -440,7 +440,7 @@
                     (cond
                       (string? item) (finder item)
                       (coll? item) (some finder (map str (flatten item)))))]
-    (apply concat (sliding-filter context-count filter-fn indexed-items))))
+    (distinct (apply concat (sliding-filter context-count filter-fn indexed-items)))))
 
 (defn grep-cmd
   "grep <pattern> <list> # filters the items in <list> by <pattern>"

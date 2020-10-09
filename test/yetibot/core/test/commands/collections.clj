@@ -42,17 +42,18 @@
   (fact (sliding-filter 1 odd? (range 6 10)) =>
       [[6 7 8] [8 9]]))
 
-(facts "grep surrounding"
-  (fact "for multiple matches" (grep-data-structure
-       #"yes"
-       (map-indexed vector ["devth: foo"
-                            "devth: yes"
-                            "devth: bar"
-                            "devth: lol"
-                            "devth: ok"
-                            "devth: baz"
-                            "devth: !history | grep -C 2 yes"])
-       {:context 2})
+(facts "grep context"
+  (fact "for multiple matches"
+    (grep-data-structure #"yes"
+                         (map-indexed vector
+                                      ["devth: foo"
+                                       "devth: yes"
+                                       "devth: bar"
+                                       "devth: lol"
+                                       "devth: ok"
+                                       "devth: baz"
+                                       "devth: !history | grep -C 2 yes"])
+                         {:context 2})
     =>
     [[0 "devth: foo"]
      [1 "devth: yes"]
@@ -61,12 +62,24 @@
      [4 "devth: ok"]
      [5 "devth: baz"]
      [6 "devth: !history | grep -C 2 yes"]])
-  (fact "for single match" (grep-data-structure
-         #"foo"
-         (map-indexed vector ["bar" "lol" "foo" "baz" "qux"])
-         {:context 1})
+  (fact "for single match"
+    (grep-data-structure #"foo"
+                         (map-indexed vector
+                                      ["bar" "lol" "foo" "baz" "qux"])
+                         {:context 1})
     =>
-    '([1 "lol"] [2 "foo"] [3 "baz"])))
+    '([1 "lol"] [2 "foo"] [3 "baz"]))
+  (fact "no overlapping matches"
+    (grep-data-structure #"foo"
+                         (map-indexed vector
+                                      ["foo" "bar" "baz" "foo"])
+                         {:context 2})
+    =>
+    [[0 "foo"]
+     [1 "bar"]
+     [2 "baz"]
+     [3 "foo"]]
+))
 
 (facts "grep-cmd-test"
   (fact "gives full match"
