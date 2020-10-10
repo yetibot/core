@@ -469,7 +469,7 @@
   (grep-cmd (assoc input :match p) {:context (read-string n)}))
 
 (defn inverted-grep
-  "grep -V <pattern> <list> # filter items in <list> not matching <pattern>"
+  "grep -v <pattern> <list> # filter items in <list> not matching <pattern>"
   {:yb/cat #{:util :collection}}
   [{[_ p] :match :as input}]
   (grep-cmd (assoc input :match p) {:inverted true}))
