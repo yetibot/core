@@ -1,5 +1,10 @@
 # yetibot.core change log
 
+## `[yetibot/core "20201010.155802.10604b4"]`
+
+- [Add grep -v command #151](https://github.com/yetibot/yetibot.core/pull/151)
+  by [@ontanj](https://github.com/ontanj)
+
 ## `[yetibot/core "20200630.181106.8100b22"]`
 
 - [Add my command #145](https://github.com/yetibot/yetibot.core/pull/145)
