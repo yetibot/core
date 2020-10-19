@@ -4,7 +4,9 @@
     [clojure.stacktrace :as st]
     [yetibot.core.hooks]
     [clojure.tools.namespace.find :as ns]
-    [clojure.java.classpath :as cp]))
+    [clojure.java.classpath :as cp]
+    [cemerick.pomegranate :as pomegranate]
+    ))
 
 (defn all-namespaces []
   (ns/find-namespaces (cp/system-classpath)))
@@ -13,7 +15,14 @@
   (filter #(re-matches pattern (str %)) (all-namespaces)))
 
 (def yetibot-command-namespaces
-  [#"^yetibot\.(core\.)?commands.*" #"^.*plugins\.commands.*"])
+  [;; support for e.g.:
+   ;; yetibot.commands.*
+   ;; yetibot.core.commands.*
+   ;; yetibot-pluginname.commands.*
+   #"^yetibot(\S*)\.(core\.)?commands.*"
+   ;; mycompany.plugins.commands.*
+   #"^.*plugins\.commands.*"
+   ])
 
 (comment
   (find-namespaces
@@ -53,6 +62,12 @@
 
 (defn load-observers []
   (find-and-load-namespaces yetibot-observer-namespaces))
+
+;; TODO allow specifying modules in configuration
+(defn resolve-modules []
+
+
+  )
 
 (defn load-commands-and-observers []
   (load-observers)
