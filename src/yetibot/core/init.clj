@@ -8,7 +8,7 @@
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.logging :as logging]
     [yetibot.core.webapp.handler :as web]
-    [yetibot.core.loader :refer [load-commands-and-observers]]
+    [yetibot.core.loader :refer [load-all]]
     [yetibot.core.logo :refer [logo]]
     [yetibot.core.config :refer [get-config]]
     [yetibot.core.monitoring :as monitoring]
@@ -49,4 +49,4 @@
     (logging/start)
     (monitoring/start)
     (adapters/start)
-    (load-commands-and-observers)))
+    (load-all)))

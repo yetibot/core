@@ -1,15 +1,29 @@
 (ns yetibot.core.loader
   (:require
-    [taoensso.timbre :refer [debug info warn error]]
-    [clojure.stacktrace :as st]
-    [yetibot.core.hooks]
-    [clojure.tools.namespace.find :as ns]
-    [clojure.java.classpath :as cp]
-    [cemerick.pomegranate :as pomegranate]
-    ))
+   [taoensso.timbre :refer [debug info warn error]]
+   [yetibot.core.config :refer [get-config]]
+   [clojure.spec.alpha :as s]
+   [yetibot.core.spec :as yspec]
+   [clojure.stacktrace :as st]
+   [yetibot.core.hooks]
+   [clojure.tools.namespace.find :as ns]
+   [clojure.java.classpath :as cp]
+   [cemerick.pomegranate :refer [add-dependencies]]))
+
+(s/def ::artifact ::yspec/non-blank-string)
+(s/def ::version ::yspec/non-blank-string)
+(s/def ::name ::yspec/non-blank-string)
+(s/def ::url ::yspec/non-blank-string)
+(s/def ::repo (s/keys :req-un [::name ::url]))
+(s/def ::plugin-config (s/keys :req-un [::artifact ::version]
+                               :opt-un [::repo]))
+(s/def ::plugins-config (s/map-of keyword? ::plugin-config))
+
+(defn plugins-config []
+  (get-config ::plugins-config [:plugins]))
 
 (defn all-namespaces []
-  (ns/find-namespaces (cp/system-classpath)))
+  (ns/find-namespaces (cp/classpath)))
 
 (defn find-namespaces [pattern]
   (filter #(re-matches pattern (str %)) (all-namespaces)))
@@ -26,8 +40,7 @@
 
 (comment
   (find-namespaces
-    (first yetibot-command-namespaces))
-  )
+    (first yetibot-command-namespaces)))
 
 (def yetibot-observer-namespaces
   [#"^yetibot\.(core\.)?observers.*" #"^.*plugins\.observers.*"])
@@ -63,13 +76,35 @@
 (defn load-observers []
   (find-and-load-namespaces yetibot-observer-namespaces))
 
+(def default-repositories
+  {"clojars" "https://clojars.org/repo"})
+
 ;; TODO allow specifying modules in configuration
 (defn resolve-modules []
-
-
+  (add-dependencies :coordinates '[[yetibot/kroki "20201022.003832.0ae5bf7"]]
+                    :repositories default-repositories)
+  (require 'yetibot-kroki.commands.kroki)
   )
 
-(defn load-commands-and-observers []
+(defn load-plugins []
+  (let [{plugins :value} (plugins-config)]
+    (when plugins
+      ;; load the plugins 1 by 1 without concurrency
+      (run!
+       (fn [[_ {:keys [artifact version] :as plugin}]]
+         (debug "Loading plugin" (pr-str plugin)
+                \newline
+                (add-dependencies :coordinates [[(symbol artifact) version]]
+                                  :repositories default-repositories)))
+       plugins))))
+
+(defn load-all
+  "Load all plugins, observers, and commands.
+
+   Plugins need to be loaded first so that `load-observers` and `load-commands`
+   can find any obs or cmd namespaces they bring"
+  []
+  (load-plugins)
   (load-observers)
   (load-commands))
 
@@ -82,4 +117,4 @@
   ;; only load commands and observers
   ;; until https://github.com/devth/yetibot/issues/75 is fixed
   ;;; (find-and-load-namespaces yetibot-all-namespaces))
-  (load-commands-and-observers))
+  (load-all))
