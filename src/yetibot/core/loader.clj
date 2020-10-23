@@ -79,13 +79,8 @@
 (def default-repositories
   {"clojars" "https://clojars.org/repo"})
 
-;; TODO allow specifying modules in configuration
-(defn resolve-modules []
-  (add-dependencies :coordinates '[[yetibot/kroki "20201022.003832.0ae5bf7"]]
-                    :repositories default-repositories)
-  (require 'yetibot-kroki.commands.kroki)
-  )
-
+;; TODO allow specifying mvn repos in configuration
+;; https://github.com/yetibot/yetibot/issues/1038
 (defn load-plugins []
   (let [{plugins :value} (plugins-config)]
     (when plugins
