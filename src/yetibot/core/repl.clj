@@ -9,7 +9,7 @@
     [yetibot.core.logging :as logging] ; enable logging to file
     [yetibot.core.models.users :as users]
     [yetibot.core.monitoring :as monitoring]
-    [yetibot.core.loader :refer [load-commands-and-observers load-ns]]
+    [yetibot.core.loader :as loader :refer [load-ns]]
     [yetibot.core.adapters :as adapters]))
 
 ; use a few non-network commands for dev
@@ -65,9 +65,7 @@
   (stop)
   (start))
 
-(defn load-all []
-  (future
-    (load-commands-and-observers)))
+(defn load-all [] (future (loader/load-all)))
 
 (defn help
   []

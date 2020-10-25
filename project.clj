@@ -38,7 +38,6 @@
                       (java.time.Instant/ofEpochMilli (* 1000 (read-string timestamp)))
                       (java.time.Instant/now))
                     java.time.ZoneOffset/UTC)
-
            datetime (.format
                      (java.time.format.DateTimeFormatter/ofPattern
                       "yyyyMMdd.HHmmss")
@@ -49,7 +48,7 @@
   :resource-paths ["resources"]
   :main yetibot.core.init
   :plugins [[me.arrdem/lein-git-version "2.0.8"]
-            [lein-environ "1.1.0"]]
+            [lein-environ "1.2.0"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
                    {:plugins [[lein-midje "3.2.1"]
@@ -84,6 +83,9 @@
                  [org.clojure/java.jdbc "0.7.10"]
                  [org.postgresql/postgresql "42.2.8"]
                  [clojure-interop/java.nio "1.0.5"]
+
+                 ; dynamic module loading
+                 [clj-commons/pomegranate "1.2.0"]
 
                  ; DurationFormatUtils for uptime
                  [org.apache.commons/commons-lang3 "3.9"]
