@@ -23,7 +23,9 @@
   (get-config ::plugins-config [:plugins]))
 
 (defn all-namespaces []
-  (ns/find-namespaces (cp/classpath)))
+  (concat
+   (ns/find-namespaces (cp/system-classpath))
+   (ns/find-namespaces (cp/classpath))))
 
 (defn find-namespaces [pattern]
   (filter #(re-matches pattern (str %)) (all-namespaces)))
