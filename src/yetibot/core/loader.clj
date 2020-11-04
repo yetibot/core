@@ -85,7 +85,7 @@
 ;; https://github.com/yetibot/yetibot/issues/1038
 (defn load-plugins []
   (let [{plugins :value} (plugins-config)]
-    (when plugins
+    (if plugins
       ;; load the plugins 1 by 1 without concurrency
       (run!
        (fn [[_ {:keys [artifact version] :as plugin}]]
@@ -93,7 +93,8 @@
                 \newline
                 (add-dependencies :coordinates [[(symbol artifact) version]]
                                   :repositories default-repositories)))
-       plugins))))
+       plugins)
+      (info "There are no plugins configured to load"))))
 
 (defn load-all
   "Load all plugins, observers, and commands.
