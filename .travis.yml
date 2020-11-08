@@ -1,3 +1,4 @@
+# TODO move testing to GH Actions
 language: clojure
 lein: lein
 cache:
@@ -26,13 +27,14 @@ script:
   - CLOVERAGE_VERSION=1.1.1 lein with-profile +test cloverage --codecov --runner midje
   - bash <(curl -s https://codecov.io/bash)
 
-deploy:
-  provider: script
-  # deploy is a single script to run - not an array of commands
-  script: lein release
-  # keep node_modules so it's included as a resource in the jar
-  skip_cleanup: true
-  on:
-    branch: master
-    # ensure we only attempt to deploy once using jdk 11
-    jdk: oraclejdk11
+# deploy is handled by GH Actions now
+# deploy:
+#   provider: script
+#   # deploy is a single script to run - not an array of commands
+#   script: lein release
+#   # keep node_modules so it's included as a resource in the jar
+#   skip_cleanup: true
+#   on:
+#     branch: master
+#     # ensure we only attempt to deploy once using jdk 11
+#     jdk: oraclejdk11

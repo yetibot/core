@@ -1,0 +1,59 @@
+name: Release to Clojars and Trigger a PR in yetibot/yetibot
+
+on:
+  push:
+    branches:
+      - master
+    # TODO remove
+    pull_request:
+      - *
+
+jobs:
+
+  deploy:
+
+    runs-on: ubuntu-latest
+    # container: clojure:lein
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - uses: DeLaGuardo/setup-clojure@master
+        with:
+          lein: 2.9.4
+
+      - name: maven cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('project.clj') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: timestamp
+        # by setting INFERV_TIMESTAMP_MS we will get deterministic versions from
+        # `lein pprint :version`
+        run: echo "INFERV_TIMESTAMP_MS=`date +%s%3N`" >> $GITHUB_ENV
+      - name: version
+        run: echo "YB_VERSION=`lein pprint :version | sed 's/\"//g'`" >> $GITHUB_ENV
+      - name: verify
+        run: env
+
+      # Clojars
+      - name: release
+        env:
+          CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
+          CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
+        run: lein with-profile deploy release
+
+      - name: Trigger yetibot to bump dep
+        uses: mvasigh/dispatch-action@main
+        with:
+          token: ${{ secrets.YETIBOT_GITHUB_TOKEN }}
+          repo: yetibot
+          owner: yetibot
+          event_type: bump
+          message: |
+            {
+              "yb_version": "${{ env.YB_VERSION }}"
+            }
