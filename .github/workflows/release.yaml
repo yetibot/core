@@ -3,10 +3,10 @@ name: Release to Clojars and Trigger a PR in yetibot/yetibot
 on:
   push:
     branches:
-      - *
+      - "*"
     # TODO remove
     pull_request:
-      - *
+      - "*"
 
 jobs:
 
