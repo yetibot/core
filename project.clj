@@ -29,26 +29,12 @@
                      "\u001B[m"))
                    (println))}
 
-  :git-version
-  {:status-to-version
-   (fn [{:keys [timestamp ref-short tag version branch ahead ahead? dirty?] :as git}]
-     ;; (assert (not dirty?) "Git workspace is dirty")
-     (let [instant (.atZone
-                    (if (and timestamp (number? (read-string timestamp)))
-                      (java.time.Instant/ofEpochMilli (* 1000 (read-string timestamp)))
-                      (java.time.Instant/now))
-                    java.time.ZoneOffset/UTC)
-           datetime (.format
-                     (java.time.format.DateTimeFormatter/ofPattern
-                      "yyyyMMdd.HHmmss")
-                     instant)]
-       (format "%s.%s" datetime ref-short)))}
-
   ; :aot [yetibot.core.init]
   :resource-paths ["resources"]
   :main yetibot.core.init
-  :plugins [[me.arrdem/lein-git-version "2.0.8"]
-            [lein-environ "1.2.0"]]
+  :plugins [[lein-environ "1.2.0"]
+            [lein-inferv "20201028.232949.b461fd0"]
+            [lein-pprint "1.3.2"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
                    {:plugins [[lein-midje "3.2.1"]
