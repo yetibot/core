@@ -53,10 +53,10 @@ jobs:
   #       with:
   #         fail_ci_if_error: true # optional (default = false)
   #         verbose: false # optional (default = false)
-  #
+
   deploy:
     runs-on: ubuntu-latest
-    needs: test
+    # needs: test
     # container: clojure:lein
     steps:
       - name: checkout
