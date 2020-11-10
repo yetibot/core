@@ -55,7 +55,7 @@ jobs:
           pwd
           cd ~/
           pwd
-          ls -al ~/.m2/repository
+          ls -al /root/.m2/repository
 
       - uses: codecov/codecov-action@v1
         with:
