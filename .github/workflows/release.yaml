@@ -51,13 +51,12 @@ jobs:
 
       - uses: codecov/codecov-action@v1
         with:
-          # file: ./coverage.xml # optional
-          # files: ./coverage1.xml,./coverage2.xml # optional
           fail_ci_if_error: true # optional (default = false)
-          verbose: true # optional (default = false)
+          verbose: false # optional (default = false)
 
   deploy:
     runs-on: ubuntu-latest
+    needs: test
     # container: clojure:lein
     steps:
       - name: checkout
