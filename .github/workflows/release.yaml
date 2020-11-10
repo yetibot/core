@@ -41,11 +41,20 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('project.clj') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+
+      # runs the tests and generates code coverage metrics
       - name: test
         env:
           YETIBOT_DB_URL: postgresql://yetibot:yetibot@postgres:5432/yetibot
           CLOVERAGE_VERSION: 1.1.2
         run: lein with-profile +test cloverage --codecov --runner midje
+
+      - uses: codecov/codecov-action@v1
+        with:
+          # file: ./coverage.xml # optional
+          # files: ./coverage1.xml,./coverage2.xml # optional
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)
 
   deploy:
     runs-on: ubuntu-latest
