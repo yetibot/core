@@ -49,6 +49,14 @@ jobs:
           CLOVERAGE_VERSION: 1.1.2
         run: lein with-profile +test cloverage --codecov --runner midje
 
+      - name: debug
+        run: |
+          whoami
+          pwd
+          cd ~/
+          pwd
+          ls -al ~/.m2/repository
+
       - uses: codecov/codecov-action@v1
         with:
           fail_ci_if_error: true # optional (default = false)
