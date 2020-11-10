@@ -10,8 +10,44 @@ on:
 
 jobs:
 
-  deploy:
+  test:
+    # Containers must run in Linux based operating systems
+    runs-on: ubuntu-latest
+    # Docker Hub image that `container-job` executes in
+    container: clojure:lein
 
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_USER: yetibot
+          POSTGRES_PASSWORD: yetibot
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: maven cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('project.clj') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: test
+        env:
+          YETIBOT_DB_URL: postgresql://yetibot:yetibot@postgres:5432/yetibot
+          CLOVERAGE_VERSION: 1.1.2
+        run: lein with-profile +test cloverage --codecov --runner midje
+
+  deploy:
     runs-on: ubuntu-latest
     # container: clojure:lein
     steps:
@@ -43,12 +79,13 @@ jobs:
       - name: verify
         run: env
 
-      # Clojars
-      - name: release
-        env:
-          CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
-          CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
-        run: lein with-profile deploy release
+      # Clojars 
+      # TODO re-enable
+      # - name: release
+      #   env:
+      #     CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
+      #     CLOJARS_PASSWORD: ${{ secrets.CLOJARS_PASSWORD }}
+      #   run: lein with-profile deploy release
 
       - name: Trigger yetibot to bump dep
         uses: mvasigh/dispatch-action@main
