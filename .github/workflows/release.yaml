@@ -37,7 +37,7 @@ jobs:
       - name: maven cache
         uses: actions/cache@v2
         with:
-          path: ~/.m2/repository
+          path: /root/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('project.clj') }}
           restore-keys: |
             ${{ runner.os }}-maven-
@@ -48,14 +48,6 @@ jobs:
           YETIBOT_DB_URL: postgresql://yetibot:yetibot@postgres:5432/yetibot
           CLOVERAGE_VERSION: 1.1.2
         run: lein with-profile +test cloverage --codecov --runner midje
-
-      - name: debug
-        run: |
-          whoami
-          pwd
-          cd ~/
-          pwd
-          ls -al /root/.m2/repository
 
       - uses: codecov/codecov-action@v1
         with:
