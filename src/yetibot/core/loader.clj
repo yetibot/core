@@ -84,6 +84,7 @@
 ;; TODO allow specifying mvn repos in configuration
 ;; https://github.com/yetibot/yetibot/issues/1038
 (defn load-plugins []
+  (info "load-plugins" (plugins-config))
   (let [{plugins :value} (plugins-config)]
     (if plugins
       ;; load the plugins 1 by 1 without concurrency
@@ -102,6 +103,7 @@
    Plugins need to be loaded first so that `load-observers` and `load-commands`
    can find any obs or cmd namespaces they bring"
   []
+  (info "load-all")
   (load-plugins)
   (load-observers)
   (load-commands))
