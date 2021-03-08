@@ -26,7 +26,10 @@ $ export YETIBOT_DB_URL="postgresql://yetibot:yetibot@localhost:5432/yetibot"
 
 ### Run the Tests
 ```bash
-$ lein midje
+$ lein test --help
+test is an alias, expands to ["with-profile" "+test" "midje"]
+
+$ lein test
 ...
 >>> Midje summary:
 All checks (171) succeeded.
