@@ -6,6 +6,13 @@
     [clojure.test :refer :all]
     [midje.sweet :refer [=> fact facts]]))
 
+(facts "ensures provided 'items' are collections, and strings are parsed if possible"
+  (ensure-items-collection '(1 2 3)) => '(1 2 3)
+  (ensure-items-collection [1 2 3]) => [1 2 3]
+  (ensure-items-collection {"one" 1 "two" 2}) => '("one: 1" "two: 2")
+  (ensure-items-collection "one: 1\ntwo: 2") => ["one: 1" "two: 2"]
+  (ensure-items-collection 123) => nil)
+
 (facts "ensures provided collections are sequential"
   (ensure-items-seqential `(1 2 3)) => '(1 2 3)
   (ensure-items-seqential #{1 2 3}) => '(1 3 2)

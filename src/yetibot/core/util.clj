@@ -53,13 +53,23 @@
 ;;; collection parsing
 
 ; helpers for all collection cmds
-(defn ensure-items-collection [items]
-  (when items
-    (if (coll? items)
-      (if (map? items)
-        (for [[k v] items] (str k ": " v))
-        items)
-      (s/split items #"\n"))))
+(defn ensure-items-collection
+  "Ensures items is a collection. If not but is a string, will split on newlines,
+   else will return nil"
+  [items]
+  (cond
+    (map? items) (for [[k v] items] (str k ": " v))
+    (coll? items) items
+    (instance? String items) (s/split items #"\n")
+    :else nil))
+
+(comment
+  (ensure-items-collection '(1 2 3))
+  (ensure-items-collection [1 2 3])
+  (ensure-items-collection {"one" 1 "two" 2})
+  (ensure-items-collection "one: 1\ntwo: 2")
+  (ensure-items-collection 123)
+  )
 
 (defn ensure-items-seqential
   "Ensures items is Sequential. If it's not, such as a map, it will transform it
