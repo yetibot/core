@@ -1,11 +1,7 @@
 (ns yetibot.core.util
   (:require
-    [taoensso.timbre :refer [color-str debug info warn error]]
     [clojure.string :as s]
-    [robert.hooke :as rh]
-    [cemerick.url :refer [url]]
-    [clojure.stacktrace :as st]
-    [clojure.data.json :as json]))
+    [cemerick.url :refer [url]]))
 
 (defn filter-nil-vals
   "Takes a map and returns all of its non-nil values"
@@ -144,7 +140,7 @@
         (re-find image-pattern path)
         ;; we indicate images from Wolfram are jpgs by tossing a &t=.jpg on it
         (= ".jpg" (get query "t"))))
-    (catch Exception e
+    (catch Exception _
       false)))
 
 (comment
