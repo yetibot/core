@@ -76,13 +76,26 @@
   (or (map? items)
       (every? #(re-find #".+:.+" %) items)))
 
+(comment
+  (map-like? {:easy 1})
+  (map-like? ["key1:value1" "key2:value2"])
+  (map-like? '("key1:value1" "key2:value2"))
+  (map-like? ["is" "not" "map" "like"])
+  )
+
 (defn split-kvs
   "split into a nested list [[k v]] instead of a map so as to maintain the order"
   [items]
-  (if (map-like? items)
-    (if (map? items)
-      (map vector (keys items) (vals items))
-      (map #(s/split % #":") items))))
+  (cond
+    (map? items) (map vector (keys items) (vals items))
+    (map-like? items) (map #(s/split % #":") items)
+    :else nil))
+
+(comment
+  (split-kvs {:easy 1 :to "see"})
+  (split-kvs ["key1:value1" "key2:value2"])
+  (split-kvs ["is" "not" "map" "like"])
+  )
 
 (defn split-kvs-with
   "accepts a function to map over the split keys from `split-kvs`"
@@ -92,9 +105,7 @@
     items))
 
 (comment
-  
   (split-kvs-with first {"first" "is first" "second" "is second"})
-  
   )
 
 ;; image detection
@@ -116,9 +127,6 @@
 
 (comment
   (image? "https://i.imgflip.com/2v045r.jpg")
-
   (image? "https://i.imgflip.com/2v045r.jpg?foo=bar")
-
   (image? "http://www5b.wolframalpha.com/Calculate/MSP/MSP6921ei892gfhh9i9649000058fg83ii266d342i?MSPStoreType=image/gif&s=46&t=.jpg")
-
   )

@@ -6,6 +6,17 @@
     [clojure.test :refer :all]
     [midje.sweet :refer [=> fact facts]]))
 
+(facts "is map-like if a real hash-map or collection with key:value like items"
+  (map-like? {:is "map-like"}) => true
+  (map-like? ["is:also" "map:like"]) => true
+  (map-like? '("is:also" "map:like")) => true
+  (map-like? ["is" "not" "map" "like"]) => false)
+
+(facts "splits hash-maps and map-like collections into nested list [[k v]]"
+  (split-kvs {:easy 1 :to "see"}) => [[:easy 1] [:to "see"]]
+  (split-kvs ["key1:value1" "key2:value2"]) => [["key1" "value1"] ["key2" "value2"]]
+  (split-kvs ["is" "not" "map" "like"]) => nil)
+
 (fact "An invalid URL"
   (image? "nope") => false)
 
