@@ -12,10 +12,15 @@
   (map-like? '("is:also" "map:like")) => true
   (map-like? ["is" "not" "map" "like"]) => false)
 
-(facts "splits hash-maps and map-like collections into nested list [[k v]]"
+(facts "splits hash-maps and map-like collections into nested list [[k v]], else return nil"
   (split-kvs {:easy 1 :to "see"}) => [[:easy 1] [:to "see"]]
   (split-kvs ["key1:value1" "key2:value2"]) => [["key1" "value1"] ["key2" "value2"]]
   (split-kvs ["is" "not" "map" "like"]) => nil)
+
+(facts "splits hash-maps and map-like collections with a function, else return original collection"
+  (split-kvs-with first {"key1" "value1" "key2" "value2"}) => ["key1" "key2"]
+  (split-kvs-with second ["key1:value1" "key2:value2"]) => ["value1" "value2"]
+  (split-kvs-with first ["is" "not" "map" "like"]) => ["is" "not" "map" "like"])
 
 (fact "An invalid URL"
   (image? "nope") => false)

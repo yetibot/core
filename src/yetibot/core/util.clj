@@ -72,7 +72,11 @@
       (seq items))))
 
 ; keys / vals helpers
-(defn map-like? [items]
+
+(defn map-like?
+  "determines if collection is a hash-map or map-like;
+   map-like is when every collection item has a ':' delimiter"
+  [items]
   (or (map? items)
       (every? #(re-find #".+:.+" %) items)))
 
@@ -84,7 +88,8 @@
   )
 
 (defn split-kvs
-  "split into a nested list [[k v]] instead of a map so as to maintain the order"
+  "if collection is map-like?, split into a nested list [[k v]] instead
+   of a map so as to maintain the order, else return nil"
   [items]
   (cond
     (map? items) (map vector (keys items) (vals items))
@@ -98,7 +103,8 @@
   )
 
 (defn split-kvs-with
-  "accepts a function to map over the split keys from `split-kvs`"
+  "if collection is map-like?, accepts a function to map over the
+   split keys from `split-kvs`, else returns original collection"
   [f items]
   (if-let [kvs (split-kvs items)]
     (map (comp s/trim f) kvs)
@@ -106,6 +112,7 @@
 
 (comment
   (split-kvs-with first {"first" "is first" "second" "is second"})
+  (split-kvs-with first ["is" "not" "map" "like"])
   )
 
 ;; image detection
