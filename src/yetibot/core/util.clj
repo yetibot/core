@@ -65,14 +65,18 @@
   "Ensures items is Sequential. If it's not, such as a map, it will transform it
    to a sequence of k: v strings."
   [items]
-  (if (sequential? items)
-    items
-    (if (map? items)
-      (map (fn [[k v]] (str k ": " v)) items)
-      (seq items))))
+  (cond
+    (sequential? items) items
+    (map? items) (map (fn [[k v]] (str k ": " v)) items)
+    :else (seq items)))
+
+(comment
+  (ensure-items-seqential `(1 2 3))
+  (ensure-items-seqential #{1 2 3})
+  (ensure-items-seqential {"one" 1 "two" 2})
+  )
 
 ; keys / vals helpers
-
 (defn map-like?
   "determines if collection is a hash-map or map-like;
    map-like is when every collection item has a ':' delimiter"
@@ -116,7 +120,6 @@
   )
 
 ;; image detection
-
 (def image-pattern #"\.(png|jpe?g|gif|webp|svg)$")
 
 (defn image?

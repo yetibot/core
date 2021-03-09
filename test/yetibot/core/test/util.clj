@@ -6,6 +6,11 @@
     [clojure.test :refer :all]
     [midje.sweet :refer [=> fact facts]]))
 
+(facts "ensures provided collections are sequential"
+  (ensure-items-seqential `(1 2 3)) => '(1 2 3)
+  (ensure-items-seqential #{1 2 3}) => '(1 3 2)
+  (ensure-items-seqential {"one" 1 "two" 2}) => '("one: 1" "two: 2"))
+
 (facts "is map-like if a real hash-map or collection with key:value like items"
   (map-like? {:is "map-like"}) => true
   (map-like? ["is:also" "map:like"]) => true
