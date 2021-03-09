@@ -109,4 +109,9 @@
 
 (comment
   (image? "https://i.imgflip.com/2v045r.jpg")
+
+  (image? "https://i.imgflip.com/2v045r.jpg?foo=bar")
+
+  (image? "http://www5b.wolframalpha.com/Calculate/MSP/MSP6921ei892gfhh9i9649000058fg83ii266d342i?MSPStoreType=image/gif&s=46&t=.jpg")
+
   )
