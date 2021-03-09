@@ -84,11 +84,18 @@
       (map vector (keys items) (vals items))
       (map #(s/split % #":") items))))
 
-(defn split-kvs-with [f items]
+(defn split-kvs-with
   "accepts a function to map over the split keys from `split-kvs`"
+  [f items]
   (if-let [kvs (split-kvs items)]
     (map (comp s/trim f) kvs)
     items))
+
+(comment
+  
+  (split-kvs-with first {"first" "is first" "second" "is second"})
+  
+  )
 
 ;; image detection
 
