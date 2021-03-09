@@ -12,7 +12,9 @@
   [m]
   (into {} (remove (comp nil? second) m)))
 
-(defn map-to-strs [m]
+(defn map-to-strs
+  "takes a hash-map and parses it to a map-like sequence"
+  [m]
   (map (fn [[k v]] (str (name k) ": " v)) m))
 
 (def env
@@ -58,7 +60,7 @@
    else will return nil"
   [items]
   (cond
-    (map? items) (for [[k v] items] (str k ": " v))
+    (map? items) (map-to-strs items)
     (coll? items) items
     (instance? String items) (s/split items #"\n")
     :else nil))
@@ -77,7 +79,7 @@
   [items]
   (cond
     (sequential? items) items
-    (map? items) (map (fn [[k v]] (str k ": " v)) items)
+    (map? items) (map-to-strs items)
     :else (seq items)))
 
 (comment

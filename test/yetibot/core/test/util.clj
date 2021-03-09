@@ -6,6 +6,9 @@
     [clojure.test :refer :all]
     [midje.sweet :refer [=> fact facts]]))
 
+(fact "a map is transformed into a map-like seq"
+  (map-to-strs {"one" 1 "two" 2 "three" 3}) => '("one: 1" "two: 2" "three: 3"))
+
 (facts "ensures provided 'items' are collections, and strings are parsed if possible"
   (ensure-items-collection '(1 2 3)) => '(1 2 3)
   (ensure-items-collection [1 2 3]) => [1 2 3]
