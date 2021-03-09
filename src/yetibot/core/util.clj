@@ -106,3 +106,7 @@
         (= ".jpg" (get query "t"))))
     (catch Exception e
       false)))
+
+(comment
+  (image? "https://i.imgflip.com/2v045r.jpg")
+  )
