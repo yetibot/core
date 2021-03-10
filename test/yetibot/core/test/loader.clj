@@ -17,10 +17,8 @@
        (let [patterns '(#"yetibot\.core\.commands\.help"
                         #"yetibot\.core\.commands\.error")
              nss (loader/find-and-load-namespaces patterns)]
-         (fact "results is non-empty collection"
-               nss => (every-checker coll? not-empty))
-         (fact "results contain specific namespace"
-               nss => (contains 'yetibot.core.commands.help))
+         (fact "results is non-empty collection that contains expected namespace"
+               nss => (every-checker coll? not-empty) (contains 'yetibot.core.commands.help))
          (fact "results don't contain extraneous namespaces"
                nss =not=> (contains 'yetibot.core.commands.echo))))
 
