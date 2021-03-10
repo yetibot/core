@@ -1,6 +1,6 @@
 (ns yetibot.core.loader
   (:require
-   [taoensso.timbre :refer [debug info warn error]]
+   [taoensso.timbre :refer [debug info warn]]
    [yetibot.core.config :refer [get-config]]
    [clojure.spec.alpha :as s]
    [yetibot.core.spec :as yspec]
@@ -22,12 +22,16 @@
 (defn plugins-config []
   (get-config ::plugins-config [:plugins]))
 
-(defn all-namespaces []
+(defn all-namespaces
+  "find and return all namespaces found on the (system)classpath"
+  []
   (concat
    (ns/find-namespaces (cp/system-classpath))
    (ns/find-namespaces (cp/classpath))))
 
-(defn find-namespaces [pattern]
+(defn find-namespaces
+  "find-n-filter namespaces based on a provided pattern"
+  [pattern]
   (filter #(re-matches pattern (str %)) (all-namespaces)))
 
 (def yetibot-command-namespaces
@@ -45,14 +49,24 @@
     (first yetibot-command-namespaces)))
 
 (def yetibot-observer-namespaces
-  [#"^yetibot\.(core\.)?observers.*" #"^.*plugins\.observers.*"])
+  [#"^yetibot\.(core\.)?observers.*"
+   #"^.*plugins\.observers.*"
+   ])
+
+(comment
+  (find-namespaces
+   (first yetibot-observer-namespaces)))
 
 (def yetibot-all-namespaces
-  (merge
-    (map last [yetibot-command-namespaces
-               yetibot-observer-namespaces])
-    ; with a negative lookahead assertion
-    #"^yetibot\.(.(?!(core)))*"))
+  (conj
+   (map last [yetibot-command-namespaces
+              yetibot-observer-namespaces])
+   ; with a negative lookahead assertion
+   #"^yetibot\.(.(?!(core)))*"))
+
+(comment
+  yetibot-all-namespaces
+  )
 
 (defn load-ns [arg]
   (debug "Loading" arg)
@@ -61,6 +75,11 @@
        (catch Exception e
          (warn "WARNING: problem requiring" arg "hook:" (.getMessage e))
          (st/print-stack-trace (st/root-cause e) 15))))
+
+(comment
+  (load-ns 'yetibot.core.commands.help)
+  (load-ns 'i.will.fail)
+  )
 
 (defn find-and-load-namespaces
   "Find namespaces matching ns-patterns: a seq of regex patterns. Load the matching
@@ -72,8 +91,16 @@
     (info "☑ Loaded" (count nss) "namespaces matching" ns-patterns)
     nss))
 
+(comment
+  (find-and-load-namespaces '(#"yetibot\.core\.commands\.help"))
+  )
+
 (defn load-commands []
   (find-and-load-namespaces yetibot-command-namespaces))
+
+(comment
+  (load-commands)
+  )
 
 (defn load-observers []
   (find-and-load-namespaces yetibot-observer-namespaces))
@@ -96,6 +123,10 @@
                                   :repositories default-repositories)))
        plugins)
       (info "There are no plugins configured to load"))))
+
+(comment
+  (load-plugins)
+  )
 
 (defn load-all
   "Load all plugins, observers, and commands.
