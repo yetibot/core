@@ -5,8 +5,7 @@ on:
     branches:
       # master runs its own tests as part of the release
       - "*"
-    pull_request:
-      - "*"
+  pull_request:
 
 jobs:
 
