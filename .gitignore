@@ -15,3 +15,5 @@ profiles.clj
 browser
 node_modules
 postgres-data/
+.lsp
+.calva

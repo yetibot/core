@@ -1,18 +1,16 @@
 (ns yetibot.core.util
   (:require
-    [taoensso.timbre :refer [color-str debug info warn error]]
     [clojure.string :as s]
-    [robert.hooke :as rh]
-    [cemerick.url :refer [url]]
-    [clojure.stacktrace :as st]
-    [clojure.data.json :as json]))
+    [cemerick.url :refer [url]]))
 
 (defn filter-nil-vals
   "Takes a map and returns all of its non-nil values"
   [m]
   (into {} (remove (comp nil? second) m)))
 
-(defn map-to-strs [m]
+(defn map-to-strs
+  "takes a hash-map and parses it to a map-like sequence"
+  [m]
   (map (fn [[k v]] (str (name k) ": " v)) m))
 
 (def env
@@ -53,45 +51,83 @@
 ;;; collection parsing
 
 ; helpers for all collection cmds
-(defn ensure-items-collection [items]
-  (when items
-    (if (coll? items)
-      (if (map? items)
-        (for [[k v] items] (str k ": " v))
-        items)
-      (s/split items #"\n"))))
+(defn ensure-items-collection
+  "Ensures items is a collection. If not but is a string, will split on newlines,
+   else will return nil"
+  [items]
+  (cond
+    (map? items) (map-to-strs items)
+    (coll? items) items
+    (instance? String items) (s/split items #"\n")
+    :else nil))
+
+(comment
+  (ensure-items-collection '(1 2 3))
+  (ensure-items-collection [1 2 3])
+  (ensure-items-collection {"one" 1 "two" 2})
+  (ensure-items-collection "one: 1\ntwo: 2")
+  (ensure-items-collection 123)
+  )
 
 (defn ensure-items-seqential
   "Ensures items is Sequential. If it's not, such as a map, it will transform it
    to a sequence of k: v strings."
   [items]
-  (if (sequential? items)
-    items
-    (if (map? items)
-      (map (fn [[k v]] (str k ": " v)) items)
-      (seq items))))
+  (cond
+    (sequential? items) items
+    (map? items) (map-to-strs items)
+    :else (seq items)))
+
+(comment
+  (ensure-items-seqential `(1 2 3))
+  (ensure-items-seqential #{1 2 3})
+  (ensure-items-seqential {"one" 1 "two" 2})
+  )
 
 ; keys / vals helpers
-(defn map-like? [items]
+(defn map-like?
+  "determines if collection is a hash-map or map-like;
+   map-like is when every collection item has a ':' delimiter"
+  [items]
   (or (map? items)
       (every? #(re-find #".+:.+" %) items)))
 
-(defn split-kvs
-  "split into a nested list [[k v]] instead of a map so as to maintain the order"
-  [items]
-  (if (map-like? items)
-    (if (map? items)
-      (map vector (keys items) (vals items))
-      (map #(s/split % #":") items))))
+(comment
+  (map-like? {:easy 1})
+  (map-like? ["key1:value1" "key2:value2"])
+  (map-like? '("key1:value1" "key2:value2"))
+  (map-like? ["is" "not" "map" "like"])
+  )
 
-(defn split-kvs-with [f items]
-  "accepts a function to map over the split keys from `split-kvs`"
+(defn split-kvs
+  "if collection is map-like?, split into a nested list [[k v]] instead
+   of a map so as to maintain the order, else return nil"
+  [items]
+  (cond
+    (map? items) (map vector (keys items) (vals items))
+    (map-like? items) (map #(s/split % #":") items)
+    :else nil))
+
+(comment
+  (split-kvs {:easy 1 :to "see"})
+  (split-kvs ["key1:value1" "key2:value2"])
+  (split-kvs ["is" "not" "map" "like"])
+  )
+
+(defn split-kvs-with
+  "if collection is map-like?, accepts a function to map over the
+   split keys from `split-kvs`, else returns original collection"
+  [f items]
   (if-let [kvs (split-kvs items)]
     (map (comp s/trim f) kvs)
     items))
 
-;; image detection
+(comment
+  (split-kvs-with first {"first" "is first" "second" "is second"})
+  (split-kvs-with first ["is" "not" "map" "like"])
+  )
 
+;; image detection
 (def image-pattern #"\.(png|jpe?g|gif|webp|svg)$")
 
 (defn image?
@@ -104,5 +140,11 @@
         (re-find image-pattern path)
         ;; we indicate images from Wolfram are jpgs by tossing a &t=.jpg on it
         (= ".jpg" (get query "t"))))
-    (catch Exception e
+    (catch Exception _
       false)))
+
+(comment
+  (image? "https://i.imgflip.com/2v045r.jpg")
+  (image? "https://i.imgflip.com/2v045r.jpg?foo=bar")
+  (image? "http://www5b.wolframalpha.com/Calculate/MSP/MSP6921ei892gfhh9i9649000058fg83ii266d342i?MSPStoreType=image/gif&s=46&t=.jpg")
+  )
