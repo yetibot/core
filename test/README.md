@@ -20,7 +20,7 @@ $ docker-compose up -d
 ```bash
 # assumes:
 #   - in root directory
-#   - using default DB credentials
+#   - using default DB credentials as defined in docker-compose.yml
 $ export YETIBOT_DB_URL="postgresql://yetibot:yetibot@localhost:5432/yetibot"
 ```
 
