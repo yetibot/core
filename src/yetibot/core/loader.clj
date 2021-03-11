@@ -33,7 +33,9 @@
   "find-n-filter namespaces based on a provided pattern"
   ([pattern] (find-namespaces pattern (all-namespaces)))
   ([pattern all-nss]
-   (filter #(re-matches pattern (str %)) all-nss)))
+   (->> all-nss
+        (filter #(re-matches pattern (str %)))
+        (distinct))))
 
 ; mycompany.plugins.commands.*
 (def all-command-plugins-regex #"^.*plugins\.commands.*")
