@@ -31,8 +31,9 @@
 
 (defn find-namespaces
   "find-n-filter namespaces based on a provided pattern"
-  [pattern]
-  (filter #(re-matches pattern (str %)) (all-namespaces)))
+  ([pattern] (find-namespaces pattern (all-namespaces)))
+  ([pattern all-nss]
+   (filter #(re-matches pattern (str %)) all-nss)))
 
 ; mycompany.plugins.commands.*
 (def all-command-plugins-regex #"^.*plugins\.commands.*")
@@ -74,11 +75,12 @@
 
 (defn load-ns [arg]
   (debug "Loading" arg)
-  (try (require arg)
-       arg
-       (catch Exception e
-         (warn "WARNING: problem requiring" arg "hook:" (.getMessage e))
-         (st/print-stack-trace (st/root-cause e) 15))))
+  (try
+    (require arg)
+    arg
+    (catch Exception e
+      (warn "WARNING: problem requiring" arg "hook:" (.getMessage e))
+      (st/print-stack-trace (st/root-cause e) 15))))
 
 (comment
   (load-ns 'yetibot.core.commands.help)
@@ -89,10 +91,12 @@
   "Find namespaces matching ns-patterns: a seq of regex patterns. Load the matching
    namespaces and return the seq of matched namespaces."
   [ns-patterns]
-  (let [nss (flatten (map find-namespaces ns-patterns))]
-    (info "☐ Loading" (count nss) "namespaces matching" ns-patterns)
+  (let [all-nss (all-namespaces)
+        nss (flatten (map #(find-namespaces % all-nss) ns-patterns))
+        nss-count-output (str (count nss) " namespaces matching " ns-patterns)]
+    (info "☐ Loading" nss-count-output)
     (doseq [n nss] (load-ns n))
-    (info "☑ Loaded" (count nss) "namespaces matching" ns-patterns)
+    (info "☑ Loaded" nss-count-output)
     nss))
 
 (comment
