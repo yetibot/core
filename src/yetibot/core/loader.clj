@@ -39,21 +39,22 @@
    ;; yetibot-pluginname.commands.*
    #"^yetibot(\S*)\.(core\.)?commands.*"
    ;; mycompany.plugins.commands.*
-   #"^.*plugins\.commands.*"])
+   #"^.*plugins\.commands.*"
+   ])
 
 (comment
   (find-namespaces
-   (first yetibot-command-namespaces)))
+    (first yetibot-command-namespaces)))
 
 (def yetibot-observer-namespaces
   [#"^yetibot\.(core\.)?observers.*" #"^.*plugins\.observers.*"])
 
 (def yetibot-all-namespaces
   (merge
-   (map last [yetibot-command-namespaces
-              yetibot-observer-namespaces])
+    (map last [yetibot-command-namespaces
+               yetibot-observer-namespaces])
     ; with a negative lookahead assertion
-   #"^yetibot\.(.(?!(core)))*"))
+    #"^yetibot\.(.(?!(core)))*"))
 
 (defn load-ns [arg]
   (debug "Loading" arg)
