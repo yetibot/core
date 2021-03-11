@@ -28,9 +28,7 @@
    (ns/find-namespaces (cp/classpath))))
 
 (defn find-namespaces [pattern]
-  (->> (all-namespaces)
-       (filter #(re-matches pattern (str %)))
-       (distinct)))
+  (filter #(re-matches pattern (str %)) (all-namespaces)))
 
 (def yetibot-command-namespaces
   [;; support for e.g.:
