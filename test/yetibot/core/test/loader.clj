@@ -20,8 +20,8 @@
              nss-count (count nss)]
          (fact "results is non-empty collection that contains expected namespace"
                nss => (every-checker coll? not-empty) (contains 'yetibot.core.commands.help))
-      ;;    (fact "results is exactly 2 commands"
-      ;;          nss-count => 2)
+         (fact "results is exactly 2 commands"
+               nss-count => 2)
          (fact "results don't contain extraneous namespaces"
                nss =not=> (contains 'yetibot.core.commands.echo))))
 
