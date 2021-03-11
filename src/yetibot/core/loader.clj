@@ -34,23 +34,28 @@
   [pattern]
   (filter #(re-matches pattern (str %)) (all-namespaces)))
 
+; mycompany.plugins.commands.*
+(def all-command-plugins-regex #"^.*plugins\.commands.*")
+
 (def yetibot-command-namespaces
   [;; support for e.g.:
    ;; yetibot.commands.*
    ;; yetibot.core.commands.*
    ;; yetibot-pluginname.commands.*
    #"^yetibot(\S*)\.(core\.)?commands.*"
-   ;; mycompany.plugins.commands.*
-   #"^.*plugins\.commands.*"
+   all-command-plugins-regex
    ])
 
 (comment
   (find-namespaces
     (first yetibot-command-namespaces)))
 
+; mycompany.plugins.observers.*
+(def all-observer-plugins-regex #"^.*plugins\.observers.*")
+
 (def yetibot-observer-namespaces
   [#"^yetibot\.(core\.)?observers.*"
-   #"^.*plugins\.observers.*"
+   all-observer-plugins-regex
    ])
 
 (comment
@@ -58,11 +63,10 @@
    (first yetibot-observer-namespaces)))
 
 (def yetibot-all-namespaces
-  (conj
-   (map last [yetibot-command-namespaces
-              yetibot-observer-namespaces])
-   ; with a negative lookahead assertion
-   #"^yetibot\.(.(?!(core)))*"))
+  (list all-command-plugins-regex
+        all-observer-plugins-regex
+        #"^yetibot\.(.(?!(core)))*"    ; with a negative lookahead assertion
+  ))
 
 (comment
   yetibot-all-namespaces
