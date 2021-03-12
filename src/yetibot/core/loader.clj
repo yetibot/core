@@ -65,7 +65,8 @@
    (first yetibot-observer-namespaces)))
 
 (def yetibot-all-namespaces
-  ;; to mimic previous use of merge, using `list` vs `vector` -- not sure if matters
+  ;; to mimic previous return type of (merge), using (list) vs plain old vector
+  ;; in theory, it should not matter (lazy vs non-lazy) -- but don't want to risk it
   (list all-command-plugins-regex
         all-observer-plugins-regex
         #"^yetibot\.(.(?!(core)))*"    ; with a negative lookahead assertion
