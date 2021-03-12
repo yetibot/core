@@ -158,10 +158,8 @@
       (re-pattern (str "^" re-str "$")))))
 
 (comment
-  (lockdown-prefix-regex #"hello")
-  (lockdown-prefix-regex #"^hello")
-  (lockdown-prefix-regex #"^hello$")
-  (lockdown-prefix-regex #"hello$")
+  (map lockdown-prefix-regex [#"hello" #"^hello"
+                              #"^hello$" #"hello$"])
   )
 
 (defn cmd-hook-resolved
