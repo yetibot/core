@@ -54,6 +54,11 @@
   [prefix]
   (first (filter (fn [[k v]] (re-find (re-pattern k) prefix)) @hooks)))
 
+(comment
+  @hooks
+  (find-sub-cmds "channel")
+  )
+
 (defn match-sub-cmds
   [command-args sub-cmds]
   (let [cmd-pairs (partition 2 sub-cmds)]
@@ -62,11 +67,22 @@
               [match sub-fn]))
           cmd-pairs)))
 
+(comment
+  (match-sub-cmds "list" (last (find-sub-cmds "channel")))
+  (match-sub-cmds "yoyoma" (last (find-sub-cmds "channel")))
+  )
+
 (defn split-command-and-args
   [cmd-with-args]
   (let [[cmd args] (s/split cmd-with-args #"\s" 2)]
     ;; make args an empty string if no args
     [cmd (or args "")]))
+
+(comment
+  (split-command-and-args "")
+  (split-command-and-args "echo")
+  (split-command-and-args "echo hello -s world how are -x you today")
+  )
 
 (defn cmd-unhook
   "Removes the sub-commands for a prefix / topic."
@@ -141,6 +157,13 @@
       re
       (re-pattern (str "^" re-str "$")))))
 
+(comment
+  (lockdown-prefix-regex #"hello")
+  (lockdown-prefix-regex #"^hello")
+  (lockdown-prefix-regex #"^hello$")
+  (lockdown-prefix-regex #"hello$")
+  )
+
 (defn cmd-hook-resolved
   "Expects fully resolved syntax where as plain cmd-hook can take normally
    unresolved symbols like _ and translate them into '_"
@@ -202,6 +225,9 @@
   ;; during dev use this to remove all the hooks, then reload the ns to re-hook
   (rh/clear-hooks #'yetibot.core.handler/handle-raw)
 
+  (let [f (with-meta (fn [_] (prn "inner")) {:doc "inner scoped fn"})]
+    (cmd-hook #"anon" _ f))
+  @hooks
   )
 
 (defn obs-hook
