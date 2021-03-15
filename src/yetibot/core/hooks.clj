@@ -2,7 +2,7 @@
   (:require
    [yetibot.core.models.admin :as admin]
    [clojure.set :refer [intersection]]
-   [taoensso.timbre :refer [trace info]]
+   [taoensso.timbre :refer [info]]
    [yetibot.core.handler]
    [clojure.string :as s]
    [metrics.timers :as timers]
@@ -52,10 +52,13 @@
   "Given a top level command prefix look up corresponding sub-cmds by matching
    prefix against command regexes in `hooks.`"
   [prefix]
-  (first (filter (fn [[k v]] (re-find (re-pattern k) prefix)) @hooks)))
+  (->> @hooks
+       (filter (fn [[k _]] (re-find (re-pattern k) prefix)))
+       (first)))
 
 (comment
   @hooks
+  (first (filter (fn [[k v]] (re-find (re-pattern k) "channel")) @hooks))
   (find-sub-cmds "channel")
   )
 
