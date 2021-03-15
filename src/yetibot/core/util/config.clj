@@ -13,6 +13,11 @@
 
 (defn config-exists? [path] (.exists (as-file path)))
 
+(comment
+  (config-exists? "nope")
+  (config-exists? "config/config.sample.edn")
+  )
+
 (defn load-edn!
   [path]
   (try
@@ -20,6 +25,11 @@
     (catch Exception e
       (debug "No config found at" (pr-str path))
       nil)))
+
+(comment
+  (load-edn! "nope.edn")
+  (load-edn! "config/config.sample.edn")
+  )
 
 (defn load-or-create-edn!
   "Attempts to load edn from `config-path`. If no file exists, a new file will

@@ -1,5 +1,7 @@
 (ns yetibot.core.test.hooks
   (:require [yetibot.core.hooks :as h]
+            [yetibot.core.observers.karma :refer [hook-wrapper
+                                                  message-hook]]
             [clojure.test :refer [function?]]
             [midje.sweet :refer [=> fact facts
                                  contains every-checker]]))
@@ -94,3 +96,11 @@
          (fact "lockdown prefix will return expected regex result"
                (doseq [p parti-pairs]
                  (h/lockdown-prefix-regex (first p)) => (last p)))))
+
+(facts "about obs-hook"
+       ;;  borrowed example usage from observer.karma
+       (let [hooks (h/obs-hook #{:message}
+                               (partial hook-wrapper message-hook))]
+         (fact "can load message hook without error
+                and returns non-empty collection"
+               hooks => (every-checker coll? not-empty))))
