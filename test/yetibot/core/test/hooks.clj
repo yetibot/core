@@ -101,6 +101,6 @@
        ;;  borrowed example usage from observer.karma
        (let [hooks (h/obs-hook #{:message}
                                (partial hook-wrapper message-hook))]
-         (fact "can load message hook without error
-                and returns non-empty collection"
+         (fact "can load message observer hook without error
+                and return non-empty collection"
                hooks => (every-checker coll? not-empty))))
