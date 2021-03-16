@@ -47,6 +47,11 @@
       (error "Failed loading config: " e)
       nil)))
 
+(comment
+  (load-or-create-edn! "nope.edn")
+  (load-edn! "config/config.sample.edn")
+  )
+
 (defn get-config
   "Lookup configuration in a config tree.
    Returns one of:
