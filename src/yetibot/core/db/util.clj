@@ -138,8 +138,10 @@
      {}
      qs)))
 
-(defn query
-  "Query with WHERE"
+(defn generate-sql-query
+  "Generates SQL query string based on table and query-map args.
+   Allows us to seperate the generation of the SQL query and the
+   execution of said query"
   [table {;; provide either where/map
           ;;   or where/clause and where/args
           ;;   or both (they will be combined)
@@ -152,30 +154,49 @@
           having-clause :having/clause
           order-clause :order/clause
           offset-clause :offset/clause
-          limit-clause :limit/clause
-          identifiers :query/identifiers}]
+          limit-clause :limit/clause}]
   (let [select-clause (or select-clause "*")
         [where-clause where-args] (combine-wheres
                                    (transform-where-map where-map)
-                                   [where-clause where-args])
-        sql-query (into
-                   [(str "SELECT " select-clause
-                         " FROM " (qualified-table-name table)
-                         (when-not (blank? where-clause)
-                           (str " WHERE " where-clause))
-                         (when group-clause (str " GROUP BY " group-clause))
-                         (when having-clause (str " HAVING " having-clause))
-                         (when order-clause (str " ORDER BY " order-clause))
-                         (when offset-clause (str " OFFSET " offset-clause))
-                         (when limit-clause (str " LIMIT " limit-clause)))]
-                   where-args)]
+                                   [where-clause where-args])]
+    (into [(str "SELECT " select-clause
+                " FROM " (qualified-table-name table)
+                (when-not (blank? where-clause)
+                  (str " WHERE " where-clause))
+                (when group-clause (str " GROUP BY " group-clause))
+                (when having-clause (str " HAVING " having-clause))
+                (when order-clause (str " ORDER BY " order-clause))
+                (when offset-clause (str " OFFSET " offset-clause))
+                (when limit-clause (str " LIMIT " limit-clause)))]
+          where-args)))
+
+(comment
+  (generate-sql-query
+   "hello"
+   {:select/clause "*"
+    :where/map {:id 123}
+    :where/clause "is_awesome = ?"
+    :where/args [true]
+    :group/clause "id"
+    :having/clause "SUM(points) > 0"
+    :order-by "id"
+    :offset/clause 10
+    :limit/clause 1})
+  (generate-sql-query "hello" {:select/clause "COUNT(*) as count"})
+  )
+
+(defn query
+  "Query with WHERE"
+  [table query-map]
+  (let [sql-query (generate-sql-query table query-map)
+        identifiers (:query/identifiers query-map)]
     (info "db query" (color-str :blue (pr-str sql-query)))
     (seq
-     (sql/with-db-connection [db-conn (:url (config))]
-       (sql/query
-        db-conn
-        sql-query
-        {:identifiers (or identifiers kebab)})))))
+     (sql/with-db-connection
+      [db-conn (:url (config))]
+      (sql/query db-conn
+                 sql-query
+                 {:identifiers (or identifiers kebab)})))))
 
 (defn update-where
   [table where-map attrs]

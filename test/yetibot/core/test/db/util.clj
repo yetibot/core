@@ -1,6 +1,7 @@
 (ns yetibot.core.test.db.util
   (:require [yetibot.core.db.util :as db.util]
-            [midje.sweet :refer [=> fact facts]]))
+            [midje.sweet :refer [=> =not=> contains every-checker
+                                 fact facts]]))
 
 (facts
  "about transform-where-map"
@@ -14,7 +15,7 @@
    expected values"
   (db.util/transform-where-map {:foo "bar"}) =>
   ["foo=?" ["bar"]])
- 
+
  (fact
   "handles a multi valued map and returns vector with
    expected AND clause and values"
@@ -30,7 +31,7 @@
    (db.util/transform-where-map {:foo "bar"})
    (db.util/transform-where-map {:bar "baz"})) =>
   ["foo=? AND bar=?" ["bar" "baz"]])
- 
+
  (fact
   "returns clause when 1st where is empty"
   (db.util/combine-wheres
@@ -44,7 +45,7 @@
    (db.util/transform-where-map {:bar "baz"})
    ["" []]) =>
   ["bar=?" ["baz"]])
- 
+
  (fact
   "returns clause with with no args"
   (db.util/combine-wheres
@@ -85,3 +86,40 @@
   "returns table with expected prefix")
  (db.util/qualified-table-name "hello") =>
  (str db.util/default-table-prefix "hello"))
+
+(facts
+ "about generate-sql"
+ (fact
+  "returns simple SELECT * prefixed-table without WHERE clause"
+  (let [[sql-query] (db.util/generate-sql-query
+                     "hello"
+                     {:select/clause "*"})]
+    sql-query => (contains "SELECT *")
+    sql-query => (contains "FROM yetibot_hello")
+    sql-query =not=> (contains "WHERE")))
+ (fact
+  "returns complex SELECT with all the fixins and args"
+  (let [where-map-id 123
+        where-arg-bool true
+        [sql-query arg1 arg2]
+        (db.util/generate-sql-query "hello" {:select/clause "user AS user_id"
+                                             :where/map {:id where-map-id}
+                                             :where/clause "is_awesome=?"
+                                             :where/args [where-arg-bool]
+                                             :group/clause "id"
+                                             :having/clause "SUM(points) > 0"
+                                             :order-by "id"
+                                             :offset/clause 10
+                                             :limit/clause 1})]
+    sql-query => (every-checker
+                  (contains "SELECT user AS user_id")
+                  (contains "FROM yetibot_hello")
+                  (contains "WHERE")
+                  (contains "id=?")
+                  (contains "is_awesome=?")
+                  (contains "GROUP BY id")
+                  (contains "HAVING SUM(points) > 0")
+                  (contains "OFFSET 10")
+                  (contains "LIMIT 1"))
+    arg1 => where-map-id
+    arg2 => where-arg-bool)))
