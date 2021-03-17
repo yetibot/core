@@ -5,7 +5,7 @@
     [clojure.string :refer [blank? join split]]
     [cuerdas.core :refer [kebab snake]]
     [clojure.java.jdbc :as sql]
-    [taoensso.timbre :refer [debug info color-str]]
+    [taoensso.timbre :refer [info color-str]]
     [yetibot.core.config :refer [get-config]]))
 
 (s/def ::url string?)
@@ -27,6 +27,10 @@
   [[:id :serial "PRIMARY KEY"]
    [:created-at :timestamp "NOT NULL" "DEFAULT CURRENT_TIMESTAMP"]])
 
+(comment
+  (default-fields)
+  )
+
 (defn config []
   (merge
     ;; default
@@ -34,9 +38,17 @@
      :table {:prefix default-table-prefix}}
     (:value (get-config ::db-config [:db]))))
 
+(comment
+  (config)
+  )
+
 (defn qualified-table-name
   [table-name]
   (str (-> (config) :table :prefix) table-name))
+
+(comment
+  (qualified-table-name "hello")
+  )
 
 (defn create
   [table entity]
@@ -73,6 +85,12 @@
     (let [where-keys (join " AND " (map (fn [[k _]] (str (snake k) "=?")) where-map))
           where-args (vals where-map)]
       [where-keys where-args])))
+
+(comment
+  (transform-where-map {:foo "bar"})
+  (transform-where-map {:foo "bar" :bar "baz"})
+  (transform-where-map {})
+  )
 
 (defn empty-where?
   [where]

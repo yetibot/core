@@ -39,3 +39,17 @@ All checks (171) succeeded.
 Ran 35 tests containing 57 assertions.
 0 failures, 0 errors.
 ```
+
+### Testing Extra Credit
+#### Kondo-fy Code
+Using `clj-kondo` [LINK](https://github.com/clj-kondo/clj-kondo), lint the modified code.
+```bash
+clj-kondo --lint src/yetibot/core/db/util.clj
+clj-kondo --lint test/yetibot/core/test/db/util.clj
+```
+
+#### Check for Climate Change
+Using `codeclimate` [LINK](https://github.com/codeclimate/codeclimate), review the modified code.
+```bash
+codeclimate analyze src/ test/
+```
