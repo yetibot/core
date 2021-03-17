@@ -41,6 +41,7 @@ Ran 35 tests containing 57 assertions.
 ```
 
 ### Testing Extra Credit
+
 #### Kondo-fy Code
 Using [`clj-kondo`](https://github.com/clj-kondo/clj-kondo), lint the modified code.
 ```bash
