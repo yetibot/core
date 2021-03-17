@@ -42,7 +42,7 @@ Ran 35 tests containing 57 assertions.
 
 ### Testing Extra Credit
 #### Kondo-fy Code
-Using `clj-kondo` [LINK](https://github.com/clj-kondo/clj-kondo), lint the modified code.
+Using [`clj-kondo`](https://github.com/clj-kondo/clj-kondo), lint the modified code.
 ```bash
 clj-kondo --lint src/yetibot/core/db/util.clj
 clj-kondo --lint test/yetibot/core/test/db/util.clj
