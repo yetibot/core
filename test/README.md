@@ -50,7 +50,8 @@ clj-kondo --lint test/yetibot/core/test/db/util.clj
 ```
 
 #### Check for Climate Change
-Using `codeclimate` [LINK](https://github.com/codeclimate/codeclimate), review the modified code.
+
+Using [`codeclimate`](https://github.com/codeclimate/codeclimate), review the modified code.
 ```bash
 codeclimate analyze src/ test/
 ```
