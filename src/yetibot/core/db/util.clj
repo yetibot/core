@@ -186,7 +186,8 @@
   )
 
 (defn query
-  "Query with WHERE"
+  "SELECT query of table arg, allowing for complex WHERE clauses that contain
+   predicates and/or expressions, based on provided query-map arg."
   [table query-map]
   (let [sql-query (generate-sql-query table query-map)
         identifiers (:query/identifiers query-map)]
