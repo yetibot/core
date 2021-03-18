@@ -1,6 +1,5 @@
 (ns yetibot.core.test.models.help
   (:require [yetibot.core.models.help :as h]
-            [clojure.test :refer :all]
             [midje.sweet :refer [=> fact contains]]))
 
 (defn add-some-docs []
