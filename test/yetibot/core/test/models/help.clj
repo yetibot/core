@@ -1,14 +1,14 @@
 (ns yetibot.core.test.models.help
-  (:require
-    [yetibot.core.models.help :refer :all]
-    [clojure.test :refer :all]))
+  (:require [yetibot.core.models.help :as h]
+            [clojure.test :refer :all]
+            [midje.sweet :refer [=> fact contains]]))
 
 (defn add-some-docs []
-  (add-docs
+  (h/add-docs
     "grep"
     ["grep -A <foo> # do something"
      "grep -B <bar> # wow"])
-  (add-docs
+  (h/add-docs
     "git-commit"
     '("-a # all"
       "--amend # amend previous commit"
@@ -17,19 +17,17 @@
 
 (add-some-docs) ; setup
 
-(deftest add-and-retrieve-docs
-  (is
-    (not (empty? (get-docs-for "git-commit")))
-    "retrieve previously added docs for 'git commit'"))
+(fact "get-docs-for finds previously added docs for 'git commit'
+       and is not empty"
+      (h/get-docs-for "git-commit") => not-empty)
 
-(deftest test-fuzzy
-  (is
-    (re-find #"^grep" (first (fuzzy-get-docs-for "greo")))
-    "fuzzy match for greo should find grep"))
+(fact "fuzzy-get-docs-for should find the previously added docs
+       for 'grep' using 'greo' as input"
+      (first (h/fuzzy-get-docs-for "greo")) => (contains "grep"))
 
 (deftest similar
   (let [similar (map #(str "foobar" %) (range 4))]
-    (doall (map #(add-docs % ["foobar baz"]) similar))
+    (doall (map #(h/add-docs % ["foobar baz"]) similar))
     (is
-      (re-find #"Did.you.mean" (str (first (fuzzy-get-docs-for "foobar"))))
+      (re-find #"Did.you.mean" (str (first (h/fuzzy-get-docs-for "foobar"))))
       "When there are many similar matches, show them to the user")))
