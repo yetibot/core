@@ -12,8 +12,6 @@
 (defn config [] (get-config ::config [:admin]))
 
 (comment
-  ;; helps if you `source config/sample.env` to get
-  ;;   real values
   (config)
   )
 
@@ -44,5 +42,5 @@
 
 (comment
   (user-is-admin? {:id "U123123"})
-  (user-is-admin? {:id "fail"})
+  (user-is-admin? {:id "work"} {:value {:users ["work"]}})
   )
