@@ -11,8 +11,22 @@
 
 (defn config [] (get-config ::config [:admin]))
 
+(comment
+  ;; helps if you `source config/sample.env` to get
+  ;;   real values
+  (config)
+  )
+
 (defn admin-only-command? [cmd]
   (boolean ((-> (config) :value :commands set) cmd)))
 
+(comment
+  (admin-only-command? "obs")
+  )
+
 (defn user-is-admin? [{:keys [id]}]
   (boolean ((-> (config) :value :users set) id)))
+
+(comment
+  (user-is-admin? {:id "U123123"})
+  )
