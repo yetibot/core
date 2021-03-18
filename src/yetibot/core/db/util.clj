@@ -180,7 +180,7 @@
     :where/args [true]
     :group/clause "id"
     :having/clause "SUM(points) > 0"
-    :order-by "id"
+    :order/clause "id"
     :offset/clause 10
     :limit/clause 1})
   (generate-sql-query "hello" {:select/clause "COUNT(*) as count"})

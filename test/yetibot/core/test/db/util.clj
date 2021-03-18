@@ -108,7 +108,7 @@
                                              :where/args [where-arg-bool]
                                              :group/clause "id"
                                              :having/clause "SUM(points) > 0"
-                                             :order-by "id"
+                                             :order/clause "id"
                                              :offset/clause 10
                                              :limit/clause 1})]
     sql-query => (every-checker
@@ -119,6 +119,7 @@
                   (contains "is_awesome=?")
                   (contains "GROUP BY id")
                   (contains "HAVING SUM(points) > 0")
+                  (contains "ORDER BY id")
                   (contains "OFFSET 10")
                   (contains "LIMIT 1"))
     arg1 => where-map-id
