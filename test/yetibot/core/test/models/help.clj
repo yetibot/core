@@ -13,7 +13,9 @@
     '("-a # all"
       "--amend # amend previous commit"
       "-m <msg>"
-      "--interactive")))
+      "--interactive"))
+  (let [similar (map #(str "foobar" %) (range 4))]
+    (doseq [s similar] (h/add-docs s ["foobar baz"]))))
 
 (add-some-docs) ; setup
 
@@ -25,9 +27,14 @@
        for 'grep' using 'greo' as input"
       (first (h/fuzzy-get-docs-for "greo")) => (contains "grep"))
 
-(deftest similar
-  (let [similar (map #(str "foobar" %) (range 4))]
-    (doall (map #(h/add-docs % ["foobar baz"]) similar))
-    (is
-      (re-find #"Did.you.mean" (str (first (h/fuzzy-get-docs-for "foobar"))))
-      "When there are many similar matches, show them to the user")))
+(fact "fuzzy-get-docs-for should prompt user with similar commands
+       when input command matches many similar items"
+      (first (h/fuzzy-get-docs-for "foobar")) => (contains "Did you mean"))
+
+(fact "remove-docs should remove a previously added doc
+       from the help store"
+      (h/add-docs "removeme" ["i am going to remove this soon"])
+      ;; prove it exists 1st
+      (h/get-docs-for "removeme") => not-empty
+      (h/remove-docs "removeme")
+      (h/get-docs-for "removeme") => empty?)

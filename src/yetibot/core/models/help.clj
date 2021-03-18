@@ -52,8 +52,8 @@
 (defn get-alias-docs [] @alias-docs)
 
 (defn remove-docs
+  "Remove (alias-)docs from help store"
   [prefix]
-  ;; attemp to remove from both help stores
   (swap! alias-docs dissoc prefix)
   (swap! docs dissoc prefix))
 
