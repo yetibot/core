@@ -142,20 +142,21 @@
   "Generates SQL query string based on table and query-map args.
    Allows us to seperate the generation of the SQL query and the
    execution of said query"
-  [table {;; provide either where/map
+  [table query-map]
+  (let [{;; provide either where/map
           ;;   or where/clause and where/args
           ;;   or both (they will be combined)
-          select-clause :select/clause
-          where-map :where/map
-          where-clause :where/clause
-          where-args :where/args
+         select-clause :select/clause
+         where-map :where/map
+         where-clause :where/clause
+         where-args :where/args
           ;; optional
-          group-clause :group/clause
-          having-clause :having/clause
-          order-clause :order/clause
-          offset-clause :offset/clause
-          limit-clause :limit/clause}]
-  (let [select-clause (or select-clause "*")
+         group-clause :group/clause
+         having-clause :having/clause
+         order-clause :order/clause
+         offset-clause :offset/clause
+         limit-clause :limit/clause} query-map
+        select-clause (or select-clause "*")
         [where-clause where-args] (combine-wheres
                                    (transform-where-map where-map)
                                    [where-clause where-args])]
@@ -189,15 +190,14 @@
   "SELECT query of table arg, allowing for complex WHERE clauses that contain
    predicates and/or expressions, based on provided query-map arg."
   [table query-map]
-  (let [sql-query (generate-sql-query table query-map)
-        identifiers (:query/identifiers query-map)]
+  (let [sql-query (generate-sql-query table query-map)]
     (info "db query" (color-str :blue (pr-str sql-query)))
     (seq
      (sql/with-db-connection
       [db-conn (:url (config))]
       (sql/query db-conn
                  sql-query
-                 {:identifiers (or identifiers kebab)})))))
+                 {:identifiers (or (:query/identifiers query-map) kebab)})))))
 
 (defn update-where
   [table where-map attrs]
