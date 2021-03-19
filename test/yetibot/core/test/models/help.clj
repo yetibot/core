@@ -4,15 +4,15 @@
 
 (defn add-some-docs []
   (h/add-docs
-    "grep"
-    ["grep -A <foo> # do something"
-     "grep -B <bar> # wow"])
+   "grep"
+   ["grep -A <foo> # do something"
+    "grep -B <bar> # wow"])
   (h/add-docs
-    "git-commit"
-    '("-a # all"
-      "--amend # amend previous commit"
-      "-m <msg>"
-      "--interactive"))
+   "git-commit"
+   '("-a # all"
+     "--amend # amend previous commit"
+     "-m <msg>"
+     "--interactive"))
   (let [similar (map #(str "foobar" %) (range 4))]
     (doseq [s similar] (h/add-docs s ["foobar baz"]))))
 
