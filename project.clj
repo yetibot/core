@@ -34,8 +34,7 @@
   :main yetibot.core.init
   :plugins [[lein-environ "1.2.0"]
             [lein-inferv "20201028.232949.b461fd0"]
-            [lein-pprint "1.3.2"]
-            [lein-cljfmt "0.7.0"]]
+            [lein-pprint "1.3.2"]]
   :profiles {:profiles/dev {}
              :dev [:profiles/dev
                    {:plugins [[lein-midje "3.2.1"]
