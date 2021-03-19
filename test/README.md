@@ -61,12 +61,12 @@ $ codeclimate analyze src/ test/
 
 #### Loading the Sample Config File
 
-Before you start the REPL (`lein repl`), if you are working in isolation (not connected to external systems besides the DB) and want to test reliances on project configs (i.e. admin commands/users, command prefixes/fallbacks, logging level/path, etc) - it's not a bad idea to load the sample environment config file and export its variables. For example:
+Before you start the REPL (`lein repl`), if you are working in isolation (not connected to external systems, except maybe the DB) and want to test reliances on project configs (i.e. admin commands/users, command prefixes/fallbacks, logging level/path, etc) - it's not a bad idea to load the sample environment config file and export its variables. For example:
 ```bash
 # assumes you are in the project root directory
 $ source config/sample.env
 
-$ export $(cut -d= -f1 config/sample.env) &> /dev/null
+$ export $(cut -d "=" -f 1 config/sample.env | grep '^YETIBOT_')
 
 $ env | grep YETIBOT_ | sort
 YETIBOT_ADAPTERS_FREENODE_HOST=chat.freenode.net
