@@ -7,29 +7,52 @@
 
 (s/def ::config any?)
 
-(defn configured-default-command []
-  (or
-    (:value (get-config ::config [:default :command]))
-    "help"))
+(defn configured-default-command
+  "Gets the default command, as defined by the instance config.
+   Arity/2 allows for passing in custom config to compare against,
+   mainly used for testing."
+  ([] (configured-default-command (get-config ::config
+                                              [:default :command])))
+  ([cfg] (or (:value cfg)
+             "help")))
+
+(comment
+  (configured-default-command {:value "findme"})
+  (configured-default-command {})
+  )
 
 (s/def ::text string?)
 
 (defn fallback-help-text-override
-  "Optional config, may be nil"
-  []
-  (:value (get-config ::text [:command :fallback :help :text])))
+  "Optional config for fallback help text. May be nil."
+  ([] (fallback-help-text-override (get-config ::text
+                                               [:command
+                                                :fallback
+                                                :help
+                                                :text])))
+  ([cfg] (:value cfg)))
+
+(comment
+  (fallback-help-text-override {:value "i am override text"})
+  (fallback-help-text-override {})
+  )
 
 (s/def ::fallback-commands-enabled-config string?)
 
 (defn fallback-enabled?
   "Determine whether fallback commands are enabled when user enters a command
    that doesn't exist. Default is true.
-
    In the future this may be channel specific but for now it is global."
-  []
-  (let [{value :value} (get-config ::fallback-commands-enabled-config
-                                   [:command :fallback :enabled])]
-    (if-not (blank? value)
-      (not (= "false" value))
-      ;; enabled by default
-      true)))
+  ([] (fallback-enabled? (get-config ::fallback-commands-enabled-config
+                                     [:command :fallback :enabled])))
+  ([cfg] (let [{value :value} cfg]
+           (if-not (blank? value)
+             (not (= "false" value))
+             ;; enabled by default
+             true))))
+
+(comment
+  (fallback-enabled? {:value "false"})
+  (fallback-enabled? {:value "true"})
+  (fallback-enabled? {:value "thiswilldefaulttotrue"})
+  )
