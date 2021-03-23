@@ -45,11 +45,10 @@
    In the future this may be channel specific but for now it is global."
   ([] (fallback-enabled? (get-config ::fallback-commands-enabled-config
                                      [:command :fallback :enabled])))
-  ([cfg] (let [{value :value} cfg]
-           (if-not (blank? value)
-             (not (= "false" value))
-             ;; enabled by default
-             true))))
+  ([cfg] (->> (:value cfg)
+              (str)
+              (= "false")
+              (not))))
 
 (comment
   (fallback-enabled? {:value "false"})
