@@ -6,9 +6,7 @@
 
    Note: fuzzy matching only works on built in commands (not aliases)."
   (:require [clojure.string :as s]
-            [taoensso.timbre :refer [info warn error]]
-            [clj-fuzzy.metrics :refer [levenshtein]]
-            [clojure.data.json :as json]))
+            [clj-fuzzy.metrics :refer [levenshtein]]))
 
 (defonce ^{:doc "Map of prefix to corresponding command docs"}
   docs (atom {}))
@@ -52,8 +50,8 @@
 (defn get-alias-docs [] @alias-docs)
 
 (defn remove-docs
+  "Remove (alias-)docs from help store"
   [prefix]
-  ;; attemp to remove from both help stores
   (swap! alias-docs dissoc prefix)
   (swap! docs dissoc prefix))
 
@@ -84,7 +82,7 @@
      the same distance
    - return the list of topics with the same distance"
   [topic]
-  (when-let [[dist matches] (nearest-match-within-range topic)]
+  (when-let [[_ matches] (nearest-match-within-range topic)]
     (if (> (count matches) 1)
       ; multiple matches, suggest them to the user
       [(str "No matches for \"" topic "\". Did you mean: "
