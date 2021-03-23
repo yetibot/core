@@ -33,4 +33,5 @@
   (dc/fallback-enabled? {:error :not-found}) => true)
  (fact
   "returns false when 'false' is passed"
-  (dc/fallback-enabled? {:value "false"}) => false))
+  (dc/fallback-enabled? {:value "false"}) => false
+  (dc/fallback-enabled? {:value false}) => false))
