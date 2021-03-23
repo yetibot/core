@@ -1,9 +1,7 @@
 (ns yetibot.core.models.default-command
   "Determine which command to fallback to and whether fallback is enabled"
-  (:require
-    [clojure.string :refer [blank?]]
-    [clojure.spec.alpha :as s]
-    [yetibot.core.config :refer [get-config]]))
+  (:require [clojure.spec.alpha :as s]
+            [yetibot.core.config :refer [get-config]]))
 
 (s/def ::config any?)
 
