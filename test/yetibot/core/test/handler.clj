@@ -14,8 +14,6 @@
    [clojure.string :as s]
    [yetibot.core.repl :refer [load-minimal]]))
 
-(load-minimal)
-
 (comment
   ;; generate some history
   (dotimes [i 10]
@@ -27,6 +25,10 @@
      {:body (str "test history: " i)})))
 
 (def multiline-str (s/join \newline [1 2 3]))
+
+(facts
+ "parent fact checker"
+ (load-minimal)
 
 (fact
  "Newlines are preserved in command handling"
@@ -71,7 +73,7 @@
   :util
   "utilities that help transform expressions or operate Yetibot"})
 
-(facts
+(fact
  "Sub expressions can access the data propagated from the previous pipe"
  ;;
  (:value (parse-and-eval
@@ -86,3 +88,5 @@
 (fact
  "Commands with literals can be transformed"
  (:value (parse-and-eval "echo \"hi\"")) => "\"hi\"")
+
+)
