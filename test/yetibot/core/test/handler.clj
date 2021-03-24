@@ -3,9 +3,7 @@
    [midje.sweet :refer [fact =>]]
    [yetibot.core.handler :refer [handle-raw handle-unparsed-expr]]
    [clojure.string :as s]
-   [yetibot.core.repl :refer [load-minimal]]))
-
-(load-minimal)
+   [yetibot.core.loader :as ldr]))
 
 (comment
   ;; generate some history
@@ -21,4 +19,5 @@
 
 (fact
  "Newlines are preserved in command handling"
+ (ldr/load-commands)
  (:value (handle-unparsed-expr (str "echo " multiline-str))) => multiline-str)
