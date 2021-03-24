@@ -5,11 +5,11 @@
    yetibot.core.commands.category
    yetibot.core.commands.collections
    yetibot.core.commands.render
+   yetibot.core.commands.history
 
    [midje.sweet :refer [fact facts =>]]
-   [yetibot.core.parser :refer [parse-and-eval parser]]
-   [yetibot.core.handler :refer :all]
-   [yetibot.core.commands.history]
+   [yetibot.core.parser :refer [parse-and-eval]]
+   [yetibot.core.handler :refer [handle-raw handle-unparsed-expr]]
    [yetibot.core.util.command :refer [extract-command]]
    [clojure.string :as s]
    [yetibot.core.repl :refer [load-minimal]]))
