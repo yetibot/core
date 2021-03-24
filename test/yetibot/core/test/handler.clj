@@ -12,7 +12,8 @@
    [yetibot.core.handler :refer [handle-raw handle-unparsed-expr]]
    [yetibot.core.util.command :refer [extract-command]]
    [clojure.string :as s]
-   [yetibot.core.repl :refer [load-minimal]]))
+   [yetibot.core.repl :refer [load-minimal]]
+   [yetibot.core.loader :as loader]))
 
 (comment
   ;; generate some history
@@ -28,7 +29,7 @@
 
 (facts
  "parent fact checker"
- (load-minimal)
+ (loader/load-commands)
 
 (fact
  "Newlines are preserved in command handling"
