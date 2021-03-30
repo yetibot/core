@@ -3,7 +3,8 @@
    yetibot.core.commands.echo
    [midje.sweet :refer [fact facts => against-background]]
    [yetibot.core.util.command :refer [whitelist blacklist
-                                      embedded-cmds command-enabled?]]))
+                                      embedded-cmds command-enabled?
+                                      extract-command]]))
 
 (facts "About embedded commands"
        (fact "Embedded commands that aren't actually known commands are not parsed"
@@ -41,3 +42,14 @@
               (command-enabled? "echo") => true)
         (fact "list is enabled by default"
               (command-enabled? "list") => true)))
+
+(facts "about extract-command"
+       (fact "Extracting commands allows specifying a prefix"
+             (let [prefix "?"
+                   body (str prefix "command arg1 arg2")]
+               (extract-command body prefix) => [body (subs body 1)]))
+
+       (fact "Nothing is extracted from a potential command if the prefix does not match"
+             (let [prefix "?"
+                   body "|command arg1 arg2"]
+               (extract-command body prefix) => nil?)))
