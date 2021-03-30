@@ -1,6 +1,6 @@
 (ns yetibot.core.test.models.default-command
   (:require [yetibot.core.models.default-command :as dc]
-            [midje.sweet :refer [=> fact facts]]))
+            [midje.sweet :refer [=> fact facts throws]]))
 
 (facts
  "about configured-default-command"
@@ -23,20 +23,21 @@
 (facts
  "about fallback-enabled?"
  (fact
-  "returns true when 'true' is passed"
-  (dc/fallback-enabled? {:value "true"}) => true)
+  "returns true when 'true' is passed and Exception when true is passed"
+  (dc/fallback-enabled? {:value "true"}) => true
+  (dc/fallback-enabled? {:value true}) => (throws Exception))
  (fact
   "returns true when 'blank' is passed"
+  (dc/fallback-enabled? {:value nil}) => true
+  (dc/fallback-enabled? {:value ""}) => true
   (dc/fallback-enabled? {:value "   "}) => true)
  (fact
-  "returns true when some non string-ified boolen is passed"
+  "returns true when some string is passed that is not 'false'"
   (dc/fallback-enabled? {:value "thiswillalsobetrue"}) => true)
  (fact
   "returns true when an error is returned"
   (dc/fallback-enabled? {:error :not-found}) => true)
  (fact
-  "returns false when 'false' is passed"
+  "returns false when 'false' is passed and true when <Boolean>false is passed"
   (dc/fallback-enabled? {:value "false"}) => false
-  ;; this use to return true since comparison was between "false" and false
-  ;; mods stringify :value so comparison will now be be between "false" and "false"
-  (dc/fallback-enabled? {:value false}) => false))
+  (dc/fallback-enabled? {:value false}) => true))

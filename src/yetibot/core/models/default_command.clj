@@ -1,7 +1,8 @@
 (ns yetibot.core.models.default-command
   "Determine which command to fallback to and whether fallback is enabled"
   (:require [clojure.spec.alpha :as s]
-            [yetibot.core.config :refer [get-config]]))
+            [yetibot.core.config :refer [get-config]]
+            [clojure.string :refer [blank?]]))
 
 (s/def ::config any?)
 
@@ -37,7 +38,11 @@
    for testing."
   ([] (fallback-enabled? (get-config ::fallback-commands-enabled-config
                                      [:command :fallback :enabled])))
-  ([cfg] (->> (:value cfg) str (= "false") not)))
+  ([cfg] (let [value (:value cfg)]
+           (if-not (blank? value)
+             (not (= "false" value))
+             ;; enabled by default
+             true))))
 
 (comment
   (fallback-enabled? {:value "false"})
