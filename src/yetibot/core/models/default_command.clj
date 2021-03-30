@@ -11,7 +11,7 @@
    mainly used for testing."
   ([] (configured-default-command (get-config ::config
                                               [:default :command])))
-  ([cfg] (or (:value cfg) "help")))
+  ([cfg] (get cfg :value "help")))
 
 (comment
   (configured-default-command {:value "findme"})

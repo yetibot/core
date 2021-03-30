@@ -26,6 +26,9 @@
   "returns true when 'true' is passed"
   (dc/fallback-enabled? {:value "true"}) => true)
  (fact
+  "returns true when 'blank' is passed"
+  (dc/fallback-enabled? {:value "   "}) => true)
+ (fact
   "returns true when some non string-ified boolen is passed"
   (dc/fallback-enabled? {:value "thiswillalsobetrue"}) => true)
  (fact
@@ -34,4 +37,6 @@
  (fact
   "returns false when 'false' is passed"
   (dc/fallback-enabled? {:value "false"}) => false
+  ;; this use to return true since comparison was between "false" and false
+  ;; mods stringify :value so comparison will now be be between "false" and "false"
   (dc/fallback-enabled? {:value false}) => false))
