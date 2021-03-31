@@ -7,15 +7,15 @@
 
 (s/def ::config any?)
 
-(defn configured-default-command []
-  (or
-    (:value (get-config ::config [:default :command]))
-    "help"))
+(defn configured-default-command
+  "Gets the default command, as defined by the instance config."
+  []
+  (get (get-config ::config [:default :command]) :value "help"))
 
 (s/def ::text string?)
 
 (defn fallback-help-text-override
-  "Optional config, may be nil"
+  "Optional config for fallback help text. May be nil."
   []
   (:value (get-config ::text [:command :fallback :help :text])))
 
@@ -30,6 +30,6 @@
   (let [{value :value} (get-config ::fallback-commands-enabled-config
                                    [:command :fallback :enabled])]
     (if-not (blank? value)
-      (not (= "false" value))
+      (not= "false" value)
       ;; enabled by default
       true)))
