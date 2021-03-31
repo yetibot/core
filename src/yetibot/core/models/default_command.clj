@@ -40,7 +40,7 @@
                                      [:command :fallback :enabled])))
   ([cfg] (let [value (:value cfg)]
            (if-not (blank? value)
-             (not (= "false" value))
+             (not= "false" value)
              ;; enabled by default
              true))))
 
