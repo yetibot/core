@@ -58,22 +58,16 @@
   )
 
 (defn config-from-env-or-file
-  "If args not passed in, load file-cfgs from `config-path` and
-   env-cfgs from valid YB prefixed env variables, if not `config-from-env-disabled?`,
-   then merge. Otherwise, use passed in args."
-  ([] (config-from-env-or-file (uc/load-edn! config-path) (prefixed-env-vars)))
-  ([file-cfgs] (config-from-env-or-file file-cfgs (prefixed-env-vars)))
-  ([file-cfgs env-cfgs]
-   (merge
-    (merge-possible-prefixes file-cfgs)
+  "Try loading config from `config-path`.
+   Then load config from env as well, unless config-from-env-disabled? is
+   truthy. Then merge."
+  []
+  (merge
+    (merge-possible-prefixes (uc/load-edn! config-path))
     (if-not config-from-env-disabled?
-      (merge-possible-prefixes (explode env-cfgs))
-      (info "Configuration from environment is disabled")))))
-
-(comment
-  (config-from-env-or-file {:yetibot {:a 1}} {:yetibot-b-c 2})
-  (config-from-env-or-file {:yetibot {:a 1}})
-  )
+      (let [env-vars (prefixed-env-vars)]
+        (merge-possible-prefixes (explode env-vars)))
+      (info "Configuration from environment is disabled"))))
 
 (defonce ^:private config (atom (config-from-env-or-file)))
 
