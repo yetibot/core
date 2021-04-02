@@ -1,8 +1,7 @@
 (ns yetibot.core.test.interpreter
   (:require
    [yetibot.core.interpreter :as i]
-   [yetibot.core.models.default-command :refer [fallback-enabled?
-                                                configured-default-command]]
+   [yetibot.core.models.default-command :refer [fallback-enabled?]]
    [yetibot.core.parser]
    [midje.sweet :refer [=> provided contains fact facts every-checker anything]]))
 
@@ -12,12 +11,9 @@
   "handles legit echo command and returns command args"
   (i/handle-cmd "echo hello world" {}) => "hello world")
  (fact
-  "handles non-legit 'somerandom' command and tries to use 'help' when
-   fallback is enabled and does not have defined fallback command"
-  (i/handle-cmd "somerandom command" {}) => (contains "help somerandom")
-  ;; forcing config'ed default command to be "help" to avoid any potential
-  ;;   testing issues due to custom configs
-  (provided (configured-default-command) => "help"))
+  "handles un-handleable non-legit 'somerandom' command with fallback? true"
+  (i/handle-cmd "somerandom command" {:fallback? true})
+  => (contains "how to handle somerandom command"))
  (fact
   "handles non-legit 'somerandom' command and suppresses it when fallback
    is disabled"
