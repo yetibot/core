@@ -1,9 +1,12 @@
 (ns yetibot.core.test.interpreter
   (:require
    [yetibot.core.interpreter :as i]
-   [yetibot.core.models.default-command :refer [fallback-enabled?]]
+   [yetibot.core.models.default-command :refer [fallback-enabled?
+                                                configured-default-command]]
+   [yetibot.core.commands.help]
    [yetibot.core.parser]
-   [midje.sweet :refer [=> provided contains fact facts every-checker anything]]))
+   [midje.sweet :refer [=> provided contains against-background
+                        fact facts every-checker anything]]))
 
 (facts
  "about handle-cmd"
@@ -18,7 +21,19 @@
   "handles non-legit 'somerandom' command and suppresses it when fallback
    is disabled"
   (i/handle-cmd "somerandom command" {}) => {}
-  (provided (fallback-enabled?) => false)))
+  (provided (fallback-enabled?) => false))
+ (fact
+  "non-legit command is picked up by the help command when it is loaded and
+   returns some doc-strings for the help command."
+  (require 'yetibot.core.commands.help :reload)
+  ;; forcing the help command to be the config'ed def cmd
+  (against-background (configured-default-command) => "help")
+  (let [cmd-result (i/handle-cmd "somerandom command" {})]
+    cmd-result => coll?
+    cmd-result => (contains
+                   (:doc (meta #'yetibot.core.commands.help/help-all-cmd)))
+    cmd-result => (contains
+                   (:doc (meta #'yetibot.core.commands.help/help-for-topic))))))
 
 (facts
  "about handle-expr"
