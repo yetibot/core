@@ -5,7 +5,7 @@
     [yetibot.core.models.default-command :refer [fallback-enabled?
                                                  configured-default-command]]
     [yetibot.core.models.channel :as channel]
-    [taoensso.timbre :refer [color-str debug trace info warn error]]
+    [taoensso.timbre :refer [color-str debug info]]
     [yetibot.core.util.format :refer [pseudo-format to-coll-if-contains-newlines]]))
 
 (def ^:dynamic *current-user*)
