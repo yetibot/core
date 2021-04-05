@@ -1,18 +1,9 @@
 (ns yetibot.core.test.adapters.slack
-  (:require
-    [clojure.string :as s]
-    [yetibot.core.adapters :as adapters]
-    [yetibot.core.adapters.adapter :as a]
-    [yetibot.core.adapters.slack :refer :all]
-    [clj-slack
-     [users :as slack-users]
-     [chat :as slack-chat]
-     [channels :as channels]
-     [groups :as groups]
-     [rtm :as rtm]]
-    [yetibot.core.chat :as chat]
-    [clojure.test :refer :all]))
-
+  (:require [yetibot.core.adapters :as adapters]
+            [yetibot.core.adapters.adapter :as a]
+            [yetibot.core.adapters.slack :as slack]
+            [yetibot.core.chat :as chat]
+            [clojure.test :as test]))
 
 (defn slack-configs []
   (filter
@@ -20,70 +11,68 @@
     (vals (adapters/adapters-config))))
 
 
-(def config (slack-config (last (slack-configs))))
+(def config (slack/slack-config (last (slack-configs))))
 
 (comment
   ;; replace these with real IDs to try it out
-  (entity-with-name-by-id
+  (slack/entity-with-name-by-id
     config {:channel "C11111114"})
-  (entity-with-name-by-id
+  (slack/entity-with-name-by-id
     config {:channel "G11111111"})
-  (entity-with-name-by-id
+  (slack/entity-with-name-by-id
     config
     {:type "message"
      :channel "D11111111"
      :user "U11111111"
      :text "!echo hi"}))
 
-(deftest unencode-message-test
-  (testing "Only a URL"
-    (is (= "https://imgflip.com"
-           (unencode-message "<https://imgflip.com>"))))
-  (testing "URL with text after"
-    (is (= "https://imgflip.com .base-img[src!=''] src"
-           (unencode-message "<https://imgflip.com> .base-img[src!=''] src"))))
-  (testing "URL with text surrounding"
-    (is (= "Why does slack surround URLs with cruft? Jerk. https://imgflip.com .base-img[src!=''] src"
-           (unencode-message "Why does slack surround URLs with cruft? Jerk. <https://imgflip.com> .base-img[src!=''] src"))))
-  (testing "Mutliple urls"
-    (is (= "Foo https://imgflip.com bar https://www.google.com"
-           (unencode-message "Foo <https://imgflip.com> bar <https://www.google.com>"))))
-  (testing "Replace Slack's weird @channel and @here encodings"
-    (is (= (unencode-message "<!here> Slaaaaaaaaaaaaaaack")
+(test/deftest unencode-message-test
+  (test/testing "Only a URL"
+    (test/is (= "https://imgflip.com"
+           (slack/unencode-message "<https://imgflip.com>"))))
+  (test/testing "URL with text after"
+    (test/is (= "https://imgflip.com .base-img[src!=''] src"
+           (slack/unencode-message "<https://imgflip.com> .base-img[src!=''] src"))))
+  (test/testing "URL with text surrounding"
+    (test/is (= "Why does slack surround URLs with cruft? Jerk. https://imgflip.com .base-img[src!=''] src"
+           (slack/unencode-message "Why does slack surround URLs with cruft? Jerk. <https://imgflip.com> .base-img[src!=''] src"))))
+  (test/testing "Mutliple urls"
+    (test/is (= "Foo https://imgflip.com bar https://www.google.com"
+           (slack/unencode-message "Foo <https://imgflip.com> bar <https://www.google.com>"))))
+  (test/testing "Replace Slack's weird @channel and @here encodings"
+    (test/is (= (slack/unencode-message "<!here> Slaaaaaaaaaaaaaaack")
            "@here Slaaaaaaaaaaaaaaack")
         "why slack? whyyyyy?")
-    (is (= (unencode-message "<!channel> also")
+    (test/is (= (slack/unencode-message "<!channel> also")
            "@channel also")
         "just provide the raw text people")))
 
-(deftest adapters-tests
+(test/deftest adapters-tests
   (comment
-    (def adapter (first (a/active-adapters)))
+    (let [adapter (first (a/active-adapters))]
+      (slack/history adapter "G1QD1DNG2")
 
-    (history adapter "G1QD1DNG2")
+      (binding [chat/*target* "D0HFDJHA4"]
+        (a/send-msg adapter "hi"))
+      
+      (slack/react adapter "balloon" "D0HFDJHA4"))))
 
-    (binding [chat/*target* "D0HFDJHA4"]
-      (a/send-msg adapter "hi"))
-
-    (react adapter "balloon" "D0HFDJHA4")))
-
-
-(deftest channels-for-last-config
+(test/deftest channels-for-last-config
   (comment
     (binding [*config* (last (slack-configs))]
-      (list-channels))
+      (slack/list-channels))
 
     (binding [*config* (last (slack-configs))]
-      (channels-cached))
+      (slack/channels-cached))
 
     (binding [*config* (last (slack-configs))]
-      (channels))
+      (slack/channels))
 
     (binding [*config* (last (slack-configs))]
-      (:groups (list-groups)))
+      (:groups (slack/list-groups)))
     ))
 
-(deftest users
+(test/deftest users
   (-> (a/active-adapters)
       ))
 
@@ -96,15 +85,15 @@
   A
   (t [_] *foo*))
 
-(deftest verify-bindings-in-record-instance
-  (is (instance? clojure.lang.Var$Unbound (t (->AA))))
+(defn make-a []
+  (binding [*foo* 2]
+    (->AA)))
 
-  (is (= 1 (binding [*foo* 1] (t (->AA))))
+(test/deftest verify-bindings-in-record-instance
+  (test/is (instance? clojure.lang.Var$Unbound (t (->AA))))
+
+  (test/is (= 1 (binding [*foo* 1] (t (->AA))))
       "verify bindings stick inside an instance of a protocol")
-
-  (defn make-a []
-    (binding [*foo* 2]
-      (->AA)))
 
   (t (make-a))
 
