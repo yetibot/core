@@ -6,27 +6,6 @@
             [clojure.test :as test]
             [midje.sweet :refer [=> fact facts]]))
 
-(defn slack-configs []
-  (filter
-    (fn [c] (= "slack" (:type c)))
-    (vals (adapters/adapters-config))))
-
-
-(def config (slack/slack-config (last (slack-configs))))
-
-(comment
-  ;; replace these with real IDs to try it out
-  (slack/entity-with-name-by-id
-    config {:channel "C11111114"})
-  (slack/entity-with-name-by-id
-    config {:channel "G11111111"})
-  (slack/entity-with-name-by-id
-    config
-    {:type "message"
-     :channel "D11111111"
-     :user "U11111111"
-     :text "!echo hi"}))
-
 (facts
  "about unencode-message"
  (fact
@@ -50,54 +29,47 @@
   (slack/unencode-message "<!here> Slaaaaaaaaaaaaaaack") => "@here Slaaaaaaaaaaaaaaack"
   (slack/unencode-message "<!channel> also") => "@channel also"))
 
-(test/deftest adapters-tests
-  (comment
-    (let [adapter (first (a/active-adapters))]
-      (slack/history adapter "G1QD1DNG2")
 
-      (binding [chat/*target* "D0HFDJHA4"]
-        (a/send-msg adapter "hi"))
-      
-      (slack/react adapter "balloon" "D0HFDJHA4"))))
 
-(test/deftest channels-for-last-config
-  (comment
-    (binding [*config* (last (slack-configs))]
-      (slack/list-channels))
+;; functions to test some comment code
+(defn slack-configs []
+  (filter
+   (fn [c] (= "slack" (:type c)))
+   (vals (adapters/adapters-config))))
 
-    (binding [*config* (last (slack-configs))]
-      (slack/channels-cached))
+(def config (slack/slack-config (last (slack-configs))))
 
-    (binding [*config* (last (slack-configs))]
-      (slack/channels))
+(comment
+  ;; replace these with real IDs to try it out
+  (slack/entity-with-name-by-id
+   config {:channel "C11111114"})
+  (slack/entity-with-name-by-id
+   config {:channel "G11111111"})
+  (slack/entity-with-name-by-id
+   config
+   {:type "message"
+    :channel "D11111111"
+    :user "U11111111"
+    :text "!echo hi"})
 
-    (binding [*config* (last (slack-configs))]
-      (:groups (slack/list-groups)))
-    ))
+  ;; test sending a message and getting the history of
+  (let [adapter (first (a/active-adapters))]
+    (slack/history adapter "G1QD1DNG2")
 
-(test/deftest users
-  (-> (a/active-adapters)
-      ))
+    (binding [chat/*target* "D0HFDJHA4"]
+      (a/send-msg adapter "hi"))
 
-(def ^:dynamic *foo*)
+    (slack/react adapter "balloon" "D0HFDJHA4"))
 
-(defprotocol A
-  (t [_]))
+  ;; test bindings when calling an adapter function
+  (binding [*config* (last (slack-configs))]
+    (slack/list-channels))
+  
+  (binding [*config* (last (slack-configs))]
+    (slack/channels-cached))
 
-(defrecord AA []
-  A
-  (t [_] *foo*))
+  (binding [*config* (last (slack-configs))]
+    (slack/channels))
 
-(defn make-a []
-  (binding [*foo* 2]
-    (->AA)))
-
-(test/deftest verify-bindings-in-record-instance
-  (test/is (instance? clojure.lang.Var$Unbound (t (->AA))))
-
-  (test/is (= 1 (binding [*foo* 1] (t (->AA))))
-      "verify bindings stick inside an instance of a protocol")
-
-  (t (make-a))
-
-  (:foo (assoc (make-a) :foo 1)))
+  (binding [*config* (last (slack-configs))]
+    (:groups (slack/list-groups))))
