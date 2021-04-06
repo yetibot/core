@@ -3,7 +3,8 @@
             [yetibot.core.adapters.adapter :as a]
             [yetibot.core.adapters.slack :as slack]
             [yetibot.core.chat :as chat]
-            [clojure.test :as test]))
+            [clojure.test :as test]
+            [midje.sweet :refer [=> fact facts]]))
 
 (defn slack-configs []
   (filter
@@ -26,26 +27,28 @@
      :user "U11111111"
      :text "!echo hi"}))
 
-(test/deftest unencode-message-test
-  (test/testing "Only a URL"
-    (test/is (= "https://imgflip.com"
-           (slack/unencode-message "<https://imgflip.com>"))))
-  (test/testing "URL with text after"
-    (test/is (= "https://imgflip.com .base-img[src!=''] src"
-           (slack/unencode-message "<https://imgflip.com> .base-img[src!=''] src"))))
-  (test/testing "URL with text surrounding"
-    (test/is (= "Why does slack surround URLs with cruft? Jerk. https://imgflip.com .base-img[src!=''] src"
-           (slack/unencode-message "Why does slack surround URLs with cruft? Jerk. <https://imgflip.com> .base-img[src!=''] src"))))
-  (test/testing "Mutliple urls"
-    (test/is (= "Foo https://imgflip.com bar https://www.google.com"
-           (slack/unencode-message "Foo <https://imgflip.com> bar <https://www.google.com>"))))
-  (test/testing "Replace Slack's weird @channel and @here encodings"
-    (test/is (= (slack/unencode-message "<!here> Slaaaaaaaaaaaaaaack")
-           "@here Slaaaaaaaaaaaaaaack")
-        "why slack? whyyyyy?")
-    (test/is (= (slack/unencode-message "<!channel> also")
-           "@channel also")
-        "just provide the raw text people")))
+(facts
+ "about unencode-message"
+ (fact
+  "unencodes a URL"
+  (slack/unencode-message "<https://imgflip.com>") => "https://imgflip.com")
+ (fact
+  "unencodes a URL with text after it"
+  (slack/unencode-message "<https://imgflip.com> .base-img[src!=''] src") =>
+  "https://imgflip.com .base-img[src!=''] src")
+ (fact
+  "unencodes a URL with surrounding text"
+  (slack/unencode-message
+   "Why does slack surround URLs with cruft? Jerk. <https://imgflip.com> .base-img[src!=''] src")
+  => "Why does slack surround URLs with cruft? Jerk. https://imgflip.com .base-img[src!=''] src")
+ (fact
+  "unencodes multiple URLs"
+  (slack/unencode-message "Foo <https://imgflip.com> bar <https://www.google.com>") =>
+  "Foo https://imgflip.com bar https://www.google.com")
+ (fact
+  "unencodes Slack's weird @channel and @here encodings"
+  (slack/unencode-message "<!here> Slaaaaaaaaaaaaaaack") => "@here Slaaaaaaaaaaaaaaack"
+  (slack/unencode-message "<!channel> also") => "@channel also"))
 
 (test/deftest adapters-tests
   (comment
