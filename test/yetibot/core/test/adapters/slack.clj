@@ -3,8 +3,22 @@
             [yetibot.core.adapters.adapter :as a]
             [yetibot.core.adapters.slack :as slack]
             [yetibot.core.chat :as chat]
-            [clojure.test :as test]
-            [midje.sweet :refer [=> fact facts]]))
+            [midje.sweet :refer [=> fact facts contains]]))
+
+(facts
+ "about slack-config"
+ (fact
+  "gets default endpoint if none given"
+  (slack/slack-config {}) => (contains {:api-url "https://slack.com/api"}))
+ (fact
+  "uses custom endpoint if given"
+  (slack/slack-config {:endpoint "iamcustom"}) => (contains {:api-url "iamcustom"}))
+ (fact
+  "returns nil token if none given"
+  (slack/slack-config {}) => (contains {:token nil}))
+ (fact
+  "returns custom token if given"
+  (slack/slack-config {:token "iamcustom"}) => (contains {:token "iamcustom"})))
 
 (facts
  "about unencode-message"
