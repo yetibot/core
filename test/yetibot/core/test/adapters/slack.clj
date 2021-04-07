@@ -3,7 +3,8 @@
             [yetibot.core.adapters.adapter :as a]
             [yetibot.core.adapters.slack :as slack]
             [yetibot.core.chat :as chat]
-            [midje.sweet :refer [=> fact facts contains]]))
+            [midje.sweet :refer [=> fact facts contains provided
+                                 anything]]))
 
 (facts
  "about slack-config"
@@ -19,6 +20,24 @@
  (fact
   "returns custom token if given"
   (slack/slack-config {:token "iamcustom"}) => (contains {:token "iamcustom"})))
+
+;; referencing slack data here :: https://api.slack.com/methods/channels.list
+(facts
+ "about channels-cached"
+ (fact
+  "does something"
+  (slack/channels-in {}) => true
+  (provided (slack/list-channels anything) => {:channels [{:is_member true
+                                                  :name "yes"}
+                                                 {:is_member false
+                                                  :name "no"}]}))
+ )
+
+;; FAIL about channels-cached - does something at (slack.clj:29)
+;; Expected:
+;; true
+;; Actual:
+;; ({:is_member true :name "yes"})
 
 (facts
  "about unencode-message"
