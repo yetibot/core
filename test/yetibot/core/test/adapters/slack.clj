@@ -23,21 +23,25 @@
 
 ;; referencing slack data here :: https://api.slack.com/methods/channels.list
 (facts
- "about channels-cached"
+ "about channels-in"
  (fact
-  "does something"
-  (slack/channels-in {}) => true
+  "returns only channels YB is in"
+  (slack/channels-in anything) => '({:is_member true :name "yes"})
   (provided (slack/list-channels anything) => {:channels [{:is_member true
                                                   :name "yes"}
                                                  {:is_member false
-                                                  :name "no"}]}))
- )
+                                                  :name "no"}]})))
 
-;; FAIL about channels-cached - does something at (slack.clj:29)
-;; Expected:
-;; true
-;; Actual:
-;; ({:is_member true :name "yes"})
+(facts
+ "about chan-or-group-name"
+ (fact
+  "handles a channel"
+  (slack/chan-or-group-name {:is_channel true :name "channel"})
+  => "#channel")
+ (fact
+  "handles a group"
+  (slack/chan-or-group-name {:is_channel false :name "group"})
+  => "group"))
 
 (facts
  "about unencode-message"
