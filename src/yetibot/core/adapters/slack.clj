@@ -77,8 +77,6 @@
   (let [yetibot-uid (:id (self conn))]
     (users/get-user cs yetibot-uid)))
 
-;;;;
-
 (defn chan-or-group-name
   "Takes either a channel or a group and returns its name as a String.
    If it's a public channel, # is prepended.

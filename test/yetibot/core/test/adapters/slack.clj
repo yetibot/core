@@ -3,8 +3,12 @@
             [yetibot.core.adapters.adapter :as a]
             [yetibot.core.adapters.slack :as slack]
             [yetibot.core.chat :as chat]
+            [clj-slack
+             [channels :as channels]
+             [users :as slack-users]
+             [groups :as groups]]
             [midje.sweet :refer [=> fact facts contains provided
-                                 anything]]))
+                                 anything every-checker throws]]))
 
 (facts
  "about slack-config"
@@ -43,6 +47,18 @@
   (slack/chan-or-group-name {:is_channel false :name "group"})
   => "group"))
 
+;; referencing slack data found here :: https://api.slack.com/methods/groups.list
+(facts
+ "about channels"
+ (fact
+  "merges the names of `channels-in` and `list-groups` into a
+   non-empty collection"
+  (slack/channels anything) => (every-checker coll?
+                                              not-empty
+                                              (contains '("group1" "#channel1")))
+  (provided (slack/channels-in anything) => '({:is_member true :name "channel1"})
+            (slack/list-groups anything) => {:groups [{:name "group1"}]})))
+
 (facts
  "about unencode-message"
  (fact
@@ -66,7 +82,34 @@
   (slack/unencode-message "<!here> Slaaaaaaaaaaaaaaack") => "@here Slaaaaaaaaaaaaaaack"
   (slack/unencode-message "<!channel> also") => "@channel also"))
 
-
+;; referencing slack data found here :: https://api.slack.com/methods/channels.info
+(facts
+ "about entity-with-name-by-id"
+ (fact
+  "assuming channel ID C123 has name of 'channel123', returns a [name entity]
+   pair where channel has leading # attached"
+  (slack/entity-with-name-by-id anything {:channel "C123"})
+  => ["#channel123" {:name "channel123"}]
+  (provided (slack/slack-config anything) => anything
+            (channels/info anything anything) => {:channel {:name "channel123"}}))
+ (fact
+  "assuming direct message ID D123 has user name of 'user123', returns expected
+   [name entity] pair with no mods"
+  (slack/entity-with-name-by-id anything {:channel "D123"})
+  => ["user123" {:name "user123"}]
+  (provided (slack/slack-config anything) => anything
+            (slack-users/info anything anything) => {:user {:name "user123"}}))
+ (fact
+  "assuming group message ID G123 has group name of 'group123', returns expected
+   [name entity] pair with no mods"
+  (slack/entity-with-name-by-id anything {:channel "G123"})
+  => ["group123" {:name "group123"}]
+  (provided (slack/slack-config anything) => anything
+            (groups/info anything anything) => {:group {:name "group123"}}))
+ (fact
+  "assuming non-identifiable ID F123, throws an exception"
+  (slack/entity-with-name-by-id anything {:channel "F123"}) => (throws Exception)
+  (provided (slack/slack-config anything) => anything)))
 
 ;; functions to test some comment code
 (defn slack-configs []
