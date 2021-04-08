@@ -111,6 +111,19 @@
   (slack/entity-with-name-by-id anything {:channel "F123"}) => (throws Exception)
   (provided (slack/slack-config anything) => anything)))
 
+(facts
+ "about filter-chans-or-grps-containing-user"
+ (fact
+  "returns groups a user is a member of"
+  (slack/filter-chans-or-grps-containing-user
+   "U123"
+   {:groups [{:members ["U123"]}
+             {:members ["U456"]}]}) => true))
+
+;; filter-chans-or-grps-containing-user
+;; (defn filter-chans-or-grps-containing-user [user-id chans-or-grps]
+;;   (filter #((-> % :members set) user-id) chans-or-grps))
+
 ;; functions to test some comment code
 (defn slack-configs []
   (filter
