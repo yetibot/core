@@ -114,15 +114,13 @@
 (facts
  "about filter-chans-or-grps-containing-user"
  (fact
-  "returns groups a user is a member of"
+  "returns 'groups' a user is a member of, and only those groups"
   (slack/filter-chans-or-grps-containing-user
    "U123"
-   {:groups [{:members ["U123"]}
-             {:members ["U456"]}]}) => true))
-
-;; filter-chans-or-grps-containing-user
-;; (defn filter-chans-or-grps-containing-user [user-id chans-or-grps]
-;;   (filter #((-> % :members set) user-id) chans-or-grps))
+   [{:members ["U123"]}
+    {:members ["U456"]}]) => (every-checker coll?
+                                            not-empty
+                                            (contains '({:members ["U123"]})))))
 
 ;; functions to test some comment code
 (defn slack-configs []
@@ -153,16 +151,17 @@
       (a/send-msg adapter "hi"))
 
     (slack/react adapter "balloon" "D0HFDJHA4"))
-
-  ;; test bindings when calling an adapter function
-  (binding [*config* (last (slack-configs))]
-    (slack/list-channels))
   
-  (binding [*config* (last (slack-configs))]
-    (slack/channels-cached))
+  ;; test bindings when calling an adapter function
+  (let [*config* nil]
+    (binding [*config* (last (slack-configs))]
+      (slack/list-channels))
 
-  (binding [*config* (last (slack-configs))]
-    (slack/channels))
+    (binding [*config* (last (slack-configs))]
+      (slack/channels-cached))
 
-  (binding [*config* (last (slack-configs))]
-    (:groups (slack/list-groups))))
+    (binding [*config* (last (slack-configs))]
+      (slack/channels))
+
+    (binding [*config* (last (slack-configs))]
+      (:groups (slack/list-groups)))))

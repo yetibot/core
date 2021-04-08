@@ -395,7 +395,7 @@
         {:keys [uuid room] :as cs} (chat-source (:id c))
         user-ids (:members c)]
     (timbre/debug "adding chat source" cs "for users" user-ids)
-    (dorun (map #(users/add-chat-source-to-user cs %) user-ids))))
+    (run! #(users/add-chat-source-to-user cs %) user-ids)))
 
 (defn on-channel-left
   "Fires when yetibot gets kicked from a channel or group"
@@ -405,7 +405,7 @@
         {:keys [uuid room] :as cs} (chat-source c)
         users-in-chan (users/get-users cs)]
     (timbre/debug "remove users from" cs (map :id users-in-chan))
-    (dorun (map (fn [u] (users/remove-user cs (:id u))) users-in-chan))))
+    (run! #(users/remove-user cs (:id %)) users-in-chan)))
 
 ;; users
 
