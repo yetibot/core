@@ -94,4 +94,3 @@
   (a/stop (first (a/active-adapters)))
   (register-adapters!)
   (adapters-config))
-
