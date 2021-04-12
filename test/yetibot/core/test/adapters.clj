@@ -1,7 +1,7 @@
 (ns yetibot.core.test.adapters
   (:require [yetibot.core.adapters :as a]
             [midje.sweet :refer [=> fact facts provided anything
-                                 every-checker contains just]]
+                                 every-checker contains just throws]]
             [yetibot.core.config :refer [get-config]]))
 
 (facts
@@ -29,4 +29,15 @@
  (fact
   "makes slack adapter"
   (instance? yetibot.core.adapters.slack.Slack
-             (a/make-adapter {:type "slack"})) => true))
+             (a/make-adapter {:type "slack"})) => true)
+ (fact
+  "makes IRC adapter"
+  (instance? yetibot.core.adapters.irc.IRC
+             (a/make-adapter {:type "irc"})) => true)
+ (fact
+  "makes web adapter"
+  (instance? yetibot.core.adapters.web.Web
+             (a/make-adapter {:type "web"})) => true)
+ (fact
+  "throws exception for unknown adapter"
+  (a/make-adapter {:type "throwme"}) => (throws Exception)))
