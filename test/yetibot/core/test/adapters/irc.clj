@@ -1,10 +1,6 @@
 (ns yetibot.core.test.adapters.irc
-  (:require
-    [midje.sweet :refer [=> fact facts]]
-    [yetibot.core.adapters :as adapters]
-    [yetibot.core.adapters.irc :refer :all]
-    [yetibot.core.chat :as chat]
-    [clojure.test :refer :all]))
+  (:require [midje.sweet :refer [=> facts]]
+            [yetibot.core.adapters.irc :refer [next-nick]]))
 
 ; example info args for handle-message
 ; - priv msg
@@ -15,13 +11,6 @@
 ; {:text !echo ook, :target #yeti, :command PRIVMSG, :params [#yeti !echo ook],
 ;  :raw :devth!~devth@1.1.1.1 PRIVMSG #yeti :!echo ook, :host 2.2.2.2,
 ;  :user ~devth, :nick devth}
-
-(comment
-  (binding [*config* (last (irc-config))]
-    (channels))
-  
-  (binding [*config* (last (irc-config))]
-    (:groups (list-groups))))
 
 (facts "next-nick should produce correct value"
   (next-nick "yetibot") => "yetibot_"
