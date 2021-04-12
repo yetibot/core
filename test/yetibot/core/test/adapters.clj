@@ -39,5 +39,9 @@
   (instance? yetibot.core.adapters.web.Web
              (a/make-adapter {:type "web"})) => true)
  (fact
+  "makes mattermost adapter"
+  (instance? yetibot.core.adapters.mattermost.Mattermost
+             (a/make-adapter {:type "mattermost"})) => true)
+ (fact
   "throws exception for unknown adapter"
   (a/make-adapter {:type "throwme"}) => (throws Exception)))
