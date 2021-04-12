@@ -16,21 +16,12 @@
 ;  :raw :devth!~devth@1.1.1.1 PRIVMSG #yeti :!echo ook, :host 2.2.2.2,
 ;  :user ~devth, :nick devth}
 
-(defn irc-config []
-  (filter
-    (fn [c] (= :irc (:type c)))
-    (adapters/adapters-config)))
-
-(deftest channels-for-last-config
-  (comment
-
-    (binding [*config* (last (irc-config))]
-      (channels))
-
-    (binding [*config* (last (irc-config))]
-      (:groups (list-groups)))
-
-    ))
+(comment
+  (binding [*config* (last (irc-config))]
+    (channels))
+  
+  (binding [*config* (last (irc-config))]
+    (:groups (list-groups))))
 
 (facts "next-nick should produce correct value"
   (next-nick "yetibot") => "yetibot_"
