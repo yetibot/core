@@ -82,8 +82,10 @@
        (debug "Registering" \newline (pr-str adapter-config))))
    (adapters-config)))
 
-(defn stop []
-  (dorun (map a/stop (a/active-adapters)))
+(defn stop
+  "Stops active adapters"
+  []
+  (run! #(a/stop %) (a/active-adapters))
   (reset! a/adapters {}))
 
 (comment
