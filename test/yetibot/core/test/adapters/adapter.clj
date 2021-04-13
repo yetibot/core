@@ -1,7 +1,6 @@
 (ns yetibot.core.test.adapters.adapter
   (:require [yetibot.core.adapters.adapter :as a]
-            [midje.sweet :refer [=> fact facts provided anything
-                                 every-checker contains just throws]]))
+            [midje.sweet :refer [=> fact facts]]))
 
 (facts
  "about register-adapter!"
