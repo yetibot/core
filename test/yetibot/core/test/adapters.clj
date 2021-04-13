@@ -1,5 +1,6 @@
 (ns yetibot.core.test.adapters
   (:require [yetibot.core.adapters :as a]
+            [yetibot.core.adapters.adapter :as aa]
             [midje.sweet :refer [=> fact facts provided anything
                                  every-checker contains just throws]]
             [yetibot.core.config :refer [get-config]]))
@@ -45,3 +46,15 @@
  (fact
   "throws exception for unknown adapter"
   (a/make-adapter {:type "throwme"}) => (throws Exception)))
+
+(facts
+ "about stop"
+ (fact
+  "stops and drops all active adapters"
+  ;; setup test adapter
+  (aa/register-adapter! "some-uuid" {:config {:type "web"}})
+  ;; do the thing and verify no more active adapters
+  (a/stop) => {}
+  (provided (run! anything anything) => {})
+  ;; double check what YB thinks is active after a stop
+  (aa/active-adapters) => nil))
