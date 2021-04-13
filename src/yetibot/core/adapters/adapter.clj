@@ -56,7 +56,10 @@
   (swap! adapters assoc uuid adapter)
   (debug "Registered" uuid "-" (pr-str adapter)))
 
-(defn active-adapters [] (vals @adapters))
+(defn active-adapters
+  "Get a list of active adapter values"
+  []
+  (vals @adapters))
 
 (defn web-adapter
   "Gets the config'ed web adapter"
