@@ -2,7 +2,7 @@
   "Defines the Adapater protocol for chat adapters and keeps track of instances.
    All chat sources must implement it."
   (:require
-    [taoensso.timbre :as log :refer [info debug warn error]]))
+    [taoensso.timbre :as log :refer [debug]]))
 
 (defprotocol Adapter
 
@@ -59,6 +59,7 @@
 (defn active-adapters [] (vals @adapters))
 
 (defn web-adapter
+  "Gets the config'ed web adapter"
   []
   (->> (active-adapters)
        (filter #(= "web" (-> % :config :type)))

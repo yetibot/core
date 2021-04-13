@@ -6,7 +6,7 @@
    [yetibot.core.adapters.slack :as slack]
    [yetibot.core.adapters.mattermost :as mattermost]
    [yetibot.core.adapters.web :as web]
-   [taoensso.timbre :as log :refer [info debug warn error]]
+   [taoensso.timbre :as log :refer [info debug warn]]
    [clojure.stacktrace :refer [print-stack-trace]]
    [yetibot.core.adapters.adapter :as a]
    [yetibot.core.config :refer [get-config]]))
@@ -47,20 +47,23 @@
     :mattermost (mattermost/make-mattermost config)
     (throw (ex-info (str "Unknown adapter type " (:type config)) config))))
 
-(defn register-adapters! []
-  (dorun
-    (map
-      (fn [[uuid adapter-config]]
-        (let [adapter-config (assoc adapter-config :name uuid)]
-          (debug "Registering" (pr-str adapter-config))
-          (a/register-adapter! uuid (make-adapter adapter-config))))
-      (adapters-config))))
+(defn register-adapters!
+  "Registers all config'ed adapters"
+  []
+  (run!
+   (fn [[uuid adapter-config]]
+     (let [adapter-config (assoc adapter-config :name uuid)]
+       (debug "Registering" (pr-str adapter-config))
+       (a/register-adapter! uuid (make-adapter adapter-config))))
+   (adapters-config)))
 
-(defn start-adapters! []
-  (dorun
-    (map (fn [adapter]
-           (report-ex #(a/start adapter) (a/platform-name adapter)))
-         (a/active-adapters))))
+(defn start-adapters!
+  "Starts all config'ed adapters"
+  []
+  (run!
+   (fn [adapter]
+     (report-ex #(a/start adapter) (a/platform-name adapter)))
+   (a/active-adapters)))
 
 
 (defn start []
