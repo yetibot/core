@@ -50,6 +50,13 @@ $ clj-kondo --lint src/yetibot/core/db/util.clj
 $ clj-kondo --lint test/yetibot/core/test/db/util.clj
 ```
 
+#### Check Your Coverage
+
+Using [`cloverage`](https://github.com/cloverage/cloverage), check your code coverage.
+```bash
+$ lein cloverage
+```
+
 #### Check for Climate Change
 
 Using [`codeclimate`](https://github.com/codeclimate/codeclimate), review the modified code.
