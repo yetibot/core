@@ -5,7 +5,6 @@
    [yetibot.core.repl :refer [load-minimal-with-db]]
    [yetibot.core.logging :as logging]
    [midje.sweet :refer [=> fact facts]]
-   [yetibot.core.adapters :as adapters]
    [yetibot.core.adapters.adapter :as a]
    [yetibot.core.adapters.mattermost :refer :all]
    [mattermost-clj.core :as mattermost]
@@ -13,12 +12,6 @@
    [mattermost-clj.api.posts :as posts]
    [mattermost-clj.api.channels :as channels]
    [yetibot.core.chat :as chat]))
-
-(defn mattermost-config []
-  (->>
-   (adapters/adapters-config)
-   (filter (fn [[uuid c]] (= "mattermost" (:type c))))
-   (map (fn [[uuid c]] (assoc c :name uuid)))))
 
 (comment
 
