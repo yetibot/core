@@ -58,8 +58,8 @@
 
 (defn active-adapters
   "Get a list of active adapter values"
-  []
-  (vals @adapters))
+  ([] (active-adapters @adapters))
+  ([adapters] (vals adapters)))
 
 (defn web-adapter
   "Gets the config'ed web adapter"

@@ -2,7 +2,8 @@
   (:require [yetibot.core.adapters :as a]
             [yetibot.core.adapters.adapter :as aa]
             [midje.sweet :refer [=> fact facts provided anything
-                                 every-checker contains just throws]]
+                                 every-checker contains just throws
+                                 with-state-changes before]]
             [yetibot.core.config :refer [get-config]]))
 
 (facts
@@ -49,12 +50,14 @@
 
 (facts
  "about stop"
- (fact
-  "stops and drops all active adapters"
-  ;; setup test adapter
-  (aa/register-adapter! "some-uuid" {:config {:type "web"}})
-  ;; do the thing and verify no more active adapters
-  (a/stop) => {}
-  (provided (run! anything anything) => {})
-  ;; double check what YB thinks is active after a stop
-  (aa/active-adapters) => nil))
+ (with-state-changes [(before :facts
+                              (aa/register-adapter! "some-uuid" {:config {:type "web"}}))]
+   (fact
+    "stops and drops all active adapters"
+    ;; prove the adapter exists
+    (aa/active-adapters) => '({:config {:type "web"}})
+    ;; stop all adapters
+    (a/stop) => {}
+    (provided (run! anything anything) => {})
+    ;; prove adapter no longers exists
+    (aa/active-adapters) => nil)))
