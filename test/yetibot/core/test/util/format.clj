@@ -66,29 +66,43 @@
     "qux -->  <-- should b empty")))
 
 (facts
- "Basic pseudo-format usage"
- (fmt/pseudo-format "foo" "bar") => "foo bar"
+ "about pseudo-format"
  (fact
-  "It substitutes in the middle when it's supposed to")
- (fmt/pseudo-format "foo %s baz" "bar") => "foo bar baz")
-
-(fact
- "limit-and-trim-string-lines-test"
-  (let [s "foo
-           bar
-           baz
-           hi
-           ok
-           hi"
-        expected "foo\nbar"]
-    (fmt/limit-and-trim-string-lines 2 s) => expected))
+  "converts multiple args into string"
+  (fmt/pseudo-format "foo" "bar") => "foo bar")
+ (fact
+  "substitutes middle param when given an arg"
+  (fmt/pseudo-format "foo %s baz" "bar") => "foo bar baz"))
 
 (facts
- "remove-surrounding-quotes"
+ "about limit-and-trim-string-lines"
+ (let [s "foo
+          bar
+          baz
+          hi
+          ok
+          hi"]
+   (fact
+    "will take defined limit and trim strings (delim :newline) when
+     presented with many"
+    (fmt/limit-and-trim-string-lines 2 s) => "foo\nbar")
+   (fact
+    "will 1 string and return it with no delims"
+    (fmt/limit-and-trim-string-lines 1 s) => "foo")))
+
+(facts
+ "about remove-surrounding-quotes"
  (fact
   "it removes surrounding double quotes"
   (fmt/remove-surrounding-quotes "\"foo bar smack\"") => "foo bar smack")
  (fact
   "it removes surrounding single quotes"
-  (fmt/remove-surrounding-quotes "'bbq lolwat'") => "bbq lolwat"))
-
+  (fmt/remove-surrounding-quotes "'bbq lolwat'") => "bbq lolwat")
+ (fact
+  "does not remove inner quotes"
+  (fmt/remove-surrounding-quotes "this 'inner' quote") =>
+  "this 'inner' quote")
+ (fact
+  "does not remove mixed quotes"
+  (fmt/remove-surrounding-quotes "\"no change'") =>
+  "\"no change'"))
