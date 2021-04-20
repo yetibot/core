@@ -23,11 +23,3 @@
   (a/web-adapter) => {:config {:type "web" :some "value"}}
   (provided (a/active-adapters) => '({:config {:type "web" :some "value"}}
                                      {:config {:type "random" :some "other value"}}))))
-
-(facts
- "about active adapters"
- (fact
-  "gets the vals from the current list of adapters"
-  (a/active-adapters {:a1 {:a 1}
-                      :b2 {:b 2}}) => '({:a 1}
-                                        {:b 2})))
