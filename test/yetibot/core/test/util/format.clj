@@ -106,3 +106,13 @@
   "does not remove mixed quotes"
   (fmt/remove-surrounding-quotes "\"no change'") =>
   "\"no change'"))
+
+(facts
+ "about to-coll-if-contains-newlines"
+ (fact
+  "returns coll if string contains new lines and keeps whitespace"
+  (fmt/to-coll-if-contains-newlines "1\n2\n  3") => ["1" "2" "  3"])
+ (fact
+  "returns arg when no new lines are present"
+  (fmt/to-coll-if-contains-newlines "123") => "123"
+  (fmt/to-coll-if-contains-newlines 123) => 123))

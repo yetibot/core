@@ -1,7 +1,6 @@
 (ns yetibot.core.util.format
   (:require
     [yetibot.core.util]
-    [taoensso.timbre :refer [info warn error]]
     [clojure.stacktrace :as st]
     [clojure.string :as s])
   (:import [clojure.lang Associative Sequential]))
