@@ -58,6 +58,11 @@
     (fmt/pseudo-format-n "foo --> $2 <-- two" [1 2]) =>
     "foo --> 2 <-- two")
    (fact
+    "will replace rebound prefix with empty string when defined arg
+     in list of args is outside list scope"
+    (fmt/pseudo-format-n "is --> $3 <-- empty" [1 2]) =>
+    "is -->  <-- empty")
+   (fact
     "shouldn't work with old prefix after new one is bound"
     (fmt/pseudo-format-n "--> %s <--" [1 2]) => "--> %s <-- 1 2")
    (fact
@@ -72,7 +77,10 @@
   (fmt/pseudo-format "foo" "bar") => "foo bar")
  (fact
   "substitutes middle param when given an arg"
-  (fmt/pseudo-format "foo %s baz" "bar") => "foo bar baz"))
+  (fmt/pseudo-format "foo %s baz" "bar") => "foo bar baz")
+ (fact
+  "substitutes mutliple %s params with given arg"
+  (fmt/pseudo-format "foo %s baz %s" "bar") => "foo bar baz bar"))
 
 (facts
  "about limit-and-trim-string-lines"
