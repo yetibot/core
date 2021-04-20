@@ -11,41 +11,59 @@
    ["meme creator"
     "http://img-ipad.lisisoft.com/img/2/9/2974-1-meme-creator-pro-caption-memes.jpg"]])
 
-(def formatted-list (fmt/format-data-structure nested-list))
-
-(fact
- "the flattened representation should not contain collections"
- (let [[_ flattened] formatted-list]
-   flattened =not=> (contains coll?)))
-
-;; TODO port the rest of this to Midje
+(facts
+ "about format-data-structure"
+ (fact
+  "the flattened representation should not contain collections"
+  (let [[_ flattened] (fmt/format-data-structure nested-list)]
+    flattened =not=> (contains coll?))))
 
 (facts
- "format-n"
- (fmt/format-n "foo %1" [2]) => "foo 2"
- (fmt/format-n "foo" [2 3 4]) => "foo"
- (fmt/format-n "list %1 | head" [1]) => "list 1 | head")
+ "about format-n"
+ (fact
+  "will alter text with params using provided elements"
+  (fmt/format-n "foo %1" [2]) => "foo 2")
+ (fact
+  "will not alter text that has no params, but elements do exist"
+  (fmt/format-n "foo" [2 3 4]) => "foo")
+ (fact
+  "will alter complicated text with params using provided elements"
+  (fmt/format-n "list %1 | head" [1]) => "list 1 | head")
+ (fact
+  "will remove param from text if no supporting elements exist"
+  (fmt/format-n "skip %1" []) => "skip "))
 
 (facts
  "about pseudo-format-n"
  (let [args ["foo" "bar" "baz"]]
-   (fmt/pseudo-format-n
-    "all --> %s <-- there" args) => "all --> foo bar baz <-- there"
-   (fmt/pseudo-format-n "just the second --> %2 <--" args) =>
-   "just the second --> bar <--"
-   (fmt/pseudo-format-n "append to end -->" args) =>
-   "append to end --> foo bar baz")
- (fmt/pseudo-format-n "echo hi | echo bar" []) =>
- "echo hi | echo bar")
-
-(facts
- "about pseudo-format-n with rebound prefix"
+   (fact
+    "swaps out param with all args in list"
+    (fmt/pseudo-format-n "all --> %s <-- there" args) =>
+    "all --> foo bar baz <-- there")
+   (fact
+    "swaps out targeted param with defined item in list"
+    (fmt/pseudo-format-n "just the second --> %2 <--" args) =>
+    "just the second --> bar <--")
+   (fact
+    "will append to end of str the list of args if no params defined"
+    (fmt/pseudo-format-n "append to end -->" args) =>
+    "append to end --> foo bar baz"))
+ (fact
+  "does nothing when no params or args exist"
+  (fmt/pseudo-format-n "echo hi | echo bar" []) =>
+  "echo hi | echo bar")
  (binding [fmt/*subst-prefix* "\\$"]
-   ;; It should work with a new prefix.
-   (fmt/pseudo-format-n "foo --> $2 <-- two" [1 2]) =>
-   "foo --> 2 <-- two"
-   ;; It shouldn't work with the old prefix after a new one is bound.
-   (fmt/pseudo-format-n "--> %s <--" [1 2]) => "--> %s <-- 1 2"))
+   (fact
+    "will replace rebound prefix with defined arg in list of args"
+    (fmt/pseudo-format-n "foo --> $2 <-- two" [1 2]) =>
+    "foo --> 2 <-- two")
+   (fact
+    "shouldn't work with old prefix after new one is bound"
+    (fmt/pseudo-format-n "--> %s <--" [1 2]) => "--> %s <-- 1 2")
+   (fact
+    "should replace even if nothing to replace with"
+    (fmt/pseudo-format-n "qux --> $s <-- should b empty" []) =>
+    "qux -->  <-- should b empty")))
 
 (facts
  "Basic pseudo-format usage"
@@ -53,12 +71,6 @@
  (fact
   "It substitutes in the middle when it's supposed to")
  (fmt/pseudo-format "foo %s baz" "bar") => "foo bar baz")
-
-(facts
- "replace-even-if-nothing-to-replace-with"
- (binding [fmt/*subst-prefix* "\\$"]
-   (fmt/pseudo-format-n "qux --> $s <-- should b empty" []) =>
-   "qux -->  <-- should b empty"))
 
 (fact
  "limit-and-trim-string-lines-test"
