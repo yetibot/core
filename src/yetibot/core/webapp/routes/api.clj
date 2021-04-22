@@ -1,14 +1,10 @@
 (ns yetibot.core.webapp.routes.api
-  (:require
-    [yetibot.core.interpreter :refer [*chat-source*]]
-    [compojure.route :as route]
-    [compojure.handler :as handler]
-    [compojure.response :as response]
-    [yetibot.core.handler :refer [handle-unparsed-expr]]
-    [yetibot.core.chat :refer [*target* *adapter-uuid* chat-data-structure]]
-    [taoensso.timbre :refer [info warn]]
-    [clojure.edn :as edn]
-    [compojure.core :refer :all]))
+  (:require [yetibot.core.interpreter :refer [*chat-source*]]
+            [yetibot.core.handler :refer [handle-unparsed-expr]]
+            [yetibot.core.chat :refer [*target* *adapter-uuid* chat-data-structure]]
+            [taoensso.timbre :refer [info]]
+            [clojure.edn :as edn]
+            [compojure.core :refer [GET POST defroutes]]))
 
 (defn api [{:keys [chat-source text command token] :as params} req]
   (info "/api called with params:" params)
