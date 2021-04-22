@@ -1,5 +1,5 @@
 (ns yetibot.core.test.webapp.routes.graphql
-  (:require [yetibot.core.webapp.routes.graphql :refer [graphql schema]]
+  (:require [yetibot.core.webapp.routes.graphql :refer [graphql]]
             [midje.sweet :refer [=> =not=> fact facts contains]]))
 
 (facts
