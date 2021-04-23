@@ -7,8 +7,8 @@
    [com.walmartlabs.lacinia :refer [execute]]
    [com.walmartlabs.lacinia.schema :as lacina.schema]
    [com.walmartlabs.lacinia.util :as lacina.util]
-   [compojure.core :refer [defroutes POST OPTIONS]]
-   [taoensso.timbre :refer [error debug info color-str]]
+   [compojure.core :refer [defroutes POST]]
+   [taoensso.timbre :refer [debug]]
    [yetibot.core.webapp.resolvers :as resolvers]))
 
 (defn load-schema!
