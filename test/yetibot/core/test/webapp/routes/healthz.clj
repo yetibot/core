@@ -11,7 +11,5 @@
                       (after :facts
                               (reset! db/connected? false))]
    (fact
-    "will show as operational even when no adapters are active"
-    ;; i get that we are referring to a protocol, and it appears each adapter
-    ;; defines it's own behavior .. but yikes !! i have no clue
+    "will show as operational when DB is conneted and no adapters are active"
     (fully-operational?) => true)))
