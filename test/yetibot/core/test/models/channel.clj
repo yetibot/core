@@ -28,3 +28,11 @@
   "returns only default channel configs when DB results are empty"
   (chan/channel-settings "abc123" "#mychan") => (just chan/channel-config-defaults)
   (provided (db/query anything) => [])))
+
+(facts
+ "about settings-for-chat-source"
+ (fact
+  "does something"
+  (let [cmap {:uuid 123 :room "#abc123"}]
+    (chan/settings-for-chat-source cmap) => true
+    (provided (chan/channel-settings (:uuid cmap) (:room cmap)) => true))))
