@@ -58,3 +58,25 @@
     ;; when channel is real
     (chan/find-key uuid channel adapt-key) => key-result
     (provided (db/query query-w-channel) => [key-result]))))
+
+(facts
+ "about set-key"
+  (let [uuid :someuuid
+        channel "#somechannel"
+        key "somekey"
+        value "somevalue"
+        id 123
+        find-key-id {:id id}]
+    (fact
+     "does an update to the DB when a valid ID is returned from find-key"
+     (chan/set-key uuid channel key value) => :didupdate
+     (provided (chan/find-key uuid channel key) => find-key-id
+               (db/update-where find-key-id {:value value}) => :didupdate))
+    (fact
+     "does a create to the DB when no valid ID is returned from find-key"
+     (chan/set-key uuid channel key value) => :didcreate
+     (provided (chan/find-key uuid channel key) => nil
+               (db/create {:chat-source-adapter (pr-str uuid)
+                           :chat-source-channel channel
+                           :key key
+                           :value value}) => :didcreate))))

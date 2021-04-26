@@ -129,3 +129,6 @@
 (defn set-yetibot-channels
   [uuid channels]
   (set-key uuid nil yetibot-channels-key (pr-str channels)))
+
+
+
