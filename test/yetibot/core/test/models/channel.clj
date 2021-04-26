@@ -61,22 +61,38 @@
 
 (facts
  "about set-key"
-  (let [uuid :someuuid
-        channel "#somechannel"
-        key "somekey"
-        value "somevalue"
-        id 123
-        find-key-id {:id id}]
-    (fact
-     "does an update to the DB when a valid ID is returned from find-key"
-     (chan/set-key uuid channel key value) => :didupdate
-     (provided (chan/find-key uuid channel key) => find-key-id
-               (db/update-where find-key-id {:value value}) => :didupdate))
-    (fact
-     "does a create to the DB when no valid ID is returned from find-key"
-     (chan/set-key uuid channel key value) => :didcreate
-     (provided (chan/find-key uuid channel key) => nil
-               (db/create {:chat-source-adapter (pr-str uuid)
-                           :chat-source-channel channel
-                           :key key
-                           :value value}) => :didcreate))))
+ (let [uuid :someuuid
+       channel "#somechannel"
+       key "somekey"
+       value "somevalue"
+       id 123
+       find-key-id {:id id}]
+   (fact
+    "does an update to the DB when a valid ID is returned from find-key"
+    (chan/set-key uuid channel key value) => :didupdate
+    (provided (chan/find-key uuid channel key) => find-key-id
+              (db/update-where find-key-id {:value value}) => :didupdate))
+   (fact
+    "does a create to the DB when no valid ID is returned from find-key"
+    (chan/set-key uuid channel key value) => :didcreate
+    (provided (chan/find-key uuid channel key) => nil
+              (db/create {:chat-source-adapter (pr-str uuid)
+                          :chat-source-channel channel
+                          :key key
+                          :value value}) => :didcreate))))
+
+(facts
+ "about unset-key"
+ (let [uuid :someuuid
+       channel "#somechannel"
+       key "somekey"
+       id 123]
+   (fact
+    "does not delete because no key was found"
+    (chan/unset-key uuid channel key) => nil
+    (provided (chan/find-key uuid channel key) => nil))
+   (fact
+    "does a delete when a valid key was found"
+    (chan/unset-key uuid channel key) => :diddelete
+    (provided (chan/find-key uuid channel key) => {:id id}
+              (db/delete id) => :diddelete))))
