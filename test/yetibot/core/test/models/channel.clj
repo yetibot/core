@@ -145,3 +145,17 @@
                              nil
                              chan/yetibot-channels-key) => nil))
    ))
+
+(facts
+ "about set-yetibot-channels"
+ (let [uuid :someuuid
+       chans [123]
+       pr-chans (pr-str chans)]
+   (fact
+    "gets a yetibot channel value as a symbol when YB is in a channel or should be
+     in a channel, as defined by the UUID"
+    (chan/set-yetibot-channels uuid chans) => :didsetkey
+    (provided (chan/set-key uuid
+                            nil
+                            chan/yetibot-channels-key
+                            pr-chans) => :didsetkey))))
