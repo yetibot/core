@@ -96,3 +96,17 @@
     (chan/unset-key uuid channel key) => :diddelete
     (provided (chan/find-key uuid channel key) => {:id id}
               (db/delete id) => :diddelete))))
+
+(facts
+ "about get-disabled-cats"
+ (let [uuid :someuuid
+       channel "#somechannel"]
+   (fact
+    "assuming disabled categories exist in a channel, returns the settings
+     in symbol format for all that are disabled"
+    (chan/get-disabled-cats uuid channel) => 123
+    (provided (chan/find-key uuid channel chan/cat-settings-key) => {:value "123"}))
+   (fact
+    "when no disabled categories exist in a channel, returns an empty hash set"
+    (chan/get-disabled-cats uuid channel) => #{}
+    (provided (chan/find-key uuid channel chan/cat-settings-key) => nil))))
