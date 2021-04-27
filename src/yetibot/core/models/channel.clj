@@ -1,7 +1,7 @@
 (ns yetibot.core.models.channel
   (:require
    [yetibot.core.db.channel :as db]
-   [taoensso.timbre :refer [debug info warn error]]))
+   [taoensso.timbre :refer [debug]]))
 
 (def cat-settings-key "disabled-categories")
 (def channel-is-member-key "is-member")
@@ -129,6 +129,3 @@
 (defn set-yetibot-channels
   [uuid channels]
   (set-key uuid nil yetibot-channels-key (pr-str channels)))
-
-
-
