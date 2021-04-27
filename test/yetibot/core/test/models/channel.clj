@@ -110,3 +110,19 @@
     "when no disabled categories exist in a channel, returns an empty hash set"
     (chan/get-disabled-cats uuid channel) => #{}
     (provided (chan/find-key uuid channel chan/cat-settings-key) => nil))))
+
+(facts
+ "about set-disabled-cats"
+ (let [uuid :someuuid
+       channel "#somechannel"
+       categories [123]]
+   (fact
+    "unsets key related to disabled category settings when no categories are given"
+    (chan/set-disabled-cats uuid channel nil) => :didunset
+    (provided (chan/unset-key uuid channel chan/cat-settings-key) => :didunset))
+   (fact
+    "sets kets related to disabled category settings when categories exist"
+    (chan/set-disabled-cats uuid channel categories) => :didset
+    (provided (chan/set-key uuid channel
+                            chan/cat-settings-key
+                            (pr-str categories)) => :didset))))
