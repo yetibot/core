@@ -34,9 +34,10 @@
  (fact
   "simply parses the map param and extracts correct keys to call channel-settings,
    we are verifyig the function is called with the correct extracted params"
-  (let [cmap {:uuid 123 :room "#abc123"}]
-    (chan/settings-for-chat-source cmap) => true
-    (provided (chan/channel-settings (:uuid cmap) (:room cmap)) => true))))
+  (let [cmap {:uuid 123 :room "#abc123"}
+        cresult :cs-settings]
+    (chan/settings-for-chat-source cmap) => cresult
+    (provided (chan/channel-settings (:uuid cmap) (:room cmap)) => cresult))))
 
 (facts
  "about find-key"
@@ -62,6 +63,7 @@
 (facts
  "about set-key"
  (let [uuid :someuuid
+       pr-uuid (pr-str uuid)
        channel "#somechannel"
        key "somekey"
        value "somevalue"
@@ -76,7 +78,7 @@
     "does a create to the DB when no valid ID is returned from find-key"
     (chan/set-key uuid channel key value) => :didcreate
     (provided (chan/find-key uuid channel key) => nil
-              (db/create {:chat-source-adapter (pr-str uuid)
+              (db/create {:chat-source-adapter pr-uuid
                           :chat-source-channel channel
                           :key key
                           :value value}) => :didcreate))))
@@ -115,17 +117,18 @@
  "about set-disabled-cats"
  (let [uuid :someuuid
        channel "#somechannel"
-       categories [123]]
+       cats [123]
+       pr-cats (pr-str cats)]
    (fact
     "unsets key related to disabled category settings when no categories are given"
     (chan/set-disabled-cats uuid channel nil) => :didunset
     (provided (chan/unset-key uuid channel chan/cat-settings-key) => :didunset))
    (fact
     "sets kets related to disabled category settings when categories exist"
-    (chan/set-disabled-cats uuid channel categories) => :didset
+    (chan/set-disabled-cats uuid channel cats) => :didset
     (provided (chan/set-key uuid channel
                             chan/cat-settings-key
-                            (pr-str categories)) => :didset))))
+                            pr-cats) => :didset))))
 
 (facts
  "about get-yetibot-channels"
