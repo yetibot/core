@@ -126,3 +126,22 @@
     (provided (chan/set-key uuid channel
                             chan/cat-settings-key
                             (pr-str categories)) => :didset))))
+
+(facts
+ "about get-yetibot-channels"
+ (let [uuid :someuuid]
+   (fact
+    "gets a yetibot channel value as a symbol when YB is in a channel or should be
+     in a channel, as defined by the UUID"
+    (chan/get-yetibot-channels uuid) => 123
+    (provided (chan/find-key uuid
+                             nil
+                             chan/yetibot-channels-key) => {:value "123"}))
+   (fact
+    "returns empty hash set when YB is not found in a channel, as defined by
+    the UUID"
+    (chan/get-yetibot-channels uuid) => #{}
+    (provided (chan/find-key uuid
+                             nil
+                             chan/yetibot-channels-key) => nil))
+   ))
