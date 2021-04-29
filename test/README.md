@@ -40,6 +40,15 @@ Ran 35 tests containing 57 assertions.
 0 failures, 0 errors.
 ```
 
+#### Run Targeted Tests
+```bash
+# run tests for a specific NS
+$ lein test yetibot.core.test.config
+
+# run tests for a group of similar NS'es
+$ lein test yetibot.core.test.util.*
+```
+
 ### Testing Extra Credit
 
 #### Kondo-fy Code
