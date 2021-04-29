@@ -1,15 +1,23 @@
 (ns yetibot.core.test.commands.alias
-  (:require
-    [clojure.test :refer :all]
-    [clojure.string :refer [split]]
-    [yetibot.core.commands.alias :refer :all]))
+  (:require [midje.sweet :refer [facts fact => provided]]
+            [yetibot.core.commands.alias :as alias]
+            [yetibot.core.db.alias :as model]))
 
-(let [args ["a = random \\| echo hi"
-            "b = echo hi"
-            "c = random \\| echo http://foo.com?bust=%s"]])
-
-(deftest alias-test
-  ; examples
-  "alias foo = echo %1"
-  "alias weatherzip = \"weather %1 | head %2 | tail\""
-  )
+(facts
+ "about add-alias"
+ (let [cmd-name "hello"
+       alias-info {:cmd-name cmd-name
+                   :cmd "echo hello"
+                   :user-id 123}
+       alias-id {:id 123}]
+   (fact
+    "will update an alias, with its ID, when the existing alias cmd name
+     already exists"
+    (alias/add-alias alias-info) => alias-info
+    (provided (#'alias/existing-alias cmd-name) => alias-id
+              (model/update-where alias-id alias-info) => nil))
+   (fact
+    "will create a new alias when the cmd name doesn't already exist"
+    (alias/add-alias alias-info) => alias-info
+    (provided (#'alias/existing-alias cmd-name) => nil
+              (model/create alias-info) => nil))))
