@@ -1,5 +1,6 @@
 (ns yetibot.core.test.commands.alias
-  (:require [midje.sweet :refer [facts fact => provided]]
+  (:require [midje.sweet :refer [facts fact =>
+                                 provided]]
             [yetibot.core.commands.alias :as alias]
             [yetibot.core.db.alias :as model]))
 
@@ -21,3 +22,15 @@
     (alias/add-alias alias-info) => alias-info
     (provided (#'alias/existing-alias cmd-name) => nil
               (model/create alias-info) => nil))))
+
+(facts
+ "about list-aliases"
+ (let [aliases [{:cmd-name "hello" :cmd "echo hello"}]]
+   (fact
+    "when aliases exist, returns result data and values, no errors"
+    (:result/data (alias/list-aliases :ignored)) => aliases
+    (provided (model/find-all) => aliases))
+   (fact
+    "when no aliases exist, returns result error with string"
+    (:result/error (alias/list-aliases :ignored)) => string?
+    (provided (model/find-all) => []))))
