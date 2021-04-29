@@ -1,8 +1,9 @@
 (ns yetibot.core.test.commands.alias
-  (:require [midje.sweet :refer [facts fact =>
-                                 provided]]
+  (:require [midje.sweet :refer [facts fact => every-checker
+                                 provided contains]]
             [yetibot.core.commands.alias :as alias]
-            [yetibot.core.db.alias :as model]))
+            [yetibot.core.db.alias :as model]
+            [yetibot.core.hooks :refer [cmd-unhook]]))
 
 (facts
  "about add-alias"
@@ -34,3 +35,22 @@
     "when no aliases exist, returns result error with string"
     (:result/error (alias/list-aliases :ignored)) => string?
     (provided (model/find-all) => []))))
+
+(facts
+ "about remove-alias"
+ (let [cmd "hello"
+       id 123
+       alias {:match [:random cmd]}]
+   (fact
+    "when an alias matches, returns result error with string"
+    (:result/data (alias/remove-alias alias))
+    => (contains {:id id :cmd cmd})
+    (provided (#'alias/existing-alias cmd) => {:id 123}
+              (model/delete id) => :diddelete
+              (cmd-unhook cmd) => :didunhook))
+   (fact
+    "when no aliases matches, returns result error with string"
+    (:result/error (alias/remove-alias alias))
+    => (every-checker string?
+                      (contains cmd))
+    (provided (#'alias/existing-alias cmd) => nil))))
