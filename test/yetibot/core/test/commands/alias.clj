@@ -1,9 +1,11 @@
 (ns yetibot.core.test.commands.alias
-  (:require [midje.sweet :refer [facts fact => every-checker
-                                 provided contains]]
+  (:require [midje.sweet :refer [facts fact => every-checker against-background
+                                 provided contains truthy falsey]]
             [yetibot.core.commands.alias :as alias]
             [yetibot.core.db.alias :as model]
-            [yetibot.core.hooks :refer [cmd-unhook]]))
+            [yetibot.core.hooks :refer [cmd-unhook]]
+            [yetibot.core.models.help :as help]
+            [midje.util :refer [testable-privates]]))
 
 (facts
  "about add-alias"
@@ -54,3 +56,22 @@
     => (every-checker string?
                       (contains cmd))
     (provided (#'alias/existing-alias cmd) => nil))))
+
+(testable-privates yetibot.core.commands.alias cleaned-cmd-name)
+(facts
+ "about cleaned-cmd-name"
+ (fact
+  "returns 'cleaned' 1st element of command string args"
+  (cleaned-cmd-name "  hello world  ") => "hello"))
+
+(testable-privates yetibot.core.commands.alias built-in?)
+(facts
+ "about built-in? (all builtin commands w/ docs - all alias commands)"
+ (against-background (help/get-docs) => {"echo" {}}
+                     (model/find-all) => [{:cmd-name "alias1"}])
+ (fact
+  "returns the name of the command if considered a built-in"
+  (built-in? "echo") => truthy)
+ (fact
+  "returns nil if NOT considered a built-in"
+  (built-in? "alias1") => falsey))

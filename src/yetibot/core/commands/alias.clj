@@ -1,12 +1,11 @@
 (ns yetibot.core.commands.alias
   (:require
     [clojure.set :refer [difference]]
-    [taoensso.timbre :refer [info warn error]]
+    [taoensso.timbre :refer [info]]
     [clojure.string :as s]
     [yetibot.core.util.format :refer [pseudo-format-n *subst-prefix*
                                       remove-surrounding-quotes]]
     [yetibot.core.handler :refer [record-and-run-raw]]
-    [yetibot.core.util.format :refer [format-n]]
     [yetibot.core.util.command :as command]
     [yetibot.core.models.help :as help]
     [yetibot.core.db.alias :as model]
@@ -62,7 +61,7 @@
   (let [new-alias-map {:user-id user-id :cmd-name cmd-name :cmd cmd}]
     (info "adding alias with" new-alias-map)
     (info "existing" (existing-alias cmd-name))
-    (if-let [{:keys [id] :as existing} (existing-alias cmd-name)]
+    (if-let [{id :id} (existing-alias cmd-name)]
       (model/update-where {:id id} new-alias-map)
       (model/create new-alias-map)))
   alias-info)
