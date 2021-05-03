@@ -68,7 +68,7 @@
 
 (defn load-aliases []
   (let [alias-cmds (model/find-all)]
-    (dorun (map wire-alias alias-cmds))))
+    (run! #(wire-alias %) alias-cmds)))
 
 (defn- built-in? [cmd]
   ;; subtract known aliases from every command registered in `help`
