@@ -1,120 +1,117 @@
 (ns yetibot.core.test.commands.collections
   (:require
-   [yetibot.core.commands.collections :refer :all]
+   [yetibot.core.commands.collections :as colls]
    yetibot.core.commands.render
    yetibot.core.commands.about
    yetibot.core.commands.echo
    [taoensso.timbre :refer [info]]
    [yetibot.core.util.command-info :refer [command-execution-info]]
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest testing is]]
    [midje.sweet :refer [fact facts =>]]))
 
 (deftest random-test
   (testing "Random with no args"
-    (let [{:keys [matched-sub-cmd
-                  result
-                  result]} (command-execution-info
-                             "random" {:run-command? true})
+    (let [{:keys [matched-sub-cmd result]} (command-execution-info
+                                            "random" {:run-command? true})
           random-number (read-string result)]
-      (is (= matched-sub-cmd #'random)
+      (is (= matched-sub-cmd #'yetibot.core.commands.collections/random)
           "It matches the expected `random` command handler")
       (is (number? random-number)
           "It should generate a random number when passed no args")))
   (testing "Random with args"
-    (let [{:keys [matched-sub-cmd
-                  result
-                  result]} (command-execution-info "random" {:opts ["bar" "foo"]
-                                                             :run-command? true})]
+    (let [{{result :result/value} :result} (command-execution-info
+                                            "random" {:opts ["bar" "foo"]
+                                                      :run-command? true})]
       (is (or (= "bar" result) (= "foo" result))
           "Random with a collection passed into it picks a random item from the
            collection"))))
 
 (facts "slide-context"
-  (fact "gives the context" (slide-context (range 10) 3 2) => [1 2 3 4 5])
+  (fact "gives the context" (colls/slide-context (range 10) 3 2) => [1 2 3 4 5])
   (fact "is shorter if there aren't enough results before"
-    (slide-context (range 10) 1 2) => [0 1 2 3])
+        (colls/slide-context (range 10) 1 2) => [0 1 2 3])
   (fact "is shorter if there aren't enough results at the end"
-    (slide-context (range 10) 9 3) => [6 7 8 9]))
+        (colls/slide-context (range 10) 9 3) => [6 7 8 9]))
 
 (facts "sliding-filter"
-  (fact (sliding-filter 1 #(> % 4) (range 10)) =>
-      [[4 5 6] [5 6 7] [6 7 8] [7 8 9] [8 9]])
-  (fact (sliding-filter 1 odd? (range 6 10)) =>
-      [[6 7 8] [8 9]]))
+  (fact (colls/sliding-filter 1 #(> % 4) (range 10)) =>
+        [[4 5 6] [5 6 7] [6 7 8] [7 8 9] [8 9]])
+  (fact (colls/sliding-filter 1 odd? (range 6 10)) =>
+        [[6 7 8] [8 9]]))
 
 (facts "grep context"
   (fact "for multiple matches"
-    (grep-data-structure #"yes"
-                         (map-indexed vector
-                                      ["devth: foo"
-                                       "devth: yes"
-                                       "devth: bar"
-                                       "devth: lol"
-                                       "devth: ok"
-                                       "devth: baz"
-                                       "devth: !history | grep -C 2 yes"])
-                         {:context 2})
-    =>
-    [[0 "devth: foo"]
-     [1 "devth: yes"]
-     [2 "devth: bar"]
-     [3 "devth: lol"]
-     [4 "devth: ok"]
-     [5 "devth: baz"]
-     [6 "devth: !history | grep -C 2 yes"]])
+        (colls/grep-data-structure #"yes"
+                                   (map-indexed vector
+                                                ["devth: foo"
+                                                 "devth: yes"
+                                                 "devth: bar"
+                                                 "devth: lol"
+                                                 "devth: ok"
+                                                 "devth: baz"
+                                                 "devth: !history | grep -C 2 yes"])
+                                   {:context 2})
+        =>
+        [[0 "devth: foo"]
+         [1 "devth: yes"]
+         [2 "devth: bar"]
+         [3 "devth: lol"]
+         [4 "devth: ok"]
+         [5 "devth: baz"]
+         [6 "devth: !history | grep -C 2 yes"]])
   (fact "for single match"
-    (grep-data-structure #"foo"
-                         (map-indexed vector
-                                      ["bar" "lol" "foo" "baz" "qux"])
-                         {:context 1})
-    =>
-    '([1 "lol"] [2 "foo"] [3 "baz"]))
+        (colls/grep-data-structure #"foo"
+                                   (map-indexed vector
+                                                ["bar" "lol" "foo" "baz" "qux"])
+                                   {:context 1})
+        =>
+        '([1 "lol"] [2 "foo"] [3 "baz"]))
   (fact "no overlapping matches"
-    (grep-data-structure #"foo"
-                         (map-indexed vector
-                                      ["foo" "bar" "baz" "foo"])
-                         {:context 2})
-    =>
-    [[0 "foo"]
-     [1 "bar"]
-     [2 "baz"]
-     [3 "foo"]]
-))
+        (colls/grep-data-structure #"foo"
+                                   (map-indexed vector
+                                                ["foo" "bar" "baz" "foo"])
+                                   {:context 2})
+        =>
+        [[0 "foo"]
+         [1 "bar"]
+         [2 "baz"]
+         [3 "foo"]]))
 
-(facts "grep-cmd-test"
-  (fact "gives full match"
-    (grep-cmd {:match "foo" :opts ["foo" "bar"]})
-    =>
-    #:result{:value ["foo"] :data nil})
-  (fact "gives partial match"
-    (grep-cmd {:match "foo" :opts ["foobar" "baz"]})
-    =>
-    #:result{:value ["foobar"] :data nil})
-  (fact "with -C flag gives context"
-    (grep-surrounding {:match (re-find #"-C\s+(\d+)\s+(.+)" "-C 1 baz")
-               :opts ["foo" "bar" "baz"]})
-    =>
-    #:result{:value ["bar" "baz"], :data nil})
-  (fact "with -v flag gives inverted match"
-    (inverted-grep {:match (re-find #"-v\s+(.+)" "-v bar")
-               :opts ["foo" "bar" "baz"]})
-    =>
-    #:result{:value ["foo" "baz"], :data nil}))
+(facts
+ "grep-cmd-test"
+ (fact "gives full match"
+       (colls/grep-cmd {:match "foo" :opts ["foo" "bar"]})
+       =>
+       #:result{:value ["foo"] :data nil})
+ (fact "gives partial match"
+       (colls/grep-cmd {:match "foo" :opts ["foobar" "baz"]})
+       =>
+       #:result{:value ["foobar"] :data nil})
+ (fact "with -C flag gives context"
+       (colls/grep-surrounding {:match (re-find #"-C\s+(\d+)\s+(.+)" "-C 1 baz")
+                                :opts ["foo" "bar" "baz"]})
+       =>
+       #:result{:value ["bar" "baz"], :data nil})
+ (fact "with -v flag gives inverted match"
+       (colls/inverted-grep {:match (re-find #"-v\s+(.+)" "-v bar")
+                             :opts ["foo" "bar" "baz"]})
+       =>
+       #:result{:value ["foo" "baz"], :data nil}))
 
 (deftest flatten-test
   (testing "Simple case"
-    (is (= (:result/value (flatten-cmd {:opts ["1" "2" "3"]}))
+    (is (= (:result/value (colls/flatten-cmd {:opts ["1" "2" "3"]}))
            ["1" "2" "3"])))
   (testing "Simple nested case"
-    (is (= (:result/value (flatten-cmd {:opts [["1" "2" "3"]]}))
+    (is (= (:result/value (colls/flatten-cmd {:opts [["1" "2" "3"]]}))
           ["1" "2" "3"])))
   (testing "Simple case with newlines"
     (is (= (:result/value
-             (flatten-cmd {:opts [(str 1 \newline 2 \newline 3 \newline)]}))
+            (colls/flatten-cmd {:opts [(str 1 \newline 2 \newline 3 \newline)]}))
           ["1" "2" "3"])))
   (testing "Nested case with newlines"
     (is (= (:result/value
-             (flatten-cmd {:opts [[[(str 1 \newline 2 \newline 3 \newline)]]]}))
+            (colls/flatten-cmd {:opts [[[(str 1 \newline 2 \newline 3 \newline)]]]}))
            ["1" "2" "3"]))))
 
 (deftest words-test
@@ -122,7 +119,7 @@
        (command-execution-info "words foo bar" {:run-command? true}))
      ["foo" "bar"]))
 
-(deftest random-test
+(deftest random-test2
   (= (:result
        (command-execution-info "repeat 3 echo hi" {:run-command? true})
        {:parse-tree [:expr [:cmd [:words "repeat" [:space " "] "3" [:space " "]
