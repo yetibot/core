@@ -98,25 +98,31 @@
        =>
        #:result{:value ["foo" "baz"], :data nil}))
 
-(deftest flatten-test
-  (testing "Simple case"
-    (is (= (:result/value (colls/flatten-cmd {:opts ["1" "2" "3"]}))
-           ["1" "2" "3"])))
-  (testing "Simple nested case"
-    (is (= (:result/value (colls/flatten-cmd {:opts [["1" "2" "3"]]}))
-          ["1" "2" "3"])))
-  (testing "Simple case with newlines"
-    (is (= (:result/value
-            (colls/flatten-cmd {:opts [(str 1 \newline 2 \newline 3 \newline)]}))
-          ["1" "2" "3"])))
-  (testing "Nested case with newlines"
-    (is (= (:result/value
-            (colls/flatten-cmd {:opts [[[(str 1 \newline 2 \newline 3 \newline)]]]}))
-           ["1" "2" "3"]))))
+(facts
+ "about flatten-cmd"
+ (let [cmn-res ["1" "2" "3"]]
+   (fact
+    "simple case using vector"
+    (:result/value (colls/flatten-cmd {:opts ["1" "2" "3"]}))
+    => cmn-res)
+   (fact
+    "simple case using nested vector"
+    (:result/value (colls/flatten-cmd {:opts [["1" "2" "3"]]}))
+    => cmn-res)
+   (fact
+    "case using single str w/ newlines in vector"
+    (:result/value (colls/flatten-cmd
+                    {:opts [(str 1 \newline 2 \newline 3 \newline)]}))
+    => cmn-res)
+   (fact
+    "case using single str w/ newlines in nested vector"
+    (:result/value (colls/flatten-cmd
+                    {:opts [[[(str 1 \newline 2 \newline 3 \newline)]]]}))
+    => cmn-res)))
 
 (deftest words-test
   (= (:result
-       (command-execution-info "words foo bar" {:run-command? true}))
+      (command-execution-info "words foo bar" {:run-command? true}))
      ["foo" "bar"]))
 
 (deftest random-test2
