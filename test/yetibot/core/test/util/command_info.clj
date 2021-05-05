@@ -1,5 +1,7 @@
 (ns yetibot.core.test.util.command-info
-  (:require [midje.sweet :refer [fact => truthy falsey]]
+  (:require [midje.sweet :refer [fact facts => truthy falsey every-checker
+                                 contains]]
+            [clojure.string :as string]
             [yetibot.core.parser :refer [parser]]
             [yetibot.core.util.command-info :as ci]
             [clojure.test :refer [deftest testing is]]
@@ -45,54 +47,63 @@
    result => {:result/value ["one" "two"]}
    command-args => "2"))
 
-(deftest random-test
-  (testing "Random with no args"
-    (let [{:keys [matched-sub-cmd result]} (ci/command-execution-info
-                                            "random" {:run-command? true})
-          random-number (read-string result)]
-      (is (= matched-sub-cmd #'yetibot.core.commands.collections/random)
-          "It matches the expected `random` command handler")
-      (is (number? random-number)
-          "It should generate a random number when passed no args")))
-  (testing "Random with args"
-    (let [{{result :result/value} :result} (ci/command-execution-info
-                                            "random" {:opts ["bar" "foo"]
+(facts
+ "about command-execution-info using 'random' command"
+ (let [{:keys [matched-sub-cmd result]} (ci/command-execution-info
+                                         "random" {:run-command? true})
+       random-number (read-string result)]
+   (fact
+    "with no args, it matches expected 'random' command handler"
+    matched-sub-cmd => #'yetibot.core.commands.collections/random)
+   (fact
+    "with no args, it generates a random number"
+    random-number => number?))
+ (let [{{result :result/value} :result} (ci/command-execution-info
+                                         "random" {:opts ["bar" "foo"]
+                                                   :run-command? true})]
+   (fact
+    "with args, picks random item from provided collection"
+    result => #"bar|foo")))
+
+(facts
+ "about command-execution-info using 'words' command"
+ (let [cmd-coll '("words" "foo" "bar")
+       {result :result} (ci/command-execution-info (string/join " " cmd-coll)
+                                                   {:run-command? true})]
+   (fact
+    "returns the 'words' cmd args as coll, split on whitespace"
+    result => (pop cmd-coll))))
+
+(facts
+ "about command-execution-info using 'repeat' command"
+ (let [{:keys [command command-args matched-sub-cmd]
+        {value :result/value} :result} (ci/command-execution-info
+                                        "repeat 3 echo hi"
+                                        {:run-command? true})]
+   (fact
+    "returns expected vals for command related vals"
+    command => "repeat"
+    command-args => "3 echo hi"
+    value => ["hi" "hi" "hi"]
+    matched-sub-cmd => #'yetibot.core.commands.collections/repeat-cmd)))
+
+(facts
+ "about command-execution-info using 'data' command"
+ (let [{{error :result/error} :result} (ci/command-execution-info
+                                        "data $.[0]" {:run-command? true})]
+   (fact
+    "when no data using command, results in an error str"
+    error => (every-checker
+              string?
+              (contains
+               "There is no `data` from the previous command 🤔"))))
+ (let [data {:foo :bar}
+       {{result :result/data} :result} (ci/command-execution-info
+                                        "data $.[0]" {:data [data]
                                                       :run-command? true})]
-      (is (or (= "bar" result) (= "foo" result))
-          "Random with a collection passed into it picks a random item from the
-           collection"))))
-
-(deftest words-test
-  (= (:result
-      (ci/command-execution-info "words foo bar" {:run-command? true}))
-     ["foo" "bar"]))
-
-(deftest random-test2
-  (= (:result
-      (ci/command-execution-info "repeat 3 echo hi" {:run-command? true})
-      {:parse-tree [:expr [:cmd [:words "repeat" [:space " "] "3" [:space " "]
-                                 "echo" [:space " "] "hi"]]]
-       :sub-commands [#"(\d+)\s(.+)" #'yetibot.core.commands.collections/repeat-cmd]
-       :matched-sub-cmd #'yetibot.core.commands.collections/repeat-cmd
-       :match ["3 echo hi" "3" "echo hi"]
-       :command "repeat"
-       :command-args "3 echo hi"
-       :result ["hi" "hi" "hi"]})))
-
-(deftest data-test
-  (testing "No data results in an error"
-    (is
-     (=
-      #:result{:error "There is no `data` from the previous command 🤔"}
-      (:result (ci/command-execution-info "data $.[0]" {:run-command? true})))))
-
-  (testing "Data should be preserved in data <path>"
-    (is (=
-         {:foo :bar}
-         (-> (ci/command-execution-info "data $.[0]" {:data [{:foo :bar}]
-                                                      :run-command? true})
-             :result :result/data)))))
-
+   (fact
+    "Data should be preserved in data <path>"
+    data => result)))
 
 (def opts (map str ["red" "green" "blue"]))
 ;; construct some fake data that in theory represents the simplified
