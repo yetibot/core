@@ -64,8 +64,6 @@
 (cmd-hook #"random"
           _ random)
 
-(def head-tail-regex #"(\d+).+")
-
 ; head / tail helpers
 (defn head-or-tail
   [single-fn multi-fn n {:keys [data-collection]
