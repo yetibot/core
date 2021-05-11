@@ -1,10 +1,6 @@
 (ns yetibot.core.util.command-info
-  (:require
-    [yetibot.core.hooks :as hooks]
-    [yetibot.core.interpreter :as interpreter]
-    [yetibot.core.models.help :as help]
-    [yetibot.core.parser :refer [parse-and-eval transformer parser]]
-    [taoensso.timbre :refer [color-str debug info]]))
+  (:require [yetibot.core.hooks :as hooks]
+            [yetibot.core.parser :refer [parser]]))
 
 (defn simple-command?
   "Helper for command-execution-info.
@@ -82,7 +78,7 @@
   (let [parsed (parser command)]
     (if (simple-command? parsed)
       (let [[cmd args] (hooks/split-command-and-args command)
-            [cmd-re sub-commands] (hooks/find-sub-cmds cmd)
+            [_cmd-re sub-commands] (hooks/find-sub-cmds cmd)
             [match sub-fn] (hooks/match-sub-cmds args sub-commands)]
         (merge
          {:parse-tree parsed
