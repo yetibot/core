@@ -28,7 +28,7 @@
   ;; simple expressions only have 1 :expr
   ;; we changed `simple-command?` to return true for expressions that contain
   ;; sub-expressions
-  (= 1 (->> parsed-expr
+  (= 1 (->> (parser "echo")
             flatten
             (filter (partial = :expr))
             count))
