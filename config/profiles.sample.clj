@@ -12,6 +12,8 @@
 {:dev
  {:env
   {:yetibot-log-level "debug"
+   :yetibot-log-path "/var/log/yetibot/yetibot.log"
+   :yetibot-log-rolling-enabled "true"
 
    ;; By default Yetibot uses the ! prefix to match commands.
    ;; You can use this configuration to customize the prefix used by Yetibot
