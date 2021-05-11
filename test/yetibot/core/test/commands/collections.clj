@@ -1,9 +1,6 @@
 (ns yetibot.core.test.commands.collections
   (:require
    [yetibot.core.commands.collections :as colls]
-   yetibot.core.commands.render
-   yetibot.core.commands.about
-   yetibot.core.commands.echo
    [midje.sweet :refer [fact facts =>]]))
 
 (facts "slide-context"

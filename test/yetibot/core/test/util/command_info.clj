@@ -4,10 +4,9 @@
             [clojure.string :as string]
             [yetibot.core.parser :refer [parser]]
             [yetibot.core.util.command-info :as ci]
-            [clojure.test :refer [deftest testing is]]
             yetibot.core.commands.collections
             yetibot.core.commands.echo
-            [taoensso.timbre :refer [info]]))
+            yetibot.core.commands.render))
 
 (fact
  "simple-command? should return true for a very simple command"
@@ -120,125 +119,139 @@
   [value]
   (->> value (repeat 2) (apply hash-map)))
 
-(deftest data-propagation-test
+(facts
+ "about command-execution-info"
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "random" params)]
+   (fact
+    "using 'random' command, should pull the corresponding random item
+     out of the data and propagate it"
+    data => (value->data value)))
 
-  (testing "random should propagate data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "random" params)]
-      (is
-       (= (value->data value) data)
-       "random should pull the corresponding random item out of the data and
-         propagate it")))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "head 2" params)]
+   (fact
+    "using 'head 2' command, should propagate multiple sets of data"
+    data => [{"red" "red"} {"green" "green"}]
+    data => (map value->data value)))
 
-  (testing "head should propagate data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "head 2" params)]
-      (is (= [{"red" "red"} {"green" "green"}] data (map value->data value))))
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "head" params)]
-      (info (pr-str value) (pr-str {:data data}))
-      (is (= {"red" "red"} data (value->data value)))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "head" params)]
+   (fact
+    "using 'head' command, should propagate sets of data"
+    data => {"red" "red"}
+    data => (value->data value)))
 
-  (testing "repeat should accumulate the resulting data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "repeat 3 random" params)]
-      (is (= data (map value->data value)))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "repeat 3 random" params)]
+   (fact
+    "using 'repeat 3 random' command, should accumulate resulting data"
+    data => (map value->data value)))
 
-  (testing "keys and vals should propagate data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "keys" params)]
-      (is (= ["red" "green" "blue"] value))
-      (is (= sample-data data)))
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "vals"
-                                                 (assoc params
-                                                        :opts {:foo :bar}))]
-      (is (= [:bar] value))
-      (is (= sample-data data))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "keys" params)]
+   (fact
+    "using 'keys' command, should propagate 'key' data"
+    value => ["red" "green" "blue"]
+    data => sample-data))
 
-  (testing "droplast and rest should propagate data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "droplast" params)]
-      (is (= data (map value->data value))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "vals"
+                                              (assoc params
+                                                     :opts {:foo :bar}))]
+   (fact
+    "using 'vals' command, should propagate 'value' data"
+    value => [:bar]
+    data => sample-data))
 
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "rest" params)]
-      (is (= data (map value->data value)))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "droplast" params)]
+   (fact
+    "using 'droplast' command, should drop last item and propagate
+     remaining data"
+    data => (map value->data value)))
 
-  (testing "sort propagates sorted data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "sort" params)]
-      (info "sorted data" (pr-str data))
-      (info "sorted opts" (pr-str value))
-      (is (= ["blue" "green" "red"] value))
-      (is (= data (map value->data value)))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "rest" params)]
+   (fact
+    "using 'rest' command, should drop 1st item and propagate
+     remaining data"
+    data => (map value->data value)))
 
-  (testing "sortnum propagates sorted data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "sortnum"
-                                                 (assoc params
-                                                        :opts ["2" "1" "3"]))]
-      (is (= ["1" "2" "3"] value))
-      (is (= [{"green" "green"} {"red" "red"} {"blue" "blue"}] data))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "sort" params)]
+   (fact
+    "using 'sort' command, should sort items in collection and propagate"
+    value => ["blue" "green" "red"]
+    data => (map value->data value)))
 
-  (testing "shuffle propagates shuffled data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "shuffle" params)]
-      (is (= data (map value->data value)))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "sortnum"
+                                              (assoc params
+                                                     :opts ["2" "1" "3"]))]
+   (fact
+    "using 'sortnum' command, should sort items in collection based on
+     item index position and propagate"
+    value => ["1" "2" "3"]
+    data => [{"green" "green"} {"red" "red"} {"blue" "blue"}]))
 
-  (testing "reverse propagates reversed data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                 "reverse" params)]
-      (is (= data (map value->data value)))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "shuffle" params)]
+   (fact
+    "using 'shuffle' command, should shuffle data and propagate"
+    data => (map value->data value)))
 
-  (testing "grep propagates matched data"
-    (let [{{:result/keys [value data]} :result} (ci/command-execution-info
-                                                  ;; only matches "red" and
-                                                  ;; "green"
-                                                 "grep e.$" params)]
-      (is (= data (map value->data value)))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "reverse" params)]
+   (fact
+    "using 'reverse' command, should propagate reversed data"
+    data => (map value->data value)))
 
-  (testing "xargs still works on simple commands that don't return a map"
-    (is (= ["value is red" "value is green" "value is blue"]
-           (-> (ci/command-execution-info
-                 ;; only matches "red" and "green"
-                "xargs echo value is" params)
-               :result
-               :result/value))))
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "grep e.$" params)]
+   (fact
+    "using 'grep e.$' command, should only match green and red and
+    propagate the matched data"
+    data => (map value->data value)))
 
-  (testing "xargs accumulates and propagates data when it exists"
-    (is (=
-         (-> (ci/command-execution-info
-                 ;; only matches "red" and
-                 ;; "green"
-              "xargs trim" params)
-             :result)
-         #:result{:value ["red" "green" "blue"]
-                  :data-collection [nil nil nil]
-                  :data [{"red" "red"} {"green" "green"} {"blue" "blue"}]})))
+ (let [values (-> (ci/command-execution-info "xargs echo value is" params)
+                  :result
+                  :result/value)]
+   (fact
+    "using 'xargs echo value is' command, should work on simple commands
+     that don't return a map"
+    values => ["value is red" "value is green" "value is blue"]))
 
-  (testing
-   "xargs should properly propagate data for each item when data-collection is
-    present"
-    (is
-     (= (-> (ci/command-execution-info
-             "xargs render {{name}}"
-             {:data [{:name "foo"} {:name "bar"} {:name "qux"}]
-              :data-collection [{:name "foo"} {:name "bar"} {:name "qux"}]
-              :opts ["foo" "bar" "qux"]
-              :run-command? true})
-            :result
-            :result/value)
-        ["foo" "bar" "qux"])))
+ (let [values (-> (ci/command-execution-info "xargs trim" params)
+                  :result)]
+   (fact
+    "using 'xargs trim' command, it should accumulate and propagate
+     date when it exists"
+    values => (contains {:result/value ["red" "green" "blue"]})
+    values => (contains {:result/data [{"red" "red"} {"green" "green"}
+                                       {"blue" "blue"}]})
+    values => (contains {:result/data-collection [nil nil nil]})))
 
-  (testing "xargs falls back to data if opts not passed in"
-    (is
-     (=
-      (-> (ci/command-execution-info
-           "xargs keys"
-           ;; remove opts, forcing it to fallback to data
-           (-> params (dissoc :opts)))
-          :result)
-      #:result{:value [["red"] ["green"] ["blue"]]
-               :data-collection [nil nil nil]
-               :data [{"red" "red"} {"green" "green"} {"blue" "blue"}]}))))
+ (let [values (-> (ci/command-execution-info "xargs keys"
+                                             (-> params (dissoc :opts)))
+                  :result)]
+   (fact
+    "using 'xargs keys' command, it should fall back to data if opts
+     not passed in"
+    values => (contains {:result/value [["red"] ["green"] ["blue"]]})
+    values => (contains {:result/data [{"red" "red"} {"green" "green"}
+                                       {"blue" "blue"}]})
+    values => (contains {:result/data-collection [nil nil nil]})))
+
+ (let [values (-> (ci/command-execution-info
+                   "xargs render {{name}}"
+                   {:data [{:name "foo"} {:name "bar"} {:name "qux"}]
+                    :data-collection [{:name "foo"} {:name "bar"} {:name "qux"}]
+                    :opts ["foo" "bar" "qux"]
+                    :run-command? true})
+                  :result
+                  :result/value)]
+   (fact
+    "using 'xargs render {{name}}' command, it should properly propagate
+     data for each item when data-collection is present"
+    values => ["foo" "bar" "qux"])))
