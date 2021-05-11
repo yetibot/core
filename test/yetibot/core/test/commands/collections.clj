@@ -8,55 +8,55 @@
    yetibot.core.commands.render))
 
 (facts "slide-context"
-  (fact "gives the context" (colls/slide-context (range 10) 3 2) => [1 2 3 4 5])
-  (fact "is shorter if there aren't enough results before"
-        (colls/slide-context (range 10) 1 2) => [0 1 2 3])
-  (fact "is shorter if there aren't enough results at the end"
-        (colls/slide-context (range 10) 9 3) => [6 7 8 9]))
+       (fact "gives the context" (colls/slide-context (range 10) 3 2) => [1 2 3 4 5])
+       (fact "is shorter if there aren't enough results before"
+             (colls/slide-context (range 10) 1 2) => [0 1 2 3])
+       (fact "is shorter if there aren't enough results at the end"
+             (colls/slide-context (range 10) 9 3) => [6 7 8 9]))
 
 (facts "sliding-filter"
-  (fact (colls/sliding-filter 1 #(> % 4) (range 10)) =>
-        [[4 5 6] [5 6 7] [6 7 8] [7 8 9] [8 9]])
-  (fact (colls/sliding-filter 1 odd? (range 6 10)) =>
-        [[6 7 8] [8 9]]))
+       (fact (colls/sliding-filter 1 #(> % 4) (range 10)) =>
+             [[4 5 6] [5 6 7] [6 7 8] [7 8 9] [8 9]])
+       (fact (colls/sliding-filter 1 odd? (range 6 10)) =>
+             [[6 7 8] [8 9]]))
 
 (facts "grep context"
-  (fact "for multiple matches"
-        (colls/grep-data-structure #"yes"
-                                   (map-indexed vector
-                                                ["devth: foo"
-                                                 "devth: yes"
-                                                 "devth: bar"
-                                                 "devth: lol"
-                                                 "devth: ok"
-                                                 "devth: baz"
-                                                 "devth: !history | grep -C 2 yes"])
-                                   {:context 2})
-        =>
-        [[0 "devth: foo"]
-         [1 "devth: yes"]
-         [2 "devth: bar"]
-         [3 "devth: lol"]
-         [4 "devth: ok"]
-         [5 "devth: baz"]
-         [6 "devth: !history | grep -C 2 yes"]])
-  (fact "for single match"
-        (colls/grep-data-structure #"foo"
-                                   (map-indexed vector
-                                                ["bar" "lol" "foo" "baz" "qux"])
-                                   {:context 1})
-        =>
-        '([1 "lol"] [2 "foo"] [3 "baz"]))
-  (fact "no overlapping matches"
-        (colls/grep-data-structure #"foo"
-                                   (map-indexed vector
-                                                ["foo" "bar" "baz" "foo"])
-                                   {:context 2})
-        =>
-        [[0 "foo"]
-         [1 "bar"]
-         [2 "baz"]
-         [3 "foo"]]))
+       (fact "for multiple matches"
+             (colls/grep-data-structure #"yes"
+                                        (map-indexed vector
+                                                     ["devth: foo"
+                                                      "devth: yes"
+                                                      "devth: bar"
+                                                      "devth: lol"
+                                                      "devth: ok"
+                                                      "devth: baz"
+                                                      "devth: !history | grep -C 2 yes"])
+                                        {:context 2})
+             =>
+             [[0 "devth: foo"]
+              [1 "devth: yes"]
+              [2 "devth: bar"]
+              [3 "devth: lol"]
+              [4 "devth: ok"]
+              [5 "devth: baz"]
+              [6 "devth: !history | grep -C 2 yes"]])
+       (fact "for single match"
+             (colls/grep-data-structure #"foo"
+                                        (map-indexed vector
+                                                     ["bar" "lol" "foo" "baz" "qux"])
+                                        {:context 1})
+             =>
+             '([1 "lol"] [2 "foo"] [3 "baz"]))
+       (fact "no overlapping matches"
+             (colls/grep-data-structure #"foo"
+                                        (map-indexed vector
+                                                     ["foo" "bar" "baz" "foo"])
+                                        {:context 2})
+             =>
+             [[0 "foo"]
+              [1 "bar"]
+              [2 "baz"]
+              [3 "foo"]]))
 
 (facts
  "grep-cmd-test"
@@ -243,7 +243,13 @@
     "using 'words' collections command, it returns coll of the word args,
      spliting on whitespace"
     result => (pop cmd-coll)))
- 
+
+ (let [{result :result} (ci/command-execution-info "unwords " params)]
+   (fact
+    "using 'unwords' collections command, it should take the list of items
+     in the color collection and return it as a string with a space delim"
+    result => "red green blue"))
+
  (let [{{:result/keys [value data]} :result} (ci/command-execution-info
                                               "grep e.$" params)]
    (fact
@@ -291,4 +297,89 @@
    (fact
     "using 'xargs render {{name}}' collections command, it should properly
      propagate data for each item when data-collection is present"
-    values => ["foo" "bar" "qux"])))
+    values => ["foo" "bar" "qux"]))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "tail" params)]
+   (fact
+    "using 'tail' no args collections command, it should return the last item
+     in the collection and propagate as data"
+    value => "blue"
+    data => (value->data value)))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "tail 2" params)]
+   (fact
+    "using 'tail 2' collections command, it should propagate multiple sets
+     of data, pulling the last 2 items from the collection"
+    data => [{"green" "green"} {"blue" "blue"}]
+    data => (map value->data value)))
+
+ (let [{result :result} (ci/command-execution-info "letters abc"
+                                                   {:run-command? true})]
+   (fact
+    "using 'letters' collections command, it should return a coll of whatever
+     string was passed to the command"
+    result => ["a" "b" "c"]))
+
+ (let [{{:result/keys [value]} :result}
+       (ci/command-execution-info "unletters" params)]
+   (fact
+    "using 'unletters' collections command, it should take whatever collection
+     is passed and combine them into a nonspaced string"
+    value => "redgreenblue"))
+
+ (let [{result :result} (ci/command-execution-info "join" params)]
+   (fact
+    "using 'join' collections command, it should join the param items into a
+     nonspaced string"
+    result => "redgreenblue"))
+
+ (let [{{:result/keys [value]} :result}
+       (ci/command-execution-info "set"
+                                  {:opts ["1" "1" "1" "2"]
+                                   :run-command? true})]
+   (fact
+    "using 'set' collections command, it should take collection arg and return
+     a list of unique items"
+    value => ["1" "2"]))
+
+ (let [{result :result}
+       (ci/command-execution-info "list 1 2 3"
+                                  {:run-command? true})]
+   (fact
+    "using 'list' collections command, it should take string args and return them
+     as a list"
+    result => ["1" "2" "3"]))
+
+ (let [{{:result/keys [value]} :result}
+       (ci/command-execution-info "count" params)]
+   (fact
+    "using 'count' collections command, it should return the number of items
+     in the list arg"
+    value => 3))
+
+ (let [{{:result/keys [value]} :result}
+       (ci/command-execution-info "sum"
+                                  {:opts ["1" "1" "1"]
+                                   :run-command? true})]
+   (fact
+    "using 'sum' collections command, it should add all the args in the provided
+     list"
+    value => 3))
+
+ (let [{result :result}
+       (ci/command-execution-info "range 3"
+                                  {:run-command? true})]
+   (fact
+    "using 'range' collections command, it should return a zero based indexed
+     list of elements = to arg provided"
+    result => ["0" "1" "2"]))
+
+ (let [{{:result/keys [value]} :result}
+       (ci/command-execution-info "unquote dontmatterwhatiputhere"
+                                  {:run-command? true})]
+   (fact
+    "using 'unquote' collections command, it should always return 'foo\" bar';
+     pretty sure this is a bug :)"
+    value => "foo\" bar")))
