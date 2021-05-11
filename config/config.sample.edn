@@ -89,7 +89,8 @@
               :uri "http://yetibot.core/"}]},
   :endpoint "http://my-yetibot.com",
   :log {:level "debug"
-        :path "/var/log/yetibot/yetibot.log"},
+        :path "/var/log/yetibot/yetibot.log"
+        :rolling {:enabled "true"}},
   :s3 {:secret {:key ""},
        :access {:key ""}},
   :wordnik {:key ""},
