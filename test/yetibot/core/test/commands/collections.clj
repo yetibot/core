@@ -1,7 +1,11 @@
 (ns yetibot.core.test.commands.collections
   (:require
    [yetibot.core.commands.collections :as colls]
-   [midje.sweet :refer [fact facts =>]]))
+   [yetibot.core.util.command-info :as ci]
+   [clojure.string :as string]
+   [midje.sweet :refer [fact facts => contains every-checker]]
+   yetibot.core.commands.echo
+   yetibot.core.commands.render))
 
 (facts "slide-context"
   (fact "gives the context" (colls/slide-context (range 10) 3 2) => [1 2 3 4 5])
@@ -96,3 +100,195 @@
     (:result/value (colls/flatten-cmd
                     {:opts [[[(str 1 \newline 2 \newline 3 \newline)]]]}))
     => cmn-res)))
+
+(facts
+ "about command-execution-info using 'data' collections command"
+
+ (let [{{error :result/error} :result} (ci/command-execution-info
+                                        "data $.[0]" {:run-command? true})]
+   (fact
+    "when no data using command, results in an error str"
+    error => (every-checker
+              string?
+              (contains
+               "There is no `data` from the previous command 🤔"))))
+ (let [data {:foo :bar}
+       {{result :result/data} :result} (ci/command-execution-info
+                                        "data $.[0]" {:data [data]
+                                                      :run-command? true})]
+   (fact
+    "Data should be preserved in data <path>"
+    data => result)))
+
+(def opts (map str ["red" "green" "blue"]))
+;; construct some fake data that in theory represents the simplified
+;; human-friendly opts above:
+(def sample-data {:items (map #(hash-map % %) ["red" "green" "blue"]) :count 3})
+(def sample-data-collection (:items sample-data))
+
+(def params {:opts opts
+             :data-collection sample-data-collection
+             :data sample-data
+             :run-command? true})
+
+(defn value->data
+  [value]
+  (->> value (repeat 2) (apply hash-map)))
+
+(facts
+ "about command-execution-info using various collections commands"
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "random" params)]
+   (fact
+    "using 'random' collections command, it should pull the corresponding
+     random item out of the data and propagate it"
+    data => (value->data value)))
+
+ (let [{:keys [matched-sub-cmd result]} (ci/command-execution-info
+                                         "random" {:run-command? true})
+       random-number (read-string result)]
+   (fact
+    "using 'random' collections command with no args, it matches expected
+     'random' command handler AND generates a randome number"
+    matched-sub-cmd => #'yetibot.core.commands.collections/random
+    random-number => number?))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "head 2" params)]
+   (fact
+    "using 'head 2' collections command, it should propagate multiple sets
+     of data"
+    data => [{"red" "red"} {"green" "green"}]
+    data => (map value->data value)))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "head" params)]
+   (fact
+    "using 'head' collections command, it should propagate sets of data"
+    data => {"red" "red"}
+    data => (value->data value)))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "repeat 3 random" params)]
+   (fact
+    "using 'repeat 3 random' collections command, it should accumulate
+     resulting data"
+    data => (map value->data value)))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "keys" params)]
+   (fact
+    "using 'keys' collections command, it should propagate 'key' data"
+    value => ["red" "green" "blue"]
+    data => sample-data))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "vals"
+                                              (assoc params
+                                                     :opts {:foo :bar}))]
+   (fact
+    "using 'vals' collections command, it should propagate 'value' data"
+    value => [:bar]
+    data => sample-data))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "droplast" params)]
+   (fact
+    "using 'droplast' collections command, it should drop last item and propagate
+     remaining data"
+    data => (map value->data value)))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "rest" params)]
+   (fact
+    "using 'rest' collections command, it should drop 1st item and propagate
+     remaining data"
+    data => (map value->data value)))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "sort" params)]
+   (fact
+    "using 'sort' collections command, it should sort items in collection
+     and propagate"
+    value => ["blue" "green" "red"]
+    data => (map value->data value)))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "sortnum"
+                                              (assoc params
+                                                     :opts ["2" "1" "3"]))]
+   (fact
+    "using 'sortnum' collections command, it should sort items in collection
+     based on the item index position and propagate"
+    value => ["1" "2" "3"]
+    data => [{"green" "green"} {"red" "red"} {"blue" "blue"}]))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "shuffle" params)]
+   (fact
+    "using 'shuffle' collecitons command, it should shuffle data
+     and propagate"
+    data => (map value->data value)))
+
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "reverse" params)]
+   (fact
+    "using 'reverse' collections command, it should propagate reversed data"
+    data => (map value->data value)))
+
+ (let [cmd-coll '("words" "foo" "bar")
+       {result :result} (ci/command-execution-info (string/join " " cmd-coll)
+                                                   {:run-command? true})]
+   (fact
+    "using 'words' collections command, it returns coll of the word args,
+     spliting on whitespace"
+    result => (pop cmd-coll)))
+ 
+ (let [{{:result/keys [value data]} :result} (ci/command-execution-info
+                                              "grep e.$" params)]
+   (fact
+    "using 'grep e.$' collections command, it should only match green and
+     red and propagate the matched data"
+    data => (map value->data value)))
+
+ (let [values (-> (ci/command-execution-info "xargs echo value is" params)
+                  :result
+                  :result/value)]
+   (fact
+    "using 'xargs echo value is' collections command, it should work on
+     simple commands that don't return a map"
+    values => ["value is red" "value is green" "value is blue"]))
+
+ (let [values (-> (ci/command-execution-info "xargs trim" params)
+                  :result)]
+   (fact
+    "using 'xargs trim' collections command, it should accumulate and
+     propagate data when it exists"
+    values => (contains {:result/value ["red" "green" "blue"]})
+    values => (contains {:result/data [{"red" "red"} {"green" "green"}
+                                       {"blue" "blue"}]})
+    values => (contains {:result/data-collection [nil nil nil]})))
+
+ (let [values (-> (ci/command-execution-info "xargs keys"
+                                             (-> params (dissoc :opts)))
+                  :result)]
+   (fact
+    "using 'xargs keys' collections command, it should fall back to data
+     if opts not passed in"
+    values => (contains {:result/value [["red"] ["green"] ["blue"]]})
+    values => (contains {:result/data [{"red" "red"} {"green" "green"}
+                                       {"blue" "blue"}]})
+    values => (contains {:result/data-collection [nil nil nil]})))
+
+ (let [values (-> (ci/command-execution-info
+                   "xargs render {{name}}"
+                   {:data [{:name "foo"} {:name "bar"} {:name "qux"}]
+                    :data-collection [{:name "foo"} {:name "bar"} {:name "qux"}]
+                    :opts ["foo" "bar" "qux"]
+                    :run-command? true})
+                  :result
+                  :result/value)]
+   (fact
+    "using 'xargs render {{name}}' collections command, it should properly
+     propagate data for each item when data-collection is present"
+    values => ["foo" "bar" "qux"])))
