@@ -1,8 +1,10 @@
 (ns yetibot.core.test.webapp.routes.graphql
   (:require [yetibot.core.webapp.routes.graphql :refer [graphql]]
+            [yetibot.core.loader :as ldr]
             [midje.sweet :refer [=> =not=> fact facts contains]]))
 
 (facts
+ (ldr/load-commands)
  "about graphql"
  (fact
   "can run a simple graphql query with expected results and no errors"
