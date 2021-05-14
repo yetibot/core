@@ -2,7 +2,7 @@
   (:require [clojure.pprint :refer [*print-right-margin* pprint]]
             [clojure.string :as s]
             [json-path :as jp]
-            [taoensso.timbre :as timbre :refer [trace debug error info]]
+            [taoensso.timbre :as timbre :refer [debug error info]]
             [yetibot.core.chat :refer [chat-data-structure]]
             [yetibot.core.hooks :refer [cmd-hook]]
             [yetibot.core.interpreter :refer [handle-cmd *contextual-data*]]
@@ -16,7 +16,6 @@
             [yetibot.core.util.command :refer [error?]]
             [yetibot.core.util.command-info :refer [command-execution-info]]
             [yetibot.core.util.format :refer [format-exception-log]]))
-
 
 ;; Idea: maybe all commands should propagate all of their args. Unify things
 ;; like:
@@ -54,18 +53,16 @@
    random # generate a random number"
   {:yb/cat #{:util :collection}}
   [{:keys [data-collection] items :opts}]
-  (if (not (empty? items))
+  (if (not-empty items)
     (let [idx (rand-int (count (ensure-items-collection items)))
           item (nth items idx)
           data (when data-collection (nth data-collection idx))]
-     {:result/value item
-      :result/data data})
+      {:result/value item
+       :result/data data})
     (str (rand 100000))))
 
 (cmd-hook #"random"
           _ random)
-
-(def head-tail-regex #"(\d+).+")
 
 ; head / tail helpers
 (defn head-or-tail
@@ -159,7 +156,7 @@
 (defn xargs
   "xargs <cmd> <list> # run <cmd> for every item in <list> in parallel; behavior is similar to xargs(1)'s xargs -n1"
   {:yb/cat #{:util :collection}}
-  [{:keys [args opts user data data-collection] :as cmd-params}]
+  [{:keys [args opts data data-collection] :as cmd-params}]
   (if (s/blank? args)
     ;; passthrough if no args
     {:result/value opts
@@ -231,7 +228,7 @@
 (defn join
   "join <list> <separator> # joins list with optional <separator> or no separator if not specified. See also `unwords`."
   {:yb/cat #{:util :collection}}
-  [{match :match items :opts :as cmd-args}]
+  [{match :match :as cmd-args}]
   (let [coll-or-error (ensure-coll cmd-args)
         join-char (if (empty? match) "" match)]
     (if (error? coll-or-error)
@@ -291,7 +288,7 @@
 (defn flatten-cmd
   "flatten <nested list> # completely flattens a nested data struture after splitting on newlines"
   {:yb/cat #{:util :collection}}
-  [{:keys [args opts data-collection] :as cmd-args}]
+  [{:keys [data-collection] :as cmd-args}]
   (let [error-or-coll (ensure-coll cmd-args)]
     (if (error? error-or-coll)
       error-or-coll
@@ -388,7 +385,7 @@
 (defn sort-cmd
   "sort <list> # alphabetically sort a list"
   {:yb/cat #{:util :collection}}
-  [{items :opts :as cmd-args}]
+  [cmd-args]
   (transform-opts-with-data
     (partial sort-by second) cmd-args))
 
@@ -399,7 +396,7 @@
 (defn sortnum-cmd
   "sortnum <list> # numerically sort a list"
   {:yb/cat #{:util :collection}}
-  [{items :opts :as cmd-args}]
+  [cmd-args]
   (transform-opts-with-data
     (partial sort-by second #(- (read-string %1) (read-string %2))) cmd-args))
 
@@ -436,7 +433,7 @@
   [pattern indexed-items & [options]]
   (let [finder (comp (if (:inverted options) not identity) (partial re-find pattern))
         context-count (or (:context options) 0)
-        filter-fn (fn [[idx item]]
+        filter-fn (fn [[_idx item]]
                     (cond
                       (string? item) (finder item)
                       (coll? item) (some finder (map str (flatten item)))))]
@@ -592,7 +589,7 @@
    https://github.com/gga/json-path/blob/master/test/json_path/test/json_path_test.clj"
   {:yb/cat #{:util}}
   [{[_ path] :match
-    :keys [args data]}]
+    :keys [data]}]
   (debug (timbre/color-str :blue "extra-data-cmd")
          \newline
          (timbre/color-str :green {:path path})
@@ -687,7 +684,7 @@
 (defn unquote-cmd
   "unquote <string> # remove double quotes from the beginning and end of <string>"
   {:yb/cat #{:util}}
-  [{:keys [args data]}]
+  [{:keys [data]}]
   {:result/value (-> "\"foo\" bar\""
                      (s/replace #"^\"" "")
                      (s/replace #"\"$" ""))

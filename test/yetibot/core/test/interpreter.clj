@@ -7,10 +7,12 @@
    [yetibot.core.commands.echo]
    [yetibot.core.parser]
    [midje.sweet :refer [=> provided contains against-background
-                        fact facts every-checker anything]]))
+                        fact facts every-checker anything]]
+   [yetibot.core.loader :as ldr]))
 
 (facts
  "about handle-cmd"
+ (ldr/load-commands)
  (fact
   "handles legit echo command and returns command args"
   (i/handle-cmd "echo hello world" {}) => "hello world")
