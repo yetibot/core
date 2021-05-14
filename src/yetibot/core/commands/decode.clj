@@ -1,9 +1,9 @@
 (ns yetibot.core.commands.decode
   (:require [yetibot.core.hooks :refer [cmd-hook]])
-  (:import org.apache.commons.lang3.StringEscapeUtils))
+  (:import (org.apache.commons.lang3 StringEscapeUtils)))
 
 (defn decode [s]
-  (org.apache.commons.lang3.StringEscapeUtils/unescapeHtml4 s))
+  (StringEscapeUtils/unescapeHtml4 s))
 
 (defn decode-cmd
   "decode <string> # decode HTML entities in <string> using StringEscapeUtils"
