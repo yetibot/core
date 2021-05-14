@@ -1,17 +1,14 @@
 (ns yetibot.core.test.commands.decode
-  (:require
-    [yetibot.core.commands.decode :refer :all]
-    [yetibot.core.util.command-info :refer [command-execution-info]]
-    [clojure.test :refer :all]))
+  (:require [yetibot.core.util.command-info :refer [command-execution-info]]
+            [midje.sweet :refer [=> fact facts]]
+            yetibot.core.commands.decode))
 
-(def execution-opts {:run-command? true})
-
-(deftest decode-test
-  (testing "HTML encoded strings get decoded"
-    (is (= (-> (command-execution-info
-                 "decode Come check out Trevor Hartman&#39;s talk &quot;Growing a Chatops Platform and Having Fun with Clojure&quot; where we take a look at the development of Yetibot!"
-                 execution-opts)
-               :result
-               :result/value)
-           "Come check out Trevor Hartman's talk \"Growing a Chatops Platform and Having Fun with Clojure\" where we take a look at the development of Yetibot!"
-           ))))
+(facts
+ "about decode"
+ (fact
+  "HTML encoded strings get decoded"
+  (-> (command-execution-info
+       "decode Come check out Trevor Hartman&#39;s talk &quot;Growing a Chatops Platform and Having Fun with Clojure&quot; where we take a look at the development of Yetibot!"
+       {:run-command? true})
+      :result
+      :result/value) => "Come check out Trevor Hartman's talk \"Growing a Chatops Platform and Having Fun with Clojure\" where we take a look at the development of Yetibot!"))
