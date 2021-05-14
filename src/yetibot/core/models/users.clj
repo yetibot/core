@@ -1,7 +1,7 @@
 (ns yetibot.core.models.users
   "This is an in-memory representation of users by adapter and channel"
   (:require
-    [taoensso.timbre :refer [info debug warn error]]
+    [taoensso.timbre :refer [debug]]
     [clj-time.core :refer [now]]))
 
 (def config {:active-threshold-milliseconds (* 15 60 1000)})
@@ -49,13 +49,13 @@
   [chat-source]
   (partial
     merge-with
-    (fn [existing-user new-user]
+    (fn [existing-user _new-user]
       (update-in existing-user [:channels] conj chat-source))))
 
 (defn add-user-without-channel
-  [adapter {:keys [id] :as user}]
   "Added for Slack, where we might know about users but don't know the channels
    that they are in because yetibot is not in those channels."
+  [adapter {:keys [id] :as user}]
   (let [user-key {:adapter adapter :id id}]
     (swap! users assoc user-key user)))
 
@@ -105,10 +105,10 @@
   (@users {:adapter (:adapter source) :id id}))
 
 (defn find-user-like [chat-source name]
-  (let [us (filter (fn [[k user]] (= (:adapter k) (:adapter chat-source)))
+  (let [us (filter (fn [[k _user]] (= (:adapter k) (:adapter chat-source)))
                    @users)
         patt (re-pattern (str "(?i)" name))]
-    (some (fn [[k v]] (when (re-find patt (or (:name v) "")) v)) us)))
+    (some (fn [[_k v]] (when (re-find patt (or (:name v) "")) v)) us)))
 
 ; (def campfire-date-pattern "yyyy/MM/dd HH:mm:ss Z")
 ; (def date-formatter (doto (new SimpleDateFormat campfire-date-pattern) (.setTimeZone (java.util.TimeZone/getTimeZone "GreenwichEtc"))))
@@ -131,7 +131,7 @@
   ;     (< ms-since-active active-threshold-milliseconds))
   ;   false))
 
-(defn is-yetibot? [user] false)
+(defn is-yetibot? [_user] false)
 
 (defn get-active-users [] (filter is-active? (vals @users)))
 
