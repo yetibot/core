@@ -1,11 +1,10 @@
 (ns yetibot.core.test.commands.decode
   (:require [yetibot.core.util.command-info :refer [command-execution-info]]
             [midje.sweet :refer [=> fact facts]]
-            [yetibot.core.loader :as ldr]))
+            yetibot.core.commands.decode))
 
 (facts
  "about decode"
- (ldr/load-commands)
  (fact
   "HTML encoded strings get decoded"
   (-> (command-execution-info
