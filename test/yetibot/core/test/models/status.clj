@@ -10,7 +10,7 @@
 (facts
  "about models.status"
  (fact
-  "it creates a coll of strings that contain '<username> <timestamp> <statys>' status info"
+  "it creates a coll of strings that contain '<username> <timestamp> <status>' info"
   (let [name "zero"
         status "hello world"
         sts {:user-id "0"
