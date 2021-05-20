@@ -1,23 +1,22 @@
 (ns yetibot.core.test.models.status
-  (:require
-    [clojure.test :refer :all]
-    [yetibot.core.models.status :refer :all]
-    [clj-time
-     [format :refer [formatter unparse]]
-     [core :refer [day year month
-                   to-time-zone after?
-                   default-time-zone now time-zone-for-id date-time utc
-                   ago days weeks years months]]]))
+  (:require [yetibot.core.models.status :as sts]
+            [yetibot.core.models.users :refer [get-user]]
+            [clj-time
+             [core :refer [ago hours]]
+             [coerce :refer [to-sql-time]]]
+            [midje.sweet :refer [=> fact facts provided anything
+                                 every-checker contains]]))
 
-;; helpers
-
-(defn- n-days-ago [n] (-> n days ago))
-
-(defn- status-map-for-n-days-ago [n]
-  {:timestamp (n-days-ago n)
-   :status (str "days ago: " n)})
-
-(defn- flat-status-map-n-days-ago [n]
-  ((juxt :timestamp :status) (status-map-for-n-days-ago n)))
-
-(defn- u [id] {:name (str id) :id id}) ;; user stub
+(facts
+ "about models.status"
+ (fact
+  "it creates a coll of strings that contain '<username> <timestamp> <status>' info"
+  (let [name "zero"
+        status "hello world"
+        sts {:user-id "0"
+             :status status
+             :created-at (to-sql-time (-> 8 hours ago))}]
+    (first (sts/format-sts [sts])) => (every-checker
+                                       (contains status)
+                                       (contains name))
+    (provided (get-user anything (:user-id sts)) => {:name name}))))
