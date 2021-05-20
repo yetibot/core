@@ -4,14 +4,13 @@
     [selmer.parser :refer [render]]
     [clojure.string :as s :refer [split trim]]
     [clojure.tools.cli :refer [parse-opts]]
-    [taoensso.timbre :refer [color-str debug trace info warn error]]
+    [taoensso.timbre :refer [color-str debug info]]
     [yetibot.core.chat :refer [*thread-ts* chat-data-structure]]
     [yetibot.core.db.observe :as model]
     [yetibot.core.handler :refer [record-and-run-raw all-event-types]]
     [yetibot.core.hooks :refer [cmd-hook obs-hook]]
     [yetibot.core.util.command :as command]
     [yetibot.core.interpreter :refer [*chat-source*]]
-    [yetibot.core.models.help :as help]
     [yetibot.core.util.format :refer [remove-surrounding-quotes]]))
 
 (def cli-options
@@ -186,9 +185,8 @@
       (let [{:keys [event-type user-pattern channel-pattern]}
             (:options parsed-opts)
 
-            pattern (if-let [args (->> parsed-opts :arguments seq)]
-                      (s/join " " args)
-                      nil)
+            pattern (when-let [args (->> parsed-opts :arguments seq)]
+                      (s/join " " args))
 
             obs-info (cond-> {:user-id (:username user)
                               :event-type event-type
@@ -227,7 +225,7 @@
       (format "Observer `%s` removed" id))))
 
 (defn load-observers []
-  (dorun (map wire-observer (model/find-all))))
+  (run! #(wire-observer %) (model/find-all)))
 
 (defonce loader (future (load-observers)))
 
