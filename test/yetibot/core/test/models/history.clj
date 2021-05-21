@@ -1,19 +1,10 @@
 (ns yetibot.core.test.models.history
-  (:require
-    [clojure.java.jdbc :as sql]
-    [yetibot.core.models.history :refer :all]
-    [yetibot.core.db :as db]
-    [yetibot.core.util.command :refer [command?]]
-    [clojure.test :refer :all]))
+  (:require [yetibot.core.models.history :as hst]
+            [yetibot.core.db :as db]
+            [clojure.test :refer :all]
+            [midje.sweet :refer [=> fact facts]]))
 
 (def chat-source {:adapter :slack :uuid :test :room "foo"})
-
-(defn add-history [body]
-  (add {:user-id "test"
-        :user-name "test"
-        :chat-source-adapter (:uuid chat-source)
-        :chat-source-room (:room chat-source)
-        :body body}))
 
 ;; TODO idempotent db create and teardown to keep test data out of the dev db
 ;; investigate embedded postgres as a solution:
@@ -43,30 +34,26 @@
                               :is-yetibot false}})
 
 (deftest test-count-entities
-  (count-entities extra-query))
+  (hst/count-entities extra-query))
 
 (deftest test-head
-  (head 2 extra-query))
+  (hst/head 2 extra-query))
 
 (deftest test-tail
-  (count (tail 2 extra-query)))
+  (count (hst/tail 2 extra-query)))
 
 (deftest test-random
-  (map? (random extra-query)))
+  (map? (hst/random extra-query)))
 
 (deftest test-grep
-  (grep "b.d+" extra-query))
+  (hst/grep "b.d+" extra-query))
 
 (deftest test-cmd-only-items
-  (cmd-only-items chat-source))
+  (hst/cmd-only-items chat-source))
 
 (deftest test-non-cmd-items
-  (non-cmd-items chat-source))
-
-(deftest history-should-be-in-order
-  ;; TODO
-  )
+  (hst/non-cmd-items chat-source))
 
 (deftest last-chat-for-channel-test
-  (last-chat-for-channel chat-source true)
-  (last-chat-for-channel chat-source false))
+  (hst/last-chat-for-channel chat-source true)
+  (hst/last-chat-for-channel chat-source false))
