@@ -1,25 +1,20 @@
 (ns yetibot.core.models.history
   (:require
-    [yetibot.core.util.command :refer [extract-command]]
-    [yetibot.core.db.util :refer [transform-where-map merge-queries]]
+    [yetibot.core.db.util :refer [merge-queries]]
     [yetibot.core.db.history :refer [create query]]
-    [clojure.string :refer [join split]]
     [yetibot.core.util.time :as t]
     [yetibot.core.config :refer [get-config]]
     [clj-time
-     [coerce :refer [from-date to-sql-time]]
-     [format :refer [formatter unparse]]
-     [core :refer [day year month
-                   to-time-zone after?
-                   default-time-zone now time-zone-for-id date-time utc
-                   ago hours days weeks years months]]]
-    [yetibot.core.models.users :as u]
-    [taoensso.timbre :refer [info color-str warn error spy]]
+     [coerce :refer [from-date]]]
     [clojure.spec.alpha :as s]))
 
 ;;;; read
 (s/def ::yetibot-history-disabled string?)
-(defn history-enabled [] (not (= (:value (get-config ::yetibot-history-disabled [:history :disabled])) "true")))
+(defn history-enabled
+  "Returns true if history is enabled, false otherwise"
+  []
+  (not= (:value (get-config ::yetibot-history-disabled [:history :disabled]))
+        "true"))
 
 (defn flatten-one [n] (if (= 1 n) first identity))
 
@@ -122,7 +117,7 @@
 ;; cmd or non-cmd items for a given chat-source.
 (defn non-cmd-items
   "Return `chat-item` only if it doesn't match any regexes in `history-ignore`"
-  [{:keys [uuid room] :as chat-source}]
+  [{:keys [uuid room]}]
   (query {:where/map
           {:is-command false
            :chat-source-adapter (pr-str uuid)
@@ -130,7 +125,7 @@
 
 (defn cmd-only-items
   "Return `chat-item` only if it does match any regexes in `history-ignore`"
-  [{:keys [uuid room] :as chat-source}]
+  [{:keys [uuid room]}]
   (query {:where/map
             {:is-command true
              :chat-source-adapter (pr-str uuid)
@@ -139,7 +134,7 @@
 (defn items-for-user
   "Ordered by most recent. Used by the `!` command.
    Filters out all `!` commands to prevent infinite recursion."
-  [{:keys [chat-source user cmd? limit]}]
+  [{:keys [chat-source cmd? limit]}]
   (let [{:keys [uuid room]} chat-source
         limit (or limit 1)]
     (reverse
@@ -152,7 +147,7 @@
 
 ;;;; formatting
 
-(defn format-entity [{:keys [created-at user-name body chat-source-room] :as e}]
+(defn format-entity [{:keys [created-at user-name body chat-source-room]}]
   ;; devth in #general at 02:16 PM 12/04: !echo foo
   (format "%s in %s at %s: %s"
           user-name chat-source-room

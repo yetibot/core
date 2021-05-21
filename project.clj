@@ -40,7 +40,8 @@
                    {:plugins [[lein-midje "3.2.1"]
                               [lambdaisland/kaocha-midje "0.0-5"
                                :exclusions [midje/midje]]
-                              [lein-cloverage "1.1.2"]]
+                              [lein-cloverage "1.1.2"]
+                              [lein-kibit "0.1.8"]]
                     :dependencies [[lilactown/punk-adapter-jvm "0.0.10"]
                                    [midje "1.9.9"]
                                    [nubank/matcher-combinators "1.2.4"]]}]

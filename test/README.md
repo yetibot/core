@@ -66,6 +66,14 @@ Using [`cloverage`](https://github.com/cloverage/cloverage), check your code cov
 $ lein cloverage
 ```
 
+#### Check for Static
+
+Using [`kibit`](https://github.com/jonase/kibit), perform a static analysis of the modified code.
+```bash
+$ lein kibit src/yetibot/core/db/util.clj
+$ lein kibit test/yetibot/core/test/db/util.clj
+```
+
 #### Check for Climate Change
 
 Using [`codeclimate`](https://github.com/codeclimate/codeclimate), review the modified code.
