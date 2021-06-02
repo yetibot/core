@@ -2,6 +2,7 @@
   (:require [yetibot.core.adapters.adapter :as a]
             [yetibot.core.adapters.slack :as slack]
             [yetibot.core.chat :as chat]
+            [yetibot.core.handler :refer [handle-raw]]
             [clj-slack
              [channels :as channels]
              [users :as slack-users]
@@ -9,7 +10,6 @@
              [im :as im]
              [chat :as slack-chat]]
             [slack-rtm.core :as slack-rtm]
-            [taoensso.timbre :as timbre :refer [error]]
             [yetibot.core.models.users :as users]
             [midje.sweet :refer [=> fact facts contains provided
                                  anything every-checker throws]]))
@@ -146,7 +146,8 @@
                                        anything)
               => {:ok false})))
  (fact
-  "it return exercise the code that checks for a truthy *thread-ts* binding"
+  "it will exercise the code that checks for a truthy *thread-ts* binding,
+   and not throw an error"
   (binding [yetibot.core.chat/*thread-ts* :threadts]
     (slack/send-msg :config "hello world") => nil
     (provided (slack-chat/post-message (slack/slack-config :config)
@@ -309,3 +310,41 @@
         adapter {:should-ping? should?}]
     (slack/stop-pinger! adapter) => false
     (provided (reset! should? false) => false))))
+
+(facts
+ "about on-hello"
+ (fact
+  "it will log a debug about being connected to slack"
+  (slack/on-hello :myevent) => nil))
+
+(facts
+ "about on-channel-join"
+ (fact
+  "it will destruct the event and use the event to get the entity, chat source
+   related user, find the YB user, and pass as a raw 'enter' event using the
+   derived values"
+  (slack/on-channel-join {:channel "C123" :user "U123"} :myconn :myconfig)
+  => :didjoin
+  (provided (slack/entity-with-name-by-id :myconfig
+                                          {:channel "C123"})
+            => ["#C123" {:name "C123"}]
+            (chat/chat-source "#C123") => :mycs
+            (users/get-user :mycs "U123") => :myuser
+            (slack/find-yetibot-user :myconn :mycs) => :ybuser
+            (handle-raw :mycs :myuser :enter :ybuser {}) => :didjoin)))
+
+(facts
+ "about on-channel-leave"
+ (fact
+  "it will destruct the event and use the event to get the entity, chat source
+   related user, find the YB user, and pass as a raw 'leave' event using the
+   derived values"
+  (slack/on-channel-leave {:channel "C123" :user "U123"} :myconn :myconfig)
+  => :didleave
+  (provided (slack/entity-with-name-by-id :myconfig
+                                          {:channel "C123"})
+            => ["#C123" {:name "C123"}]
+            (chat/chat-source "#C123") => :mycs
+            (users/get-user :mycs "U123") => :myuser
+            (slack/find-yetibot-user :myconn :mycs) => :ybuser
+            (handle-raw :mycs :myuser :leave :ybuser {}) => :didleave)))
