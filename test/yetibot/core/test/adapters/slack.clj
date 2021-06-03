@@ -182,7 +182,17 @@
                                      anything
                                      ""
                                      anything)
-            => :message-posted)))
+            => :message-posted))
+ (fact
+  "it will exercise the code that checks for a truthy *thread-ts* binding,
+   and not throw an error"
+  (binding [yetibot.core.chat/*thread-ts* :threadts]
+    (slack/send-paste :config "hello world") => :message-posted
+    (provided (slack-chat/post-message (slack/slack-config :config)
+                                       anything
+                                       ""
+                                       anything)
+              => :message-posted))))
 
 (facts
  "about history"
@@ -348,3 +358,49 @@
             (users/get-user :mycs "U123") => :myuser
             (slack/find-yetibot-user :myconn :mycs) => :ybuser
             (handle-raw :mycs :myuser :leave :ybuser {}) => :didleave)))
+
+(facts
+ "about on-message-changed"
+ (fact
+  "it will destruct the event and use the event to get the entity, chat source
+   related user, find the YB user, and pass as a raw 'message' event using the
+   derived values, because this is not the YB user"
+  (let [channel "C123"
+        user "U123"
+        text "my text"
+        cs "#C123"]
+    (slack/on-message-changed {:channel channel
+                               :message {:user user
+                                         :text text
+                                         :thread_ts :mythread}}
+                              :myconn
+                              :myconfig)
+    => :message-changed
+    (provided (slack/entity-with-name-by-id :myconfig
+                                            {:channel channel
+                                             :user user})
+              => [cs {:name channel}]
+              (chat/chat-source cs) => :mycs
+              (users/get-user :mycs user) => {}
+              (slack/find-yetibot-user :myconn :mycs) => :ybuser
+              (handle-raw :mycs
+                          {:yetibot? false}
+                          :message
+                          :ybuser
+                          {:body "my text"}) => :message-changed))))
+
+(facts
+ "about on-pong"
+ (fact
+  "it .."
+  (let [connection-last-active-timestamp (atom 123)
+        connection-latency (atom 123)
+        ping-time (atom 123)]
+    (slack/on-pong {:conn :myconn
+                    :event :myevent
+                    :connection-last-active-timestamp connection-last-active-timestamp
+                    :connection-latency connection-latency
+                    :ping-time ping-time}
+                   :pong-event) => :did-reset-latency
+    (provided (reset! connection-last-active-timestamp anything) => :did-reset-last
+              (reset! connection-latency anything) => :did-reset-latency))))
