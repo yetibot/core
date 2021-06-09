@@ -1,12 +1,16 @@
 (ns yetibot.core.test.adapters.slack
-  (:require [yetibot.core.adapters :as adapters]
-            [yetibot.core.adapters.adapter :as a]
+  (:require [yetibot.core.adapters.adapter :as a]
             [yetibot.core.adapters.slack :as slack]
             [yetibot.core.chat :as chat]
+            [yetibot.core.handler :refer [handle-raw]]
             [clj-slack
              [channels :as channels]
              [users :as slack-users]
-             [groups :as groups]]
+             [groups :as groups]
+             [im :as im]
+             [chat :as slack-chat]]
+            [slack-rtm.core :as slack-rtm]
+            [yetibot.core.models.users :as users]
             [midje.sweet :refer [=> fact facts contains provided
                                  anything every-checker throws]]))
 
@@ -32,9 +36,9 @@
   "returns only channels YB is in"
   (slack/channels-in anything) => '({:is_member true :name "yes"})
   (provided (slack/list-channels anything) => {:channels [{:is_member true
-                                                  :name "yes"}
-                                                 {:is_member false
-                                                  :name "no"}]})))
+                                                           :name "yes"}
+                                                          {:is_member false
+                                                           :name "no"}]})))
 
 (facts
  "about chan-or-group-name"
@@ -122,46 +126,281 @@
                                             not-empty
                                             (contains '({:members ["U123"]})))))
 
-;; functions to test some comment code
-(defn slack-configs []
-  (filter
-   (fn [c] (= "slack" (:type c)))
-   (vals (adapters/adapters-config))))
+(facts
+ "about send-msg"
+ (fact
+  "it will attempt to post a message to slack using modified params and log it"
+  (slack/send-msg :config "hello world") => nil
+  (provided (slack-chat/post-message (slack/slack-config :config)
+                                     anything
+                                     "hello world"
+                                     anything)
+            => {:ok true}))
+ (fact
+  "it will attempt to post an image to slack using modified params and log it"
+  (let [img "https://a.a/a.jpg"]
+    (slack/send-msg :config img) => nil
+    (provided (slack-chat/post-message (slack/slack-config :config)
+                                       anything
+                                       img
+                                       anything)
+              => {:ok false})))
+ (fact
+  "it will exercise the code that checks for a truthy *thread-ts* binding,
+   and not throw an error"
+  (binding [yetibot.core.chat/*thread-ts* :threadts]
+    (slack/send-msg :config "hello world") => nil
+    (provided (slack-chat/post-message (slack/slack-config :config)
+                                       anything
+                                       "hello world"
+                                       anything)
+              => {:ok true}))))
 
-(def config (slack/slack-config (last (slack-configs))))
+(facts
+ "about find-yetibot-user"
+ (fact
+  "it will find the YB user when provided a connection and chat-source"
+  (slack/find-yetibot-user :conn :cs) => true
+  (provided (slack/self :conn) => {:id :myid}
+            (users/get-user :cs :myid) => true)))
 
-(comment
-  ;; replace these with real IDs to try it out
-  (slack/entity-with-name-by-id
-   config {:channel "C11111114"})
-  (slack/entity-with-name-by-id
-   config {:channel "G11111111"})
-  (slack/entity-with-name-by-id
-   config
-   {:type "message"
-    :channel "D11111111"
-    :user "U11111111"
-    :text "!echo hi"})
+(facts
+ "about channel-by-id"
+ (fact
+  "it will get the channel config map based on the id param"
+  (slack/channel-by-id 123 :config) => {:id 123}
+  (provided (slack/channels-cached :config) => [{:id 123}
+                                                {:id 456}])))
 
-  ;; test sending a message and getting the history of
-  (let [adapter (first (a/active-adapters))]
-    (slack/history adapter "G1QD1DNG2")
+(facts
+ "about send-paste"
+ (fact
+  "it will attempt to post a paste message as an attachment to slack using
+   modified params"
+  (slack/send-paste :config "hello world") => :message-posted
+  (provided (slack-chat/post-message (slack/slack-config :config)
+                                     anything
+                                     ""
+                                     anything)
+            => :message-posted))
+ (fact
+  "it will exercise the code that checks for a truthy *thread-ts* binding,
+   and not throw an error"
+  (binding [yetibot.core.chat/*thread-ts* :threadts]
+    (slack/send-paste :config "hello world") => :message-posted
+    (provided (slack-chat/post-message (slack/slack-config :config)
+                                       anything
+                                       ""
+                                       anything)
+              => :message-posted))))
 
-    (binding [chat/*target* "D0HFDJHA4"]
-      (a/send-msg adapter "hi"))
+(facts
+ "about history"
+ (fact
+  "it will attempt to retrieve a group's history"
+  (slack/history {:config :myadapter} "GROUPS") => :grouphistory
+  (provided (slack/slack-config :myadapter) => :mycs
+            (groups/history :mycs "GROUPS") => :grouphistory))
+ (fact
+  "it will attempt to retrieve a channel's history"
+  (slack/history {:config :myadapter} "CHANNEL") => :channelhistory
+  (provided (slack/slack-config :myadapter) => :mycs
+            (channels/history :mycs "CHANNEL") => :channelhistory))
+ (fact
+  "it will attempt to retrieve a direct message history"
+  (slack/history {:config :myadapter} "DIRECT") => :directhistory
+  (provided (slack/slack-config :myadapter) => :mycs
+            (im/history :mycs "DIRECT") => :directhistory))
+ (fact
+  "it will throw an exception when it does not recognize the subtype"
+  (slack/history {:config :myadapter} "FAIL") => (throws Exception)
+  (provided (slack/slack-config :myadapter) => :mycs)))
 
-    (slack/react adapter "balloon" "D0HFDJHA4"))
-  
-  ;; test bindings when calling an adapter function
-  (let [*config* nil]
-    (binding [*config* (last (slack-configs))]
-      (slack/list-channels))
+(facts
+ "about start"
+ (fact
+  "it will stop and restart the provided adapter"
+  (slack/start :myadapter nil nil nil) => :didstart
+  (provided (slack/stop :myadapter) => :didstop
+            (slack/restart :myadapter) => :didstart)))
 
-    (binding [*config* (last (slack-configs))]
-      (slack/channels-cached))
+(facts
+ "about stop"
+ (fact
+  "it will reset whether it should ping and refernce the UUID implmentation
+   and send a slack RTM event and reset the connection"
+  (let [ping? (atom true)
+        conn (atom {:dispatcher :myconn})
+        adapter {:should-ping? ping? :conn conn}]
+    (slack/stop adapter) => :didstop
+    (provided (reset! ping? false) => :didreset
+              (a/uuid adapter) => :diduuid
+              (slack-rtm/send-event :myconn :close) => :didsendevent
+              (reset! conn nil) => :didstop))))
 
-    (binding [*config* (last (slack-configs))]
-      (slack/channels))
+(facts
+ "about on-channel-left"
+ (fact
+  "it will get the chat source and remove users in related channel"
+  (let [channel :mychannel
+        cs {:uuid "abc-123" :room :myroom}]
+    (slack/on-channel-left {:channel channel}) => nil
+    (provided (chat/chat-source channel) => cs
+              (users/get-users cs) => []
+              (run! anything []) => nil))))
 
-    (binding [*config* (last (slack-configs))]
-      (:groups (slack/list-groups)))))
+(facts
+ "about on-channel-joined"
+ (fact
+  "it get the members of the joined channel and add the chat source to the
+   user"
+  (let [id :myid
+        members [:mem1 :mem2]
+        channel {:id id :members members}
+        cs {:uuid "abc-123" :room :myroom}]
+    (slack/on-channel-joined {:channel channel}) => nil
+    (provided (chat/chat-source id) => cs
+              (run! anything members) => nil))))
+
+(facts
+ "about handle-presence-change"
+ (fact
+  "it will get the presence and id of the user and update the user status
+   with the associated adapter"
+  (let [presence "active"
+        user "U123"
+        adapter {:adapter :slack}]
+    (slack/handle-presence-change {:presence presence
+                                   :user user}) => :doupdate
+    (provided (chat/base-chat-source) => adapter
+              (users/update-user adapter user {:active? true}) => :doupdate))))
+
+(facts
+ "about on-presence-change"
+ (fact
+  "it will handle a presence change event and hand it off to
+   (handle-presence-change)"
+  (slack/on-presence-change {}) => :handled
+  (provided (slack/handle-presence-change {}) => :handled)))
+
+(facts
+ "about on-manual-presence-change"
+ (fact
+  "it will handle a manual presence change event and hand it off to
+   (handle-presence-change)"
+  (slack/on-manual-presence-change {}) => :handled
+  (provided (slack/handle-presence-change {}) => :handled)))
+
+(facts
+ "about on-error"
+ (fact
+  "it will log an error - supa-easy, but sad we can't take the value
+   of a macro"
+  (slack/on-error :myexception) => nil))
+
+(facts
+ "about on-connect"
+ (fact
+  "it will reset the atoms associated with the adapter to true and start
+   the pinger"
+  (let [should? (atom false)
+        connect? (atom false)
+        adapter {:should-ping? should?
+                 :connected? connect?}]
+    (slack/on-connect adapter nil) => :doconnect
+    (provided (reset! should? true) => true
+              (reset! connect? true) => true
+              (slack/start-pinger! adapter) => :doconnect))))
+
+(facts
+ "about stop-pinger!"
+ (fact
+  "it will reset the atom associated with the adapter to false"
+  (let [should? (atom true)
+        adapter {:should-ping? should?}]
+    (slack/stop-pinger! adapter) => false
+    (provided (reset! should? false) => false))))
+
+(facts
+ "about on-hello"
+ (fact
+  "it will log a debug about being connected to slack"
+  (slack/on-hello :myevent) => nil))
+
+(facts
+ "about on-channel-join"
+ (fact
+  "it will destruct the event and use the event to get the entity, chat source
+   related user, find the YB user, and pass as a raw 'enter' event using the
+   derived values"
+  (slack/on-channel-join {:channel "C123" :user "U123"} :myconn :myconfig)
+  => :didjoin
+  (provided (slack/entity-with-name-by-id :myconfig
+                                          {:channel "C123"})
+            => ["#C123" {:name "C123"}]
+            (chat/chat-source "#C123") => :mycs
+            (users/get-user :mycs "U123") => :myuser
+            (slack/find-yetibot-user :myconn :mycs) => :ybuser
+            (handle-raw :mycs :myuser :enter :ybuser {}) => :didjoin)))
+
+(facts
+ "about on-channel-leave"
+ (fact
+  "it will destruct the event and use the event to get the entity, chat source
+   related user, find the YB user, and pass as a raw 'leave' event using the
+   derived values"
+  (slack/on-channel-leave {:channel "C123" :user "U123"} :myconn :myconfig)
+  => :didleave
+  (provided (slack/entity-with-name-by-id :myconfig
+                                          {:channel "C123"})
+            => ["#C123" {:name "C123"}]
+            (chat/chat-source "#C123") => :mycs
+            (users/get-user :mycs "U123") => :myuser
+            (slack/find-yetibot-user :myconn :mycs) => :ybuser
+            (handle-raw :mycs :myuser :leave :ybuser {}) => :didleave)))
+
+(facts
+ "about on-message-changed"
+ (fact
+  "it will destruct the event and use the event to get the entity, chat source
+   related user, find the YB user, and pass as a raw 'message' event using the
+   derived values, because this is not the YB user"
+  (let [channel "C123"
+        user "U123"
+        text "my text"
+        cs "#C123"]
+    (slack/on-message-changed {:channel channel
+                               :message {:user user
+                                         :text text
+                                         :thread_ts :mythread}}
+                              :myconn
+                              :myconfig)
+    => :message-changed
+    (provided (slack/entity-with-name-by-id :myconfig
+                                            {:channel channel
+                                             :user user})
+              => [cs {:name channel}]
+              (chat/chat-source cs) => :mycs
+              (users/get-user :mycs user) => {}
+              (slack/find-yetibot-user :myconn :mycs) => :ybuser
+              (handle-raw :mycs
+                          {:yetibot? false}
+                          :message
+                          :ybuser
+                          {:body "my text"}) => :message-changed))))
+
+(facts
+ "about on-pong"
+ (fact
+  "it .."
+  (let [connection-last-active-timestamp (atom 123)
+        connection-latency (atom 123)
+        ping-time (atom 123)]
+    (slack/on-pong {:conn :myconn
+                    :event :myevent
+                    :connection-last-active-timestamp connection-last-active-timestamp
+                    :connection-latency connection-latency
+                    :ping-time ping-time}
+                   :pong-event) => :did-reset-latency
+    (provided (reset! connection-last-active-timestamp anything) => :did-reset-last
+              (reset! connection-latency anything) => :did-reset-latency))))
