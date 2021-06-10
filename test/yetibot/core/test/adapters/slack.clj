@@ -431,15 +431,26 @@
 (facts
  "about react"
  (fact
-  "it will react to messages in a given channel for an adapter that are non-YB
-   commands and not issued by the YB user"
+  "It will react to the first message in a given channel histroy for an
+   adapter that are non-YB commands and not issued by the YB user.
+   There might be a bug here because what if the config'ed command alias
+   is not of the ! variety?"
   (let [adapter {:config "slack" :conn :myconn}
         emoji ":smiley:"
         channel "#C123"
-        yb-id {:id "U123"}]
+        {:keys [id] :as yb-id} {:id "U123"}]
     (slack/react adapter emoji channel) => :didreact
     (provided (slack/self :myconn) => yb-id
-              (slack/history adapter channel) => []
+              (slack/history adapter channel) => {:messages
+                                                  [{:user id
+                                                    :text "skip cuz YB user"}
+                                                   {:user "U456"
+                                                    :text "!skip cuz command"}
+                                                   {:user "U456"
+                                                    :text "legit message"
+                                                    :ts :somets}
+                                                   {:user "U456"
+                                                    :text "skip cuz 2nd"}]}
               (reactions/add anything emoji {:channel channel
-                                             :timestamp nil})
+                                             :timestamp :somets})
               => :didreact))))
