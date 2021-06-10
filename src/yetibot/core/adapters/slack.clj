@@ -7,7 +7,6 @@
     [yetibot.core.adapters.adapter :as a]
     [robert.bruce :refer [try-try-again] :as rb]
     [clojure.string :as string]
-    [yetibot.core.interpreter :refer [*chat-source*]]
     [yetibot.core.models.users :as users]
     [yetibot.core.util.http :refer [html-decode]]
     [clj-slack
@@ -17,13 +16,12 @@
      [channels :as channels]
      [groups :as groups]
      [reactions :as reactions]
-     [conversations :as conversations]
-     [rtm :as rtm]]
+     [conversations :as conversations]]
     [slack-rtm.core :as slack]
-    [taoensso.timbre :as timbre :refer [color-str debug info warn error]]
+    [taoensso.timbre :as timbre :refer [color-str debug info error]]
     [yetibot.core.handler :refer [handle-raw]]
     [yetibot.core.chat :refer [base-chat-source chat-source
-                               chat-data-structure *thread-ts* *target* *adapter*]]
+                               *thread-ts* *target* *adapter*]]
     [yetibot.core.util :as util :refer [image?]]))
 
 (s/def ::type string?)
@@ -92,7 +90,10 @@
     (map :name (:groups (list-groups config)))
     (map #(str "#" (:name %)) (channels-in config))))
 
-(defn send-msg [config msg]
+(defn send-msg
+  "defines options based on message and posts a message to slack, with some
+    additional logging"
+  [config msg]
   (let [img? (image? msg)
         _ (debug "send-msg"
                  (color-str :blue
@@ -100,8 +101,7 @@
                              :target *target*
                              :thread-ts *thread-ts*}))
 
-        {:keys [ok response_metadata]
-         slack-error :error :as response}
+        {:keys [ok] :as response}
         (slack-chat/post-message
           (slack-config config) *target* msg
           (merge
@@ -166,8 +166,11 @@
 
 ;; events
 
-(defn on-channel-join [{:keys [channel] :as e} conn config]
-  (let [[chan-name entity] (entity-with-name-by-id config {:channel channel})
+(defn on-channel-join
+  "reaction to YB user 'channel join' events, including updating the user's
+   chat source with the related channel, and sending to the handler"
+  [{:keys [channel] :as e} conn config]
+  (let [[chan-name _entity] (entity-with-name-by-id config {:channel channel})
         cs (chat-source chan-name)
         user-model (users/get-user cs (:user e))
         yetibot-user (find-yetibot-user conn cs)]
@@ -175,8 +178,11 @@
       (timbre/info "channel join" (color-str :blue (with-out-str (pprint cs))))
       (handle-raw cs user-model :enter yetibot-user {}))))
 
-(defn on-channel-leave [{:keys [channel] :as e} conn config]
-  (let [[chan-name entity] (entity-with-name-by-id config {:channel channel})
+(defn on-channel-leave
+  "reaction to YB user 'channel leave' events, including updating the user's
+   chat source with the related channel, and sending to the handler"
+  [{:keys [channel] :as e} conn config]
+  (let [[chan-name _entity] (entity-with-name-by-id config {:channel channel})
         cs (chat-source chan-name)
         user-model (users/get-user cs (:user e))
         yetibot-user (find-yetibot-user conn cs)]
@@ -184,16 +190,18 @@
       (timbre/info "channel leave" e)
       (handle-raw cs user-model :leave yetibot-user {}))))
 
-(defn on-message-changed [{:keys [channel]
-                           :as event
-                           {:keys [user text thread_ts]} :message}
-                          conn config]
+(defn on-message-changed
+  "reaction to when a message has changed, but ignoring changes from the YB
+   user, and sending to the handler"
+  [{:keys [channel] :as event
+    {:keys [user text thread_ts]} :message}
+   conn config]
   (timbre/info "message changed" \newline (pr-str event))
   ;; ignore message changed events from Yetibot - it's probably just Slack
   ;; unfurling stuff and we need to ignore it or it will result in double
   ;; history
-  (let [[chan-name entity] (entity-with-name-by-id config {:channel channel
-                                                           :user user})
+  (let [[chan-name _entity] (entity-with-name-by-id config {:channel channel
+                                                            :user user})
         cs (chat-source chan-name)
         yetibot-user (find-yetibot-user conn cs)
         yetibot-uid (:id yetibot-user)
@@ -210,11 +218,14 @@
                     yetibot-user
                     {:body (unencode-message text)})))))
 
-(defn on-message [{:keys [conn config] :as adapter}
-                  {:keys [subtype ts]
-                   chan-id :channel
-                   thread-ts :thread_ts
-                   :as event}]
+(defn on-message
+  "reaction to any message, dispatching to the appropriate event handler
+   after determing the event sub-type, while taking into consideration
+   whether the message is consider a 'bot_message'"
+  [{:keys [conn config]}
+   {:keys [subtype ts]
+    chan-id :channel
+    thread-ts :thread_ts :as event}]
   (info "on-message" (color-str :blue (pr-str event)))
   ;; allow bot_message events to be treated as normal messages
   (if (and (not= "bot_message" subtype) subtype)
@@ -263,10 +274,11 @@
                      :thread-ts (or thread-ts ts)})))))
 
 (defn on-reaction-added
-  "https://api.slack.com/events/reaction_added"
-  [{:keys [conn config] :as adapter}
-   {:keys [user reaction item_user item] :as event}]
-  (let [[chan-name entity] (entity-with-name-by-id config item)
+  "reaction related to when a user adds an emoji to an item:
+   https://api.slack.com/events/reaction_added"
+  [{:keys [conn config]}
+   {:keys [reaction item_user item] :as event}]
+  (let [[chan-name _entity] (entity-with-name-by-id config item)
         sc (slack-config config)
         cs (chat-source chan-name)
         yetibot-user (find-yetibot-user conn cs)
@@ -317,9 +329,10 @@
 (defn on-hello [event]
   (timbre/debug "Hello, you are connected to Slack" event))
 
-(defn on-pong [{:keys [conn event connection-last-active-timestamp
-                       connection-latency ping-time] :as adapter}
-               event]
+(defn on-pong
+  "handler related to when pong events are received"
+  [{:keys [connection-last-active-timestamp connection-latency ping-time]}
+   event]
   (let [ts @ping-time
         now (System/currentTimeMillis)]
     (timbre/trace "Pong" (pr-str event))
@@ -345,7 +358,10 @@
 (defn stop-pinger! [{:keys [should-ping?]}]
   (reset! should-ping? false))
 
-(defn on-connect [{:keys [conn connected? should-ping?] :as adapter} e]
+(defn on-connect
+  "handler related to when slack is connected, starting the slack pinger
+   service"
+  [{:keys [connected? should-ping?] :as adapter} _event]
   (reset! should-ping? true)
   (reset! connected? true)
   (start-pinger! adapter))
@@ -356,8 +372,11 @@
 ;; list of status codes on a close event
 (def status-normal-close 1000)
 
-(defn on-close [{:keys [conn config connected?] :as adapter}
-                {:keys [status-code] :as status}]
+(defn on-close
+  "handler related to when the slack connection has been closed, determing
+   if this was intentional, and if not intentional, to retry a connection"
+  [{:keys [config connected?] :as adapter}
+   {:keys [status-code] :as status}]
   (reset! connected? false)
   (timbre/info "close" (:name config) status)
   (when (not= status-normal-close status-code)
@@ -392,7 +411,7 @@
   [e]
   (timbre/debug "channel joined" e)
   (let [c (:channel e)
-        {:keys [uuid room] :as cs} (chat-source (:id c))
+        cs (chat-source (:id c))
         user-ids (:members c)]
     (timbre/debug "adding chat source" cs "for users" user-ids)
     (run! #(users/add-chat-source-to-user cs %) user-ids)))
@@ -402,7 +421,7 @@
   [e]
   (timbre/debug "channel left" e)
   (let [c (:channel e)
-        {:keys [uuid room] :as cs} (chat-source c)
+        cs (chat-source c)
         users-in-chan (users/get-users cs)]
     (timbre/debug "remove users from" cs (map :id users-in-chan))
     (run! #(users/remove-user cs (:id %)) users-in-chan)))
@@ -453,7 +472,7 @@
 (defn restart
   "conn is a reference to an atom.
    config is a map"
-  [{:keys [conn config connected?] :as adapter}]
+  [{:keys [conn config] :as adapter}]
   (reset! conn (slack/start (slack-config config)
                             :on-connect (partial #'on-connect adapter)
                             :on-error on-error
@@ -471,7 +490,9 @@
   (info "Slack (re)connected as Yetibot with id" (:id (self conn)))
   (reset-users-from-conn conn))
 
-(defn start [adapter conn config connected?]
+(defn start
+  "start the slack connection service"
+  [adapter _conn config _connected?]
   (stop adapter)
   (binding [*adapter* adapter]
     (info "adapter" adapter "starting up with config" config)
@@ -524,12 +545,12 @@
 
   (a/send-msg [_ msg] (send-msg config msg))
 
-  (a/join [_ channel]
+  (a/join [_ _channel]
     (str
       "Slack bots such as myself can't join channels on their own. Use /invite "
       "@yetibot from the channel you'd like me to join instead.✌️"))
 
-  (a/leave [_ channel]
+  (a/leave [_ _channel]
     (str "Slack bots such as myself can't leave channels on their own. Use /kick "
          "@yetibot from the channel you'd like me to leave instead. 👊"))
 
@@ -565,5 +586,3 @@
      :connection-last-active-timestamp (atom nil)
      :ping-time (atom nil)
      :should-ping? (atom false)}))
-
-
