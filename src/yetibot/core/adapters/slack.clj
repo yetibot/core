@@ -515,7 +515,10 @@
       \G (groups/history c chan-id)
       (throw (ex-info "unknown entity type" chan-id)))))
 
-(defn react [adapter emoji channel]
+(defn react
+  "reacts to messages in a given channel for a specific adapter that are
+   non-YB commands and not from the YB user"
+  [adapter emoji channel]
   (let [c (slack-config (:config adapter))
         conn (:conn adapter)
         yb-id (:id (self conn))
