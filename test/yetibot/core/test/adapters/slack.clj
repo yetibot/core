@@ -7,6 +7,7 @@
              [channels :as channels]
              [users :as slack-users]
              [groups :as groups]
+             [reactions :as reactions]
              [im :as im]
              [chat :as slack-chat]]
             [slack-rtm.core :as slack-rtm]
@@ -387,7 +388,29 @@
                           {:yetibot? false}
                           :message
                           :ybuser
-                          {:body "my text"}) => :message-changed))))
+                          {:body "my text"}) => :message-changed)))
+ (fact
+  "it will destruct the event and use the event to get the entity, chat source
+   related user, find the YB user, and log out and return nil when YB user ID
+   is equal to user ID"
+  (let [channel "C123"
+        user "U123"
+        text "my text"
+        cs "#C123"]
+    (slack/on-message-changed {:channel channel
+                               :message {:user user
+                                         :text text
+                                         :thread_ts :mythread}}
+                              :myconn
+                              :myconfig)
+    => nil
+    (provided (slack/entity-with-name-by-id :myconfig
+                                            {:channel channel
+                                             :user user})
+              => [cs {:name channel}]
+              (chat/chat-source cs) => :mycs
+              (users/get-user :mycs user) => {}
+              (slack/find-yetibot-user :myconn :mycs) => {:id user}))))
 
 (facts
  "about on-pong"
@@ -404,3 +427,30 @@
                    :pong-event) => :did-reset-latency
     (provided (reset! connection-last-active-timestamp anything) => :did-reset-last
               (reset! connection-latency anything) => :did-reset-latency))))
+
+(facts
+ "about react"
+ (fact
+  "It will react to the first message in a given channel histroy for an
+   adapter that are non-YB commands and not issued by the YB user.
+   There might be a bug here because what if the config'ed command alias
+   is not of the ! variety?"
+  (let [adapter {:config "slack" :conn :myconn}
+        emoji ":smiley:"
+        channel "#C123"
+        {:keys [id] :as yb-id} {:id "U123"}]
+    (slack/react adapter emoji channel) => :didreact
+    (provided (slack/self :myconn) => yb-id
+              (slack/history adapter channel) => {:messages
+                                                  [{:user id
+                                                    :text "skip cuz YB user"}
+                                                   {:user "U456"
+                                                    :text "!skip cuz command"}
+                                                   {:user "U456"
+                                                    :text "legit message"
+                                                    :ts :somets}
+                                                   {:user "U456"
+                                                    :text "skip cuz 2nd"}]}
+              (reactions/add anything emoji {:channel channel
+                                             :timestamp :somets})
+              => :didreact))))
