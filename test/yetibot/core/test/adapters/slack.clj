@@ -132,32 +132,35 @@
  (fact
   "it will attempt to post a message to slack using modified params and log it"
   (let [msg "hello world"]
-    (slack/send-msg :config msg) => nil
+    (slack/send-msg :config msg) => :didlog
     (provided (slack-chat/post-message (slack/slack-config :config)
                                        anything
                                        msg
                                        (slack/->send-msg-options msg))
-              => {:ok true})))
+              => {:ok true}
+              (slack/log-send-msg msg {:ok true}) => :didlog)))
  (fact
   "it will attempt to post an image to slack using modified params and log it"
   (let [img "https://a.a/a.jpg"]
-    (slack/send-msg :config img) => nil
+    (slack/send-msg :config img) => :didlog
     (provided (slack-chat/post-message (slack/slack-config :config)
                                        anything
                                        img
                                        (slack/->send-msg-options img))
-              => {:ok false})))
+              => {:ok false}
+              (slack/log-send-msg img {:ok false}) => :didlog)))
  (fact
   "it will exercise the code that checks for a truthy *thread-ts* binding,
    and not throw an error"
   (binding [yetibot.core.chat/*thread-ts* :ihaveathreadts]
     (let [msg "hello world"]
-      (slack/send-msg :config msg) => nil
+      (slack/send-msg :config msg) => :didlog
       (provided (slack-chat/post-message (slack/slack-config :config)
                                          anything
                                          msg
                                          (slack/->send-msg-options msg))
-                => {:ok true})))))
+                => {:ok true}
+                (slack/log-send-msg msg {:ok true}) => :didlog)))))
 
 (facts
  "about find-yetibot-user"
