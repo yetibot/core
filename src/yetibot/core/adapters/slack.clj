@@ -167,7 +167,7 @@
 ;; events
 
 (defn on-channel-join
-  "reaction to YB user 'channel join' events, including updating the user's
+  "reaction to YB user 'channel join' events, including binding the user's
    chat source with the related channel, and sending to the handler"
   [{:keys [channel] :as e} conn config]
   (let [[chan-name _entity] (entity-with-name-by-id config {:channel channel})
@@ -179,7 +179,7 @@
       (handle-raw cs user-model :enter yetibot-user {}))))
 
 (defn on-channel-leave
-  "reaction to YB user 'channel leave' events, including updating the user's
+  "reaction to YB user 'channel leave' events, including binding the user's
    chat source with the related channel, and sending to the handler"
   [{:keys [channel] :as e} conn config]
   (let [[chan-name _entity] (entity-with-name-by-id config {:channel channel})
