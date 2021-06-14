@@ -454,3 +454,37 @@
               (reactions/add anything emoji {:channel channel
                                              :timestamp :somets})
               => :didreact))))
+
+(facts
+ "about ->send-msg-options"
+ (fact
+  "it will detect a non-image and unfurl"
+  (let [{:keys [unfurl_media]} (slack/->send-msg-options "helloworld")]
+    unfurl_media => "true"))
+ (fact
+  "it will detect an image URL and not unfurl it with a block image type"
+  (let [img "https://hello.com/world.jpg"
+        {:keys [unfurl_media]
+         [{:strs [type image_url alt_text]}] :blocks}
+        (slack/->send-msg-options img)]
+    unfurl_media => "false"
+    alt_text => "Image"
+    image_url => img
+    type => "image"))
+ (fact
+  "it return message options that include thread_ts data when binding for
+   *thread-ts* exists"
+  (binding [yetibot.core.chat/*thread-ts* :threadts]
+    (let [{:keys [unfurl_media thread_ts]} (slack/->send-msg-options
+                                            "helloworld")]
+      thread_ts => :threadts
+      unfurl_media => "true"))))
+
+(facts
+ "about log-send-msg"
+ (fact
+  "it logs debug when everything is AOK, always returning nil"
+  (slack/log-send-msg "https://a.a/a.jpg" {:ok true}) => nil)
+ (fact
+  "it logs error when everything is NOT AOK, always returning nil"
+  (slack/log-send-msg "hello world" {:ok false}) => nil))
