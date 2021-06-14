@@ -131,12 +131,13 @@
  "about send-msg"
  (fact
   "it will attempt to post a message to slack using modified params and log it"
-  (slack/send-msg :config "hello world") => nil
-  (provided (slack-chat/post-message (slack/slack-config :config)
-                                     anything
-                                     "hello world"
-                                     anything)
-            => {:ok true}))
+  (let [msg "hello world"]
+    (slack/send-msg :config msg) => nil
+    (provided (slack-chat/post-message (slack/slack-config :config)
+                                       anything
+                                       msg
+                                       (slack/->send-msg-options msg))
+              => {:ok true})))
  (fact
   "it will attempt to post an image to slack using modified params and log it"
   (let [img "https://a.a/a.jpg"]
@@ -144,18 +145,19 @@
     (provided (slack-chat/post-message (slack/slack-config :config)
                                        anything
                                        img
-                                       anything)
+                                       (slack/->send-msg-options img))
               => {:ok false})))
  (fact
   "it will exercise the code that checks for a truthy *thread-ts* binding,
    and not throw an error"
-  (binding [yetibot.core.chat/*thread-ts* :threadts]
-    (slack/send-msg :config "hello world") => nil
-    (provided (slack-chat/post-message (slack/slack-config :config)
-                                       anything
-                                       "hello world"
-                                       anything)
-              => {:ok true}))))
+  (binding [yetibot.core.chat/*thread-ts* :ihaveathreadts]
+    (let [msg "hello world"]
+      (slack/send-msg :config msg) => nil
+      (provided (slack-chat/post-message (slack/slack-config :config)
+                                         anything
+                                         msg
+                                         (slack/->send-msg-options msg))
+                => {:ok true})))))
 
 (facts
  "about find-yetibot-user"

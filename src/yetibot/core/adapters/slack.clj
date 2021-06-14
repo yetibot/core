@@ -119,26 +119,13 @@
   "defines options based on message and posts a message to slack, with some
     additional logging"
   [config msg]
-  (let [img? (image? msg)
-        _ (debug "send-msg"
-                 (color-str :blue
-                            {:img? img?
-                             :target *target*
-                             :thread-ts *thread-ts*}))
-
-        {:keys [ok] :as response}
-        (slack-chat/post-message
-          (slack-config config) *target* msg
-          (merge
-            {:unfurl_media (str (not (boolean img?))) :as_user "true"}
-            (when img?
-              {:blocks [{"type" "image"
-                         "image_url" msg
-                         "alt_text" "Image"}]})
-            (when *thread-ts* {:thread_ts *thread-ts*})))]
-    (if ok
-      (debug "slack response" (pr-str response))
-      (error "error posting to slack" (pr-str response)))))
+  (let [cfg (slack-config config)
+        opts (->send-msg-options msg)
+        resp (slack-chat/post-message cfg
+                                      *target*
+                                      msg
+                                      opts)]
+    (log-send-msg msg resp)))
 
 (defn send-paste [config msg]
   (slack-chat/post-message
