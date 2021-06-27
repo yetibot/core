@@ -90,30 +90,42 @@
     (map :name (:groups (list-groups config)))
     (map #(str "#" (:name %)) (channels-in config))))
 
+(defn ->send-msg-options
+  "transform message to valid slack/post-message options, including thread
+   timestamp when available"
+  [msg]
+  (let [img? (image? msg)]
+    (merge
+     {:unfurl_media (str (not (boolean img?))) :as_user "true"}
+     (when img?
+       {:blocks [{"type" "image"
+                  "image_url" msg
+                  "alt_text" "Image"}]})
+     (when *thread-ts* {:thread_ts *thread-ts*}))))
+
+(defn log-send-msg
+  "log the send-msg message and slack's response"
+  [msg {:keys [ok] :as response}]
+  (let [img? (image? msg)
+        resp-str (pr-str response)]
+    (debug "send-msg" (color-str :blue {:img? img?
+                                        :target *target*
+                                        :thread-ts *thread-ts*}))
+    (if ok
+      (debug "slack response" resp-str)
+      (error "error posting to slack" resp-str))))
+
 (defn send-msg
   "defines options based on message and posts a message to slack, with some
     additional logging"
   [config msg]
-  (let [img? (image? msg)
-        _ (debug "send-msg"
-                 (color-str :blue
-                            {:img? img?
-                             :target *target*
-                             :thread-ts *thread-ts*}))
-
-        {:keys [ok] :as response}
-        (slack-chat/post-message
-          (slack-config config) *target* msg
-          (merge
-            {:unfurl_media (str (not (boolean img?))) :as_user "true"}
-            (when img?
-              {:blocks [{"type" "image"
-                         "image_url" msg
-                         "alt_text" "Image"}]})
-            (when *thread-ts* {:thread_ts *thread-ts*})))]
-    (if ok
-      (debug "slack response" (pr-str response))
-      (error "error posting to slack" (pr-str response)))))
+  (let [cfg (slack-config config)
+        opts (->send-msg-options msg)
+        resp (slack-chat/post-message cfg
+                                      *target*
+                                      msg
+                                      opts)]
+    (log-send-msg msg resp)))
 
 (defn send-paste [config msg]
   (slack-chat/post-message

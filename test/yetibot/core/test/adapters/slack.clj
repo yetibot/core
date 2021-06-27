@@ -131,31 +131,36 @@
  "about send-msg"
  (fact
   "it will attempt to post a message to slack using modified params and log it"
-  (slack/send-msg :config "hello world") => nil
-  (provided (slack-chat/post-message (slack/slack-config :config)
-                                     anything
-                                     "hello world"
-                                     anything)
-            => {:ok true}))
+  (let [msg "hello world"]
+    (slack/send-msg :config msg) => :didlog
+    (provided (slack-chat/post-message (slack/slack-config :config)
+                                       anything
+                                       msg
+                                       (slack/->send-msg-options msg))
+              => {:ok true}
+              (slack/log-send-msg msg {:ok true}) => :didlog)))
  (fact
   "it will attempt to post an image to slack using modified params and log it"
   (let [img "https://a.a/a.jpg"]
-    (slack/send-msg :config img) => nil
+    (slack/send-msg :config img) => :didlog
     (provided (slack-chat/post-message (slack/slack-config :config)
                                        anything
                                        img
-                                       anything)
-              => {:ok false})))
+                                       (slack/->send-msg-options img))
+              => {:ok false}
+              (slack/log-send-msg img {:ok false}) => :didlog)))
  (fact
   "it will exercise the code that checks for a truthy *thread-ts* binding,
    and not throw an error"
-  (binding [yetibot.core.chat/*thread-ts* :threadts]
-    (slack/send-msg :config "hello world") => nil
-    (provided (slack-chat/post-message (slack/slack-config :config)
-                                       anything
-                                       "hello world"
-                                       anything)
-              => {:ok true}))))
+  (binding [yetibot.core.chat/*thread-ts* :ihaveathreadts]
+    (let [msg "hello world"]
+      (slack/send-msg :config msg) => :didlog
+      (provided (slack-chat/post-message (slack/slack-config :config)
+                                         anything
+                                         msg
+                                         (slack/->send-msg-options msg))
+                => {:ok true}
+                (slack/log-send-msg msg {:ok true}) => :didlog)))))
 
 (facts
  "about find-yetibot-user"
@@ -454,3 +459,37 @@
               (reactions/add anything emoji {:channel channel
                                              :timestamp :somets})
               => :didreact))))
+
+(facts
+ "about ->send-msg-options"
+ (fact
+  "it will detect a non-image and unfurl"
+  (let [{:keys [unfurl_media]} (slack/->send-msg-options "helloworld")]
+    unfurl_media => "true"))
+ (fact
+  "it will detect an image URL and not unfurl it with a block image type"
+  (let [img "https://hello.com/world.jpg"
+        {:keys [unfurl_media]
+         [{:strs [type image_url alt_text]}] :blocks}
+        (slack/->send-msg-options img)]
+    unfurl_media => "false"
+    alt_text => "Image"
+    image_url => img
+    type => "image"))
+ (fact
+  "it return message options that include thread_ts data when binding for
+   *thread-ts* exists"
+  (binding [yetibot.core.chat/*thread-ts* :threadts]
+    (let [{:keys [unfurl_media thread_ts]} (slack/->send-msg-options
+                                            "helloworld")]
+      thread_ts => :threadts
+      unfurl_media => "true"))))
+
+(facts
+ "about log-send-msg"
+ (fact
+  "it logs debug when everything is AOK, always returning nil"
+  (slack/log-send-msg "https://a.a/a.jpg" {:ok true}) => nil)
+ (fact
+  "it logs error when everything is NOT AOK, always returning nil"
+  (slack/log-send-msg "hello world" {:ok false}) => nil))
