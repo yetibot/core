@@ -42,7 +42,7 @@
   (let [{value :value} (get-config ::embedded-commands-enabled-config
                                    [:command :embedded :enabled])]
     (if-not (blank? value)
-      (not (= "false" value))
+      (not= "false" value)
       ;; enabled by default
       true)))
 
