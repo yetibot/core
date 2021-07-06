@@ -53,6 +53,45 @@
 
 (def all-event-types #{:message :leave :enter :sound :kick :react})
 
+(defn ->correlation-id
+  "Lets us correlate two records in the history table by creating a unique id
+   based on a timestap and the user and message body. Correlation is for:
+   - an input command from a user
+   - the result that Yetibot posts back to chat"
+  [body user]
+  (str (System/currentTimeMillis)
+       "-"
+       (hash [interp/*chat-source* user body])))
+
+(defn ->parsed-message-info
+  "Helper to transform body into a message related info map
+   that is used by internal functions"
+  [body]
+  (let [parsed-normal-command (when-let [[_ cmd-body] (extract-command body)]
+                                (parser cmd-body))
+        parsed-cmds (or (and parsed-normal-command [parsed-normal-command])
+                        (when (embedded-enabled?) (embedded-cmds body)))
+        cmd? (boolean (seq parsed-cmds))]
+    {:parsed-normal-command parsed-normal-command
+     :parsed-cmds parsed-cmds
+     :cmd? cmd?}))
+
+(defn add-user-message-history
+  "When the user is not Yetibot, it will add the user's messages to history"
+  [body user correlation-id]
+  (when (and user (not (:yetibot? user)))
+    (let [{:keys [room uuid is-private]} interp/*chat-source*
+          {:keys [cmd?]} (->parsed-message-info body)]
+      (h/add {:chat-source-adapter uuid
+              :chat-source-room room
+              :is-private is-private
+              :correlation-id correlation-id
+              :user-id (-> user :id str)
+              :user-name (-> user :username str)
+              :is-yetibot false
+              :is-command cmd?
+              :body body}))))
+
 (defn handle-parsed-expr
   "Top-level for already-parsed commands.
    Turns a parse tree into a string or collection result."
@@ -93,26 +132,20 @@
                               :or {record-yetibot-response? true}}]]
   (trace "record-and-run-raw" body record-yetibot-response?
         interp/*chat-source*)
-  (let [{:keys [adapter room uuid is-private]
-         :as chat-source} interp/*chat-source*
-        timestamp (System/currentTimeMillis)
-        ;; `correlation-id` lets us correlate two records in the history
-        ;; table:
-        ;; - an input command from a user
-        ;; - the result that Yetibot posts back to chat
-        correlation-id (str timestamp "-" (hash [chat-source user body]))
+  (let [{:keys [room uuid is-private] :as chat-source} interp/*chat-source*
+        correlation-id (->correlation-id body user)
+        parsed-message-info (->parsed-message-info body)
         parsed-normal-command (when-let
-                                [[_ body] (extract-command body)]
+                               [[_ body] (extract-command body)]
                                 (parser body))
-
         parsed-cmds
         (or
-          ;; if it starts with a command prefix (e.g. !) it's a command
-          (and parsed-normal-command [parsed-normal-command])
-          ;; otherwise, check to see if there are embedded commands
-          (when (embedded-enabled?) (embedded-cmds body)))
+         ;; if it starts with a command prefix (e.g. !) it's a command
+         (and parsed-normal-command [parsed-normal-command])
+         ;; otherwise, check to see if there are embedded commands
+         (when (embedded-enabled?) (embedded-cmds body)))
         cmd? (boolean (seq parsed-cmds))]
-
+    
     ;; record the body of users' messages if the user is not Yetibot
     (when (and user (not (:yetibot? user)))
       (h/add {:chat-source-adapter uuid
