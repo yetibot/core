@@ -61,7 +61,7 @@
                   :parsed-normal-command nil}))))
 
 (facts
- "about add-user-message-history"
+ "about add-user-message-to-history"
  (let [body "!echo hello"
        user {:id 123 :username "greg" :yetibot? false}
        correlation-id (h/->correlation-id body user)
@@ -70,7 +70,7 @@
      (fact
       "it will add to the history table a user message, with related message
        metadata"
-      (first (h/add-user-message-history body user correlation-id))
+      (first (h/add-user-message-to-history body user correlation-id))
       => (contains {:body body
                     :chat_source_room (:room cs)
                     :correlation_id correlation-id
@@ -82,5 +82,5 @@
      (fact
       "it will NOT add the user message to history because user is yetibot,
        and return nil"
-      (h/add-user-message-history nil {:yetibot? true} nil)
+      (h/add-user-message-to-history nil {:yetibot? true} nil)
       => nil))))

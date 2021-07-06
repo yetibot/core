@@ -75,7 +75,7 @@
      :parsed-cmds parsed-cmds
      :cmd? cmd?}))
 
-(defn add-user-message-history
+(defn add-user-message-to-history
   "When the user is not Yetibot, it will add the user's messages to history"
   [body user correlation-id]
   (when (and user (not (:yetibot? user)))
@@ -136,7 +136,7 @@
         {:keys [parsed-normal-command parsed-cmds cmd?]}
         (->parsed-message-info body)]
     
-    (add-user-message-history body user correlation-id)
+    (add-user-message-to-history body user correlation-id)
 
     ;; When:
     ;; - the user's input was an expression (or contained embedded exprs)
