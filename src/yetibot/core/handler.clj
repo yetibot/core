@@ -1,17 +1,16 @@
 (ns yetibot.core.handler
   (:require
     [yetibot.core.config :refer [get-config]]
-    [clojure.core.async :refer [timeout alts!! alts! chan go <! >! >!! <!!]]
+    [clojure.core.async :refer [timeout alts!! go]]
     [clojure.spec.alpha :as s]
     [clojure.string :refer [blank? join]]
-    [taoensso.timbre :refer [debug trace info warn error]]
+    [taoensso.timbre :refer [trace info error]]
     [yetibot.core.chat :refer [chat-data-structure]]
-    [yetibot.core.util.command :refer [command? extract-command embedded-cmds]]
+    [yetibot.core.util.command :refer [extract-command embedded-cmds]]
     [yetibot.core.interpreter :as interp]
     [yetibot.core.models.history :as h]
     [yetibot.core.parser :refer [parse-and-eval transformer parser unparse]]
-    [yetibot.core.util.format :refer [to-coll-if-contains-newlines
-                                      format-data-structure
+    [yetibot.core.util.format :refer [format-data-structure
                                       format-exception-log]]))
 
 (s/def ::embedded-commands-enabled-config string?)
@@ -134,29 +133,10 @@
         interp/*chat-source*)
   (let [{:keys [room uuid is-private] :as chat-source} interp/*chat-source*
         correlation-id (->correlation-id body user)
-        parsed-message-info (->parsed-message-info body)
-        parsed-normal-command (when-let
-                               [[_ body] (extract-command body)]
-                                (parser body))
-        parsed-cmds
-        (or
-         ;; if it starts with a command prefix (e.g. !) it's a command
-         (and parsed-normal-command [parsed-normal-command])
-         ;; otherwise, check to see if there are embedded commands
-         (when (embedded-enabled?) (embedded-cmds body)))
-        cmd? (boolean (seq parsed-cmds))]
+        {:keys [parsed-normal-command parsed-cmds cmd?]}
+        (->parsed-message-info body)]
     
-    ;; record the body of users' messages if the user is not Yetibot
-    (when (and user (not (:yetibot? user)))
-      (h/add {:chat-source-adapter uuid
-              :chat-source-room room
-              :is-private is-private
-              :correlation-id correlation-id
-              :user-id (-> user :id str)
-              :user-name (-> user :username str)
-              :is-yetibot false
-              :is-command cmd?
-              :body body}))
+    (add-user-message-history body user correlation-id)
 
     ;; When:
     ;; - the user's input was an expression (or contained embedded exprs)
@@ -166,7 +146,7 @@
     ;; - evaluating the expression
     ;; then return the collection of results
     (when (and cmd? (not (:yetibot? user)))
-      (let [[results timeout-result]
+      (let [[results _timeout-result]
             (alts!!
               [(go (map
                      (fn [parse-tree]
@@ -244,9 +224,8 @@
    :sound
    :kick
    :react"
-  [{:keys [adapter room uuid is-private] :as chat-source}
-   user event-type yetibot-user
-   {:keys [body reaction] :as event-info}]
+  [chat-source user event-type yetibot-user
+   {:keys [body]}]
   ;; Note: only :message and :react have a body
   (when (and body (= event-type :message))
     (binding [interp/*chat-source* chat-source]
@@ -255,7 +234,7 @@
         ;; embedded commands in a single body
         (let [expr-results (record-and-run-raw body user yetibot-user)]
           (run!
-            (fn [{:keys [timeout? embedded? error? result]}]
+            (fn [{:keys [embedded? error? result]}]
               (if (or (not error?) (not embedded?))
                 (chat-data-structure result)
                 (info "Skip sending error result for embedded command to chat"
