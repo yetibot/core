@@ -84,3 +84,91 @@
        and return nil"
       (h/add-user-message-to-history nil {:yetibot? true} nil)
       => nil))))
+
+(facts
+ "about handle-parsed-expr"
+ (let [cs {:adapter :slack
+           :uuid :test
+           :room "#C123"}
+       user {:id 123 :username "greg" :yetibot? false}
+       yb-user {:id 456 :username "yetibot" :yetibot? true}]
+   (fact
+    "it will return nil when no legit parse tree is passed in as an arg"
+    (h/handle-parsed-expr cs user yb-user nil) => nil)
+
+   (fact
+    "it will return a map with the value of the response, related data,
+     and settings"
+    (h/handle-parsed-expr cs
+                          user
+                          yb-user
+                          (first
+                           (:parsed-cmds (h/->parsed-message-info
+                                          "!echo hello"))))
+    => (contains {:data nil?
+                  :settings not-empty
+                  :value "hello"}))))
+
+(facts
+ "about ->handled-expr-info"
+ (let [cs {:adapter :slack
+           :uuid :test
+           :room "#C123"}
+       user {:id 123 :username "greg" :yetibot? false}
+       yb-user {:id 456 :username "yetibot" :yetibot? true}
+       pe (first
+           (:parsed-cmds (h/->parsed-message-info
+                          "!echo hello")))
+       hpe (h/handle-parsed-expr cs
+                                 user
+                                 yb-user
+                                 pe)]
+   (fact
+    "it transforms a successfully handled parsed expression (command) and
+     returns an info map of related expression info that signifies there
+     was no error, the formatted response, as well as the original command"
+    (h/->handled-expr-info hpe pe)
+    => (contains {:error? false
+                  :formatted-response "hello"
+                  :original-command-str "echo hello"
+                  :result "hello"}))))
+
+(facts
+ "about add-bot-response-to-history"
+ (let [body "!echo hello"
+       user {:id 123 :username "greg" :yetibot? false}
+       yb-user {:id 456 :username "yetibot" :yetibot? true}
+       correlation-id (h/->correlation-id body user)
+       cs {:adapter :slack :uuid :test :room "#C123"}
+       pe (first
+           (:parsed-cmds (h/->parsed-message-info
+                          "!echo hello")))
+       hpe (h/handle-parsed-expr cs
+                                 user
+                                 yb-user
+                                 pe)]
+   (binding [i/*chat-source* cs]
+     (fact
+      "it will take the parsed YB bot response from a command and add
+       it to the history database with the defined correlation id"
+      (first (h/add-bot-response-to-history (h/->handled-expr-info hpe pe)
+                                            yb-user
+                                            true
+                                            correlation-id))
+      => (contains {:body "hello"
+                    :chat_source_room (:room cs)
+                    :correlation_id correlation-id
+                    :is_command false
+                    :is_yetibot true
+                    :is_error false
+                    :user_id (str (:id yb-user))
+                    :user_name (:username yb-user)}))
+     
+     (fact
+      "it will NOT add the bot response to history because the
+       `record-yetibot-response?` option is not true"
+      (first (h/add-bot-response-to-history (h/->handled-expr-info hpe pe)
+                                            yb-user
+                                            false
+                                            correlation-id))
+      => nil))))
