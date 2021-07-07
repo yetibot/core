@@ -1,17 +1,17 @@
 (ns yetibot.core.handler
   (:require
-    [yetibot.core.config :refer [get-config]]
-    [clojure.core.async :refer [timeout alts!! go]]
-    [clojure.spec.alpha :as s]
-    [clojure.string :refer [blank? join]]
-    [taoensso.timbre :refer [trace info error]]
-    [yetibot.core.chat :refer [chat-data-structure]]
-    [yetibot.core.util.command :refer [extract-command embedded-cmds]]
-    [yetibot.core.interpreter :as interp]
-    [yetibot.core.models.history :as h]
-    [yetibot.core.parser :refer [parse-and-eval transformer parser unparse]]
-    [yetibot.core.util.format :refer [format-data-structure
-                                      format-exception-log]]))
+   [yetibot.core.config :refer [get-config]]
+   [clojure.core.async :refer [timeout alts!! go]]
+   [clojure.spec.alpha :as s]
+   [clojure.string :refer [blank? join]]
+   [taoensso.timbre :refer [trace info error]]
+   [yetibot.core.chat :refer [chat-data-structure]]
+   [yetibot.core.util.command :refer [extract-command embedded-cmds]]
+   [yetibot.core.interpreter :as interp]
+   [yetibot.core.models.history :as h]
+   [yetibot.core.parser :refer [parse-and-eval transformer parser unparse]]
+   [yetibot.core.util.format :refer [format-data-structure
+                                     format-exception-log]]))
 
 (s/def ::embedded-commands-enabled-config string?)
 
@@ -101,7 +101,7 @@
     (transformer parse-tree)))
 
 (defn ->handled-expr-info
-  "Helper to transform a handled user expression (command) and return and info
+  "Helper to transform a handled user expression (command) and return an info
    map about the handled command, such as if errored, the result, formatted
    response, and the original command string"
   [{:keys [value error] :as _handle-parsed-expr} parse-tree]
@@ -139,6 +139,13 @@
               :command original-command-str
               :body formatted-response}))))
 
+(defn ->handled-expr-results
+  [body results]
+  (or results
+      [{:timeout? true
+        :result (str "Evaluation of `" body "` timed out after "
+                     (/ expr-eval-timeout-ms 1000) " seconds.")}]))
+
 (defn record-and-run-raw
   "Top level message handler.
 
@@ -169,7 +176,7 @@
   [body user yetibot-user & [{:keys [record-yetibot-response?]
                               :or {record-yetibot-response? true}}]]
   (trace "record-and-run-raw" body record-yetibot-response?
-        interp/*chat-source*)
+         interp/*chat-source*)
   (let [correlation-id (->correlation-id body user)
         {:keys [parsed-normal-command parsed-cmds cmd?]}
         (->parsed-message-info body)]
@@ -184,7 +191,8 @@
     ;; - evaluating the expression
     ;; then return the collection of results
     (when (and cmd? (not (:yetibot? user)))
-      (let [[results _timeout-result]
+      (let [embedded? (not parsed-normal-command)
+            [results _timeout-result]
             (alts!!
              [(go (map
                    (fn [parse-tree]
@@ -196,28 +204,25 @@
                                                    yetibot-user
                                                    parse-tree)
                                                   parse-tree)]
-                         
+
                          (add-bot-response-to-history handled-expr-info
                                                       yetibot-user
                                                       record-yetibot-response?
                                                       correlation-id)
 
                          ;; don't report errors on embedded commands
-                         {:embedded? (not parsed-normal-command)
+                         {:embedded? embedded?
                           :error? error?
                           :result result})
                        (catch Throwable ex
                          (error "error handling expression:" body
                                 (format-exception-log ex))
-                         {:embedded?  (not parsed-normal-command)
+                         {:embedded? embedded?
                           :error? true
                           :result (format exception-format ex)})))
                    parsed-cmds))
               (timeout expr-eval-timeout-ms)])]
-        (or results
-            [{:timeout? true
-              :result (str "Evaluation of `" body "` timed out after "
-                           (/ expr-eval-timeout-ms 1000) " seconds.")}])))))
+        (->handled-expr-results body results)))))
 
 (defn handle-unparsed-expr
   "Entry point for parsing and evaluation of ad-hoc commands.
@@ -230,6 +235,14 @@
              interp/*chat-source* chat-source]
      (handle-unparsed-expr body)))
   ([body] (parse-and-eval body)))
+
+(defn dispatch-command-response
+  "When a command response is valid and succesful, it will be passed along
+   to be formatted and send to chat adapter, otherwise, log and return nil"
+  [{:keys [embedded? error? result] :as _handled-expr-results}]
+  (if (or (not error?) (not embedded?))
+    (chat-data-structure result)
+    (info "Skip sending error result for embedded command to chat" result)))
 
 (defn handle-raw
   "Top level handler for commands. Properly records commands in the database,
@@ -255,11 +268,7 @@
         ;; embedded commands in a single body
         (let [expr-results (record-and-run-raw body user yetibot-user)]
           (run!
-            (fn [{:keys [embedded? error? result]}]
-              (if (or (not error?) (not embedded?))
-                (chat-data-structure result)
-                (info "Skip sending error result for embedded command to chat"
-                      result)))
-            expr-results))))))
+           dispatch-command-response
+           expr-results))))))
 
 (defn cmd-reader [& args] (handle-unparsed-expr (join " " args)))

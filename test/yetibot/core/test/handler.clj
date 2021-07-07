@@ -1,10 +1,11 @@
 (ns yetibot.core.test.handler
   (:require
-   [midje.sweet :refer [facts fact => =not=> contains]]
+   [midje.sweet :refer [facts fact => =not=> contains provided]]
    [yetibot.core.handler :as h]
    [clojure.string :as s]
    [yetibot.core.interpreter :as i]
-   [yetibot.core.commands.echo]))
+   [yetibot.core.commands.echo]
+   [yetibot.core.chat :refer [chat-data-structure]]))
 
 (comment
   ;; generate some history
@@ -172,3 +173,31 @@
                                             false
                                             correlation-id))
       => nil))))
+
+(facts
+ "about ->handled-expr-results"
+ (fact
+  "it will return a collection that signifies a timeout was reached during
+   the processing of a message, when the results arg is not truthy"
+  (:timeout? (first (h/->handled-expr-results nil nil))) => true)
+ 
+ (fact
+  "it will return the results when the results arg evaluates to something
+   truthy"
+  (h/->handled-expr-results nil true) => true))
+
+(facts
+ "about dispatch-command-response"
+ (fact
+  "it will take a valid and successful result and pass it to be formatted
+   and send to chat adapter"
+  (h/dispatch-command-response {:embedded? false
+                                :error? false
+                                :result :myresult}) => :didsend
+  (provided (chat-data-structure :myresult) => :didsend))
+ 
+ (fact
+  "it will take a non-successful command response, log it, and return nil"
+  (h/dispatch-command-response {:embedded? true
+                                :error? true
+                                :result :myresult}) => nil))
