@@ -6,7 +6,7 @@
     [taoensso.timbre.appenders.core :refer [println-appender]]
     [taoensso.timbre
      :as timbre
-     :refer [trace debug info warn error fatal spy with-log-level]]))
+     :refer [info]]))
 
 (s/def ::log-level-config string?)
 
@@ -30,9 +30,11 @@
 
 (s/def ::log-file-path string?)
 
-(def log-path-config
+(def default-log-path "/var/log/yetibot/yetibot.log")
+
+(defn log-path-config []
   (or (:value (get-config ::log-file-path [:log :path]))
-      "/var/log/yetibot/yetibot.log"))
+      default-log-path))
 
 (defn start []
   (info "Setting log level to" (log-level))
@@ -44,5 +46,5 @@
       ;; rolling log files
       :rolling-appender (rolling-appender
                           {:enabled? (rolling-appender-enabled?)
-                           :path log-path-config
+                           :path (log-path-config)
                            :pattern :daily})}}))
