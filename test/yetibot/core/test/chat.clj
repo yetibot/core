@@ -1,5 +1,5 @@
 (ns yetibot.core.test.chat
-  (:require [midje.sweet :refer [facts fact => =not=> provided]]
+  (:require [midje.sweet :refer [facts fact => =not=> provided as-checker]]
             [clojure.string :as s]
             [yetibot.core.chat :as c]))
 
@@ -89,3 +89,19 @@
   (provided (c/all-channels) => [[nil nil nil]
                                  [nil nil {"broadcast" "true"}]
                                  [nil nil {"broadcast" "false"}]])))
+
+(facts
+ "about send-msg-for-each"
+ (fact
+  "it will send a message for each item in the msg collection, assuming it
+   is less than the max allowable"
+  (c/send-msg-for-each [1]) => nil
+  (provided (c/send-msg 1) => :didsend))
+
+ (fact
+  "it will only send the max number of allowed messages in a single batch, plus
+   one to let user know messsage batch was truncated"
+  (c/send-msg-for-each (range 40)) => :sent-msg
+  (provided
+   (c/send-msg (as-checker int?)) => :sent-msg :times c/max-msg-count
+   (c/send-msg (as-checker string?)) => :sent-msg :times 1)))
