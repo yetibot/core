@@ -47,14 +47,18 @@
     :mattermost (mattermost/make-mattermost config)
     (throw (ex-info (str "Unknown adapter type " (:type config)) config))))
 
+(defn ->registerable-adapter
+  [uuid adapter-config]
+  (let [adapter-config (assoc adapter-config :name uuid)]
+    (debug "Making registerable" (pr-str adapter-config))
+    (make-adapter adapter-config)))
+
 (defn register-adapters!
   "Registers all config'ed adapters"
   []
   (run!
    (fn [[uuid adapter-config]]
-     (let [adapter-config (assoc adapter-config :name uuid)]
-       (debug "Registering" (pr-str adapter-config))
-       (a/register-adapter! uuid (make-adapter adapter-config))))
+     (a/register-adapter! uuid (->registerable-adapter uuid adapter-config)))
    (adapters-config)))
 
 (defn start-adapters!
