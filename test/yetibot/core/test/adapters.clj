@@ -1,9 +1,10 @@
 (ns yetibot.core.test.adapters
   (:require [yetibot.core.adapters :as a]
             [yetibot.core.adapters.adapter :as aa]
+            [clojure.test :refer [function?]]
             [midje.sweet :refer [=> fact facts provided anything
                                  every-checker contains just throws
-                                 with-state-changes before]]
+                                 with-state-changes before as-checker]]
             [yetibot.core.config :refer [get-config]]))
 
 (facts
@@ -61,3 +62,53 @@
     (provided (run! anything anything) => {})
     ;; prove adapter no longers exists
     (aa/active-adapters) => nil)))
+
+(facts
+ "about report-ex"
+ (fact
+  "it will run the provided function that doesn't throw an exception and
+   return its value"
+  (a/report-ex (fn [] true)
+               :valid-func) => true)
+
+ (fact
+  "it will run the provided function, catch the exception, log it and
+   return nil"
+  (a/report-ex (fn [] (throw
+                       (Exception. "i am suppose to throw an exception")))
+               :invalid-func) => nil))
+
+(facts
+ "about ->registerable-adapter"
+ (fact
+  "it will return a map containing the config info for a specific adapter,
+   which contains the name and type, as well as a predicate showing connection"
+  (let [mu :myuuid
+        ac {:type "web"}]
+    (a/->registerable-adapter mu ac)
+    => (every-checker map?
+                      not-empty
+                      (contains {:config {:name :myuuid
+                                          :type "web"}})
+                      (contains {:connected? anything})))))
+
+(facts
+ "about register-adapters!"
+ (fact
+  "it will register all adapters found by the adapter config"
+  (let [mu :myuuid
+        ac {:type "web"}]
+    (a/register-adapters!) => nil
+    (provided (a/adapters-config) => [[mu ac]]
+              (aa/register-adapter!
+               mu (a/->registerable-adapter mu ac)) => nil))))
+
+(facts
+ "about start-adapters!"
+ (fact
+  "it will attempt to register all active adapters"
+  (let [mu :im-an-adapter]
+    (a/start-adapters!) => nil
+    (provided (aa/active-adapters) => [mu]
+              (a/report-ex (as-checker function?)
+                           (aa/platform-name mu)) => :did-try))))
