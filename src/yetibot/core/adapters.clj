@@ -50,7 +50,7 @@
 (defn ->registerable-adapter
   [uuid adapter-config]
   (let [adapter-config (assoc adapter-config :name uuid)]
-    (debug "Making registerable" (pr-str adapter-config))
+    (debug "transform to registerable adapter" (pr-str adapter-config))
     (make-adapter adapter-config)))
 
 (defn register-adapters!
