@@ -146,6 +146,24 @@
         :result (str "Evaluation of `" body "` timed out after "
                      (/ expr-eval-timeout-ms 1000) " seconds.")}]))
 
+(defn ->cmd-param-map
+  "returns a parameter map related to the handling of a command"
+  [body user yetibot-user record-yetibot-response?]
+  (let [{:keys [parsed-normal-command parsed-cmds cmd?]}
+        (->parsed-message-info body)]
+    {:body body
+     :user user
+     :yetibot-user yetibot-user
+     :record-yetibot-response? record-yetibot-response?
+     :correlation-id (->correlation-id body user)
+     :parsed-normal-command parsed-normal-command
+     :parsed-cmds parsed-cmds
+     :cmd? cmd?
+     ;; the user's input was an expression (or contained embedded exprs)
+     ;; and the user is not Yetibot
+     :non-yetibot-cmd (and cmd? (not (:yetibot? user)))
+     :embedded? (not parsed-normal-command)}))
+
 (defn record-and-run-raw
   "Top level message handler.
 
