@@ -77,7 +77,7 @@
 
 (defn add-user-message-to-history
   "When the user is not Yetibot, it will add the user's messages to history"
-  [body user correlation-id]
+  [{:keys [body user correlation-id] :as _cmd-param-map}]
   (when (and user (not (:yetibot? user)))
     (let [{:keys [room uuid is-private]} interp/*chat-source*
           {:keys [cmd?]} (->parsed-message-info body)]
@@ -94,10 +94,10 @@
 (defn handle-parsed-expr
   "Top-level for already-parsed commands.
    Turns a parse tree into a string or collection result."
-  [chat-source user yetibot-user parse-tree]
+  [{:keys [user yetibot-user] :as _cmd-param-map}
+   parse-tree]
   (binding [interp/*current-user* user
-            interp/*yetibot-user* yetibot-user
-            interp/*chat-source* chat-source]
+            interp/*yetibot-user* yetibot-user]
     (transformer parse-tree)))
 
 (defn ->handled-expr-info
@@ -122,7 +122,8 @@
    from user) and response (output from Yetibot)"
   [{:keys [original-command-str formatted-response error?]
     :as _handled-expr-info}
-   yetibot-user record-yetibot-response? correlation-id]
+   {:keys [yetibot-user record-yetibot-response? correlation-id]
+    :as _cmd-param-map}]
   (let [{:keys [room uuid is-private]} interp/*chat-source*]
     (trace record-yetibot-response? "recording history" uuid room is-private
            original-command-str formatted-response)
@@ -164,6 +165,38 @@
      :non-yetibot-cmd (and cmd? (not (:yetibot? user)))
      :embedded? (not parsed-normal-command)}))
 
+(defn ->successfull-handled-expr
+  [{:keys [error? result] :as _handled-expr-info}
+   {:keys [embedded?] :as _cmd-param-map}]
+  {:embedded? embedded?
+   :error? error?
+   :result result})
+
+(defn ->unsuccessfull-handled-expr
+  [{:keys [body embedded?] :as _cmd-param-map}
+   ex]
+  (error "error handling expression:" body (format-exception-log ex))
+  {:embedded? embedded?
+   :error? true
+   :result (format exception-format ex)})
+
+(defn eval-expr-and-record-response
+  [parse-tree cmd-param-map]
+  (try
+    (let [handled-expr-info (->handled-expr-info
+                             (handle-parsed-expr
+                              cmd-param-map
+                              parse-tree)
+                             parse-tree)]
+
+      (add-bot-response-to-history handled-expr-info
+                                   cmd-param-map)
+
+      (->successfull-handled-expr handled-expr-info
+                                  cmd-param-map))
+    (catch Throwable ex
+      (->unsuccessfull-handled-expr cmd-param-map ex))))
+
 (defn record-and-run-raw
   "Top level message handler.
 
@@ -193,52 +226,20 @@
    "
   [body user yetibot-user & [{:keys [record-yetibot-response?]
                               :or {record-yetibot-response? true}}]]
-  (trace "record-and-run-raw" body record-yetibot-response?
-         interp/*chat-source*)
-  (let [correlation-id (->correlation-id body user)
-        {:keys [parsed-normal-command parsed-cmds cmd?]}
-        (->parsed-message-info body)]
-
-    (add-user-message-to-history body user correlation-id)
-
-    ;; When:
-    ;; - the user's input was an expression (or contained embedded exprs)
-    ;; - and the user is not Yetibot
-    ;; process those exprs:
-    ;; - adding them individually to history and
-    ;; - evaluating the expression
-    ;; then return the collection of results
-    (when (and cmd? (not (:yetibot? user)))
-      (let [embedded? (not parsed-normal-command)
-            [results _timeout-result]
+  (trace
+   "record-and-run-raw" body record-yetibot-response? interp/*chat-source*)
+  (let [cmd-param-map (->cmd-param-map user
+                                       body
+                                       yetibot-user
+                                       record-yetibot-response?)]
+    (add-user-message-to-history cmd-param-map)
+    (when (:non-yetibot-cmd cmd-param-map)
+      (let [[results _timeout-result]
             (alts!!
              [(go (map
                    (fn [parse-tree]
-                     (try
-                       (let [{:keys [result error?] :as handled-expr-info}
-                             (->handled-expr-info (handle-parsed-expr
-                                                   interp/*chat-source*
-                                                   user
-                                                   yetibot-user
-                                                   parse-tree)
-                                                  parse-tree)]
-
-                         (add-bot-response-to-history handled-expr-info
-                                                      yetibot-user
-                                                      record-yetibot-response?
-                                                      correlation-id)
-
-                         ;; don't report errors on embedded commands
-                         {:embedded? embedded?
-                          :error? error?
-                          :result result})
-                       (catch Throwable ex
-                         (error "error handling expression:" body
-                                (format-exception-log ex))
-                         {:embedded? embedded?
-                          :error? true
-                          :result (format exception-format ex)})))
-                   parsed-cmds))
+                     (eval-expr-and-record-response parse-tree cmd-param-map))
+                   (:parsed-cmds cmd-param-map)))
               (timeout expr-eval-timeout-ms)])]
         (->handled-expr-results body results)))))
 
