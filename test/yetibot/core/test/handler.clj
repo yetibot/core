@@ -1,10 +1,12 @@
 (ns yetibot.core.test.handler
   (:require
-   [midje.sweet :refer [facts fact => =not=> contains provided every-checker]]
+   [midje.sweet :refer [facts fact => =not=> contains
+                        provided every-checker anything]]
    [yetibot.core.handler :as h]
    [clojure.string :as s]
    [yetibot.core.interpreter :as i]
    [yetibot.core.commands.echo]
+   [yetibot.core.config :refer [get-config]]
    [yetibot.core.chat :refer [chat-data-structure]]))
 
 (comment
@@ -249,3 +251,58 @@
     (:embedded? hdl-expr) => embedded?
     (:error? hdl-expr) => true
     (:result hdl-expr) => (contains ex-text))))
+
+(facts
+ "about eval-expr-and-record-response"
+ (fact
+  "it will evaluate a valid expression, record it in the DB, and return a
+   success response"
+  (let [body "!echo hello"
+        user {:id 123 :username "greg" :yetibot? false}
+        yb-user {:id 456 :username "yetibot" :yetibot? true}
+        cmd-param-map (h/->cmd-param-map body user yb-user true)
+        {:keys [parsed-cmds]}
+        (h/->parsed-message-info body)
+        parsed-cmd (first parsed-cmds)]
+    (h/eval-expr-and-record-response parsed-cmd cmd-param-map)
+    => {:embedded? false :error? false :result "hello"}))
+
+ (fact
+  "it will catch an exception from bad params and return an unsuccessful
+   result map"
+  (let [evaled-expr (h/eval-expr-and-record-response [nil] nil)]
+    evaled-expr => (contains {:embedded? nil
+                              :error? true})
+    (:result evaled-expr) => (contains "No matching clause"))))
+
+(facts
+ "about embedded-enabled?"
+ (fact
+  "it will return true when config is 'true', or really anything other than
+   'false'; even blank is true"
+  (h/embedded-enabled?) => true
+  (provided (get-config anything anything)
+            => {:value "true"})
+
+  (h/embedded-enabled?) => true
+  (provided (get-config anything anything)
+            => {:value "somevalue"})
+
+  (h/embedded-enabled?) => true
+  (provided (get-config anything anything)
+            => {:value ""}))
+ 
+ (fact
+  "it will return false when config value is 'false'"
+  (h/embedded-enabled?) => false
+  (provided (get-config anything anything)
+            => {:value "false"})))
+
+(facts
+ "about cmd-reader"
+ (fact
+  "it will take a variable number of args and return the result of the handled
+   unparsed expression"
+  (h/cmd-reader "echo" "hello" "world") => (contains {:value "hello world"}
+                                                     {:settings map?}
+                                                     {:data nil})))

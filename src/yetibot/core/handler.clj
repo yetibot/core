@@ -193,7 +193,7 @@
                                    cmd-param-map)
 
       (->successfully-handled-expr handled-expr-info
-                                  cmd-param-map))
+                                   cmd-param-map))
     (catch Throwable ex
       (->unsuccessfully-handled-expr cmd-param-map ex))))
 
