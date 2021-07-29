@@ -1,6 +1,6 @@
 (ns yetibot.core.test.handler
   (:require
-   [midje.sweet :refer [facts fact => =not=> contains provided]]
+   [midje.sweet :refer [facts fact => =not=> contains provided every-checker]]
    [yetibot.core.handler :as h]
    [clojure.string :as s]
    [yetibot.core.interpreter :as i]
@@ -196,3 +196,56 @@
   (h/dispatch-command-response {:embedded? true
                                 :error? true
                                 :result :myresult}) => nil))
+
+(facts
+ "about ->cmd-param-map"
+ (fact
+  "it create a detailed parameter object that can be used in related
+   handler functions"
+  (let [body "!echo hello"
+        user {:id 123 :username "greg" :yetibot? false}
+        yb-user {:id 456 :username "yetibot" :yetibot? true}
+        cmd-param-map (h/->cmd-param-map body user yb-user true)
+        {:keys [parsed-normal-command parsed-cmds cmd?]}
+        (h/->parsed-message-info body)]
+    (:user cmd-param-map) => user
+    (:yetibot-user cmd-param-map) => yb-user
+    (:record-yetibot-response? cmd-param-map) => true
+    (:non-yetibot-cmd cmd-param-map) => true
+    (:embedded? cmd-param-map) => (not parsed-normal-command)
+    (:correlation-id cmd-param-map) => (every-checker not-empty
+                                                      string?)
+    (:cmd? cmd-param-map) => cmd?
+    (:parsed-normal-command cmd-param-map) => parsed-normal-command
+    (:parsed-cmds cmd-param-map) => parsed-cmds)))
+
+(facts
+ "about ->successfully-handled-expr"
+ (fact
+  "it will return a map that contains the error, result, and embedded
+   attributes passed in from the handled expression and cmd param object"
+  (let [error? true
+        result :some-result
+        embedded? true]
+    (h/->successfully-handled-expr {:error? error? :result result}
+                                   {:embedded? embedded?})
+    => {:error? error?
+        :result result
+        :embedded? embedded?})))
+
+(facts
+ "about ->unsuccessfully-handled-expr"
+ (fact
+  "it will return a map that contains the error, result, and embedded
+   attributes passed in from the handled expression and cmd param object;
+   this specific instance will log an error since an exception was provided"
+  (let [body "i am the command body that is suppose to fail"
+        embedded? true
+        ex-text "some exception text"
+        ex (Exception. ex-text)
+        hdl-expr (h/->unsuccessfully-handled-expr {:body body
+                                                   :embedded? embedded?}
+                                                  ex)]
+    (:embedded? hdl-expr) => embedded?
+    (:error? hdl-expr) => true
+    (:result hdl-expr) => (contains ex-text))))

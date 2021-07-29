@@ -165,14 +165,14 @@
      :non-yetibot-cmd (and cmd? (not (:yetibot? user)))
      :embedded? (not parsed-normal-command)}))
 
-(defn ->successfull-handled-expr
+(defn ->successfully-handled-expr
   [{:keys [error? result] :as _handled-expr-info}
    {:keys [embedded?] :as _cmd-param-map}]
   {:embedded? embedded?
    :error? error?
    :result result})
 
-(defn ->unsuccessfull-handled-expr
+(defn ->unsuccessfully-handled-expr
   [{:keys [body embedded?] :as _cmd-param-map}
    ex]
   (error "error handling expression:" body (format-exception-log ex))
@@ -192,10 +192,10 @@
       (add-bot-response-to-history handled-expr-info
                                    cmd-param-map)
 
-      (->successfull-handled-expr handled-expr-info
+      (->successfully-handled-expr handled-expr-info
                                   cmd-param-map))
     (catch Throwable ex
-      (->unsuccessfull-handled-expr cmd-param-map ex))))
+      (->unsuccessfully-handled-expr cmd-param-map ex))))
 
 (defn record-and-run-raw
   "Top level message handler.
