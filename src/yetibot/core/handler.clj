@@ -228,8 +228,8 @@
                               :or {record-yetibot-response? true}}]]
   (trace
    "record-and-run-raw" body record-yetibot-response? interp/*chat-source*)
-  (let [cmd-param-map (->cmd-param-map user
-                                       body
+  (let [cmd-param-map (->cmd-param-map body
+                                       user
                                        yetibot-user
                                        record-yetibot-response?)]
     (add-user-message-to-history cmd-param-map)
