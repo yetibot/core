@@ -83,6 +83,10 @@
      :expr (fn [& cmds] (str "$(" (reconstruct-pipe cmds)  ")"))
      }))
 
+(comment
+  (unparse-transformer
+   [[:cmd [:words "grep" [:space " "] "minutes"]]]))
+
 (defn unparse [parse-tree]
   (let [cmds (rest parse-tree) ]
     (reconstruct-pipe (unparse-transformer cmds))))

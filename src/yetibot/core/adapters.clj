@@ -77,6 +77,7 @@
 
 (comment
   (start)
+  (stop)
 
   (a/active-adapters)
 

@@ -56,7 +56,7 @@
                     :yb-adapters-freenode-host "irc.freenode.net"
                     :yb-adapters-freenode-port "6667"
                     :yb-adapters-freenode-username "yetibot-test"}}}
-  :dependencies [[org.clojure/clojure "1.10.0"]
+  :dependencies [[org.clojure/clojure "1.10.3"]
                  [org.clojure/core.async "0.4.500"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.4.2"]
