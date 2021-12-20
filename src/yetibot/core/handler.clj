@@ -9,7 +9,8 @@
    [yetibot.core.util.command :refer [extract-command embedded-cmds]]
    [yetibot.core.interpreter :as interp]
    [yetibot.core.models.history :as h]
-   [yetibot.core.parser :refer [parse-and-eval transformer parser unparse]]
+   [yetibot.core.unparser :refer [unparse]]
+   [yetibot.core.parser :refer [parse-and-eval transformer parser]]
    [yetibot.core.util.format :refer [format-data-structure
                                      format-exception-log]]))
 

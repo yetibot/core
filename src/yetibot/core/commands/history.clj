@@ -3,7 +3,7 @@
    [yetibot.core.util.command :refer [config-prefix]]
    [yetibot.core.db.util :refer [merge-queries]]
    [clojure.tools.cli :refer [parse-opts]]
-   [taoensso.timbre :refer [debug info color-str]]
+   [taoensso.timbre :refer [debug info trace color-str]]
    [yetibot.core.models.history :as h]
    [yetibot.core.db.history :refer [query]]
    [clojure.string :refer [blank? join split]]
@@ -13,11 +13,38 @@
 
 (defn split-cmd [cmd-with-args] (split cmd-with-args #"\s"))
 
-(defn should-consume-cmd? [cmd-with-args]
+; (defn should-consume-cmd?
+;   "arg is the command ast, e.g. [:cmd [:words \"count\"]]"
+;   [[_ [_ cmd]]]
+;   (trace "should-consume-cmd?" (pr-str cmd))
+;   (consumables cmd))
+
+(defn should-consume-cmd?
+  "arg is the command nad its args, e.g.:
+   [\"count\"]
+   [\"head\" 2]"
+  [cmd-with-args]
+  (info (pr-str "should-consume-cmd?" cmd-with-args))
   (let [[cmd & _] (split-cmd cmd-with-args)]
     (consumables cmd)))
 
-(defn history-for-cmd-sequence [next-cmds extra-query]
+(defn history-for-cmd-sequence
+  "Given a command that follows `history`, e.g.:
+
+   `history | grep foo`
+
+   Look up the history for the correct command.
+
+   Note: in theory multiple commands following `history` could work, e.g.:
+
+   `history | grep foo | count`
+
+   but currently we only support a single command following `history`."
+  [next-cmds extra-query]
+  (debug "history-for-cmd-sequence"
+        (pr-str {:next-cmds next-cmds
+                 :extra-query extra-query}))
+  ;; only inspect the first `next-cmd`
   (let [[next-cmd & args] (split-cmd (first next-cmds))
         ;; only head and tail accept an integer arg
         possible-int-arg (or (when (and (not (empty? args))
@@ -126,8 +153,8 @@
    history | random - uses LIMIT 1 Postgres' ORDER_BY random()
    history | count - uses COUNT(*)"
   {:yb/cat #{:util}}
-  [{:keys [match chat-source next-cmds skip-next-n]}]
-  (info "history-cmd match" (pr-str match))
+  [{:keys [match chat-source next-cmds skip-next-n] :as cmd-map}]
+  (debug "history-cmd cmd-map" (pr-str cmd-map))
   ;; for now, only look at the first item from `next-cmds`. eventually we may
   ;; support some sort of query combinator that could calculate query for
   ;; multiple steps, like: history | head 30 | grep foo | count
@@ -144,8 +171,7 @@
       (let [;; figure out how many commands to consume
             skip-n (count (take-while should-consume-cmd? (take 1 next-cmds)))
 
-            ;; TODO remove after dev
-            _ (info "history options" (color-str :green (pr-str parsed)))
+            _ (trace "history options" (color-str :green (pr-str parsed)))
 
             ;; build up a vector of query maps using provided `options` we'll
             ;; merge these into a single map later
@@ -232,7 +258,6 @@
                 :where/args [(:until options)]}))
 
             ;; now merge the vector of maps into one single map
-
             _ (info "extra queries to merge" (pr-str extra-queries))
             extra-query (apply merge-queries extra-queries)
             _ (info "extra query" (pr-str extra-query))
@@ -259,3 +284,12 @@
 
 (cmd-hook #"history"
   _ history-cmd)
+
+(comment
+  (history-cmd {:match ""
+                :skip-next-n (atom nil)
+                :next-cmds [[:cmd [:words "grep" [:space " "] "minutes"]]]})
+
+  *e
+  )
+
