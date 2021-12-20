@@ -2,6 +2,7 @@
   "Handles evaluation of a parse tree"
   (:require
     [yetibot.core.chat :refer [suppress]]
+    [yetibot.core.unparser :refer [unparse-transformer]]
     [yetibot.core.models.default-command :refer [fallback-enabled?
                                                  configured-default-command]]
     [yetibot.core.models.channel :as channel]
@@ -44,8 +45,8 @@
 (defn pipe-cmds
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra
    :opts"
-  [evaluator acc [cmd-ast & next-cmds]]
-  (debug "pipe-cmds" *chat-source* acc cmd-ast next-cmds)
+  [evaluator acc [cmd-ast & next-cmds-ast]]
+  (debug "pipe-cmds" *chat-source* acc cmd-ast next-cmds-ast)
   (let [;; the previous accumulated value. for the first command in a series of
         ;; piped commands, preivous-value and previous-data will be empty
         {previous-value :value
@@ -56,7 +57,7 @@
                :data-collection previous-data-collection
                :settings (:settings acc)
                :skip-next-n (:skip-next-n acc)
-               :next-cmds next-cmds
+               :next-cmds (and next-cmds-ast (unparse-transformer next-cmds-ast))
                :user *current-user*
                :yetibot-user *yetibot-user*
                :chat-source *chat-source*}
