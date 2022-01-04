@@ -24,7 +24,7 @@
   "The target channel a chat should be sent to"
   nil)
 
-(defn- validate-sender
+(defn validate-sender
   "Does two things:
    - Makes sure an adapter is bound to something truthy. If not, it will try to
      look up the correct adapter using dynamic *adapter-uuid* value.

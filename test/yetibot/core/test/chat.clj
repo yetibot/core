@@ -1,7 +1,9 @@
 (ns yetibot.core.test.chat
-  (:require [midje.sweet :refer [facts fact => =not=> provided as-checker]]
+  (:require [midje.sweet :refer [facts fact => =not=> provided as-checker
+                                 throws falsey]]
             [clojure.string :as s]
-            [yetibot.core.chat :as c]))
+            [yetibot.core.chat :as c]
+            [yetibot.core.adapters.adapter :as a]))
 
 (facts
  "about contains-image-url-lines?"
@@ -25,13 +27,26 @@
 
 (facts
  "about should-send-msg-for-each?"
- (fact
-  "it will return 'true' when you pass it a legit chat data stucture and
-   a formatted message that has :newlines and URLs that contain image like
-   chars"
-  (let [data ["look at my picture"
-              "http://image.jpg"]]
-    (c/should-send-msg-for-each? data (s/join \newline data)) => true)))
+ (let [data ["look at my picture"
+             "http://image.jpg"]
+       joined-data (s/join \newline data)]
+   (fact
+    "it will return 'true' when you pass it a legit chat data stucture and
+     a formatted message that has :newlines and URLs that contain image like
+     chars"
+    (c/should-send-msg-for-each? data joined-data) => true)
+   (fact
+    "it will return falsey when the message data is not a collection"
+    (c/should-send-msg-for-each? "message" joined-data) => falsey)
+   (fact
+    "it will return falsey when the number of messages exceeds 30"
+    (c/should-send-msg-for-each? (concat data (range 30)) joined-data) => falsey)
+   (fact
+    "it will return falsey when the formatted message does NOT contain newlines"
+    (c/should-send-msg-for-each? data (s/join "" data)) => falsey)
+   (fact
+    "it will return falsey when the formatted message does NOT contain image URLs"
+    (c/should-send-msg-for-each? data "no\nimages\nhere") => falsey)))
 
 (facts
  "about suppressed-pred"
@@ -105,3 +120,28 @@
   (provided
    (c/send-msg (as-checker int?)) => :sent-msg :times c/max-msg-count
    (c/send-msg (as-checker string?)) => :sent-msg :times 1)))
+
+(facts
+ "about validate-sender"
+ (let [vs-fn (c/validate-sender #'str)]
+   (fact
+    "will return a function that when executed will throw an exception when both the
+     adapter and adapter-uuid binding is falsey"
+    (binding [c/*adapter* false
+              c/*adapter-uuid* false]
+      (vs-fn "doesn't matter") => (throws Exception)))
+   (fact
+    "will return a function that when executed with a truthy adapter binding will
+     operate on the defined msg param when it is not empty"
+    (binding [c/*adapter* true]
+      (vs-fn "return me") => "return me"))
+   (fact
+    "will return a function that when executed with a truthy adapter binding will
+     operate on a default message of 'No results' because the msg param is empty"
+    (binding [c/*adapter* true]
+      (vs-fn "") => "No results"))
+   (fact
+    "will return a function that when executed with a truthy adapter-uuid binding will
+     operate on the defined msg param when it is not empty"
+    (binding [c/*adapter-uuid* true]
+      (vs-fn "return me") => "return me"))))
