@@ -2,8 +2,7 @@
   (:require [midje.sweet :refer [facts fact => =not=> provided as-checker
                                  throws falsey]]
             [clojure.string :as s]
-            [yetibot.core.chat :as c]
-            [yetibot.core.adapters.adapter :as a]))
+            [yetibot.core.chat :as c]))
 
 (facts
  "about contains-image-url-lines?"
