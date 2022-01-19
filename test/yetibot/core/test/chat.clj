@@ -1,8 +1,9 @@
 (ns yetibot.core.test.chat
   (:require [midje.sweet :refer [facts fact => =not=> provided as-checker
-                                 throws falsey]]
+                                 throws falsey contains]]
             [clojure.string :as s]
-            [yetibot.core.chat :as c]))
+            [yetibot.core.chat :as c]
+            [yetibot.core.adapters.adapter :as a]))
 
 (facts
  "about contains-image-url-lines?"
@@ -144,3 +145,52 @@
      operate on the defined msg param when it is not empty"
     (binding [c/*adapter-uuid* true]
       (vs-fn "return me") => "return me"))))
+
+(facts
+ "about base-chat-source"
+ (fact
+  "it will return a map that contains the keywordized name of the adapter and a
+   related UUID of the instance of the adapter"
+  (c/base-chat-source) => {:adapter :name :uuid "uuid"}
+  (provided
+   (a/platform-name c/*adapter*) => "name"
+   (a/uuid c/*adapter*) => "uuid")))
+
+(facts
+ "about chat-source"
+ (fact
+  "it will get the base chat source and merge the channel param with a key
+   identifier of :room"
+  (c/chat-source "channel") => {:room "channel"}
+  (provided
+   (c/base-chat-source) => {})))
+
+(facts
+ "about broadcast"
+ (fact
+  "it will get all channels with broadcast settings, bind the channel as the
+   target, and then send a message using the related adapter and message param,
+   and return nil"
+  (c/broadcast "message") => nil
+  (provided
+   (c/channels-with-broadcast) => [["adapter" "channel" "settings"]]
+   (a/send-msg "adapter" "message") => nil)))
+
+(facts
+ "about all-channels"
+ (fact
+  "it will return an empty collection when there are no active adapters
+   and/or channels"
+  (c/all-channels) => '())
+ 
+ (fact
+  "it will will return a collection of collections that contains info about
+   active adapters, channels associated with an adapter, and a map of channel
+   settings"
+  (first (c/all-channels)) => (contains "test"
+                                        "channel1"
+                                        map?)
+  (provided
+   (a/active-adapters) => ["test"]
+   (a/channels "test") => ["channel1" "channel2"]
+   (a/uuid "test") => :testuuid)))

@@ -1,6 +1,6 @@
 (ns yetibot.core.test.parser
   (:require [midje.sweet :refer [=> fact facts]]
-            [yetibot.core.unparser :refer [unparse]
+            [yetibot.core.unparser :refer [unparse]]
             [yetibot.core.parser :refer [parser parse-and-eval]]))
 
 (facts "single commands should be parsed"
