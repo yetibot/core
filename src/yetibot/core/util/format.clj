@@ -98,10 +98,6 @@
     (let [ds (if (set? d) (seq d) d)]
       [(format-flattened ds) ds])))
 
-(defn format-data-as-string [d]
-  (let [[s _] (format-data-structure d)]
-    s))
-
 (defn to-coll-if-contains-newlines
   "Convert a String to a List if the string contains newlines. Bit of a hack but
    it lets us get out of explicitly supporting streams in every command that we

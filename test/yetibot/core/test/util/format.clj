@@ -16,7 +16,34 @@
  (fact
   "the flattened representation should not contain collections"
   (let [[_ flattened] (fmt/format-data-structure nested-list)]
-    flattened =not=> (contains coll?))))
+    flattened =not=> (contains coll?)))
+ 
+ (fact
+  "it will stringify the contents of the collection and return a tuple that
+   contains said stringification as the 1st element and the actual collection as
+   the second value
+   
+   NOTE: when the 1st element of a non-map collection is a map, it drops that 1st
+   element and performs the creation of the tuple on the rest of the collection
+   values"
+  (fmt/format-data-structure {:hello :world})
+  => ["hello: :world" {:hello :world}]
+
+  (fmt/format-data-structure {:hello :world :how :ru})
+  => ["hello: :world\nhow: :ru" {:hello :world :how :ru}]
+
+  (fmt/format-data-structure [:hello :world :how :ru])
+  => [":hello\n:world\n:how\n:ru" [:hello :world :how :ru]]
+
+  (fmt/format-data-structure {{:hello :world} :howru :ihope :well})
+  => ["{:hello :world}: :howru\nihope: :well" {:ihope :well {:hello :world} :howru}]
+
+  (fmt/format-data-structure #{1 {:hello :world}})
+  => ["1\n{:hello :world}" '(1 {:hello :world})]
+
+  ;; this is what the NOTE is about .. on purpose ??
+  (fmt/format-data-structure [{:hello :world} {:how :ru}])
+  => ["how: :ru" {:how :ru}]))
 
 (facts
  "about format-n"
@@ -124,3 +151,10 @@
   "returns arg when no new lines are present"
   (fmt/to-coll-if-contains-newlines "123") => "123"
   (fmt/to-coll-if-contains-newlines 123) => 123))
+
+(facts
+ "about format-exception-log"
+ (fact
+  "it will .."
+  (fmt/format-exception-log (Exception. "hello world"))
+  => #"(?is)Exception.+hello world.+format\.clj"))
