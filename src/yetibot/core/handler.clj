@@ -271,5 +271,3 @@
           (run!
            dispatch-command-response
            expr-results))))))
-
-(defn cmd-reader [& args] (handle-unparsed-expr (join " " args)))
