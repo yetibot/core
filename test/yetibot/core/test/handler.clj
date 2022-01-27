@@ -5,7 +5,8 @@
    [clojure.string :as s]
    [yetibot.core.interpreter :as i]
    [yetibot.core.commands.echo]
-   [yetibot.core.chat :refer [chat-data-structure]]))
+   [yetibot.core.chat :refer [chat-data-structure *adapter*]]
+   [clojure.core.async :refer [<!!]]))
 
 (comment
   ;; generate some history
@@ -201,3 +202,28 @@
   (h/dispatch-command-response {:embedded? true
                                 :error? true
                                 :result :myresult}) => nil))
+
+(facts
+ "about handle-raw"
+ (fact
+  "it will run the raw command because it is a message and returns a successful,
+   non-embedded result of the command and then dispatch the command response ..
+   the related go channel always returns nil because of its use of (run!) <<
+   maybe return result to make more testable ??"
+  (let [cs {:adapter :slack
+            :uuid :test
+            :room "#C123"}
+        user {:id 123 :username "greg" :yetibot? false}
+        yb-user {:id 456 :username "yetibot" :yetibot? true}
+        event-type :message
+        body "!echo hello"]
+    (binding [*adapter* (:adapter cs)]
+      (<!! (h/handle-raw cs user event-type yb-user {:body body}))
+      => nil
+      (provided (h/dispatch-command-response
+                 {:embedded? false, :error? false, :result "hello"})
+                => :diddispatch))))
+ 
+ (fact
+  "it will always do nothing and return nil when the event type is not a message"
+  (h/handle-raw nil nil :not-a-message nil {:body "some"}) => nil))
