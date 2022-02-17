@@ -194,3 +194,30 @@
    (a/active-adapters) => ["test"]
    (a/channels "test") => ["channel1" "channel2"]
    (a/uuid "test") => :testuuid)))
+
+(facts
+ "about chat-data-structure"
+ (fact
+  "it will send a message using the `send-msg` function provided by the adapter
+   because it is not a collection nor have new lines .. simple send 1 msg"
+  (binding [c/*adapter* "web"]
+    (c/chat-data-structure {:hello :world})) => :sent-msg
+  (provided (a/send-msg "web" "hello: :world") => :sent-msg))
+
+ (fact
+  "it will send a paste message using the `send-paste` function provided by the
+   adapter because it detected a new line the data struct"
+  (binding [c/*adapter* "web"]
+    (c/chat-data-structure {:hello "world\nhowru"})) => :sent-paste
+  (provided (a/send-paste "web" "hello: world\nhowru") => :sent-paste))
+
+ (fact
+  "it will do nothing and return nil because the arg has been suppressed"
+  (c/chat-data-structure (c/suppress {:do :nothing})) => nil)
+
+ (fact
+  "it will send a message using the `send-msg-for-each` function because
+   it meets the conditions of: 1) is coll?, 2) has newlines, 3) has image"
+  (let [msg ["line\nbreak" "https://abc.com/image.png"]]
+    (c/chat-data-structure msg) => :send-for-each
+    (provided (c/send-msg-for-each msg) => :send-for-each))))
