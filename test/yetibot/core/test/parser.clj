@@ -1,7 +1,9 @@
 (ns yetibot.core.test.parser
   (:require [midje.sweet :refer [=> fact facts]]
             [yetibot.core.unparser :refer [unparse]]
-            [yetibot.core.parser :refer [parser parse-and-eval]]))
+            [yetibot.core.parser :refer [parser parse-and-eval]]
+            yetibot.core.test.db
+            [yetibot.core.loader :refer [load-ns]]))
 
 (facts "single commands should be parsed"
   (parser "uptime") => [:expr [:cmd [:words "uptime"]]]
@@ -226,11 +228,13 @@
  "about parse-and-eval"
  (fact
   "Commands can be piped in succession"
+  (load-ns 'yetibot.core.commands.echo)
   (:value (parse-and-eval "echo there | echo `echo hi`")) =>
   "hi there")
 
  (fact
   "Commands with data work as expected"
+  (load-ns 'yetibot.core.commands.category)
   (:data (parse-and-eval "category names")) =>
   {:async "commands that execute asynchronously"
    :broken
@@ -254,6 +258,9 @@
  (fact
   "Sub expressions can access the data propagated from the previous pipe"
  ;;
+  (load-ns 'yetibot.core.commands.category)
+  (load-ns 'yetibot.core.commands.echo)
+  (load-ns 'yetibot.core.commands.render)
   (:value (parse-and-eval
            "category names | echo async: `render {{async}}`")) =>
   "async: commands that execute asynchronously"
@@ -265,4 +272,5 @@
 
  (fact
   "Commands with literals can be transformed"
+  (load-ns 'yetibot.core.commands.echo)
   (:value (parse-and-eval "echo \"hi\"")) => "\"hi\""))
