@@ -279,7 +279,7 @@
 (facts
  "about transformer"
  (fact
-  "it will return itself unevaludated, if it is not a vector"
+  "it will return itself unevaluated, if it is not a vector"
   (transformer nil) => nil)
 
  (fact
