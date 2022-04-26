@@ -1,9 +1,10 @@
 (ns yetibot.core.test.parser
-  (:require [midje.sweet :refer [=> fact facts throws]]
+  (:require [midje.sweet :refer [=> fact facts throws provided]]
             [yetibot.core.unparser :refer [unparse]]
             [yetibot.core.parser :refer [parser parse-and-eval transformer]]
             yetibot.core.test.db
-            [yetibot.core.loader :refer [load-ns]]))
+            [yetibot.core.loader :refer [load-ns]]
+            [yetibot.core.interpreter :refer [handle-expr]]))
 
 (facts "single commands should be parsed"
   (parser "uptime") => [:expr [:cmd [:words "uptime"]]]
@@ -303,4 +304,20 @@
  (fact
   "it will transform nested tags and return the string/join equivalent of
    the tags 'literal' node's value"
-  (transformer [:cmd [:words "foo" [:space " "] "bar"]]) => "foo bar"))
+  (transformer [:cmd [:words "foo" [:space " "] "bar"]]) => "foo bar")
+
+ (fact
+  "it will return the error key from the results of a handled sub expression
+   if one is present"
+  (transformer [:sub-expr
+                [:expr [:cmd [:words "echo" [:space " "] "foo"]]]]) => :i-am-truthy-error
+  (provided (handle-expr #'transformer '([:cmd [:words "echo" [:space " "] "foo"]])) => {:error :i-am-truthy-error
+                                                                                         :value :dontmatter}))
+
+ (fact
+  "it will return the value key from the results of a handled sub expression
+   if one is present AND there is no truthy error key"
+  (transformer [:sub-expr
+                [:expr [:cmd [:words "echo" [:space " "] "foo"]]]]) => :i-am-truthy-value
+  (provided (handle-expr #'transformer '([:cmd [:words "echo" [:space " "] "foo"]])) => {:error false
+                                                                                         :value :i-am-truthy-value})))
