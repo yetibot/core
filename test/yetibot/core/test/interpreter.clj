@@ -3,16 +3,15 @@
    [yetibot.core.interpreter :as i]
    [yetibot.core.models.default-command :refer [fallback-enabled?
                                                 configured-default-command]]
-   [yetibot.core.commands.help]
-   [yetibot.core.commands.echo]
-   [yetibot.core.parser]
+   yetibot.core.parser
+   yetibot.core.test.db
+   yetibot.core.commands.help
+   yetibot.core.commands.echo
    [midje.sweet :refer [=> provided contains against-background
-                        fact facts every-checker anything]]
-   [yetibot.core.loader :as ldr]))
+                        fact facts every-checker anything]]))
 
 (facts
  "about handle-cmd"
- (ldr/load-commands)
  (fact
   "handles legit echo command and returns command args"
   (i/handle-cmd "echo hello world" {}) => "hello world")
@@ -28,7 +27,6 @@
  (fact
   "non-legit command is picked up by the help command when it is loaded and
    returns some doc-strings for the help command."
-  (require 'yetibot.core.commands.help :reload)
   ;; forcing the help command to be the config'ed def cmd
   (against-background (configured-default-command) => "help")
   (let [cmd-result (i/handle-cmd "somerandom command" {})]
@@ -40,7 +38,6 @@
  (fact
   "legit echo command is issued incorrectly (echop); handle-cmd sees there is a legit
    similar command and throws it into the help command and gets back echo doc-string"
-  (require 'yetibot.core.commands.help :reload)
   (against-background (configured-default-command) => "help")
   (let [cmd-result (i/handle-cmd "echop" {})]
     cmd-result => coll?
