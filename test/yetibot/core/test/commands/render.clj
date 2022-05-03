@@ -2,7 +2,9 @@
   (:require [midje.sweet :refer [=> fact]]
             [yetibot.core.hooks :refer [cmd-hook]]
             [yetibot.core.midje :refer [error value]]
-            [yetibot.core.loader :as ldr]
+            yetibot.core.commands.render
+            yetibot.core.commands.collections
+            yetibot.core.commands.error
             [yetibot.core.util.command-info :refer [command-execution-info]]))
 
 (def execution-opts {:run-command? true
@@ -109,7 +111,6 @@
 
 (fact
  "errors are propagated in yetibot selmer filters"
- (ldr/load-commands)
  (:result
   (command-execution-info
    "render Score {{score}} - {{zip|yetibot:error}}"
