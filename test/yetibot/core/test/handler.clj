@@ -4,7 +4,8 @@
    [yetibot.core.handler :as h]
    [clojure.string :as s]
    [yetibot.core.interpreter :as i]
-   [yetibot.core.commands.echo]
+   yetibot.core.test.db
+   yetibot.core.commands.echo
    [yetibot.core.chat :refer [chat-data-structure *adapter*]]
    [clojure.core.async :refer [<!!]]))
 
@@ -22,7 +23,6 @@
 
 (fact
  "Newlines are preserved in command handling"
- ;;  (ldr/load-commands)
  (:value (h/handle-unparsed-expr (str "echo " multiline-str))) => multiline-str)
 
 (facts
