@@ -1,6 +1,7 @@
 (ns yetibot.core.test.chat
   (:require [midje.sweet :refer [facts fact => =not=> provided as-checker
                                  throws falsey contains]]
+            yetibot.core.test.db
             [clojure.string :as s]
             [yetibot.core.chat :as c]
             [yetibot.core.adapters.adapter :as a]))
