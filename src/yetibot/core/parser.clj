@@ -47,15 +47,15 @@
           head (first nodes)]
       ;; handle the AST nodes adcording to the type of tag
       (condp = tag
-        :cmd (apply str (map transformer nodes))
+        :cmd (join (map transformer nodes))
         ;; this is where the magic happens ✨
         ;; eval cmds in order of left to right (lazily)
         ;; piping the result of one to the next
         :expr (handle-expr #'transformer nodes)
         :words (join (map transformer nodes))
-        :space (apply str nodes)
-        :parened (apply str nodes)
-        :literal (apply str nodes)
+        :space (join nodes)
+        :parened (join nodes)
+        :literal (join nodes)
         :sub-expr (let [{:keys [value error] :as evaled}
                         (transformer head)]
                     ;; extract either the error or the value out of the sub-expr
