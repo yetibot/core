@@ -101,6 +101,15 @@
   (a/platform-name (first (a/active-adapters)))
   (a/platform-name (last (a/active-adapters)))
 
+  (def slack-adapter (last (a/active-adapters)))
+  (a/stop slack-adapter)
+
+  (def users (slack/fetch-users (:config slack-adapter)))
+  (count users)
+  (first users)
+
+  (slack/slack-config (:config slack-adapter))
+
   (a/stop (first (a/active-adapters)))
   (register-adapters!)
   (adapters-config))

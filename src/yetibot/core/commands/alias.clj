@@ -101,7 +101,8 @@
 (defn list-aliases
   "alias # show existing aliases"
   {:yb/cat #{:util}}
-  [_]
+  [{:keys [user]}]
+  (info "list-aliases" {:user user})
   (let [as (model/find-all)]
     (if (empty? as)
       {:result/error "No aliases have been defined"}

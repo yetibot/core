@@ -54,7 +54,8 @@
 
 (defn add-user-without-channel
   "Added for Slack, where we might know about users but don't know the channels
-   that they are in because yetibot is not in those channels."
+   that they are in because yetibot is not in those channels or we just don't
+   have that data available."
   [adapter {:keys [id] :as user}]
   (let [user-key {:adapter adapter :id id}]
     (swap! users assoc user-key user)))
@@ -92,6 +93,11 @@
   (let [user-key {:adapter (:adapter chat-source) :id id}]
     (swap! users update-in [user-key :channels] conj chat-source)))
 
+(defn get-all-users
+  "Returns a list of all users"
+  []
+  (vals @users))
+
 (defn get-users
   "Returns users for a given chat source"
   [source]
@@ -110,26 +116,7 @@
         patt (re-pattern (str "(?i)" name))]
     (some (fn [[_k v]] (when (re-find patt (or (:name v) "")) v)) us)))
 
-; (def campfire-date-pattern "yyyy/MM/dd HH:mm:ss Z")
-; (def date-formatter (doto (new SimpleDateFormat campfire-date-pattern) (.setTimeZone (java.util.TimeZone/getTimeZone "GreenwichEtc"))))
-
-; (defn get-refreshed-user
-;   "Returns an already existing user from the atom if available, otherwise a new user with a last_active timestamp"
-;   [user]
-;   (let [id (:id user)]
-;     ))
-
-    ; (get @users id (assoc user :last_active (.format date-formatter (new Date))))))
-
-; (defn get-user-ms [user] (.getTime (.parse date-formatter (:last_active user))))
-
 (defn is-active? [user] (:active? user))
-
-  ; (if (contains? user :last_active)
-  ;   (let [current-ms (.getTime (new Date))
-  ;         ms-since-active (- current-ms (get-user-ms user))]
-  ;     (< ms-since-active active-threshold-milliseconds))
-  ;   false))
 
 (defn is-yetibot? [_user] false)
 

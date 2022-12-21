@@ -144,37 +144,46 @@
    it for now. Replaces <X|Y> with Y.
 
    Secondly, as of 2017ish first half, Slack started mysteriously encoding
-   @here and @channel as <!here> and <!channel>. Wat. DECODE THAT NOISE.
+   @here and @channel as <!here> and <!channel>. Wat.
 
    <!here> becomes @here
    <!channel> becomes @channel
+   <!subteam^S03> becomes @S03 (which isn't helpful - we'd have to look up the
+                                subteam to get the friendly name)
 
    Why are you gross, Slack"
   [body]
   (-> body
-    (string/replace  #"\<\!(here|channel)\>" "@$1")
+    (string/replace  #"\<\!(.+)\>" "@$1")
     (string/replace #"\<(.+)\|(\S+)\>" "$2")
     (string/replace #"\<(\S+)>" "$1")
     html-decode))
+
+(comment
+  (unencode-message "<!subteam^S04FJDES3H6>")
+  )
 
 (defn entity-with-name-by-id
   "Takes a message event and translates a channel ID, group ID, or user id from
    a direct message (e.g. 'C12312', 'G123123', 'D123123') into a [name entity]
    pair. Channels have a # prefix"
   [config event]
+  (info "entity-with-name-by-id" (pr-str {:event event}))
   (let [sc (slack-config config)
         chan-id (:channel event)]
     (condp = (first chan-id)
       ;; direct message - lookup the user
       \D (let [e (:user (slack-users/info sc (:user event)))]
            [(:name e) e])
-      ;; channel
-      \C (let [e (:channel (channels/info sc chan-id))]
-           [(str "#" (:name e)) e])
-      ;; group
-      \G (let [e (:group (groups/info sc chan-id))]
-           [(:name e) e])
-      (throw (ex-info "unknown entity type" event)))))
+      ;; channel, group or anything else, lookup the converstaion
+      (let [e (:channel (conversations/info sc chan-id))]
+           [(str "#" (:name e)) e]))))
+
+(defn fetch-users [config]
+  (let [sc (slack-config config)]
+    (->> (slack-users/list sc)
+         :members
+         (filter #(not (:deleted %))))))
 
 ;; events
 
@@ -241,6 +250,7 @@
   (info "on-message" (color-str :blue (pr-str event)))
   ;; allow bot_message events to be treated as normal messages
   (if (and (not= "bot_message" subtype) subtype)
+    ; handle subtypes
     (do
       (info "event subtype" subtype)
       ; handle the subtype
@@ -252,16 +262,19 @@
         "message_changed" (on-message-changed event conn config)
         ; do nothing if we don't understand
         (info "Don't know how to handle message subtype" subtype)))
+
+    ; handle normal messages
     (let [[chan-name entity] (entity-with-name-by-id config event)
-          {:keys [is_channel]} entity
           ;; _ (info "channel entity:" (pr-str entity))
           ;; _ (info "event entity:" (color-str :red (pr-str event)))
           ;; TODO we probably need to switch to chan-id when building the
           ;; Slack chat-source since they are moving away from being able to
           ;; use user names as IDs
           cs (assoc (chat-source chan-name)
-                    :is-private (not (boolean is_channel)))
-          ;; _ (info "chat source" (color-str :green (pr-str cs)))
+                    :is-private (:is_private entity))
+          _ (info "chat source"
+                  (color-str :green (pr-str {:entity entity
+                                             :chat-source cs})))
           yetibot-user (find-yetibot-user conn cs)
           yetibot-uid (:id yetibot-user)
           yetibot? (= yetibot-uid (:user event))
@@ -284,6 +297,7 @@
                      ;; allow chatters (like obs) to optionally reply in-thread
                      ;; by propagating the thread-ts
                      :thread-ts (or thread-ts ts)})))))
+
 
 (defn on-reaction-added
   "reaction related to when a user adds an emoji to an item:
@@ -443,33 +457,23 @@
 (defn filter-chans-or-grps-containing-user [user-id chans-or-grps]
   (filter #((-> % :members set) user-id) chans-or-grps))
 
-(defn reset-users-from-conn [conn]
-  (let [groups (-> @conn :start :groups)
-        channels (-> @conn :start :channels)
-        users (-> @conn :start :users)]
-    (debug (timbre/color-str :blue "reset-users-from-conn")
-           (pr-str (count users)))
-    (run!
-      (fn [{:keys [id] :as user}]
-        (let [filter-for-user (partial filter-chans-or-grps-containing-user id)
-              ; determine which channels and groups the user is in
-              chans-or-grps-for-user (concat (filter-for-user channels)
-                                             (filter-for-user groups))
-              active? (= "active" (:presence user))
-              ; turn the list of chans-or-grps-for-user into a list of chat sources
-              chat-sources (set (map (comp chat-source chan-or-group-name)
-                                     chans-or-grps-for-user))
-              ; create a user model
-              user-model (users/create-user
-                           (:name user) active?
-                           (assoc user :mention-name
-                                  (str "<@" (:id user) ">")))]
-          (if (empty? chat-sources)
-            (users/add-user-without-channel
-              (:adapter (base-chat-source)) user-model)
-            ;; for each chat source add a user individually
-            (run! (fn [cs] (users/add-user cs user-model)) chat-sources))))
-      users)))
+(defn reset-users
+  "Previously we tried to capture which channels/groups each user was in. We no
+  longer have that data from Slack on startup, so just store the users
+  themselves without any channels/groups."
+  [users]
+  (run!
+    (fn [user]
+      (let [user-id (:id user)
+            username (:name user)
+            mention-name (str "<@" (:id user) ">")
+            user-model (users/create-user
+                         username
+                         (assoc user :mention-name mention-name))]
+        (users/add-user-without-channel
+          (:adapter (base-chat-source))
+          user-model)))
+    users))
 
 ;; lifecycle
 
@@ -483,7 +487,7 @@
 
 (defn restart
   "conn is a reference to an atom.
-   config is a map"
+  config is a map"
   [{:keys [conn config] :as adapter}]
   (reset! conn (slack/start (slack-config config)
                             :on-connect (partial #'on-connect adapter)
@@ -500,7 +504,9 @@
                             :pong (partial #'on-pong adapter)
                             :hello on-hello))
   (info "Slack (re)connected as Yetibot with id" (:id (self conn)))
-  (reset-users-from-conn conn))
+  (let [users (fetch-users (slack-config config))]
+    (info "Resetting users:" (pr-str (count users)))
+    (reset-users users)))
 
 (defn start
   "start the slack connection service"
