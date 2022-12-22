@@ -155,7 +155,7 @@
                  [ring-logger-timbre "0.7.6"]
                  [ring.middleware.conditional "0.2.0"]
                  [ring-cors "0.1.13"]
-                 [nrepl "0.6.0"]
+                 [nrepl "1.0.0"]
                  [http-kit "2.3.0"]
                  [ring/ring-defaults "0.3.2"]
                  [ring/ring-session-timeout "0.2.0"]
