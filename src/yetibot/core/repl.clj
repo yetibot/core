@@ -4,7 +4,6 @@
     [yetibot.core.init :as init]
     [yetibot.core.chat :as chat]
     [clojure.stacktrace :refer [print-stack-trace]]
-    [punk.adapter.jvm :as paj]
     [yetibot.core.db :as db]
     [yetibot.core.logging :as logging] ; enable logging to file
     [yetibot.core.models.users :as users]
@@ -38,7 +37,6 @@
 (defn start
   "Load a minimal set of commands, start the database and connect to chat adapters"
   []
-  (paj/start)
   (logging/start)
   (monitoring/start)
   (init/start-nrepl!)
@@ -51,12 +49,10 @@
 (defn start-offline
   "Offline repl-driven dev mode"
   []
-  (paj/start)
   (logging/start)
   (load-minimal-with-db))
 
 (defn stop []
-  (paj/stop)
   (init/stop-nrepl!)
   (adapters/stop)
   (monitoring/stop))
