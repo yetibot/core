@@ -5,6 +5,7 @@
             [yetibot.core.handler :refer [handle-raw]]
             [clj-slack
              [channels :as channels]
+             [conversations :as conversations]
              [users :as slack-users]
              [groups :as groups]
              [reactions :as reactions]
@@ -95,8 +96,9 @@
    pair where channel has leading # attached"
   (slack/entity-with-name-by-id anything {:channel "C123"})
   => ["#channel123" {:name "channel123"}]
-  (provided (slack/slack-config anything) => anything
-            (channels/info anything anything) => {:channel {:name "channel123"}}))
+  (provided (slack/slack-config anything) => {:token "iamtoken"
+                                              :api-url "https://slack.com/api"}
+            (conversations/info anything anything) => {:channel {:name "channel123"}}))
  (fact
   "assuming direct message ID D123 has user name of 'user123', returns expected
    [name entity] pair with no mods"
@@ -108,13 +110,9 @@
   "assuming group message ID G123 has group name of 'group123', returns expected
    [name entity] pair with no mods"
   (slack/entity-with-name-by-id anything {:channel "G123"})
-  => ["group123" {:name "group123"}]
+  => ["#group123" {:name "group123"}]
   (provided (slack/slack-config anything) => anything
-            (groups/info anything anything) => {:group {:name "group123"}}))
- (fact
-  "assuming non-identifiable ID F123, throws an exception"
-  (slack/entity-with-name-by-id anything {:channel "F123"}) => (throws Exception)
-  (provided (slack/slack-config anything) => anything)))
+            (conversations/info anything anything) => {:channel {:name "group123"}})))
 
 (facts
  "about filter-chans-or-grps-containing-user"
