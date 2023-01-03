@@ -17,7 +17,7 @@
 (defn show-all-users
   "users all # list all users"
   {:yb/cat #{:util}}
-  []
+  [_]
   (log/info "show all users")
   (let [users (users/get-all-users)]
     {:result/value (map :mention-name users)
