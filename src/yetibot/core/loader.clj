@@ -129,8 +129,12 @@
        (fn [[_ {:keys [artifact version] :as plugin}]]
          (debug "Loading plugin" (pr-str plugin)
                 \newline
-                (add-dependencies :coordinates [[(symbol artifact) version]]
-                                  :repositories default-repositories)))
+                (try
+                  (add-dependencies :coordinates [[(symbol artifact) version]]
+                                    :repositories default-repositories)
+                  (catch Exception e
+                         (warn "Error loading plugin" (pr-str plugin)
+                               (.getMessage e))))))
        plugins)
       (info "There are no plugins configured to load"))))
 

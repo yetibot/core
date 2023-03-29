@@ -71,7 +71,7 @@
                  [clojure-interop/java.nio "1.0.5"]
 
                  ; dynamic module loading
-                 [clj-commons/pomegranate "1.2.0"]
+                 [clj-commons/pomegranate "1.2.23"]
 
                  ; DurationFormatUtils for uptime
                  [org.apache.commons/commons-lang3 "3.9"]
