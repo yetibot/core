@@ -142,7 +142,7 @@
                  [robert/bruce "0.8.0"]
                  ;; TODO remove com.cemerick/url in favor of lambdaisland/uri
                  [com.cemerick/url "0.1.1"]
-                 [lambdaisland/uri "1.2.1"]
+                 [lambdaisland/uri "1.15.125"]
                  ;; [io.aviso/pretty "0.1.34"] ; pretty stacktraces
 
                  ;monitoring
