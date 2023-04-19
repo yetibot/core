@@ -1,7 +1,8 @@
 (ns yetibot.core.util
   (:require
-    [clojure.string :as s]
-    [cemerick.url :refer [url]]))
+   [clojure.string :as s]
+   [lambdaisland.uri :refer [uri query-map]]
+   [taoensso.timbre :refer [info]]))
 
 (defn filter-nil-vals
   "Takes a map and returns all of its non-nil values"
@@ -132,25 +133,25 @@
 
 (defn image?
   "Simple utility to detect if a URL represents an image purely by looking at
-   the file extension (i.e. not too smart)."
+  the file extension (i.e. not too smart)."
   [possible-url]
   (try
-    (let [{:keys [query path]} (url possible-url)]
+    (let [{:keys [path]} (uri possible-url)
+          query (query-map possible-url)]
+      (prn {:query query :path path})
       (or
        (re-find image-pattern path)
        ; some platforms like slack embed the url in a query param, e.g.
        ; https://slack-imgs.com/?c=1&o1=ro&url=https%3A%2F%2Fi.imgflip.com%2F7infdj.jpg
-       (re-find image-pattern (get query "url"))
-        ; we indicate images from Wolfram are jpgs by tossing a &t=.jpg on it
-       (= ".jpg" (get query "t"))))
-    (catch Exception _
-      false)))
+       (re-find image-pattern (or (:url query) ""))
+       ; we indicate images from Wolfram are jpgs by tossing a &t=.jpg on it
+       (= ".jpg" (:t query))))
+    (catch Exception e
+      (do
+        (info "Failed to parse possible image URL:" possible-url e)
+        false))))
 
 (comment
-  (-> (url "https://slack-imgs.com/?c=1&o1=ro&url=https%3A%2F%2Fi.imgflip.com%2F7infdj.jpg")
-      :query
-      (get "url"))
   (image? "https://i.imgflip.com/2v045r.jpg")
   (image? "https://i.imgflip.com/2v045r.jpg?foo=bar")
-  (image? "http://www5b.wolframalpha.com/Calculate/MSP/MSP6921ei892gfhh9i9649000058fg83ii266d342i?MSPStoreType=image/gif&s=46&t=.jpg")
-  )
+  (image? "https://www6b3.wolframalpha.com/Calculate/MSP/MSP910019f0hg0cd56717360000651930h50d32cehf?MSPStoreType=image/gif&s=18"))
