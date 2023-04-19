@@ -137,13 +137,19 @@
   (try
     (let [{:keys [query path]} (url possible-url)]
       (or
-        (re-find image-pattern path)
-        ;; we indicate images from Wolfram are jpgs by tossing a &t=.jpg on it
-        (= ".jpg" (get query "t"))))
+       (re-find image-pattern path)
+       ; some platforms like slack embed the url in a query param, e.g.
+       ; https://slack-imgs.com/?c=1&o1=ro&url=https%3A%2F%2Fi.imgflip.com%2F7infdj.jpg
+       (re-find image-pattern (get query "url"))
+        ; we indicate images from Wolfram are jpgs by tossing a &t=.jpg on it
+       (= ".jpg" (get query "t"))))
     (catch Exception _
       false)))
 
 (comment
+  (-> (url "https://slack-imgs.com/?c=1&o1=ro&url=https%3A%2F%2Fi.imgflip.com%2F7infdj.jpg")
+      :query
+      (get "url"))
   (image? "https://i.imgflip.com/2v045r.jpg")
   (image? "https://i.imgflip.com/2v045r.jpg?foo=bar")
   (image? "http://www5b.wolframalpha.com/Calculate/MSP/MSP6921ei892gfhh9i9649000058fg83ii266d342i?MSPStoreType=image/gif&s=46&t=.jpg")

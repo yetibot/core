@@ -43,6 +43,9 @@
 (fact "Image URL with query string that indicates it's an image"
   (util/image? "http://www5b.wolframalpha.com/Calculate/MSP/MSP6921ei892gfhh9i9649000058fg83ii266d342i?MSPStoreType=image/gif&s=46&t=.jpg") => true)
 
+(fact "Image URL embedded in a query param"
+  (util/image? "https://slack-imgs.com/?c=1&o1=ro&url=https%3A%2F%2Fi.imgflip.com%2F7infdj.jpg") => [".jpg" "jpg"])
+
 (facts "URLs that are not images"
   (util/image? "https://yetibot.com") => false
   (util/image? "https://yetibot.com/jpg") => false)
