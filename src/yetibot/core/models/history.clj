@@ -34,6 +34,10 @@
     (merge-queries extra-query
                    {:limit/clause (str n)}))))
 
+(comment
+  (head 1 {})
+  )
+
 (defn tail
   [n extra-query]
   ((flatten-one n)

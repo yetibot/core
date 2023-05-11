@@ -11,7 +11,6 @@
     [yetibot.core.util.http :refer [html-decode]]
     [clj-slack
      [users :as slack-users]
-     [im :as im]
      [chat :as slack-chat]
      [channels :as channels]
      [groups :as groups]
@@ -524,19 +523,13 @@
    Retrieve history from the correct corresponding API."
   [adapter chan-id]
   (let [c (slack-config (:config adapter))]
-    (condp = (first chan-id)
-      ;; direct message - lookup the user
-      \D (im/history c chan-id)
-      ;; channel
-      \C (channels/history c chan-id)
-      ;; group
-      \G (groups/history c chan-id)
-      (throw (ex-info "unknown entity type" chan-id)))))
+    (conversations/history c chan-id)))
 
 (defn react
   "reacts to messages in a given channel for a specific adapter that are
    non-YB commands and not from the YB user"
   [adapter emoji channel]
+  (info "react" {:adapter adapter :emoji emoji :channel channel})
   (let [c (slack-config (:config adapter))
         conn (:conn adapter)
         yb-id (:id (self conn))
@@ -547,7 +540,8 @@
         msg (first non-yb-non-cmd)
         ts (:ts msg)]
     (debug "react with"
-           (pr-str {:emoji emoji :channel channel :timestamp ts}))
+           (pr-str
+            {:msg msg :emoji emoji :channel channel :timestamp ts}))
     (reactions/add c emoji {:channel channel :timestamp ts})))
 
 ;; adapter impl
