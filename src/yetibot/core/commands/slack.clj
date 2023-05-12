@@ -3,7 +3,7 @@
    [yetibot.core.adapters.adapter :as a]
    [clojure.string :as s]
    [taoensso.timbre :refer [debug info warn error]]
-    [yetibot.core.adapters.slack :as slack]
+   [yetibot.core.adapters.slack :as slack]
    [clj-slack.emoji :as emoji]
    [yetibot.core.chat :refer [*target* suppress]]
    [yetibot.core.hooks :refer [cmd-hook]]))
