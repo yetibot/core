@@ -203,22 +203,9 @@
  (fact
   "it will attempt to retrieve a group's history"
   (slack/history {:config :myadapter} "GROUPS") => :grouphistory
-  (provided (slack/slack-config :myadapter) => :mycs
-            (groups/history :mycs "GROUPS") => :grouphistory))
- (fact
-  "it will attempt to retrieve a channel's history"
-  (slack/history {:config :myadapter} "CHANNEL") => :channelhistory
-  (provided (slack/slack-config :myadapter) => :mycs
-            (channels/history :mycs "CHANNEL") => :channelhistory))
- (fact
-  "it will attempt to retrieve a direct message history"
-  (slack/history {:config :myadapter} "DIRECT") => :directhistory
-  (provided (slack/slack-config :myadapter) => :mycs
-            (im/history :mycs "DIRECT") => :directhistory))
- (fact
-  "it will throw an exception when it does not recognize the subtype"
-  (slack/history {:config :myadapter} "FAIL") => (throws Exception)
-  (provided (slack/slack-config :myadapter) => :mycs)))
+  (provided
+   (slack/slack-config :myadapter) => :mycs
+   (conversations/history :mycs "GROUPS") => :grouphistory)))
 
 (facts
  "about start"
