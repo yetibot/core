@@ -344,6 +344,12 @@
     (when (= "message" (:type item))
       (binding [*target* (:channel item)
                 *thread-ts* parent-ts]
+
+        (when (string/includes? reaction "delete")
+          (info "delete this message" event)
+          (slack-chat/delete
+            sc (:ts message) (:channel item)))
+
         (handle-raw cs user-model :react yetibot-user
                     {:reaction (string/replace reaction "_" " ")
                      ;; body of the message reacted to
