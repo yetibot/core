@@ -9,6 +9,7 @@
   :google {:api {:key ""}
            :custom {:search {:engine {:id ""}}}
            :options {:safe "high"}}
+  :discord {:token ""}
   :db {:url "postgresql://localhost:5432/yetibot"
        :table {:prefix "yetibot_"}},
   :history {:disabled "false"},
@@ -41,7 +42,9 @@
                             :host "yetibot-mattermost.herokuapp.com"
                             :token "h1111111111111111111111111"
                             :secure "true" ;; true by default
-                            }},
+                            }
+             :mydiscord {:type "discord"
+                         :token ""}},
   :ssh {:groups
         [{:user "",
           :servers [{:host "", :name ""} {:host "", :name ""}],
