@@ -20,16 +20,18 @@
     (users/get-user cs yetibot-uid)))
 
 (defmulti handle-event
-  (fn [event-type event-data conn]
+  (fn [event-type event-data]
     event-type))
 
 (defmethod handle-event :message-create
-  [event-type event-data conn]
-  (println event-data)
-  (if (= (:content event-data) "!disconnect")
-    (discord-ws/disconnect-bot! (:connection conn))
-    (when-not (:bot (:author event-data))
-      (create-message! (:rest conn) (:channel-id event-data) :content "Helloooo"))))
+  [event-type event-data]
+  (info "🎉 NEW EVENT! 🎉")
+  (info "Event type:" event-type)
+  (info "Event data:" (pr-str event-data)))
+  ;; (if (= (:content event-data) "!disconnect")
+  ;;   (discord-ws/disconnect-bot! (:connection conn))
+  ;;   (when-not (:bot (:author event-data))
+  ;;     (create-message! (:rest conn) (:channel-id event-data) :content "Helloooo"))))
 
 (defn start
   "start the discord connection"
@@ -38,21 +40,25 @@
   (let [event-channel (chan 100)
         message-channel (discord-ws/connect-bot! (:token config) event-channel :intents #{:guilds :guild-messages})
         rest-connection (start-connection! (:token config))]
-    (reset! _conn {:event  event-channel
-                   :message message-channel
-                   :rest    rest-connection})
-    (reset! bot-id {:id @(get-current-user! (:rest _conn))})
+    (let [retcon {:event  event-channel
+                  :message message-channel
+                  :rest    rest-connection}]
+      (reset! _conn retcon)
 
-    ;; This is where I would want to wrap `handle-event` and pass in a conn
-    (message-pump! (:event _conn) (partial handle-event _conn))))
+      (info (pr-str _conn))
+      (reset! bot-id {:id @(get-current-user! rest-connection)})
+
+      ;; how do I pass in the connection into here?
+      (message-pump! event-channel handle-event))))
+
 
 (defn- channels [a])
 
 (defn- send-msg [a msg])
 
-(defn stop 
+(defn stop
   "stop the discord connection"
-  [adapter _conn]  
+  [adapter _conn]
   (info "Closing Discord" (a/uuid adapter))
   (stop-connection! (:message _conn))
   (close!           (:event _conn)))
