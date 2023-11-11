@@ -19,10 +19,8 @@
   (let [yetibot-uid (:id @(get-current-user! (:rest _conn)))]
     (users/get-user cs yetibot-uid)))
 
-;; handle-event expects these 2 arguments
-;; How can I wrap it to pass in the conn as well in Clojure?
 (defmulti handle-event
-  (fn [event-type event-data]
+  (fn [event-type event-data conn]
     event-type))
 
 (defmethod handle-event :message-create
@@ -46,7 +44,7 @@
     (reset! bot-id {:id @(get-current-user! (:rest _conn))})
 
     ;; This is where I would want to wrap `handle-event` and pass in a conn
-    (message-pump! (:event _conn) handle-event)))
+    (message-pump! (:event _conn) (partial handle-event _conn))))
 
 (defn- channels [a])
 
@@ -109,7 +107,7 @@
 
 (defn make-discord
   [config]
-  (Discord
+  (map->Discord
    {:config config
     :bot-id (atom nil)
     :conn (atom nil)
