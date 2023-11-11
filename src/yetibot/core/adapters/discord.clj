@@ -1,46 +1,67 @@
 (ns yetibot.core.adapters.discord
-  (:require
-   [clojure.spec.alpha :as s]
-   [yetibot.core.adapters.adapter :as a]
-   [discljord 
-    [connections :as ]
-    ]
-   [yetibot.core.chat :refer [base-chat-source chat-source chat-data-structure
-                              *target* *adapter*]]))
-
-(def discord-ping-interval-ms
-  "How often to send Discord a ping event to ensure the connection is active"
-  5000)
-
-(def close-status
-  "The status code to send Discord when intentionally closing the websocket"
-  3337)
+  (:require [clojure.spec.alpha :as s]
+            [clojure.core.async :refer [chan close!]]
+            [discljord.messaging :refer [start-connection! stop-connection! get-current-user! create-message!]]
+            [discljord.connections :as discord-ws]
+            [yetibot.core.models.users :as users]
+            [discljord.events :refer [message-pump!]]
+            [taoensso.timbre :refer [info]]
+            [yetibot.core.adapters.adapter :as a]
+            [yetibot.core.chat :refer [chat-source]]))
 
 (s/def ::type #{"discord"})
 (s/def ::token string?)
-(s/def ::config (s/keys :req-un [::type
-                                 ::token]
-                        :opt-un []))
+(s/def ::config (s/keys :req-un [::type ::token]))
 
-(def intents #{:guilds :guild-messages})
+;;  WIP - Need to figure out chat source
+(defn find-yetibot-user
+  [_conn cs]
+  (let [yetibot-uid (:id @(get-current-user! (:rest _conn)))]
+    (users/get-user cs yetibot-uid)))
+
+;; handle-event expects these 2 arguments
+;; How can I wrap it to pass in the conn as well in Clojure?
+(defmulti handle-event
+  (fn [event-type event-data]
+    event-type))
+
+(defmethod handle-event :message-create
+  [event-type event-data conn]
+  (println event-data)
+  (if (= (:content event-data) "!disconnect")
+    (discord-ws/disconnect-bot! (:connection conn))
+    (when-not (:bot (:author event-data))
+      (create-message! (:rest conn) (:channel-id event-data) :content "Helloooo"))))
 
 (defn start
   "start the discord connection"
-  [intents, config]
-  (let [event-ch (a/chan 100)
-        connections-ch (a/connect-bot! (config ::token event-ch :intents intents))])
-  )
+  [adapter _conn config _connected? bot-id]
+  (info "starting discord connection")
+  (let [event-channel (chan 100)
+        message-channel (discord-ws/connect-bot! (:token config) event-channel :intents #{:guilds :guild-messages})
+        rest-connection (start-connection! (:token config))]
+    (reset! _conn {:event  event-channel
+                   :message message-channel
+                   :rest    rest-connection})
+    (reset! bot-id {:id @(get-current-user! (:rest _conn))})
+
+    ;; This is where I would want to wrap `handle-event` and pass in a conn
+    (message-pump! (:event _conn) handle-event)))
 
 (defn- channels [a])
 
-(defn- send-msg [a msg]
-  )
+(defn- send-msg [a msg])
 
-(defn- stop [adapter]
-  )
+(defn stop 
+  "stop the discord connection"
+  [adapter _conn]  
+  (info "Closing Discord" (a/uuid adapter))
+  (stop-connection! (:message _conn))
+  (close!           (:event _conn)))
 
 (defrecord Discord
            [config
+            bot-id
             conn
             connected?
             connection-last-active-timestamp
@@ -72,7 +93,7 @@
 
   (a/chat-source [_ channel] (chat-source channel))
 
-  (a/stop [adapter] (stop adapter))
+  (a/stop [adapter] (stop adapter conn))
 
   (a/connected? [{:keys [connected?]}]
     @connected?)
@@ -84,12 +105,13 @@
     @connection-latency)
 
   (a/start [adapter]
-    (start adapter)))
+    (start adapter conn config connected? bot-id)))
 
 (defn make-discord
   [config]
   (Discord
    {:config config
+    :bot-id (atom nil)
     :conn (atom nil)
     :connected? (atom false)
     :connection-latency (atom nil)
