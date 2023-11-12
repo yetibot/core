@@ -79,7 +79,9 @@
 
 (defn- send-msg [adapter msg]
   (info "Trying to send message: " msg)
+  (info "Target is: " *target*)
   (info "Adapter: " (pr-str adapter))
+  (info "rest connection: " (pr-str (adapter :conn :rest)))
   (create-message! (adapter :conn :rest) *target* :content msg))
 
 (defn stop
