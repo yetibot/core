@@ -77,12 +77,13 @@
     (info "Guild Channels: " (pr-str guild-channels))
     (guild-channels)))
 
-(defn- send-msg [adapter msg]
+(defn- send-msg [adapter msg conn]
   (info "Trying to send message: " msg)
   (info "Target is: " *target*)
   (info "Adapter: " (pr-str adapter))
-  (info "rest connection: " (pr-str (adapter :conn :rest)))
-  (create-message! (adapter :conn :rest) *target* :content msg))
+  (info "conn: " (pr-str conn))
+  (info "rest: " (pr-str (:rest @conn)))
+  (create-message! (:rest @conn) *target* :content msg))
 
 (defn stop
   "stop the discord connection"
@@ -109,9 +110,9 @@
 
   (a/channels [a] (channels a))
 
-  (a/send-paste [a msg] (send-msg a msg))
+  (a/send-paste [a msg] (send-msg a msg conn))
 
-  (a/send-msg [a msg] (send-msg a msg))
+  (a/send-msg [a msg] (send-msg a msg conn))
 
   (a/join [_ channel]
     (str
