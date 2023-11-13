@@ -1,11 +1,11 @@
 (ns yetibot.core.adapters.discord
   (:require [clojure.spec.alpha :as s]
             [clojure.core.async :refer [chan close!]]
-            [discljord.messaging :refer [get-guild-channels! start-connection! stop-connection! get-current-user! create-message!]]
+            [discljord.messaging :refer [get-guild-channels! start-connection! stop-connection! get-current-user! create-message! delete-message!]]
             [discljord.connections :as discord-ws]
             [yetibot.core.models.users :as users]
             [discljord.events :refer [message-pump!]]
-            [taoensso.timbre :refer [info]]
+            [taoensso.timbre :refer [info debug]]
             [yetibot.core.adapters.adapter :as a]
             [yetibot.core.handler :refer [handle-raw]]
             [yetibot.core.chat :refer [base-chat-source chat-source *target* *adapter*]]))
@@ -24,48 +24,92 @@
   (fn [event-type event-data _conn yetibot-user]
     event-type))
 
+(defmethod handle-event :default
+  [event-type event-data _conn yetibot-user]
+  (debug "🎉 UNHANDLED EVENT 🎉")
+  (debug "Event type:" event-type)
+  (debug "Event data:" (pr-str event-data))
+  (debug "Author: " (pr-str (:author event-data)))
+  (debug "Channel ID: " (pr-str (:channel-id event-data))))
+
+;; also has :message-reaction-remove
+(defmethod handle-event :message-reaction-add
+  [event-type event-data _conn yetibot-user]
+  (debug "🎉 NEW REACTION 🎉")
+  (debug "Event type:" event-type)
+  (debug "Event data:" (pr-str event-data))
+  (debug "Channel ID: " (pr-str (:channel-id event-data)))
+  (debug "Emoji: " (pr-str (-> event-data :emoji :name)))
+  (debug "Thread Author ID: " (:message-author-id event-data))
+  (debug "Yetibot user: " (:id @yetibot-user))
+  (if (and
+       (= (-> event-data :emoji :name) "❌")
+       (= (:message-author-id event-data) (:id @yetibot-user)))
+    (do
+      (let [message-id (:message-id event-data)]
+        (debug "Trying to delete message with id:" message-id)
+        (if (delete-message! (:rest @_conn) (:channel-id event-data) message-id)
+          (debug "Successfully deleted message")
+          (debug "Failed to delete message)"))))
+
+    (let [emoji-name (-> event-data :emoji :name)]
+      (debug "No handler for emoji: " emoji-name))))
+
 (defmethod handle-event :message-create
   [event-type event-data _conn yetibot-user]
-  (info "🎉 NEW EVENT! 🎉")
-  (info "Event type:" event-type)
-  (info "Event data:" (pr-str event-data))
-  (info "Author: " (pr-str (:author event-data)))
-  (info "Channel ID: " (pr-str (:channel-id event-data)))
+  (debug "🎉 NEW MESSAGE 🎉")
+  (debug "Event type:" event-type)
+  (debug "Event data:" (pr-str event-data))
+  (debug "Author: " (pr-str (:author event-data)))
+  (debug "Author ID: " (-> event-data
+                           :author
+                           :id))
+  (debug "Author Username: " (-> event-data
+                                 :author
+                                 :username))
+  (debug "Channel ID: " (pr-str (:channel-id event-data)))
+  (debug "Yetibot user: " (:id @yetibot-user))
   (if (= (:content event-data) "!disconnect")
     (discord-ws/disconnect-bot! (:connection _conn))
     (do
-      (info "Handling Message")
-      (let [user-model (users/create-user
-                        (event-data :author :username)
-                        (event-data :author :id))
-            message (:content event-data)]
-        (info "chat source: " (pr-str (chat-source (:channel-id event-data))))
-        (info "running handle-raw")
-        (binding [*target* (:channel-id event-data)]
-          (handle-raw
-           (chat-source (:channel-id event-data))
-           user-model
-           :message
-           @yetibot-user
-           {:body message}))))))
+      (debug "Handling Message")
+      (if (not= (:id @yetibot-user) (-> event-data
+                                        :author
+                                        :id))
+        (let [user-model (users/create-user
+                          (-> event-data
+                              :author
+                              :username)
+                          (event-data :author :id))
+              message (:content event-data)]
+          (debug "chat source: " (pr-str (chat-source (:channel-id event-data))))
+          (debug "running handle-raw")
+          (binding [*target* (:channel-id event-data)]
+            (handle-raw
+             (chat-source (:channel-id event-data))
+             user-model
+             :message
+             @yetibot-user
+             {:body message})))
+        (debug "Message from Yetibot => ignoring")))))
 
 
 
 (defn start
   "start the discord connection"
   [adapter _conn config _connected? bot-id yetibot-user]
-  (info "starting discord connection")
+  (debug "starting discord connection")
 
   (binding [*adapter* adapter]
     (let [event-channel (chan 100)
-          message-channel (discord-ws/connect-bot! (:token config) event-channel :intents #{:guilds :guild-messages})
+          message-channel (discord-ws/connect-bot! (:token config) event-channel :intents #{:guilds :guild-messages :guild-message-reactions :direct-messages :direct-message-reactions})
           rest-connection (start-connection! (:token config))]
       (let [retcon {:event  event-channel
                     :message message-channel
                     :rest    rest-connection}]
         (reset! _conn retcon)
 
-        (info (pr-str _conn))
+        (debug (pr-str _conn))
         (reset! bot-id {:id @(get-current-user! rest-connection)})
         (reset! yetibot-user @(get-current-user! rest-connection))
         (message-pump! event-channel (fn [event-type event-data] (handle-event event-type event-data _conn yetibot-user)))))))
@@ -74,23 +118,23 @@
 
 (defn- channels [a]
   (let [guild-channels (get-guild-channels!)]
-    (info "Guild Channels: " (pr-str guild-channels))
+    (debug "Guild Channels: " (pr-str guild-channels))
     (guild-channels)))
 
 (defn- send-msg [adapter msg conn]
-  (info "Trying to send message: " msg)
-  (info "Target is: " *target*)
-  (info "Adapter: " (pr-str adapter))
-  (info "conn: " (pr-str conn))
-  (info "rest: " (pr-str (:rest @conn)))
+  (debug "Trying to send message: " msg)
+  (debug "Target is: " *target*)
+  (debug "Adapter: " (pr-str adapter))
+  (debug "conn: " (pr-str conn))
+  (debug "rest: " (pr-str (:rest @conn)))
   (create-message! (:rest @conn) *target* :content msg))
 
 (defn stop
   "stop the discord connection"
   [adapter _conn]
-  (info "Closing Discord" (a/uuid adapter))
-  (stop-connection! (:message _conn))
-  (close!           (:event _conn)))
+  (debug "Closing Discord" (a/uuid adapter))
+  (stop-connection! (:message @_conn))
+  (close!           (:event @_conn)))
 
 (defrecord Discord
            [config
