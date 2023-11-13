@@ -14,12 +14,6 @@
 (s/def ::token string?)
 (s/def ::config (s/keys :req-un [::type ::token]))
 
-;;  WIP - Need to figure out chat source
-(defn find-yetibot-user
-  [_conn cs]
-  (let [yetibot-uid (:id @(get-current-user! (:rest _conn)))]
-    (users/get-user cs yetibot-uid)))
-
 (defmulti handle-event
   (fn [event-type event-data _conn yetibot-user]
     event-type))
@@ -52,8 +46,11 @@
           (debug "Successfully deleted message")
           (debug "Failed to delete message)"))))
 
-    (let [emoji-name (-> event-data :emoji :name)]
-      (debug "No handler for emoji: " emoji-name))))
+    (do (let [emoji-name (-> event-data :emoji :name)]
+          (if (not= (:message-author-id event-data) (:id @yetibot-user))
+            (debug "You can only delete messages from Yetibot")
+            (debug "No handler for emoji: " emoji-name))))))
+
 
 (defmethod handle-event :message-create
   [event-type event-data _conn yetibot-user]
@@ -110,6 +107,8 @@
         (reset! _conn retcon)
 
         (debug (pr-str _conn))
+
+        (reset! _connected? true)
         (reset! bot-id {:id @(get-current-user! rest-connection)})
         (reset! yetibot-user @(get-current-user! rest-connection))
         (message-pump! event-channel (fn [event-type event-data] (handle-event event-type event-data _conn yetibot-user)))))))
