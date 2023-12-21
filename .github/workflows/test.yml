@@ -35,7 +35,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: install git
-        run: apt-get update && apt-get install git
+        run: apt-get update && apt-get -y install git
 
       # runs the tests and generates code coverage metrics
       - name: test
