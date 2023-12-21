@@ -7,12 +7,9 @@ on:
       - master
 
 jobs:
-
   test:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-    # Docker Hub image that `container-job` executes in
-    container: clojure:lein-bullseye
     services:
       # Label used to access the service container
       postgres:
@@ -29,6 +26,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
+      - uses: DeLaGuardo/setup-clojure@master
+        with:
+          lein: 2.9.4
       - name: checkout
         uses: actions/checkout@v2
       - name: maven cache
