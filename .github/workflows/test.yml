@@ -10,6 +10,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    container: clojure:lein-bullseye
     services:
       postgres:
         image: postgres
@@ -23,9 +24,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: DeLaGuardo/setup-clojure@master
-        with:
-          lein: 2.9.4
       - name: checkout
         uses: actions/checkout@v2
       - name: maven cache
@@ -35,6 +33,9 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('project.clj') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+
+      - name: install git
+        run: apt-get update && apt-get install git
 
       # runs the tests and generates code coverage metrics
       - name: test
