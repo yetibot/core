@@ -48,11 +48,6 @@ jobs:
           CLOVERAGE_VERSION: 1.1.2
         run: lein with-profile +test cloverage --codecov --runner midje
 
-      - uses: codecov/codecov-action@v1
-        with:
-          fail_ci_if_error: true # optional (default = false)
-          verbose: false # optional (default = false)
-
   deploy:
     runs-on: ubuntu-latest
     needs: test
