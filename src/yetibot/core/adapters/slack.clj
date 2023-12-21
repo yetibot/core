@@ -270,6 +270,11 @@
           ;; Slack chat-source since they are moving away from being able to
           ;; use user names as IDs
           cs (assoc (chat-source chan-name)
+                    ;; allow command handlers access to the raw event in case
+                    ;; they need platform-specific data e.g. in slack's case
+                    ;; they encode emoji in the text but the original event has
+                    ;; the actual unicode
+                    :raw-event event
                     :is-private (:is_private entity))
           _ (info "chat source"
                   (color-str :green (pr-str {:entity entity
