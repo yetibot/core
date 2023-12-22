@@ -222,7 +222,7 @@
   ;; history
   (let [[chan-name _entity] (entity-with-name-by-id config {:channel channel
                                                             :user user})
-        cs (chat-source chan-name)
+        cs (assoc (chat-source chan-name) :raw-event event)
         yetibot-user (find-yetibot-user conn cs)
         yetibot-uid (:id yetibot-user)
         yetibot? (= yetibot-uid user)
