@@ -216,9 +216,7 @@
   [{:keys [channel] :as event
     {:keys [user text thread_ts]} :message}
    conn config]
-  (timbre/info "message changed" \newline (pr-str event) \newline
-               (chat-source channel)
-               )
+  (timbre/info "message changed" \newline (pr-str event))
   ;; ignore message changed events from Yetibot - it's probably just Slack
   ;; unfurling stuff and we need to ignore it or it will result in double
   ;; history
