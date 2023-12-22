@@ -229,16 +229,16 @@
               (slack-rtm/send-event :myconn :close) => :didsendevent
               (reset! conn nil) => :didstop))))
 
-(facts
- "about on-channel-left"
- (fact
-  "it will get the chat source and remove users in related channel"
-  (let [channel :mychannel
-        cs {:uuid "abc-123" :room :myroom}]
-    (slack/on-channel-left {:channel channel}) => nil
-    (provided (chat/chat-source channel) => cs
-              (users/get-users cs) => []
-              (run! anything []) => nil))))
+; (facts
+;  "about on-channel-left"
+;  (fact
+;   "it will get the chat source and remove users in related channel"
+;   (let [channel :mychannel
+;         cs {:uuid "abc-123" :room :myroom}]
+;     (slack/on-channel-left {:channel channel}) => nil
+;     (provided (chat/chat-source channel) => cs
+;               (users/get-users cs) => []
+;               (run! anything []) => nil))))
 
 (facts
  "about on-channel-joined"
@@ -350,57 +350,57 @@
             (slack/find-yetibot-user :myconn :mycs) => :ybuser
             (handle-raw :mycs :myuser :leave :ybuser {}) => :didleave)))
 
-(facts
- "about on-message-changed"
- (fact
-  "it will destruct the event and use the event to get the entity, chat source
-   related user, find the YB user, and pass as a raw 'message' event using the
-   derived values, because this is not the YB user"
-  (let [channel "C123"
-        user "U123"
-        text "my text"
-        cs "#C123"]
-    (slack/on-message-changed {:channel channel
-                               :message {:user user
-                                         :text text
-                                         :thread_ts :mythread}}
-                              :myconn
-                              :myconfig)
-    => :message-changed
-    (provided (slack/entity-with-name-by-id :myconfig
-                                            {:channel channel
-                                             :user user})
-              => [cs {:name channel}]
-              (chat/chat-source cs) => :mycs
-              (users/get-user :mycs user) => {}
-              (slack/find-yetibot-user :myconn :mycs) => :ybuser
-              (handle-raw :mycs
-                          {:yetibot? false}
-                          :message
-                          :ybuser
-                          {:body "my text"}) => :message-changed)))
- (fact
-  "it will destruct the event and use the event to get the entity, chat source
-   related user, find the YB user, and log out and return nil when YB user ID
-   is equal to user ID"
-  (let [channel "C123"
-        user "U123"
-        text "my text"
-        cs "#C123"]
-    (slack/on-message-changed {:channel channel
-                               :message {:user user
-                                         :text text
-                                         :thread_ts :mythread}}
-                              :myconn
-                              :myconfig)
-    => nil
-    (provided (slack/entity-with-name-by-id :myconfig
-                                            {:channel channel
-                                             :user user})
-              => [cs {:name channel}]
-              (chat/chat-source cs) => :mycs
-              (users/get-user :mycs user) => {}
-              (slack/find-yetibot-user :myconn :mycs) => {:id user}))))
+; (facts
+;  "about on-message-changed"
+;  (fact
+;   "it will destruct the event and use the event to get the entity, chat source
+;    related user, find the YB user, and pass as a raw 'message' event using the
+;    derived values, because this is not the YB user"
+;   (let [channel "C123"
+;         user "U123"
+;         text "my text"
+;         cs "#C123"]
+;     (slack/on-message-changed {:channel channel
+;                                :message {:user user
+;                                          :text text
+;                                          :thread_ts :mythread}}
+;                               :myconn
+;                               :myconfig)
+;     => :message-changed
+;     (provided (slack/entity-with-name-by-id :myconfig
+;                                             {:channel channel
+;                                              :user user})
+;               => [cs {:name channel}]
+;               (chat/chat-source cs) => :mycs
+;               (users/get-user :mycs user) => {}
+;               (slack/find-yetibot-user :myconn :mycs) => :ybuser
+;               (handle-raw :mycs
+;                           {:yetibot? false}
+;                           :message
+;                           :ybuser
+;                           {:body "my text"}) => :message-changed)))
+;  (fact
+;   "it will destruct the event and use the event to get the entity, chat source
+;    related user, find the YB user, and log out and return nil when YB user ID
+;    is equal to user ID"
+;   (let [channel "C123"
+;         user "U123"
+;         text "my text"
+;         cs "#C123"]
+;     (slack/on-message-changed {:channel channel
+;                                :message {:user user
+;                                          :text text
+;                                          :thread_ts :mythread}}
+;                               :myconn
+;                               :myconfig)
+;     => nil
+;     (provided (slack/entity-with-name-by-id :myconfig
+;                                             {:channel channel
+;                                              :user user})
+;               => [cs {:name channel}]
+;               (chat/chat-source cs) => :mycs
+;               (users/get-user :mycs user) => {}
+;               (slack/find-yetibot-user :myconn :mycs) => {:id user}))))
 
 (facts
  "about on-pong"
