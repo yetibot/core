@@ -222,7 +222,7 @@
   ;; history
   (let [[chan-name _entity] (entity-with-name-by-id config {:channel channel
                                                             :user user})
-        cs (chat-source chan-name)
+        cs (assoc (chat-source chan-name) :raw-event event)
         yetibot-user (find-yetibot-user conn cs)
         yetibot-uid (:id yetibot-user)
         yetibot? (= yetibot-uid user)
@@ -270,6 +270,11 @@
           ;; Slack chat-source since they are moving away from being able to
           ;; use user names as IDs
           cs (assoc (chat-source chan-name)
+                    ;; allow command handlers access to the raw event in case
+                    ;; they need platform-specific data e.g. in slack's case
+                    ;; they encode emoji in the text but the original event has
+                    ;; the actual unicode
+                    :raw-event event
                     :is-private (:is_private entity))
           _ (info "chat source"
                   (color-str :green (pr-str {:entity entity
@@ -305,7 +310,8 @@
    {:keys [reaction item_user item] :as event}]
   (let [[chan-name _entity] (entity-with-name-by-id config item)
         sc (slack-config config)
-        cs (chat-source chan-name)
+        cs (assoc (chat-source chan-name)
+                  :raw-event event)
         yetibot-user (find-yetibot-user conn cs)
         yetibot-uid (:id yetibot-user)
         yetibot? (= yetibot-uid (:user event))
@@ -315,10 +321,10 @@
                                      :yetibot? (= yetibot-uid item_user))
 
         {[parent-message] :messages} (conversations/history
-                                       sc (:channel item)
-                                       {:latest (:ts item)
-                                        :inclusive "true"
-                                        :count "1"})
+                                      sc (:channel item)
+                                      {:latest (:ts item)
+                                       :inclusive "true"
+                                       :count "1"})
 
         parent-ts (:ts parent-message)
 
@@ -330,11 +336,11 @@
 
         child-message (when-not is-parent?
                         (->> (conversations/replies
-                               sc (:channel item)
-                               parent-ts
-                               {:latest child-ts
-                                :inclusive "true"
-                                :limit "1"})
+                              sc (:channel item)
+                              parent-ts
+                              {:latest child-ts
+                               :inclusive "true"
+                               :limit "1"})
                              :messages
                              (filter (fn [{:keys [ts]}] (= ts child-ts)))
                              first))
@@ -348,7 +354,7 @@
         (when (string/includes? reaction "delete")
           (info "delete this message" event)
           (slack-chat/delete
-            sc (:ts message) (:channel item)))
+           sc (:ts message) (:channel item)))
 
         (handle-raw cs user-model :react yetibot-user
                     {:reaction (string/replace reaction "_" " ")

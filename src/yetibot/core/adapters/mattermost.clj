@@ -118,6 +118,7 @@
             channel (channels/channels-channel-id-get channel_id)
             private? (private-channel? channel)
             cs (assoc (chat-source (:name channel))
+                      :raw-event event
                       :is-private private?)
             bot? (= "true" (:from_bot props))
             mattermost-user (users/users-user-id-get user_id)
@@ -157,6 +158,7 @@
               channel (channels/channels-channel-id-get channel_id)
               private? (private-channel? channel)
               cs (assoc (chat-source (:name channel))
+                        :raw-event event
                         :is-private private?)
              ;; bot? (= "true" (:from_bot props))
               mattermost-user (users/users-user-id-get user_id)
