@@ -39,17 +39,38 @@
   (if (and
        (= (-> event-data :emoji :name) "❌")
        (= (:message-author-id event-data) (:id @yetibot-user)))
-    (do
-      (let [message-id (:message-id event-data)]
-        (debug "Trying to delete message with id:" message-id)
-        (if (delete-message! (:rest @_conn) (:channel-id event-data) message-id)
-          (debug "Successfully deleted message")
-          (debug "Failed to delete message)"))))
+    (let [message-id (:message-id event-data)]
+      (debug "Trying to delete message with id:" message-id)
+      (if (delete-message! (:rest @_conn) (:channel-id event-data) message-id)
+        (debug "Successfully deleted message")
+        (debug "Failed to delete message)")))
+    (let [emoji-name (-> event-data :emoji :name)]
+      (if (not= (:message-author-id event-data) (:id @yetibot-user))
+        (debug "You can only delete messages from Yetibot")
+        (debug "No handler for emoji: " emoji-name))))
 
-    (do (let [emoji-name (-> event-data :emoji :name)]
-          (if (not= (:message-author-id event-data) (:id @yetibot-user))
-            (debug "You can only delete messages from Yetibot")
-            (debug "No handler for emoji: " emoji-name))))))
+  (debug "Message Author ID:" (pr-str (-> event-data
+                                          :message-author-id)))
+  (debug "Username:" (pr-str (-> event-data
+                                 :member
+                                 :user
+                                 :username)))
+  (let [user-model (users/create-user
+                    (-> event-data
+                        :message-author-id)
+                    (-> event-data
+                        :member
+                        :user
+                        :username))
+        cs (assoc (chat-source (:channel-id event-data))
+                  :raw-event event-data)
+        reaction (-> event-data :emoji :name)] 
+    (handle-raw cs user-model :react yetibot-user
+                {:reaction reaction
+                           ;; body of the message reacted to
+                 :body "Not working yet"
+                           ;; user of the message that was reacted to
+                 :message-user (:message-author-id event-data)})))
 
 
 (defmethod handle-event :message-create
@@ -66,29 +87,30 @@
                                  :username))
   (debug "Channel ID: " (pr-str (:channel-id event-data)))
   (debug "Yetibot user: " (:id @yetibot-user))
-  (if (= (:content event-data) "!disconnect")
-    (discord-ws/disconnect-bot! (:connection _conn))
-    (do
-      (debug "Handling Message")
-      (if (not= (:id @yetibot-user) (-> event-data
-                                        :author
-                                        :id))
-        (let [user-model (users/create-user
-                          (-> event-data
-                              :author
-                              :username)
-                          (event-data :author :id))
-              message (:content event-data)]
-          (debug "chat source: " (pr-str (chat-source (:channel-id event-data))))
-          (debug "running handle-raw")
-          (binding [*target* (:channel-id event-data)]
-            (handle-raw
-             (chat-source (:channel-id event-data))
-             user-model
-             :message
-             @yetibot-user
-             {:body message})))
-        (debug "Message from Yetibot => ignoring")))))
+  (do
+    (debug "Handling Message")
+    (if (not= (:id @yetibot-user) (-> event-data
+                                      :author
+                                      :id))
+      (let [user-model (users/create-user
+                        (-> event-data
+                            :author
+                            :username)
+                        (event-data :author :id))
+            message (:content event-data)
+            cs (assoc (chat-source (:channel-id event-data))
+                      :raw-event event-data)]
+        (debug "chat source: " (pr-str cs))
+        (debug "running handle-raw")
+
+        (binding [*target* (:channel-id event-data)]
+          (handle-raw
+           (chat-source (:channel-id event-data))
+           user-model
+           :message
+           @yetibot-user
+           {:body message})))
+      (debug "Message from Yetibot => ignoring"))))
 
 
 
