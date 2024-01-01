@@ -9,7 +9,6 @@
   :google {:api {:key ""}
            :custom {:search {:engine {:id ""}}}
            :options {:safe "high"}}
-  :discord {:token ""}
   :db {:url "postgresql://localhost:5432/yetibot"
        :table {:prefix "yetibot_"}},
   :history {:disabled "false"},
