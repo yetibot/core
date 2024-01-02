@@ -42,9 +42,7 @@
                             :host "yetibot-mattermost.herokuapp.com"
                             :token "h1111111111111111111111111"
                             :secure "true" ;; true by default
-                            }
-             :mydiscord {:type "discord"
-                         :token ""}},
+                            }},
   :ssh {:groups
         [{:user "",
           :servers [{:host "", :name ""} {:host "", :name ""}],
