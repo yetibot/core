@@ -73,7 +73,11 @@
 
 (defn start
   "start the discord connection"
-  [adapter, conn, config, connected?, bot-id, yetibot-user]
+  [{conn :conn
+    config :config
+    connected? :connected?
+    bot-id :bot-id
+    yetibot-user :yetibot-user :as adapter}]
   (debug "starting discord connection")
 
   (binding [*adapter* adapter]
@@ -153,7 +157,7 @@
     @connection-latency)
 
   (a/start [adapter]
-    (start adapter conn, config, connected?, bot-id, yetibot-user)))
+    (start adapter)))
 
 (defn make-discord
   [config]
