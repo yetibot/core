@@ -1,14 +1,14 @@
 (ns yetibot.core.adapters.discord
   (:require [clojure.spec.alpha :as s]
-            [clojure.core.async :refer [chan close!]]
-            [discljord.messaging :refer [get-guild-channels! start-connection! stop-connection! get-current-user! create-message! delete-message!]]
+            [clojure.core.async :as as]
+            [discljord.messaging :as m]
             [discljord.connections :as discord-ws]
             [yetibot.core.models.users :as users]
-            [discljord.events :refer [message-pump!]]
-            [taoensso.timbre :refer [info debug]]
+            [discljord.events :as e]
+            [taoensso.timbre :as t]
             [yetibot.core.adapters.adapter :as a]
-            [yetibot.core.handler :refer [handle-raw]]
-            [yetibot.core.chat :refer [base-chat-source chat-source *target* *adapter*]]))
+            [yetibot.core.handler :as h]
+            [yetibot.core.chat :as c]))
 
 (s/def ::type #{"discord"})
 (s/def ::token string?)
@@ -25,9 +25,9 @@
        (= (-> event-data :emoji :name) "❌")
        (= (:message-author-id event-data) (:id @yetibot-user)))
     (let [message-id (:message-id event-data)]
-      (delete-message! (:rest @_conn) (:channel-id event-data) message-id))
+      (m/delete-message! (:rest @_conn) (:channel-id event-data) message-id))
     (if (not= (:message-author-id event-data) (:id @yetibot-user))
-      (debug "You can only delete messages from Yetibot")
+      (t/debug "You can only delete messages from Yetibot")
       (let [user-model (users/create-user
                         (-> event-data
                             :message-author-id)
@@ -35,10 +35,10 @@
                             :member
                             :user
                             :username))
-            cs (assoc (chat-source (:channel-id event-data))
+            cs (assoc (c/chat-source (:channel-id event-data))
                       :raw-event event-data)
             reaction (-> event-data :emoji :name)]
-        (handle-raw cs user-model :react yetibot-user
+        (h/handle-raw cs user-model :react yetibot-user
                     {:reaction reaction
                                    ;; body of the message reacted to
                      :body "Not working yet"
@@ -57,19 +57,19 @@
                           :username)
                       (event-data :author :id))
           message (:content event-data)
-          cs (assoc (chat-source (:channel-id event-data))
+          cs (assoc (c/chat-source (:channel-id event-data))
                     :raw-event event-data)]
-      (debug "chat source: " (pr-str cs))
-      (debug "running handle-raw")
+      (t/debug "chat source: " (pr-str cs))
+      (t/debug "running handle-raw")
 
-      (binding [*target* (:channel-id event-data)]
-        (handle-raw
-         (chat-source (:channel-id event-data))
+      (binding [c/*target* (:channel-id event-data)]
+        (h/handle-raw
+         (c/chat-source (:channel-id event-data))
          user-model
          :message
          @yetibot-user
          {:body message})))
-    (debug "Message from Yetibot => ignoring")))
+    (t/debug "Message from Yetibot => ignoring")))
 
 (defn start
   "start the discord connection"
@@ -78,38 +78,38 @@
     connected? :connected?
     bot-id :bot-id
     yetibot-user :yetibot-user :as adapter}]
-  (debug "starting discord connection")
+  (t/debug "starting discord connection")
 
-  (binding [*adapter* adapter]
-    (let [event-channel (chan 100)
+  (binding [c/*adapter* adapter]
+    (let [event-channel (as/chan 100)
           message-channel (discord-ws/connect-bot! (:token config) event-channel :intents #{:guilds :guild-messages :guild-message-reactions :direct-messages :direct-message-reactions})
-          rest-connection (start-connection! (:token config))
+          rest-connection (m/start-connection! (:token config))
           retcon {:event  event-channel
                   :message message-channel
                   :rest    rest-connection}]
       (reset! conn retcon)
 
-      (debug (pr-str conn))
+      (t/debug (pr-str conn))
 
       (reset! connected? true)
-      (reset! bot-id {:id @(get-current-user! rest-connection)})
-      (reset! yetibot-user @(get-current-user! rest-connection))
-      (message-pump! event-channel (fn [event-type event-data] (handle-event event-type event-data conn yetibot-user))))))
+      (reset! bot-id {:id @(m/get-current-user! rest-connection)})
+      (reset! yetibot-user @(m/get-current-user! rest-connection))
+      (e/message-pump! event-channel (fn [event-type event-data] (handle-event event-type event-data conn yetibot-user))))))
 
 (defn- channels [a]
-  (let [guild-channels (get-guild-channels!)]
-    (debug "Guild Channels: " (pr-str guild-channels))
+  (let [guild-channels (m/get-guild-channels!)]
+    (t/debug "Guild Channels: " (pr-str guild-channels))
     (guild-channels)))
 
 (defn- send-msg [{:keys [conn]} msg]
-  (create-message! (:rest @conn) *target* :content msg))
+  (m/create-message! (:rest @conn) c/*target* :content msg))
 
 (defn stop
   "stop the discord connection"
   [{:keys [conn] :as adapter}]
-  (debug "Closing Discord" (a/uuid adapter))
-  (stop-connection! (:message @conn))
-  (close!           (:event @conn)))
+  (t/debug "Closing Discord" (a/uuid adapter))
+  (m/stop-connection! (:message @conn))
+  (as/close!           (:event @conn)))
 
 (defrecord Discord
            [config
@@ -143,7 +143,7 @@
      "Discord bots such as myself can't leave channels on their own. Use "
      "/kick from the channel you'd like me to leave instead. 👊"))
 
-  (a/chat-source [_ channel] (chat-source channel))
+  (a/chat-source [_ channel] (c/chat-source channel))
 
   (a/stop [adapter] (stop adapter))
 
