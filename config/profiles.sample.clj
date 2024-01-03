@@ -87,6 +87,8 @@
    ;; WORK
    ;;
 
+   :yetibot-pagerduty-token ""
+
    :yetibot-github-token ""
    :yetibot-github-org-0 ""
    :yetibot-github-org-1 ""
