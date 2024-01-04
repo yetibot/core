@@ -24,10 +24,6 @@
   (let [message-id (:message-id event-data)
         channel-id (:channel-id event-data)
         message-author-id (:message-author-id event-data)
-        username (-> event-data
-                     :member
-                     :user
-                     :username)
         emoji-name (-> event-data
                        :emoji
                        :name)
@@ -38,7 +34,7 @@
          (= yetibot? true))
       (messaging/delete-message! rest-conn channel-id message-id)
       (if (= yetibot? true)
-        (timbre/debug "We don't handle " (emoji-name) "from yetibot")
+        (timbre/debug "We don't handle" emoji-name "from yetibot")
         (let [cs (assoc (chat/chat-source channel-id)
                         :raw-event event-data)
               user-model (assoc (users/get-user cs message-author-id)
