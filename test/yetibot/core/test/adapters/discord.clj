@@ -43,5 +43,23 @@
               (messaging/get-channel-message! anything 456 123) => (deliver mock-promise "fake content")))))
 
 
-
+(facts
+ "about message creation"
+ (fact
+  "ignore yetibot messages"
+  (discord/handle-event :message-create
+                        {:author {:id 123}}
+                        (atom nil)
+                        (atom {:id 123})) => nil)
+ (fact
+  "handles user messages"
+  (discord/handle-event :message-create
+                        {:author {:id 999 :username "fake"}
+                         :channel-id 456
+                         :content "fake content eh"}
+                        (atom nil)
+                        (atom {:id 123})) => "called handle-raw"
+  (provided (users/create-user "fake" {:id 999 :username "fake"}) => {:username "fake"}
+            (chat/chat-source 456) => {:channel-id 456 :room "fake"}
+            (handler/handle-raw anything anything anything anything anything) => "called handle-raw")))
             
