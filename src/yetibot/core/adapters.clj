@@ -6,6 +6,7 @@
    [yetibot.core.adapters.slack :as slack]
    [yetibot.core.adapters.mattermost :as mattermost]
    [yetibot.core.adapters.web :as web]
+   [yetibot.core.adapters.discord :as discord]
    [taoensso.timbre :as log :refer [info debug warn]]
    [clojure.stacktrace :refer [print-stack-trace]]
    [yetibot.core.adapters.adapter :as a]
@@ -14,7 +15,8 @@
 (s/def ::adapter (s/or :web ::web/config
                        :slack ::slack/config
                        :irc ::irc/config
-                       :mattermost ::mattermost/config))
+                       :mattermost ::mattermost/config
+                       :discord ::discord/config))
 
 (s/def ::config (s/map-of keyword? ::adapter))
 
@@ -45,6 +47,7 @@
     :slack (slack/make-slack config)
     :irc (irc/make-irc config)
     :mattermost (mattermost/make-mattermost config)
+    :discord (discord/make-discord config)
     (throw (ex-info (str "Unknown adapter type " (:type config)) config))))
 
 (defn ->registerable-adapter
