@@ -32,6 +32,8 @@
                       :token "xoxb-111111111111111111111111111111111111"}
              :k8s {:type "slack",
                    :token "xoxb-9999999999999999"}
+             :mydiscord {:type "discord"
+                         :token "mt111111111111111111111"}
              :freenode {:type "irc",
                         :username "yetibot",
                         :host "chat.freenode.net",

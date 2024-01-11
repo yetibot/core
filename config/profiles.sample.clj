@@ -74,6 +74,9 @@
    :yetibot-adapters-freenode-ssl "true"
    :yetibot-adapters-freenode-username "yetibot"
 
+   :yetibot-adapters-mydiscord-type "discord"
+   :yetibot-adapters-mydiscord-token "mt111111111111111111111"
+
    :yetibot-adapters-mymattermost-type "mattermost"
    :yetibot-adapters-mymattermost-host "yetibot-mattermost.herokuapp.com"
    :yetibot-adapters-mymattermost-token "h1111111111111111111111111"
