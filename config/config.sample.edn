@@ -18,6 +18,7 @@
             :token ""},
   :mail {:from "", :bcc "", :host "", :user "", :pass ""},
   :alphavantage {:key ""}
+  :pagerduty {:token ""}
   :jira {:default {:project {:key "Optional"}, :issue {:type {:id "3"}}},
          :user "",
          :projects [{:default {:version {:id "42"}}, :key "FOO"}],
