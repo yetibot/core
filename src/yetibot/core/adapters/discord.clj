@@ -30,7 +30,7 @@
         rest-conn (:rest @_conn)
         yetibot? (= message-author-id (:id @yetibot-user))]
     (if (and
-         (= (-> event-data :emoji :name) "❌")
+         (= emoji-name "❌")
          (= yetibot? true))
       (messaging/delete-message! rest-conn channel-id message-id)
       (if (= yetibot? true)
