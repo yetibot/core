@@ -52,7 +52,7 @@
   :url "http://localhost:3003",
   :ebay {:appid ""},
   :giphy {:key ""},
-  :weather {:wunderground {:key "" :default {:zip ""}}},
+  :weather {:weatherbitio {:key "" :default {:zip ""}}},
   :command {:prefix "!"
             ;; Whether or not embedded commands should be globally available
             ;; (enabled by default)
