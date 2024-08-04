@@ -13,8 +13,10 @@
 (facts
  "about handle-cmd"
  (fact
-  "handles legit echo command and returns command args"
-  (i/handle-cmd "echo hello world" {}) => "hello world")
+   "handles legit echo command and returns command args"
+   (i/handle-cmd "echo hello world" {}) => 
+   {:result/value "hello world"
+    :result/data {:args "hello world" :cmd "echo" :match "hello world"})
  (fact
   "handles un-handleable non-legit 'somerandom' command with fallback? true"
   (i/handle-cmd "somerandom command" {:fallback? true})
