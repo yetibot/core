@@ -40,14 +40,15 @@
               user-model (assoc (users/get-user cs message-author-id)
                                 :yetibot? yetibot?)
               message-content (:content @(messaging/get-channel-message! rest-conn channel-id message-id))]
-          (handler/handle-raw
-           cs
-           user-model
-           :react
-           @yetibot-user
-           {:reaction emoji-name
-            :body message-content
-            :message-user message-author-id}))))))
+          (binding [chat/*target* (:channel-id event-data)]
+            (handler/handle-raw
+             cs
+             user-model
+             :react
+             @yetibot-user
+             {:reaction emoji-name
+              :body message-content
+              :message-user message-author-id})))))))
 
 
 (defmethod handle-event :message-create
