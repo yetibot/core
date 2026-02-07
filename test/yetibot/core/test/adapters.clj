@@ -45,6 +45,12 @@
   "makes mattermost adapter"
   (instance? yetibot.core.adapters.mattermost.Mattermost
              (a/make-adapter {:type "mattermost"})) => true)
+ 
+  (fact
+  "makes discord adapter"
+  (instance? yetibot.core.adapters.discord.Discord
+             (a/make-adapter {:type "discord"})) => true)
+ 
  (fact
   "throws exception for unknown adapter"
   (a/make-adapter {:type "throwme"}) => (throws Exception)))

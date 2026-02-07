@@ -74,6 +74,9 @@
    :yetibot-adapters-freenode-ssl "true"
    :yetibot-adapters-freenode-username "yetibot"
 
+   :yetibot-adapters-mydiscord-type "discord"
+   :yetibot-adapters-mydiscord-token "mt111111111111111111111"
+
    :yetibot-adapters-mymattermost-type "mattermost"
    :yetibot-adapters-mymattermost-host "yetibot-mattermost.herokuapp.com"
    :yetibot-adapters-mymattermost-token "h1111111111111111111111111"
@@ -86,6 +89,8 @@
    ;;
    ;; WORK
    ;;
+
+   :yetibot-pagerduty-token ""
 
    :yetibot-github-token ""
    :yetibot-github-org-0 ""
@@ -198,8 +203,8 @@
    :yetibot-ssh-groups-0-servers-1-host ""
 
    ;; `weather`
-   :yetibot-weather-wunderground-key ""
-   :yetibot-weather-wunderground-default-zip ""
+   :yetibot-weather-weatherbitio-key ""
+   :yetibot-weather-weatherbitio-key-default-zip ""
 
    ;; `wolfram`
    :yetibot-wolfram-appid ""

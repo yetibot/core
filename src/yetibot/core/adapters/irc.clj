@@ -149,7 +149,8 @@
          user (users/get-user (chat-source chan) user-id)]
      (log/info "handle message" info "from" chan yetibot-user)
      (binding [*target* chan]
-       (handle-raw (chat-source chan)
+       (handle-raw (assoc (chat-source chan)
+                         :raw-event info)
                    user :message yetibot-user {:body (:text info)}))))
 
 (defn handle-part

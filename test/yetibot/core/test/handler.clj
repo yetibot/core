@@ -107,8 +107,7 @@
                           (first
                            (:parsed-cmds (h/->parsed-message-info
                                           "!echo hello"))))
-    => (contains {:data nil?
-                  :settings not-empty
+    => (contains {:settings not-empty
                   :value "hello"}))))
 
 (facts

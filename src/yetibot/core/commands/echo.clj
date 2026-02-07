@@ -7,7 +7,8 @@
   "echo <text> # Echos back <text> as a string. Useful for piping."
   {:yb/cat #{:util}}
   [{:keys [args] :as cmd-args}]
-  (str args))
+  {:result/value (str args)
+   :result/data cmd-args})
 
 (cmd-hook #"echo"
   _ echo-cmd)

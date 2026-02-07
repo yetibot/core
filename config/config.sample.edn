@@ -18,6 +18,7 @@
             :token ""},
   :mail {:from "", :bcc "", :host "", :user "", :pass ""},
   :alphavantage {:key ""}
+  :pagerduty {:token ""}
   :jira {:default {:project {:key "Optional"}, :issue {:type {:id "3"}}},
          :user "",
          :projects [{:default {:version {:id "42"}}, :key "FOO"}],
@@ -32,6 +33,8 @@
                       :token "xoxb-111111111111111111111111111111111111"}
              :k8s {:type "slack",
                    :token "xoxb-9999999999999999"}
+             :mydiscord {:type "discord"
+                         :token "mt111111111111111111111"}
              :freenode {:type "irc",
                         :username "yetibot",
                         :host "chat.freenode.net",
@@ -53,7 +56,7 @@
                  ;; :model "gemini-2.0-flash-exp"
                  }}
   :giphy {:key ""},
-  :weather {:wunderground {:key "" :default {:zip ""}}},
+  :weather {:weatherbitio {:key "" :default {:zip ""}}},
   :command {:prefix "!"
             ;; Whether or not embedded commands should be globally available
             ;; (enabled by default)
