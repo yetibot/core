@@ -6,6 +6,7 @@
     [yetibot.core.webapp.routes.api :refer [api-routes]]
     [yetibot.core.webapp.routes.graphql :refer [graphql-routes]]
     [yetibot.core.webapp.routes.healthz :refer [healthz-routes]]
+    [yetibot.core.webapp.routes.images :refer [image-routes]]
     [yetibot.core.webapp.middleware :as middleware]
     [yetibot.core.webapp.session :as session]
     [yetibot.core.webapp.route-loader :as rl]
@@ -45,6 +46,7 @@
                api-routes
                graphql-routes
                healthz-routes
+               image-routes
                last-routes)
         middleware/wrap-base)))
 

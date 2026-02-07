@@ -51,6 +51,14 @@
           :key "path-to-key"}]},
   :url "http://localhost:3003",
   :ebay {:appid ""},
+  :gemini {:api {:key ""
+                 ;; optional: override the default model (gemini-2.0-flash-exp)
+                 ;; :model "gemini-2.0-flash-exp"
+                 ;; monthly budget in USD for image generation (default: 5.00)
+                 ;; :monthly-budget 5.00
+                 ;; estimated cost per image in USD (default: 0.039 for Gemini Flash)
+                 ;; :cost-per-image 0.039
+                 }}
   :giphy {:key ""},
   :weather {:weatherbitio {:key "" :default {:zip ""}}},
   :command {:prefix "!"

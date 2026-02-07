@@ -25,9 +25,9 @@ jobs:
           --health-retries 5
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: maven cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: /root/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('project.clj') }}
