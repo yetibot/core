@@ -1,6 +1,7 @@
 (ns yetibot.core.adapters.discord
   (:require [clojure.spec.alpha :as spec]
             [clojure.core.async :as async]
+            [clojure.string :as str]
             [discljord.messaging :as messaging]
             [discljord.connections :as discord-ws]
             [yetibot.core.models.users :as users]
@@ -8,7 +9,9 @@
             [taoensso.timbre :as timbre]
             [yetibot.core.adapters.adapter :as adapter]
             [yetibot.core.handler :as handler]
-            [yetibot.core.chat :as chat]))
+            [yetibot.core.chat :as chat]
+            [yetibot.core.webapp.routes.images :as images])
+  (:import [java.util Base64]))
 
 (spec/def ::type #{"discord"})
 (spec/def ::token string?)
@@ -103,8 +106,18 @@
     (timbre/debug "Guild Channels: " (pr-str guild-channels))
     (guild-channels)))
 
+(defn- generated-image-id [msg]
+  (second (re-matches #".*/generated-images/([^.]+)\.png$" (str/trim msg))))
+
 (defn- send-msg [{:keys [conn]} msg]
-  (messaging/create-message! (:rest @conn) chat/*target* :content msg))
+  (if-let [id (generated-image-id msg)]
+    (when-let [{:keys [data]} (get @images/image-store id)]
+      (let [bytes (.decode (Base64/getDecoder) ^String data)
+            stream (java.io.ByteArrayInputStream. bytes)]
+        (messaging/create-message!
+          (:rest @conn) chat/*target*
+          :stream {:content stream :filename (str id ".png")})))
+    (messaging/create-message! (:rest @conn) chat/*target* :content msg)))
 
 (defn stop
   "stop the discord connection"
