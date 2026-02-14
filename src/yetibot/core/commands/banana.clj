@@ -11,15 +11,14 @@
   (if (gemini/configured?)
     (try
       (info "banana: generating image for prompt:" match)
-      (if-let [image (gemini/generate-image
-                      (str "Generate an image: " match))]
-        (let [id (store-image! image)
-              base-url (gemini/yetibot-base-url)
-              image-url (format "%s/generated-images/%s.png" base-url id)]
-          (info "banana: image generated successfully, serving at" image-url)
-          {:result/value image-url
-           :result/data {:id id :prompt match :url image-url}})
-        {:result/error "No image was generated. Try a different prompt."})
+      (let [image (gemini/generate-image
+                   (str "Generate an image: " match))
+            id (store-image! image)
+            base-url (gemini/yetibot-base-url)
+            image-url (format "%s/generated-images/%s.png" base-url id)]
+        (info "banana: image generated successfully, serving at" image-url)
+        {:result/value image-url
+         :result/data {:id id :prompt match :url image-url}})
       (catch Exception e
         (error "banana: Gemini image generation error:" (.getMessage e))
         {:result/error (str "Image generation failed: " (.getMessage e))}))

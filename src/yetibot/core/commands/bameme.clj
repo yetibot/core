@@ -48,16 +48,15 @@ Make the image funny, bold, and immediately recognizable as a meme.")
   [{:keys [match]}]
   (if (gemini/configured?)
     (try
-      (let [prompt (build-meme-prompt match)]
-        (info "bameme: generating meme for:" match)
-        (if-let [image (gemini/generate-image prompt meme-system-prompt)]
-          (let [id (store-image! image)
-                base-url (gemini/yetibot-base-url)
-                image-url (format "%s/generated-images/%s.png" base-url id)]
-            (info "bameme: meme generated successfully, serving at" image-url)
-            {:result/value image-url
-             :result/data {:id id :prompt match :url image-url}})
-          {:result/error "No meme was generated. Try a different prompt."}))
+      (let [prompt (build-meme-prompt match)
+            _ (info "bameme: generating meme for:" match)
+            image (gemini/generate-image prompt meme-system-prompt)
+            id (store-image! image)
+            base-url (gemini/yetibot-base-url)
+            image-url (format "%s/generated-images/%s.png" base-url id)]
+        (info "bameme: meme generated successfully, serving at" image-url)
+        {:result/value image-url
+         :result/data {:id id :prompt match :url image-url}})
       (catch Exception e
         (error "bameme: Gemini meme generation error:" (.getMessage e))
         {:result/error (str "Meme generation failed: " (.getMessage e))}))

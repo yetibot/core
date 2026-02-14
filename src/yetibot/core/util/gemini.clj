@@ -3,6 +3,7 @@
   (:require [clj-http.client :as client]
             [clojure.data.json :as json]
             [clojure.spec.alpha :as s]
+            [clojure.string :as string]
             [taoensso.timbre :refer [info warn error]]
             [yetibot.core.config :refer [get-config]]
             [yetibot.core.db.image-budget :as image-budget])
@@ -142,6 +143,49 @@
                :mime-type (:mimeType inline-data)}))
           parts)))
 
+(defn- extract-api-error
+  "Extract a human-readable error message from a Gemini API error response body."
+  [body]
+  (try
+    (let [parsed (if (string? body)
+                   (json/read-str body :key-fn keyword)
+                   body)
+          error-obj (:error parsed)
+          message (:message error-obj)
+          status (:status error-obj)
+          code (:code error-obj)]
+      (if message
+        (str (when code (str "(" code ") "))
+             (when status (str status ": "))
+             message)
+        (str parsed)))
+    (catch Exception _
+      (if (string? body) body (str body)))))
+
+(defn- extract-block-reason
+  "Extract block/filter reason from a Gemini API response that returned no image."
+  [response-body]
+  (let [block-reason (get-in response-body [:promptFeedback :blockReason])
+        finish-reason (get-in response-body [:candidates 0 :finishReason])
+        safety-ratings (or (get-in response-body [:promptFeedback :safetyRatings])
+                           (get-in response-body [:candidates 0 :safetyRatings]))
+        flagged (when safety-ratings
+                  (->> safety-ratings
+                       (filter #(#{"HIGH" "MEDIUM"} (:probability %)))
+                       (map :category)))]
+    (cond
+      block-reason
+      (str "Prompt blocked by Gemini: " block-reason
+           (when (seq flagged)
+             (str " (flagged categories: " (string/join ", " flagged) ")")))
+
+      (and finish-reason (not= finish-reason "STOP"))
+      (str "Generation stopped: " finish-reason
+           (when (seq flagged)
+             (str " (flagged categories: " (string/join ", " flagged) ")")))
+
+      :else nil)))
+
 (defn generate-image
   "Call the Gemini API to generate an image from a text prompt.
    Accepts an optional system-instruction string for guiding generation style.
@@ -163,10 +207,22 @@
                                {:content-type :json
                                 :body (json/write-str body)
                                 :as :json
-                                :throw-exceptions true})]
-     (when-let [image (extract-image (:body response))]
-       (record-image-generated!)
-       image))))
+                                :throw-exceptions false})
+         status (:status response)]
+     (when-not (<= 200 status 299)
+       (let [error-msg (extract-api-error (:body response))]
+         (error "gemini: API error" status "-" error-msg)
+         (throw (ex-info (str "Gemini API error: " error-msg)
+                         {:type :gemini-api-error
+                          :status status}))))
+     (if-let [image (extract-image (:body response))]
+       (do (record-image-generated!)
+           image)
+       (let [reason (extract-block-reason (:body response))]
+         (throw (ex-info (or reason
+                              "No image was generated. Try a different prompt.")
+                         {:type :no-image-generated
+                          :response-body (:body response)})))))))
 
 (defn yetibot-base-url []
   (or (:value (get-config string? [:url]))
