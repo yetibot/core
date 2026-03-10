@@ -16,7 +16,7 @@
 
 (def config (:value (get-config ::config [:gemini :api])))
 
-(def default-model "gemini-2.5-flash-image")
+(def default-model "gemini-3.1-flash-image-preview")
 
 (defn gemini-model []
   (or (:model config) default-model))
@@ -27,12 +27,12 @@
 ;; -- Monthly budget throttling --
 
 (def ^:private default-cost-per-image
-  "Default estimated cost per generated image in USD (Gemini 2.5 Flash pricing)."
-  0.039)
+  "Default estimated cost per generated image in USD (Gemini 3.1 Flash 512px pricing)."
+  0.045)
 
 (def ^:private default-monthly-budget
   "Default monthly budget in USD for image generation."
-  5.00)
+  10.00)
 
 (defn- cost-per-image []
   (or (:cost-per-image config) default-cost-per-image))
@@ -199,7 +199,8 @@
               "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s"
               model api-key)
          body (cond-> {:contents [{:parts [{:text prompt}]}]
-                       :generationConfig {:responseModalities ["TEXT" "IMAGE"]}}
+                       :generationConfig {:responseModalities ["TEXT" "IMAGE"]
+                                          :imageSize "512"}}
                 system-instruction
                 (assoc :systemInstruction
                        {:parts [{:text system-instruction}]}))
