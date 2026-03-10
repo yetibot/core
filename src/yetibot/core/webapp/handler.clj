@@ -6,7 +6,6 @@
     [yetibot.core.webapp.routes.api :refer [api-routes]]
     [yetibot.core.webapp.routes.graphql :refer [graphql-routes]]
     [yetibot.core.webapp.routes.healthz :refer [healthz-routes]]
-    [yetibot.core.webapp.routes.images :refer [image-routes]]
     [yetibot.core.webapp.middleware :as middleware]
     [yetibot.core.webapp.session :as session]
     [yetibot.core.webapp.route-loader :as rl]
@@ -37,17 +36,24 @@
   (timbre/info "yetibot is shutting down...")
   (timbre/info "shutdown complete!"))
 
+(defn- resolve-image-routes []
+  (try
+    (require 'yetibot.webapp.routes.images)
+    (when-let [v (resolve 'yetibot.webapp.routes.images/image-routes)]
+      (var-get v))
+    (catch Exception _ nil)))
+
 (defn app []
   (let [plugin-routes (vec (rl/load-plugin-routes))
-        ;; base-routes needs to be very last because it contains not-found
+        image-routes (resolve-image-routes)
         last-routes (conj plugin-routes base-routes)]
     (-> (apply routes
-               home-routes
-               api-routes
-               graphql-routes
-               healthz-routes
-               image-routes
-               last-routes)
+               (cond-> [home-routes
+                        api-routes
+                        graphql-routes
+                        healthz-routes]
+                 image-routes (conj image-routes)
+                 true (into last-routes)))
         middleware/wrap-base)))
 
 ;; base-routes
