@@ -3,6 +3,7 @@
             [taoensso.timbre :refer [info error]]
             [yetibot.core.hooks :refer [cmd-hook]]
             [yetibot.core.util.gemini :as gemini]
+            [yetibot.core.util.image-input :as image-input]
             [yetibot.core.webapp.routes.images :refer [store-image!]]))
 
 (def ^:private meme-system-prompt
@@ -20,13 +21,13 @@ image in that meme's visual style with the provided text.
 When the user provides text separated by '/' characters, treat each segment as a
 separate text region on the meme (top/bottom, or panel labels).
 
+When the user provides reference images (photos of people, scenes, etc.), incorporate
+those visual elements into the meme. Use the person's likeness or the scene as the
+basis for the meme image.
+
 Make the image funny, bold, and immediately recognizable as a meme.")
 
 (defn- build-meme-prompt
-  "Build a meme generation prompt from the user's input.
-   Supports formats:
-     bameme <template>: <text>
-     bameme <text>"
   [input]
   (if-let [[_ template text] (re-matches #"(?i)(.+?):\s*(.+)" input)]
     (str "Create a meme in the style of the '" (s/trim template)
@@ -42,15 +43,22 @@ Make the image funny, bold, and immediately recognizable as a meme.")
    bameme one does not simply: deploy on a friday
    bameme this is fine: everything is on fire at work
 
+   With image inputs:
+   bameme drake: @alice / @bob (uses their Discord avatars)
+   bameme distracted boyfriend: <attach images>
+   bameme this person: https://example.com/photo.png
+
    Or without a template:
    bameme when the code compiles on the first try"
   {:yb/cat #{:img :meme}}
-  [{:keys [match]}]
+  [{:keys [match chat-source]}]
   (if (gemini/configured?)
     (try
-      (let [prompt (build-meme-prompt match)
-            _ (info "bameme: generating meme for:" match)
-            image (gemini/generate-image prompt meme-system-prompt)
+      (let [{:keys [prompt image-urls]} (image-input/extract-images match chat-source)
+            meme-prompt (build-meme-prompt prompt)
+            _ (info "bameme: generating meme for:" prompt
+                    (when (seq image-urls) (str "with " (count image-urls) " image(s)")))
+            image (gemini/generate-image meme-prompt meme-system-prompt image-urls)
             id (store-image! image)
             base-url (gemini/yetibot-base-url)
             image-url (format "%s/generated-images/%s.png" base-url id)]

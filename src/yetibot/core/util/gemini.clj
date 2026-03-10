@@ -8,7 +8,8 @@
             [yetibot.core.config :refer [get-config]]
             [yetibot.core.db.image-budget :as image-budget])
   (:import [java.time YearMonth]
-           [java.time.format DateTimeFormatter]))
+           [java.time.format DateTimeFormatter]
+           [java.util Base64]))
 
 (s/def ::key string?)
 
@@ -186,19 +187,44 @@
 
       :else nil)))
 
+(defn- fetch-image-as-base64
+  "Fetch an image from a URL and return {:data base64-str :mime-type str}."
+  [image-url]
+  (let [resp (client/get image-url {:as :byte-array :throw-exceptions false})]
+    (when (<= 200 (:status resp) 299)
+      (let [ct (get-in resp [:headers "Content-Type"] "image/png")]
+        {:data (.encodeToString (Base64/getEncoder) ^bytes (:body resp))
+         :mime-type (first (string/split ct #";"))}))))
+
+(defn- build-content-parts
+  "Build the parts array for the Gemini API request.
+   Includes the text prompt and any inline image data."
+  [prompt image-urls]
+  (let [text-part [{:text prompt}]
+        image-parts (when (seq image-urls)
+                      (->> image-urls
+                           (keep fetch-image-as-base64)
+                           (mapv (fn [{:keys [data mime-type]}]
+                                   {:inlineData {:mimeType mime-type
+                                                 :data data}}))))]
+    (into text-part image-parts)))
+
 (defn generate-image
   "Call the Gemini API to generate an image from a text prompt.
-   Accepts an optional system-instruction string for guiding generation style.
+   Accepts an optional system-instruction string and a seq of image-urls
+   to include as visual input for multi-modal prompts.
    Checks monthly budget before making the API call and records usage on success."
-  ([prompt] (generate-image prompt nil))
-  ([prompt system-instruction]
+  ([prompt] (generate-image prompt nil nil))
+  ([prompt system-instruction] (generate-image prompt system-instruction nil))
+  ([prompt system-instruction image-urls]
    (check-budget!)
    (let [api-key (:key config)
          model (gemini-model)
          url (format
               "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s"
               model api-key)
-         body (cond-> {:contents [{:parts [{:text prompt}]}]
+         parts (build-content-parts prompt image-urls)
+         body (cond-> {:contents [{:parts parts}]
                        :generationConfig {:responseModalities ["TEXT" "IMAGE"]
                                           :imageSize "512"}}
                 system-instruction
