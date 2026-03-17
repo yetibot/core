@@ -22,11 +22,8 @@
           {:result/error (str "Couldn't extract emoji from `" emoji "`")}))
 
       (= :discord adapter-type)
-      (let [adapter (get @a/adapters (:uuid chat-source))
-            [_ emoji-name] (re-find #"^:(.+):" emoji)]
-        (if emoji-name
-          (suppress (discord/react adapter emoji-name *target*))
-          {:result/error (str "Couldn't extract emoji from `" emoji "`")}))
+      (let [adapter (get @a/adapters (:uuid chat-source))]
+        (suppress (discord/react adapter emoji *target*)))
 
       :else
       {:result/error "React only works on Slack and Discord 🎈"})))
