@@ -133,6 +133,25 @@
   (messaging/stop-connection! (:message @conn))
   (async/close!           (:event @conn)))
 
+(defn react
+  "reacts to messages in a given channel for a specific adapter that are
+   non-YB commands and not from the YB user"
+  [adapter emoji channel-id]
+  (timbre/debug "react" {:adapter adapter :emoji emoji :channel channel-id})
+  (let [conn (:conn adapter)
+        rest-conn (:rest @conn)
+        yb-id (:id (:yetibot-user adapter))
+        messages @(messaging/get-channel-messages! rest-conn channel-id 10)
+        non-yb-non-cmd (->> messages
+                            (filter #(not= yb-id (-> % :author :id)))
+                            (filter #(not (str/starts-with? (:content %) "!"))))
+        msg (first non-yb-non-cmd)
+        message-id (:id msg)]
+    (timbre/debug "react with"
+                  {:msg msg :emoji emoji :channel channel-id :message-id message-id})
+    (when message-id
+      (messaging/create-reaction! rest-conn channel-id message-id emoji))))
+
 (defrecord Discord
            [config
             bot-id
