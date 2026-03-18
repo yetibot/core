@@ -24,7 +24,7 @@
       (= :discord adapter-type)
       (let [adapter (get @a/adapters (:uuid chat-source))]
         (discord/react adapter emoji *target*)
-        nil)
+        (suppress {})))
 
       :else
       {:result/error "React only works on Slack and Discord 🎈"})))
