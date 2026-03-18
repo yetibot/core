@@ -13,7 +13,7 @@
     {:result/error "discord emoji only works on Discord 🎈"}
     (let [adapter (get @a/adapters (:uuid chat-source))
           guild-id (:guild-id chat-source)
-          emojis @(messaging/list-guild-emojis! (:rest (:conn adapter)) guild-id)]
+          emojis @(messaging/list-guild-emojis! (:rest @(:conn adapter)) guild-id)]
       {:result/data emojis
        :result/value (map :name emojis)})))
 
