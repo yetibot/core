@@ -141,7 +141,7 @@
   (let [conn (:conn adapter)
         rest-conn (:rest @conn)
         yb-id (:id (:yetibot-user adapter))
-        messages @(messaging/get-channel-messages! rest-conn channel-id 10)
+        messages @(messaging/get-channel-messages! rest-conn channel-id :limit 10)
         non-yb-non-cmd (->> messages
                             (filter #(not= yb-id (-> % :author :id)))
                             (filter #(not (str/starts-with? (:content %) "!"))))
