@@ -150,7 +150,7 @@
     (timbre/debug "react with"
                   {:msg msg :emoji emoji :channel channel-id :message-id message-id})
     (when message-id
-      (messaging/create-reaction! rest-conn channel-id message-id emoji))))
+      @(messaging/create-reaction! rest-conn channel-id message-id emoji))))
 
 (defrecord Discord
            [config
