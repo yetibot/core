@@ -120,7 +120,7 @@
 
 (defn- chunk-message [msg]
   (let [chunks (partition-all discord-max-message-length msg)]
-    (map join chunks)))
+    (map str/join chunks)))
 
 (defn- send-msg [{:keys [conn]} msg]
   (try
