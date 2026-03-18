@@ -38,6 +38,7 @@
       (if (= yetibot? true)
         (timbre/debug "We don't handle" emoji-name "from yetibot")
         (let [cs (assoc (chat/chat-source channel-id)
+                        :guild-id (:guild-id event-data)
                         :raw-event event-data)
               user-model (assoc (users/get-user cs message-author-id)
                                 :yetibot? yetibot?)
