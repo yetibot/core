@@ -121,10 +121,10 @@
       (when-let [{:keys [data]} (get @store id)]
         (let [bytes (.decode (Base64/getDecoder) ^String data)
               stream (java.io.ByteArrayInputStream. bytes)]
-          (messaging/create-message!
+          @(messaging/create-message!
             (:rest @conn) chat/*target*
             :stream {:content stream :filename (str id ".png")}))))
-    (messaging/create-message! (:rest @conn) chat/*target* :content msg)))
+    @(messaging/create-message! (:rest @conn) chat/*target* :content msg)))
 
 (defn stop
   "stop the discord connection"
