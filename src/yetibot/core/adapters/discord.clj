@@ -115,6 +115,12 @@
       (var-get v))
     (catch Exception _ nil)))
 
+(def discord-max-message-length 2000)
+
+(defn- chunk-message [msg]
+  (let [chunks (partition-all discord-max-message-length msg)]
+    (map join chunks)))
+
 (defn- send-msg [{:keys [conn]} msg]
   (try
     (if-let [id (generated-image-id msg)]
@@ -125,7 +131,10 @@
             @(messaging/create-message!
               (:rest @conn) chat/*target*
               :stream {:content stream :filename (str id ".png")}))))
-      @(messaging/create-message! (:rest @conn) chat/*target* :content msg))
+      (if (> (count msg) discord-max-message-length)
+        (doseq [chunk (chunk-message msg)]
+          @(messaging/create-message! (:rest @conn) chat/*target* :content chunk))
+        @(messaging/create-message! (:rest @conn) chat/*target* :content msg)))
     (catch Exception e
       (timbre/error "Error sending Discord message:" e))))
 
