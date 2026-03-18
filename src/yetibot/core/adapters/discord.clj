@@ -116,15 +116,18 @@
     (catch Exception _ nil)))
 
 (defn- send-msg [{:keys [conn]} msg]
-  (if-let [id (generated-image-id msg)]
-    (when-let [store (resolve-image-store)]
-      (when-let [{:keys [data]} (get @store id)]
-        (let [bytes (.decode (Base64/getDecoder) ^String data)
-              stream (java.io.ByteArrayInputStream. bytes)]
-          @(messaging/create-message!
-            (:rest @conn) chat/*target*
-            :stream {:content stream :filename (str id ".png")}))))
-    @(messaging/create-message! (:rest @conn) chat/*target* :content msg)))
+  (try
+    (if-let [id (generated-image-id msg)]
+      (when-let [store (resolve-image-store)]
+        (when-let [{:keys [data]} (get @store id)]
+          (let [bytes (.decode (Base64/getDecoder) ^String data)
+                stream (java.io.ByteArrayInputStream. bytes)]
+            @(messaging/create-message!
+              (:rest @conn) chat/*target*
+              :stream {:content stream :filename (str id ".png")}))))
+      @(messaging/create-message! (:rest @conn) chat/*target* :content msg))
+    (catch Exception e
+      (timbre/error "Error sending Discord message:" e))))
 
 (defn stop
   "stop the discord connection"
