@@ -16,13 +16,17 @@
           _ (info "discord emoji: channel-id" channel-id "chat-source" (pr-str chat-source))
           rest-conn (:rest @(:conn adapter))
           channel-info @(messaging/get-channel! rest-conn channel-id)
-          _ (info "discord emoji: channel-info" (pr-str channel-info))
+          _ (info "discord emoji: channel-info" (pr-str channel-info) "type" (:type channel-info))
           guild-id (:guild-id channel-info)
           _ (info "discord emoji: guild-id" guild-id)
-          emojis @(messaging/list-guild-emojis! rest-conn guild-id)
-          _ (info "discord emoji: emojis count" (count emojis))]
+          emojis (if guild-id
+                   @(messaging/list-guild-emojis! rest-conn guild-id)
+                   {:error "Could not determine guild-id from channel" :channel-info channel-info})
+          _ (info "discord emoji: emojis result" (pr-str emojis) "count" (if (vector? emojis) (count emojis) "N/A"))]
       {:result/data emojis
-       :result/value (map :name emojis)})))
+       :result/value (if (vector? emojis)
+                       (map :name emojis)
+                       [(:error emojis)])})))
 
 (cmd-hook #"discord"
   #"emoji" emoji-cmd)
