@@ -17,11 +17,11 @@
           rest-conn (:rest @(:conn adapter))
           channel-info @(messaging/get-channel! rest-conn channel-id)
           _ (info "discord emoji: channel-info" (pr-str channel-info) "type" (:type channel-info))
-          guild-id (:guild-id channel-info)
+          guild-id (if (map? channel-info) (:guild-id channel-info) nil)
           _ (info "discord emoji: guild-id" guild-id)
-          emojis (if guild-id
+          emojis (if (and guild-id (number? guild-id))
                    @(messaging/list-guild-emojis! rest-conn guild-id)
-                   {:error "Could not determine guild-id from channel" :channel-info channel-info})
+                   {:error (str "Could not determine guild-id from channel. guild-id=" guild-id " channel-type=" (:type channel-info))})
           _ (info "discord emoji: emojis result" (pr-str emojis) "count" (if (vector? emojis) (count emojis) "N/A"))]
       {:result/data emojis
        :result/value (if (vector? emojis)
