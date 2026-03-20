@@ -130,13 +130,13 @@
         (when-let [{:keys [data]} (get @store id)]
           (let [bytes (.decode (Base64/getDecoder) ^String data)
                 stream (java.io.ByteArrayInputStream. bytes)]
-            @(messaging/create-message!
+            (messaging/create-message!
               (:rest @conn) chat/*target*
               :stream {:content stream :filename (str id ".png")}))))
       (if (> (count msg) discord-max-message-length)
         (doseq [chunk (chunk-message msg)]
-          @(messaging/create-message! (:rest @conn) chat/*target* :content chunk))
-        @(messaging/create-message! (:rest @conn) chat/*target* :content msg)))
+          (messaging/create-message! (:rest @conn) chat/*target* :content chunk))
+        (messaging/create-message! (:rest @conn) chat/*target* :content msg)))
     (catch Exception e
       (timbre/error "Error sending Discord message:" e))))
 
@@ -154,17 +154,22 @@
   (timbre/debug "react" {:adapter adapter :emoji emoji :channel channel-id})
   (let [conn (:conn adapter)
         rest-conn (:rest @conn)
-        yb-id (:id (:yetibot-user adapter))
-        messages @(messaging/get-channel-messages! rest-conn channel-id :limit 10)
-        non-yb-non-cmd (->> messages
-                            (filter #(not= yb-id (-> % :author :id)))
-                            (filter #(not (str/starts-with? (:content %) "!"))))
-        msg (first non-yb-non-cmd)
-        message-id (:id msg)]
-    (timbre/debug "react with"
-                  {:msg msg :emoji emoji :channel channel-id :message-id message-id})
-    (when message-id
-      @(messaging/create-reaction! rest-conn channel-id message-id emoji))))
+        yb-id (:id (:yetibot-user adapter))]
+    ;; Use future to avoid blocking the event loop
+    (future
+      (try
+        (let [messages @(messaging/get-channel-messages! rest-conn channel-id :limit 10)
+              non-yb-non-cmd (->> messages
+                                  (filter #(not= yb-id (-> % :author :id)))
+                                  (filter #(not (str/starts-with? (:content %) "!"))))
+              msg (first non-yb-non-cmd)
+              message-id (:id msg)]
+          (timbre/debug "react with"
+                        {:msg msg :emoji emoji :channel channel-id :message-id message-id})
+          (when message-id
+            (messaging/create-reaction! rest-conn channel-id message-id emoji)))
+        (catch Exception e
+          (timbre/error "Error creating Discord reaction:" e))))))
 
 (defrecord Discord
            [config
