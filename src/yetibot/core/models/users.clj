@@ -32,13 +32,10 @@
    `active?` can be determined by any criteria. In Slack it's managed by
    presence detection. In IRC it could be managed by being offline, or have an
    activity timeout. If ommitted, it defaults to true."
-  ([username user-info] (create-user username true user-info nil))
-  ([username active? {:keys [id] :as user-info}] (create-user username active? user-info nil))
-  ([username active? {:keys [id] :as user-info} adapter]
+  ([username user-info] (create-user username true user-info))
+  ([username active? {:keys [id] :as user-info}]
    (let [id (str (or id username))
-         mention-name (case adapter
-                        :discord (str "@" username)
-                        username)]
+         mention-name username] ; mention name breaks pure-text representation of user
      (merge user-info {:username username
                        :name username ; alias for backward compat
                        :mention-name mention-name ; for display

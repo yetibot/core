@@ -63,8 +63,7 @@
                       (-> event-data
                           :author
                           :username)
-                      (event-data :author :id)
-                      :discord)
+                      (event-data :author :id))
           message (:content event-data)
           cs (assoc (chat/chat-source (:channel-id event-data))
                     :raw-event event-data)]
