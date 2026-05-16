@@ -59,7 +59,7 @@
                          :content "fake content eh"}
                         (atom nil)
                         (atom {:id 123})) => "called handle-raw"
-   (provided (users/create-user "fake" {:id 999 :username "fake"} :discord) => {:username "fake"}
+  (provided (users/create-user "fake" {:id 999 :username "fake"}) => {:username "fake"}
             (chat/chat-source 456) => {:channel-id 456 :room "fake"}
             (handler/handle-raw anything anything anything anything anything) => "called handle-raw")))
             
