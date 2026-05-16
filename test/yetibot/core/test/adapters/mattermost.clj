@@ -13,6 +13,25 @@
    [mattermost-clj.api.channels :as channels]
    [yetibot.core.chat :as chat]))
 
+(facts "about url"
+  (url {:host "mattermost.example.com"} :path "/api/v4")
+  => "https://mattermost.example.com/api/v4"
+
+  (url {:host "mattermost.example.com"} :websocket? true :path "/api/v4/websocket")
+  => "wss://mattermost.example.com/api/v4/websocket"
+
+  (url {:host "localhost:8065" :secure "false"} :path "/api/v4")
+  => "http://localhost:8065/api/v4"
+
+  (url {:host "localhost:8065" :secure false} :websocket? true :path "/api/v4/websocket")
+  => "ws://localhost:8065/api/v4/websocket")
+
+(facts "about Mattermost thread ids"
+  (reply-thread-id {:id "post-id" :root_id "root-id" :parent_id "parent-id"}) => "root-id"
+  (reply-thread-id {:id "post-id" :root_id "" :parent_id "parent-id"}) => "parent-id"
+  (reply-thread-id {:id "post-id" :root_id "" :parent_id ""}) => nil
+  (event-thread-id {:id "post-id" :root_id "" :parent_id ""}) => "post-id")
+
 (comment
 
   ;; emoji reaction on a threaded child post

@@ -63,26 +63,29 @@
 (s/def ::type #{"mattermost"})
 (s/def ::token string?)
 (s/def ::host string?) ;; NB: could be improved by checking for uri
-(s/def ::secure string?)
+(s/def ::secure (s/or :string string? :boolean boolean?))
 (s/def ::config (s/keys :req-un [::type
                                  ::host
                                  ::token]
                         :opt-un [::secure]))
 
+(defn secure?
+  "Mattermost should use TLS by default; only an explicit false disables it."
+  [{:keys [secure]}]
+  (not (contains? #{false "false"} secure)))
+
 (defn url
   "Return an HTTP or WebSocket URL from mattermost config"
   [{host :host
-    secure :secure
     :as config}
    & {websocket? :websocket?
       path :path}]
-  (let [secure? (= "true" secure)]
-    (str
-     (-> (uri (str "//" host))
-         (assoc :scheme (str
-                         (if websocket? "ws" "http")
-                         (when secure? "s"))
-                :path path)))))
+  (str
+   (-> (uri (str "//" host))
+       (assoc :scheme (str
+                       (if websocket? "ws" "http")
+                       (when (secure? config) "s"))
+              :path path))))
 
 (declare start)
 
@@ -103,6 +106,24 @@
   [{channel-type :type :as channel}]
   (= channel-type "P"))
 
+(defn true-prop?
+  "Mattermost event props may encode booleans either as booleans or strings."
+  [v]
+  (contains? #{true "true"} v))
+
+(defn reply-thread-id
+  "Return the Mattermost post id that replies should use as root_id.
+
+   Modern Mattermost threading is based on root_id; parent_id was deprecated."
+  [{:keys [root_id parent_id]}]
+  (or (not-empty root_id)
+      (not-empty parent_id)))
+
+(defn event-thread-id
+  "Return the Mattermost conversation/thread id for event metadata."
+  [{:keys [id] :as post}]
+  (or (reply-thread-id post) id))
+
 (defn on-posted
   [{:keys [api-context yetibot-user]
     :as  adapter} {{post :post} :data :as event}]
@@ -111,7 +132,6 @@
     (binding [*adapter* adapter]
       (let [{:keys [user_id
                     channel_id
-                    parent_id
                     props
                     message]
              :as post} (json/read-str post :key-fn keyword)
@@ -120,16 +140,19 @@
             cs (assoc (chat-source (:name channel))
                       :raw-event event
                       :is-private private?)
-            bot? (= "true" (:from_bot props))
             mattermost-user (users/users-user-id-get user_id)
+            bot? (or (true-prop? (:from_bot props))
+                     (:is_bot mattermost-user)
+                     (= user_id (:id @yetibot-user)))
             user-model (models.users/create-user
                         (:username mattermost-user)
                         mattermost-user)
-            body message]
+            body message
+            reply-thread-ts (reply-thread-id post)]
         (if bot?
           (debug "ignoring bot post" (pr-str post))
           (binding [*target* (:id channel)
-                    *thread-ts* parent_id]
+                    *thread-ts* reply-thread-ts]
             ;; (debug "posted" (pr-str post))
             (handle-raw
              cs
@@ -139,7 +162,7 @@
              {:body body
               ;; allow chatters (like obs) to optionally reply
               ;; in-thread by propagating the thread-ts
-              :thread-ts parent_id})))))))
+              :thread-ts (event-thread-id post)})))))))
 
 (defn on-reaction-added
   [{:keys [api-context yetibot-user] :as adapter}
@@ -167,12 +190,10 @@
                           mattermost-user)
              ;; this is the post that the user reacted to
               {body :message
-               ;; we need the parent_id of the post so we can populate that as
-               ;; thread-ts
-               parent_id :parent_id
-               :as post} (posts/posts-post-id-get post_id)]
+               :as post} (posts/posts-post-id-get post_id)
+              thread-ts (event-thread-id post)]
           (binding [*target* (:id channel)
-                    *thread-ts* parent_id]
+                    *thread-ts* thread-ts]
            ;; (debug "posted" (pr-str post))
             (handle-raw
              cs
@@ -181,7 +202,7 @@
              @yetibot-user
              {:reaction (string/replace emoji_name "_" " ")
               :body body
-              :thread-ts parent_id}))
+              :thread-ts thread-ts}))
 
          ;; TODO figure out if a bot caused the reaction and ignore it if so
           #_(if bot?
@@ -191,8 +212,10 @@
       (info "Exception on-reaction-added" (pr-str e)))))
 
 (defn on-error
-  "Report errors for debugging"
-  [adapter err]
+  "Report websocket errors for debugging and reconnect.
+
+   java-http-clj invokes :on-error with [ws throwable]."
+  [adapter ws err]
   (info "Mattermost error" (pr-str err))
   ;; if an error happens try reconnecting
   (start adapter))
@@ -230,7 +253,7 @@
             ping-payload (bb/*wrap (.getBytes (str now)))]
         (debug "Pinging" (a/uuid adapter) {:ping-count n :now now})
         (.sendPing @conn ping-payload)
-        (async/<!! (async/timeout mattermost-ping-interval-ms))
+        (async/<! (async/timeout mattermost-ping-interval-ms))
         (recur (inc n)))
       ;; NOTE: maybe we should auto-reconnect here if @should-ping? is still
       ;; true, which means it was supposed to keep pinging but the connection
@@ -312,7 +335,8 @@
                       (info "Mattermost is connected")
                       (websocket/send ws (json/write-str auth))
                       (info "Mattermost auth sent")
-                      (start-pinger! adapter))})
+                      (start-pinger! adapter))}
+          {:headers {"Authorization" (str "Bearer " token)}})
          (info "Started" (a/uuid adapter)))))))
 
 (defn channels
