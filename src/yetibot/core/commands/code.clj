@@ -5,9 +5,13 @@
 
      code yetibot/core increase banana budget
 
-   This clones the repo using Yetibot's existing GitHub token, checks out and
+   This clones the repo using Yetibot's GitHub credentials, checks out and
    rebases on the latest trunk, runs the Gemini CLI to perform the requested
-   change, then commits, pushes a branch, and opens a PR back to the repo."
+   change, then commits, pushes a branch, and opens a PR back to the repo.
+
+   GitHub auth is either a static token (PAT) or a GitHub App, whichever is
+   configured — an App is preferred since it mints short-lived, repo-scoped
+   installation tokens instead of relying on a long-lived personal token."
   (:require
    [clojure.java.shell :as shell]
    [clojure.spec.alpha :as s]
@@ -19,7 +23,10 @@
    [yetibot.core.hooks :refer [cmd-hook]])
   (:import
    [java.nio.file Files]
-   [java.nio.file.attribute FileAttribute]))
+   [java.nio.file.attribute FileAttribute]
+   [java.security KeyFactory Signature]
+   [java.security.spec PKCS8EncodedKeySpec]
+   [java.util Base64]))
 
 ;; ---------------------------------------------------------------------------
 ;; Config
@@ -33,12 +40,21 @@
 ;;   YB_GEMINI_CLI          - path to the gemini CLI binary (default "gemini")
 ;;   YB_GEMINI_DEFAULT_ORG  - org used when repo given without an owner
 ;;
-;; The GitHub token is reused from the yetibot/github plugin's [:github :token]
-;; (YB_GITHUB_TOKEN).
+;; GitHub auth, in order of preference:
+;;
+;;   GitHub App (short-lived, repo-scoped installation tokens):
+;;     YB_GITHUB_APP_ID              - the App's ID
+;;     YB_GITHUB_APP_PRIVATE_KEY     - the App's PEM private key
+;;     YB_GITHUB_APP_INSTALLATION_ID - optional; auto-resolved per repo if unset
+;;
+;;   Static token (reused from the yetibot/github plugin's [:github :token]):
+;;     YB_GITHUB_TOKEN               - a personal access token
 ;; ---------------------------------------------------------------------------
 
 ;; generic spec for fetching single string values out of arbitrary config paths
 (s/def ::str string?)
+;; an App id may be configured as either a string or a number
+(s/def ::id (s/or :string string? :number number?))
 
 (defn- config-str [path]
   (:value (get-config ::str path)))
@@ -50,16 +66,32 @@
 (defn cli-bin [] (or (config-str [:gemini :cli]) "gemini"))
 (defn default-org [] (or (config-str [:gemini :default-org]) "yetibot"))
 
-(defn github-token
-  "Reuse Yetibot's existing GitHub token."
+(defn github-pat
+  "Yetibot's static GitHub token (PAT), if configured."
   []
   (config-str [:github :token]))
 
+(defn app-id []
+  (some-> (:value (get-config ::id [:github :app :id])) str))
+
+(defn app-private-key
+  "The GitHub App's PEM private key. Tolerates env-var encoded newlines (\\n)."
+  []
+  (some-> (config-str [:github :app :private-key])
+          (string/replace "\\n" "\n")))
+
+(defn app-configured? []
+  (boolean (and (not (string/blank? (app-id)))
+                (not (string/blank? (app-private-key))))))
+
+(defn github-auth-configured? []
+  (or (app-configured?) (not (string/blank? (github-pat)))))
+
 (defn configured?
-  "The command is only available when both Gemini and a GitHub token are set."
+  "The command is only available when Gemini and some GitHub auth are set."
   []
   (boolean (and (not (string/blank? (gemini-key)))
-                (not (string/blank? (github-token))))))
+                (github-auth-configured?))))
 
 ;; ---------------------------------------------------------------------------
 ;; Shell helpers
@@ -202,14 +234,122 @@
 ;; GitHub
 ;; ---------------------------------------------------------------------------
 
+(def ^:private api-base "https://api.github.com")
+
+(defn- gh-headers [auth]
+  {"Authorization" auth
+   "Accept" "application/vnd.github+json"
+   "X-GitHub-Api-Version" "2022-11-28"})
+
+(defn- gh-get [url auth]
+  (client/get url {:headers (gh-headers auth) :as :json
+                   :coerce :always :throw-exceptions false}))
+
+(defn- gh-ok
+  "Return the response body on 2xx, otherwise throw with the GitHub error."
+  [{:keys [status body]} what]
+  (if (<= 200 status 299)
+    body
+    (throw (ex-info (str what " failed: " (or (:message body) status))
+                    {:status status :body body}))))
+
+;; -- RS256 JWT (pure JDK; no BouncyCastle, to avoid classpath conflicts) ------
+
+(defn- b64url
+  "Base64url-encode bytes without padding, per the JWT spec."
+  [^bytes bs]
+  (.encodeToString (.withoutPadding (Base64/getUrlEncoder)) bs))
+
+(defn- pem->der
+  "Strip PEM armor and base64-decode the body to DER bytes."
+  [pem]
+  (-> pem
+      (string/replace #"-----(BEGIN|END)[A-Z ]+-----" "")
+      (string/replace #"\s" "")
+      (->> (.decode (Base64/getDecoder)))))
+
+(defn- der-tlv
+  "Build an ASN.1 tag-length-value with correctly encoded definite length."
+  [tag ^bytes content]
+  (let [n (count content)
+        len (cond
+              (< n 0x80) [n]
+              (< n 0x100) [0x81 n]
+              :else [0x82 (bit-shift-right n 8) (bit-and n 0xff)])]
+    (byte-array (concat [tag] (map unchecked-byte len) content))))
+
+(defn- pkcs1->pkcs8
+  "Wrap a PKCS#1 RSAPrivateKey (GitHub's default key format) in a PKCS#8
+   PrivateKeyInfo so the JDK KeyFactory can read it."
+  [^bytes pkcs1]
+  (let [version (byte-array [0x02 0x01 0x00])
+        rsa-alg (byte-array (map unchecked-byte
+                                 [0x30 0x0d 0x06 0x09 0x2a 0x86 0x48
+                                  0x86 0xf7 0x0d 0x01 0x01 0x01 0x05 0x00]))]
+    (der-tlv 0x30 (byte-array (concat version rsa-alg (der-tlv 0x04 pkcs1))))))
+
+(defn- rsa-private-key
+  "Load an RSA private key from a PEM string in either PKCS#8 or PKCS#1 form."
+  [pem]
+  (let [der (pem->der pem)
+        der (if (string/includes? pem "BEGIN RSA PRIVATE KEY")
+              (pkcs1->pkcs8 der)
+              der)]
+    (.generatePrivate (KeyFactory/getInstance "RSA")
+                      (PKCS8EncodedKeySpec. der))))
+
+(defn- rs256 [^String signing-input pem]
+  (b64url (-> (doto (Signature/getInstance "SHA256withRSA")
+                (.initSign (rsa-private-key pem))
+                (.update (.getBytes signing-input "UTF-8")))
+              (.sign))))
+
+(defn app-jwt
+  "A short-lived (≤10m) RS256 JWT identifying the GitHub App, per GitHub's spec.
+   `iat` is backdated 60s to tolerate clock skew."
+  []
+  (let [now (quot (System/currentTimeMillis) 1000)
+        seg (fn [m] (b64url (.getBytes (json/write-str m) "UTF-8")))
+        signing-input (str (seg {:alg "RS256" :typ "JWT"})
+                           "."
+                           (seg {:iat (- now 60) :exp (+ now (* 9 60)) :iss (app-id)}))]
+    (str signing-input "." (rs256 signing-input (app-private-key)))))
+
+(defn installation-id
+  "The App's installation id for owner/repo (config override or auto-resolved)."
+  [jwt-token owner repo]
+  (or (config-str [:github :app :installation-id])
+      (-> (gh-get (format "%s/repos/%s/%s/installation" api-base owner repo)
+                  (str "Bearer " jwt-token))
+          (gh-ok "GitHub App installation lookup")
+          :id)))
+
+(defn installation-token
+  "Mint a short-lived installation access token for owner/repo. Behaves like a
+   PAT for both git operations and the REST API."
+  [owner repo]
+  (let [jwt-token (app-jwt)
+        id (installation-id jwt-token owner repo)]
+    (-> (client/post (format "%s/app/installations/%s/access_tokens" api-base id)
+                     {:headers (gh-headers (str "Bearer " jwt-token))
+                      :as :json :coerce :always :throw-exceptions false})
+        (gh-ok "GitHub App token exchange")
+        :token)))
+
+(defn github-token
+  "Resolve a GitHub token for owner/repo: a freshly-minted App installation
+   token when an App is configured, otherwise the static PAT."
+  [owner repo]
+  (if (app-configured?)
+    (installation-token owner repo)
+    (github-pat)))
+
 (defn create-pull-request
-  "Open a PR via the GitHub REST API using the existing token."
+  "Open a PR via the GitHub REST API using the resolved token."
   [token owner repo {:keys [title body head base]}]
   (let [{:keys [status body]}
-        (client/post (format "https://api.github.com/repos/%s/%s/pulls" owner repo)
-                     {:headers {"Authorization" (str "Bearer " token)
-                                "Accept" "application/vnd.github+json"
-                                "X-GitHub-Api-Version" "2022-11-28"}
+        (client/post (format "%s/repos/%s/%s/pulls" api-base owner repo)
+                     {:headers (gh-headers (str "Bearer " token))
                       :content-type :json
                       :as :json
                       :coerce :always
@@ -273,37 +413,37 @@
   "code <owner/repo> <instruction> # use Gemini to make the change and open a PR"
   {:yb/cat #{:util}}
   [{[_ repo-arg instruction] :match}]
-  (let [token (github-token)]
-    (cond
-      (string/blank? (gemini-key))
-      "Gemini is not configured. Set the `:gemini :key` config (YB_GEMINI_KEY)."
+  (cond
+    (string/blank? (gemini-key))
+    "Gemini is not configured. Set the `:gemini :key` config (YB_GEMINI_KEY)."
 
-      (string/blank? token)
-      "No GitHub token configured. Set `:github :token` (YB_GITHUB_TOKEN)."
+    (not (github-auth-configured?))
+    "No GitHub auth configured. Set a GitHub App (`:github :app :id` + `:github :app :private-key`) or a token (`:github :token`)."
 
-      :else
-      (let [[owner repo] (parse-repo repo-arg)]
-        (try
-          (let [{:keys [html_url] :as pr}
-                (file-pr {:owner owner
-                          :repo repo
-                          :instruction instruction
-                          :token token})]
-            (if html_url
-              (format "Opened PR for %s/%s: %s" owner repo html_url)
-              (str "Opened PR but got no URL back: " (pr-str pr))))
-          (catch clojure.lang.ExceptionInfo e
-            (if (= :no-changes (:type (ex-data e)))
-              (do
-                (info "code: gemini made no changes for" (str owner "/" repo))
-                (format "Gemini didn't make any changes for %s/%s — try a more specific instruction."
-                        owner repo))
-              (do
-                (error "code command failed" e)
-                (str "Failed to open PR: " (.getMessage e)))))
-          (catch Exception e
-            (error "code command failed" e)
-            (str "Failed to open PR: " (.getMessage e))))))))
+    :else
+    (let [[owner repo] (parse-repo repo-arg)]
+      (try
+        (let [token (github-token owner repo)
+              {:keys [html_url] :as pr}
+              (file-pr {:owner owner
+                        :repo repo
+                        :instruction instruction
+                        :token token})]
+          (if html_url
+            (format "Opened PR for %s/%s: %s" owner repo html_url)
+            (str "Opened PR but got no URL back: " (pr-str pr))))
+        (catch clojure.lang.ExceptionInfo e
+          (if (= :no-changes (:type (ex-data e)))
+            (do
+              (info "code: gemini made no changes for" (str owner "/" repo))
+              (format "Gemini didn't make any changes for %s/%s — try a more specific instruction."
+                      owner repo))
+            (do
+              (error "code command failed" e)
+              (str "Failed to open PR: " (.getMessage e)))))
+        (catch Exception e
+          (error "code command failed" e)
+          (str "Failed to open PR: " (.getMessage e)))))))
 
 ;; Only register the command when both Gemini and GitHub are configured, in
 ;; keeping with the convention used by other optionally-configured commands.
