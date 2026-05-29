@@ -9,6 +9,7 @@
             [taoensso.timbre :as timbre]
             [yetibot.core.adapters.adapter :as adapter]
             [yetibot.core.handler :as handler]
+            [yetibot.core.webapp.routes.images :as images]
             [yetibot.core.chat :as chat])
   (:import [java.util Base64]))
 
@@ -109,13 +110,6 @@
 (defn- generated-image-id [msg]
   (second (re-matches #".*/generated-images/([^.]+)\.png$" (str/trim msg))))
 
-(defn- resolve-image-store []
-  (try
-    (require 'yetibot.webapp.routes.images)
-    (when-let [v (resolve 'yetibot.webapp.routes.images/image-store)]
-      (var-get v))
-    (catch Exception _ nil)))
-
 (def discord-max-message-length 2000)
 
 (defn- chunk-message [msg]
@@ -125,13 +119,12 @@
 (defn- send-msg [{:keys [conn]} msg]
   (try
     (if-let [id (generated-image-id msg)]
-      (when-let [store (resolve-image-store)]
-        (when-let [{:keys [data]} (get @store id)]
-          (let [bytes (.decode (Base64/getDecoder) ^String data)
-                stream (java.io.ByteArrayInputStream. bytes)]
-            @(messaging/create-message!
-              (:rest @conn) chat/*target*
-              :stream {:content stream :filename (str id ".png")}))))
+      (when-let [{:keys [data]} (get @images/image-store id)]
+        (let [bytes (.decode (Base64/getDecoder) ^String data)
+              stream (java.io.ByteArrayInputStream. bytes)]
+          @(messaging/create-message!
+            (:rest @conn) chat/*target*
+            :stream {:content stream :filename (str id ".png")})))
       (if (> (count msg) discord-max-message-length)
         (doseq [chunk (chunk-message msg)]
           @(messaging/create-message! (:rest @conn) chat/*target* :content chunk))
