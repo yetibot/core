@@ -107,8 +107,9 @@
     (timbre/debug "Guild Channels: " (pr-str guild-channels))
     (guild-channels)))
 
-(defn- generated-image-id [msg]
-  (second (re-matches #".*/generated-images/([^.]+)\.png$" (str/trim msg))))
+(defn- generated-image-info [msg]
+  (when-let [[_ id ext] (re-matches #".*/generated-images/([^.]+)\.(png|gif)$" (str/trim msg))]
+    {:id id :ext ext}))
 
 (def discord-max-message-length 2000)
 
@@ -118,13 +119,13 @@
 
 (defn- send-msg [{:keys [conn]} msg]
   (try
-    (if-let [id (generated-image-id msg)]
+    (if-let [{:keys [id ext]} (generated-image-info msg)]
       (when-let [{:keys [data]} (get @images/image-store id)]
         (let [bytes (.decode (Base64/getDecoder) ^String data)
               stream (java.io.ByteArrayInputStream. bytes)]
           @(messaging/create-message!
             (:rest @conn) chat/*target*
-            :stream {:content stream :filename (str id ".png")})))
+            :stream {:content stream :filename (str id "." ext)})))
       (if (> (count msg) discord-max-message-length)
         (doseq [chunk (chunk-message msg)]
           @(messaging/create-message! (:rest @conn) chat/*target* :content chunk))
