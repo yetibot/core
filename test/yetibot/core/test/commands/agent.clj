@@ -44,15 +44,11 @@
   (fact "states it has write access"
     (agent/build-agent-prompt "do x" nil) => (contains "WRITE access")))
 
-(facts "about persona"
-  (fact "say-done lists PR urls on success"
+(facts "about persona / relay"
+  (fact "say-done highlights relevant PR urls"
     (agent/say-done ["https://github.com/yetibot/core/pull/1"]) => (contains "pull/1"))
-  (fact "say-answer surfaces gemini's answer when there's no PR"
-    (agent/say-answer "the repo is written in Clojure") => (contains "Clojure"))
-  (fact "say-answer notes when there's no PR"
-    (agent/say-answer "anything") => (contains "no PR"))
-  (fact "say-answer handles empty output"
-    (agent/say-answer "  ") => (contains "no PR"))
+  (fact "say-progress passes Gemini's output through verbatim (no wrapper)"
+    (agent/say-progress "  Cloning yetibot/core  ") => "Cloning yetibot/core")
   (fact "say-thinking echoes the request"
     (agent/say-thinking "fix the thing") => (contains "fix the thing"))
   (fact "say-timeout names the limit"

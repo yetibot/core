@@ -97,33 +97,27 @@
 ;; Persona — grug/caveman/meme voice for the agent's chat messages only.
 ;; ---------------------------------------------------------------------------
 
+;; Yetibot is the middleman: a light grug ack to open, then it relays Gemini's
+;; own words verbatim (just trimmed for Discord) — no rewriting into a template.
+
 (defn say-thinking [prompt]
-  (str "🦴 grug get request: _" (string/trim prompt) "_\n"
-       "grug wake gemini brain 🧠⚡ — grug narrate as grug work..."))
+  (str "🦴 grug on it: _" (string/trim prompt) "_ — asking Gemini, narrating below 🧠⚡"))
 
-(defn say-progress [chunk]
-  (str "🧠 " (str "```\n" (string/trim chunk) "\n```")))
+(defn say-progress
+  "Gemini's output, passed through as Discord markdown (no wrapper)."
+  [chunk]
+  (string/trim chunk))
 
-(defn say-done [pr-urls]
-  (str "✅ grug done! much PR, very wow 🎉 stonks 📈\n"
-       (string/join "\n" (map #(str "• " %) pr-urls))))
-
-(defn say-answer
-  "Final message when no PR was opened — surface Gemini's own answer/summary so
-   it isn't lost when the single status message is replaced."
-  [out]
-  (let [t (string/trim (str out))
-        t (if (> (count t) 1500) (str "…" (subs t (- (count t) 1500))) t)]
-    (if (string/blank? t)
-      "✅ grug done 🦴 (no PR, no words — try ask grug more specific?)"
-      (str "✅ grug done 🦴 no PR — grug say:\n```\n" t "\n```"))))
+(defn say-done
+  "A short footer highlighting the relevant PRs (opened or referenced)."
+  [pr-urls]
+  (str "🔗 " (string/join "  •  " pr-urls)))
 
 (defn say-broken [msg]
-  (str "💥 grug hit big rock: " msg "\ngrug sad 😵 — see log above maybe."))
+  (str "⚠️ Gemini error: " msg))
 
 (defn say-timeout [minutes]
-  (str "⏰ grug run out of time (" minutes " min) and stop. "
-       "too big rock for grug — try smaller ask? 🦴"))
+  (str "⏰ timed out after " minutes " min — try a smaller ask?"))
 
 (defn say-unconfigured []
   (str "🪨 grug brain not plugged in. need Gemini key + GitHub auth (App or token). grug wait 😴"))
@@ -276,33 +270,35 @@
 ;; ---------------------------------------------------------------------------
 
 (defn build-agent-prompt [request context]
-  (str "You are Yetibot's autonomous coding agent, running non-interactively in "
-       "an empty scratch directory. You have a shell with two key tools:\n"
-       "- `gh`: the GitHub CLI, already authenticated (GH_TOKEN is set). Use it "
-       "for everything GitHub — finding repos (`gh search repos`, `gh repo list`), "
-       "reading code/issues/PRs, cloning (`gh repo clone`), and opening pull "
-       "requests (`gh pr create`).\n"
+  (str "You are Yetibot's coding agent in a team chat, running non-interactively "
+       "in an empty scratch directory. Your job is to RESPOND to the user's "
+       "request — and, when it's warranted, turn it into a pull request or point "
+       "at an existing relevant one.\n\n"
+       "Tools (shell):\n"
+       "- `gh`: the GitHub CLI, authenticated (GH_TOKEN is set). Use it to "
+       "research — search repos/issues/PRs, read code, list existing pull "
+       "requests — and to clone and open PRs.\n"
        "- `git`: for local changes.\n\n"
        "You have WRITE access to the organization's repositories. Always use "
-       "HTTPS (clone with `gh repo clone <owner>/<repo>` or "
-       "`git clone https://github.com/<owner>/<repo>.git`) — do NOT use SSH and "
-       "do NOT fork. git is preconfigured to authenticate pushes to github.com "
-       "with your token, so push your branch straight to `origin`.\n\n"
-       "Fulfill the user's request end to end:\n"
-       "1. Work out which repo(s) are involved (use gh to search if unsure). "
-       "Note: yetibot's chat commands live in the `yetibot/core` repo under "
-       "`src/yetibot/core/commands/` and load dynamically, so a new command is "
-       "usually just a new file there.\n"
-       "2. Clone what you need into the current directory over HTTPS.\n"
-       "3. Before committing, set: git config user.name 'Yetibot' and "
-       "git config user.email 'yetibot@yetibot.com'.\n"
-       "4. Make the change on a new branch, keeping it minimal and focused.\n"
-       "5. `git push -u origin <branch>` then open a pull request with "
-       "`gh pr create` against the default branch. Output the PR URL.\n"
-       "6. If the request is just a question (no code change needed), answer it "
-       "concisely and do NOT open a PR.\n\n"
-       "Narrate what you're doing in short steps as you go. End with a brief "
-       "summary including any pull request URLs.\n\n"
+       "HTTPS (clone with `gh repo clone <owner>/<repo>`) — never SSH, never fork. "
+       "git is preconfigured to authenticate pushes with your token, so push "
+       "branches straight to `origin`.\n\n"
+       "Handling the request:\n"
+       "- Research first with `gh`: which repo(s) are relevant, and is there "
+       "already an open PR or issue addressing this? If so, link it rather than "
+       "duplicating the work.\n"
+       "- If a code change is warranted and none exists yet: pick the right repo "
+       "(yetibot's chat commands live in `yetibot/core` under "
+       "`src/yetibot/core/commands/` and load dynamically — a new command is "
+       "usually just a new file there), clone over HTTPS, set git config "
+       "user.name 'Yetibot' / user.email 'yetibot@yetibot.com', make a minimal "
+       "focused change on a new branch, `git push -u origin <branch>`, and open a "
+       "pull request with `gh pr create`.\n"
+       "- If it's a question or discussion, just answer it, citing relevant "
+       "code/PRs/issues.\n\n"
+       "Narrate your steps briefly as you go. Finish with a clear, direct answer "
+       "to the request, including links to any pull requests you opened or that "
+       "are relevant.\n\n"
        (when-not (string/blank? context)
          (str "Conversation so far:\n" (string/trim context) "\n\n"))
        "Request:\n" (string/trim request)))
@@ -400,12 +396,6 @@
         (catch Exception e (debug "start-thread! fell back:" (.getMessage e)) nil))
       channel-id))
 
-(defn- edit-msg!
-  "Edit a Discord message in place (best-effort)."
-  [channel-id message-id content]
-  (try @(discord/edit-message! (rest-conn) channel-id message-id :content content)
-       (catch Exception e (debug "edit-msg! failed:" (.getMessage e)))))
-
 (defn- thread-context
   "Recent conversation in the channel/thread, oldest-first, as plain text."
   [channel-id]
@@ -421,60 +411,40 @@
 ;; Command
 ;; ---------------------------------------------------------------------------
 
-(def ^:private max-progress-msgs 20)
-
-(def ^:private status-tail-chars 1500)
-(def ^:private edit-throttle-ms 2000)
+(def ^:private max-progress-msgs 25)
 
 (defn run-agent
   "Async body: mint a token, run Gemini as an autonomous agent in a scratch dir,
-   and report progress. On Discord, fold all progress into the single status
-   message (`status-id`) via throttled in-place edits showing a rolling tail, so
-   the thread stays tidy; elsewhere, post a capped number of chunks. Finishes by
-   replacing the status with a summary including any PR links."
-  [{:keys [request target context-channel on-discord status-id]}]
+   and stream Gemini's own output into `target` as it works (capped). Gemini's
+   words are the substance; the bot only adds a short footer with PR links (or an
+   error/timeout note). A no-change/question run needs no footer — the streamed
+   output already is the answer."
+  [{:keys [request target context-channel on-discord]}]
   (binding [chat/*target* target]
     (sweep-stale-workdirs! (agent-workdir-max-age-ms))
     (let [dir (work-dir target)
-          live-edit? (and on-discord status-id)
-          tail (atom "")
-          last-edit (atom 0)
           posted (atom 0)
           relay (fn [chunk]
-                  (when-not (string/blank? chunk)
-                    (let [t (swap! tail #(let [s (str % "\n" chunk)]
-                                           (subs s (max 0 (- (count s) status-tail-chars)))))
-                          now (System/currentTimeMillis)]
-                      (cond
-                        live-edit?
-                        (when (> (- now @last-edit) edit-throttle-ms)
-                          (reset! last-edit now)
-                          (edit-msg! target status-id (say-progress t)))
-
-                        (< @posted max-progress-msgs)
-                        (do (swap! posted inc) (chat/send-msg (say-progress chunk)))))))
-          finish (fn [content]
-                   (if live-edit?
-                     (edit-msg! target status-id content)
-                     (chat/send-msg content)))]
+                  (when (and (not (string/blank? chunk))
+                             (< @posted max-progress-msgs))
+                    (swap! posted inc)
+                    (chat/send-msg (say-progress chunk))))]
       (try
         (let [context (when on-discord (thread-context context-channel))
               token (github-token)
               {:keys [exit out timed-out]} (run-gemini-agent dir request context token relay)
               urls (pr-urls out)]
-          (finish
-           (cond
-             ;; a PR means success regardless of exit — Gemini sometimes errors
-             ;; its final stream ("Invalid stream") after the work is done
-             (seq urls) (say-done urls)
-             timed-out (say-timeout (quot (agent-timeout-ms) 60000))
-             (pos? exit) (say-broken (str "gemini exited " exit))
-             ;; no PR: surface Gemini's answer (it replaces the live status, so
-             ;; the substance must live in this final message)
-             :else (say-answer out))))
+          (cond
+            ;; a PR means success regardless of exit — Gemini sometimes errors its
+            ;; final stream ("Invalid stream") after the work is already done
+            (seq urls) (chat/send-msg (say-done urls))
+            timed-out (chat/send-msg (say-timeout (quot (agent-timeout-ms) 60000)))
+            (pos? exit) (chat/send-msg (say-broken (str "exited " exit)))
+            ;; no PR: Gemini's streamed output is the answer — no footer needed
+            :else nil))
         (catch Exception e
           (error "agent command failed" e)
-          (finish (say-broken (.getMessage e))))
+          (chat/send-msg (say-broken (.getMessage e))))
         (finally
           (try (delete-tree! dir)
                (catch Exception e (warn "cleanup failed" (str dir) e))))))))
@@ -494,13 +464,11 @@
           target (if (and on-discord channel msg-id)
                    (start-thread! channel msg-id request)
                    chat/*target*)]
-      ;; post the status message now; on Discord we edit it in place with progress
-      (let [status-id (:id (binding [chat/*target* target]
-                             (chat/send-msg (say-thinking request))))]
-        (future
-          (binding [chat/*adapter* adapter]
-            (run-agent {:request request :target target :context-channel channel
-                        :on-discord on-discord :status-id status-id}))))
+      (binding [chat/*target* target] (chat/send-msg (say-thinking request)))
+      (future
+        (binding [chat/*adapter* adapter]
+          (run-agent {:request request :target target
+                      :context-channel channel :on-discord on-discord})))
       ;; everything is narrated out of band; suppress the framework's reply so it
       ;; doesn't post "No results" into the parent channel.
       (chat/suppress {}))))
