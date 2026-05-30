@@ -40,9 +40,15 @@
   (fact "includes conversation context when present"
     (agent/build-agent-prompt "do x" "alice: hi") => (contains "alice: hi"))
   (fact "omits the context section when blank"
-    (agent/build-agent-prompt "do x" "") => #(not (string/includes? % "Conversation so far")))
+    (agent/build-agent-prompt "do x" "") => #(not (string/includes? % "Recent conversation")))
   (fact "tells gemini to use HTTPS (no SSH, no fork)"
-    (agent/build-agent-prompt "do x" nil) => (contains "HTTPS")))
+    (agent/build-agent-prompt "do x" nil) => (contains "HTTPS"))
+  (fact "warns the working dir is empty and to clone, never wait for files"
+    (agent/build-agent-prompt "do x" nil) => (contains "EMPTY"))
+  (fact "notes that @name is a person"
+    (agent/build-agent-prompt "do x" nil) => (contains "@name"))
+  (fact "gives the bot an identity"
+    (agent/build-agent-prompt "do x" nil) => (contains "Yetibot")))
 
 (facts "about parse-json-response"
   (fact "pulls the response field"
@@ -70,7 +76,18 @@
   (fact "default timeout is 5 minutes"
     (agent/agent-timeout-ms) => 300000)
   (fact "default max turns is 50"
-    (agent/agent-max-turns) => 50))
+    (agent/agent-max-turns) => 50)
+  (fact "default model is the current Gemini 3.1 Pro"
+    (agent/model) => "gemini-3.1-pro-preview"))
+
+(facts "about resolve-mentions"
+  (fact "replaces a user mention with @display-name"
+    (agent/resolve-mentions "say hi to <@123>" [{:id "123" :username "alice" :global-name "Alice A"}])
+    => "say hi to @Alice A")
+  (fact "handles the <@!id> nickname form and falls back to username"
+    (agent/resolve-mentions "ping <@!99>" [{:id "99" :username "bob"}]) => "ping @bob")
+  (fact "leaves text untouched when there are no mentions"
+    (agent/resolve-mentions "no mentions here" nil) => "no mentions here"))
 
 (facts "about agent-cmd guards"
   (fact "replies in persona when nothing is configured"
