@@ -105,10 +105,18 @@
   (str "🧠 " (str "```\n" (string/trim chunk) "\n```")))
 
 (defn say-done [pr-urls]
-  (if (seq pr-urls)
-    (str "✅ grug done! much PR, very wow 🎉 stonks 📈\n"
-         (string/join "\n" (map #(str "• " %) pr-urls)))
-    (str "✅ grug done! 🦴 (no PR this time — maybe grug just answer above)")))
+  (str "✅ grug done! much PR, very wow 🎉 stonks 📈\n"
+       (string/join "\n" (map #(str "• " %) pr-urls))))
+
+(defn say-answer
+  "Final message when no PR was opened — surface Gemini's own answer/summary so
+   it isn't lost when the single status message is replaced."
+  [out]
+  (let [t (string/trim (str out))
+        t (if (> (count t) 1500) (str "…" (subs t (- (count t) 1500))) t)]
+    (if (string/blank? t)
+      "✅ grug done 🦴 (no PR, no words — try ask grug more specific?)"
+      (str "✅ grug done 🦴 no PR — grug say:\n```\n" t "\n```"))))
 
 (defn say-broken [msg]
   (str "💥 grug hit big rock: " msg "\ngrug sad 😵 — see log above maybe."))
@@ -461,7 +469,9 @@
              (seq urls) (say-done urls)
              timed-out (say-timeout (quot (agent-timeout-ms) 60000))
              (pos? exit) (say-broken (str "gemini exited " exit))
-             :else (say-done []))))
+             ;; no PR: surface Gemini's answer (it replaces the live status, so
+             ;; the substance must live in this final message)
+             :else (say-answer out))))
         (catch Exception e
           (error "agent command failed" e)
           (finish (say-broken (.getMessage e))))
