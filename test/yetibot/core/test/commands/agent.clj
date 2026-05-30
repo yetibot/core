@@ -38,7 +38,11 @@
   (fact "includes conversation context when present"
     (agent/build-agent-prompt "do x" "alice: hi") => (contains "alice: hi"))
   (fact "omits the context section when blank"
-    (agent/build-agent-prompt "do x" "") => #(not (string/includes? % "Conversation so far"))))
+    (agent/build-agent-prompt "do x" "") => #(not (string/includes? % "Conversation so far")))
+  (fact "tells gemini to use HTTPS and push directly (no SSH, no fork)"
+    (agent/build-agent-prompt "do x" nil) => (contains "HTTPS"))
+  (fact "states it has write access"
+    (agent/build-agent-prompt "do x" nil) => (contains "WRITE access")))
 
 (facts "about persona"
   (fact "say-done lists PR urls on success"
@@ -46,7 +50,15 @@
   (fact "say-done copes with no PRs"
     (agent/say-done []) => (contains "no PR"))
   (fact "say-thinking echoes the request"
-    (agent/say-thinking "fix the thing") => (contains "fix the thing")))
+    (agent/say-thinking "fix the thing") => (contains "fix the thing"))
+  (fact "say-timeout names the limit"
+    (agent/say-timeout 5) => (contains "5 min")))
+
+(facts "about agent limits config defaults"
+  (fact "default timeout is 5 minutes"
+    (agent/agent-timeout-ms) => 300000)
+  (fact "default max turns is 50"
+    (agent/agent-max-turns) => 50))
 
 (facts "about agent-cmd guards"
   (fact "replies in persona when nothing is configured"
