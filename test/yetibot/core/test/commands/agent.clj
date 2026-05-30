@@ -32,33 +32,65 @@
 
 (facts "about build-agent-prompt"
   (fact "tells gemini it can use the gh cli"
-    (agent/build-agent-prompt "do x" nil) => (contains "gh"))
+    (agent/build-agent-prompt "do x" nil nil) => (contains "gh"))
   (fact "instructs it to open a pull request"
-    (agent/build-agent-prompt "do x" nil) => (contains "pull request"))
+    (agent/build-agent-prompt "do x" nil nil) => (contains "pull request"))
+  (fact "asks for the final answer only (no narration)"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "final answer"))
   (fact "includes conversation context when present"
-    (agent/build-agent-prompt "do x" "alice: hi") => (contains "alice: hi"))
+    (agent/build-agent-prompt "do x" "alice: hi" nil) => (contains "alice: hi"))
   (fact "omits the context section when blank"
-    (agent/build-agent-prompt "do x" "") => #(not (string/includes? % "Conversation so far")))
-  (fact "tells gemini to use HTTPS and push directly (no SSH, no fork)"
-    (agent/build-agent-prompt "do x" nil) => (contains "HTTPS"))
-  (fact "states it has write access"
-    (agent/build-agent-prompt "do x" nil) => (contains "WRITE access")))
+    (agent/build-agent-prompt "do x" "" nil) => #(not (string/includes? % "Recent conversation")))
+  (fact "tells gemini to use HTTPS (no SSH, no fork)"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "HTTPS"))
+  (fact "warns the working dir is empty and to clone, never wait for files"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "EMPTY"))
+  (fact "tells gemini to mention people with their <@id> token"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "<@id>"))
+  (fact "includes the mention glossary when present"
+    (agent/build-agent-prompt "do x" nil "• <@1> is Bob") => (contains "<@1> is Bob"))
+  (fact "gives the bot an identity"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "Yetibot")))
 
-(facts "about persona"
-  (fact "say-done lists PR urls on success"
-    (agent/say-done ["https://github.com/yetibot/core/pull/1"]) => (contains "pull/1"))
-  (fact "say-done copes with no PRs"
-    (agent/say-done []) => (contains "no PR"))
-  (fact "say-thinking echoes the request"
-    (agent/say-thinking "fix the thing") => (contains "fix the thing"))
+(facts "about parse-json-response"
+  (fact "pulls the response field"
+    (agent/parse-json-response "{\"response\": \"hi there\", \"stats\": {}}") => "hi there")
+  (fact "tolerates leading noise before the json"
+    (agent/parse-json-response "warning: foo\n{\"response\": \"ok\"}") => "ok")
+  (fact "nil on unparseable output"
+    (agent/parse-json-response "not json at all") => nil))
+
+(facts "about final messages"
+  (fact "say-working is a generic status, not the prompt"
+    (agent/say-working) => (contains "grug"))
+  (fact "say-final shows Gemini's answer"
+    (agent/say-final "Added the bagif command" nil) => (contains "Added the bagif command"))
+  (fact "say-final appends relevant PR links"
+    (agent/say-final "done" ["https://github.com/yetibot/core/pull/242"]) => (contains "pull/242"))
+  (fact "say-final copes with a blank answer"
+    (agent/say-final "" nil) => (contains "done"))
   (fact "say-timeout names the limit"
-    (agent/say-timeout 5) => (contains "5 min")))
+    (agent/say-timeout 5) => (contains "5 min"))
+  (fact "say-busy explains the agent is occupied"
+    (agent/say-busy) => (contains "grug")))
 
 (facts "about agent limits config defaults"
   (fact "default timeout is 5 minutes"
     (agent/agent-timeout-ms) => 300000)
   (fact "default max turns is 50"
-    (agent/agent-max-turns) => 50))
+    (agent/agent-max-turns) => 50)
+  (fact "default model is the current Gemini 3.1 Pro"
+    (agent/model) => "gemini-3.1-pro-preview"))
+
+(facts "about mention-glossary"
+  (fact "prefers the server nickname and keeps the <@id> token"
+    (agent/mention-glossary [{:id "123" :username "alice" :global-name "Alice A"
+                              :member {:nick "WandPotato"}}])
+    => (contains "<@123> is WandPotato"))
+  (fact "falls back to global-name then username when there's no nick"
+    (agent/mention-glossary [{:id "99" :username "bob"}]) => (contains "<@99> is bob"))
+  (fact "is empty when there are no mentions"
+    (agent/mention-glossary nil) => ""))
 
 (facts "about agent-cmd guards"
   (fact "replies in persona when nothing is configured"
