@@ -65,7 +65,7 @@
 
 ;; How long the headless Gemini run may take before the bot kills it, and how
 ;; many agent turns it may take. Both configurable under [:gemini :agent].
-(defn agent-timeout-ms [] (config-num [:gemini :agent :timeout-ms] 300000))
+(defn agent-timeout-ms [] (config-num [:gemini :agent :timeout-ms] 900000))
 (defn agent-max-turns [] (config-num [:gemini :agent :max-turns] 50))
 ;; how long a leftover scratch dir may linger before the sweep reaps it (1 day)
 (defn agent-workdir-max-age-ms [] (config-num [:gemini :agent :workdir-max-age-ms] 86400000))
@@ -439,14 +439,6 @@
 ;; Command
 ;; ---------------------------------------------------------------------------
 
-;; One agent run at a time: each spawns Gemini (bun/node) + git clones, which on
-;; a small host easily over-subscribes the CPU. Excess invocations are turned
-;; away rather than queued.
-(defonce ^:private run-permit (java.util.concurrent.Semaphore. 1))
-
-(defn say-busy []
-  "🦴 grug already smashing one rock — wait til grug finish, then ask again 🪨")
-
 (defn run-agent
   "Async body: mint a token, run Gemini headlessly, then delete the transient
    status message and post one clean final reply — Gemini's answer plus links to
@@ -481,7 +473,6 @@
   [{[_ request] :match chat-source :chat-source}]
   (cond
     (not (configured?)) (say-unconfigured)
-    (not (.tryAcquire run-permit)) (say-busy)
     :else
     (let [adapter chat/*adapter*
           {:keys [raw-event]} chat-source
@@ -498,11 +489,9 @@
           ;; transient status; deleted when the final answer is posted
           status-id (:id (binding [chat/*target* target] (chat/send-msg (say-working))))]
       (future
-        (try
-          (binding [chat/*adapter* adapter]
-            (run-agent {:request request :target target :context-channel channel
-                        :on-discord on-discord :status-id status-id :mentions mentions}))
-          (finally (.release run-permit))))
+        (binding [chat/*adapter* adapter]
+          (run-agent {:request request :target target :context-channel channel
+                      :on-discord on-discord :status-id status-id :mentions mentions})))
       ;; the answer is posted out of band; suppress the framework's reply
       (chat/suppress {}))))
 

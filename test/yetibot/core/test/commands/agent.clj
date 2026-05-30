@@ -70,13 +70,11 @@
   (fact "say-final copes with a blank answer"
     (agent/say-final "" nil) => (contains "done"))
   (fact "say-timeout names the limit"
-    (agent/say-timeout 5) => (contains "5 min"))
-  (fact "say-busy explains the agent is occupied"
-    (agent/say-busy) => (contains "grug")))
+    (agent/say-timeout 5) => (contains "5 min")))
 
 (facts "about agent limits config defaults"
-  (fact "default timeout is 5 minutes"
-    (agent/agent-timeout-ms) => 300000)
+  (fact "default timeout is 15 minutes"
+    (agent/agent-timeout-ms) => 900000)
   (fact "default max turns is 50"
     (agent/agent-max-turns) => 50)
   (fact "default model is the current Gemini 3.1 Pro"
