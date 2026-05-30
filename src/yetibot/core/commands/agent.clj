@@ -49,8 +49,9 @@
 (defn- config-str [path]
   (:value (get-config ::str path)))
 
-;; The strongest Gemini coding model.
-(def model "gemini-2.5-pro")
+;; Gemini model for the agent. Defaults to the strongest current Pro model;
+;; override with [:gemini :agent :model] (e.g. "gemini-3.5-flash") for speed.
+(defn model [] (or (config-str [:gemini :agent :model]) "gemini-3.1-pro-preview"))
 
 (defn gemini-key [] (config-str [:gemini :key]))
 (defn cli-bin [] (or (config-str [:gemini :cli]) "gemini"))
@@ -64,7 +65,7 @@
 
 ;; How long the headless Gemini run may take before the bot kills it, and how
 ;; many agent turns it may take. Both configurable under [:gemini :agent].
-(defn agent-timeout-ms [] (config-num [:gemini :agent :timeout-ms] 1200000))
+(defn agent-timeout-ms [] (config-num [:gemini :agent :timeout-ms] 300000))
 (defn agent-max-turns [] (config-num [:gemini :agent :max-turns] 50))
 ;; how long a leftover scratch dir may linger before the sweep reaps it (1 day)
 (defn agent-workdir-max-age-ms [] (config-num [:gemini :agent :workdir-max-age-ms] 86400000))
@@ -292,46 +293,46 @@
 ;; ---------------------------------------------------------------------------
 
 (defn build-agent-prompt [request context]
-  (str "You are Yetibot's coding agent in a team chat, running non-interactively. "
-       "Your job is to RESPOND to the user's request — and, when warranted, turn "
-       "it into a pull request or point at an existing relevant one.\n\n"
-       "CRITICAL: your working directory is an EMPTY scratch dir. There is NO code "
-       "here. You must obtain everything yourself with the tools below. NEVER wait "
-       "for files to appear, NEVER ask the user to add code or rerun — you already "
-       "have full access. If the request mentions a repo, a PR, or 'CI', clone the "
-       "relevant repo first (e.g. `gh repo clone yetibot/core`) and work in it.\n\n"
+  (str "You are Yetibot — the team's coding-agent bot, appearing as @Yetibot in "
+       "their chat. You're an autonomous software engineer who works from chat: a "
+       "teammate gives you a request and you carry it out end to end. You can "
+       "search and read any repository in the organization, investigate CI/test "
+       "failures, write code, and open pull requests — all through the `gh` CLI "
+       "and `git`. You're running non-interactively right now.\n\n"
+       "CRITICAL: your working directory is an EMPTY scratch dir — there is NO "
+       "code here. Obtain everything yourself with the tools below. NEVER wait for "
+       "files to appear and NEVER ask the user to add code or rerun — you already "
+       "have full access. If the request or the conversation below mentions a "
+       "repo, a PR, or CI, clone the relevant repo first "
+       "(e.g. `gh repo clone yetibot/core`) and work in it.\n\n"
        "Tools (shell):\n"
-       "- `gh`: the GitHub CLI, authenticated (GH_TOKEN is set). Use it to "
-       "research — `gh search`, `gh repo list`, `gh pr list`, `gh pr checks`, "
-       "`gh run view --log-failed`, read code/issues/PRs — and to clone and open "
-       "PRs.\n"
-       "- `git`: for local changes.\n\n"
-       "You have WRITE access to the organization's repositories. Always use "
-       "HTTPS (`gh repo clone <owner>/<repo>`) — never SSH, never fork. git is "
-       "preconfigured to authenticate pushes with your token, so push branches "
-       "straight to `origin`.\n\n"
+       "- `gh`: authenticated GitHub CLI (GH_TOKEN is set). `gh search`, `gh repo "
+       "list`, `gh pr list`, `gh pr checks`, `gh run view --log-failed`, read "
+       "code/issues/PRs, clone, and open PRs.\n"
+       "- `git`: local changes.\n\n"
+       "You have WRITE access to the org's repos. Always use HTTPS "
+       "(`gh repo clone <owner>/<repo>`) — never SSH, never fork. git is "
+       "preconfigured to authenticate pushes, so push branches straight to "
+       "`origin`.\n\n"
        "Handling the request:\n"
-       "- Research first with `gh`: which repo(s) are relevant, and is there "
-       "already an open PR or issue addressing this? If so, link it rather than "
-       "duplicating the work.\n"
-       "- If a code change is warranted and none exists yet: pick the right repo "
-       "(yetibot's chat commands live in `yetibot/core` under "
-       "`src/yetibot/core/commands/` and load dynamically — a new command is "
-       "usually just a new file there), clone it, set git config user.name "
-       "'Yetibot' / user.email 'yetibot@yetibot.com', make a minimal focused "
-       "change on a new branch, `git push -u origin <branch>`, and open a pull "
-       "request with `gh pr create`.\n"
-       "- If it's a question or discussion, just answer it, citing relevant "
-       "code/PRs/issues.\n\n"
-       "Any @name in the request is a person (a Discord user, already resolved "
-       "from their id). Refer to people by name, never a raw id.\n\n"
-       "Do the work, then reply with ONLY your final answer to the request — no "
-       "step-by-step narration in the reply. Keep it concise (a few sentences). "
-       "Reference any relevant pull requests as full URLs "
-       "(e.g. https://github.com/yetibot/core/pull/123), never the #123 shorthand.\n\n"
+       "- Research first with `gh`; if an open PR/issue already addresses it, link "
+       "it rather than duplicating.\n"
+       "- If a code change is warranted: pick the right repo (yetibot's chat "
+       "commands live in `yetibot/core` under `src/yetibot/core/commands/`, loaded "
+       "dynamically — a new command is usually just a new file), clone it, set git "
+       "config user.name 'Yetibot' / user.email 'yetibot@yetibot.com', make a "
+       "minimal change on a new branch, push to origin, and `gh pr create`.\n"
+       "- If it's a question, just answer it.\n\n"
+       "Any @name is a person (a Discord user). Refer to people by name, never a "
+       "raw id.\n\n"
        (when-not (string/blank? context)
-         (str "Conversation so far:\n" (string/trim context) "\n\n"))
-       "Request:\n" (string/trim request)))
+         (str "Recent conversation in this channel — this is your context; it may "
+              "already name the repo, PR, issue, or people involved, so read it "
+              "before acting:\n────\n" (string/trim context) "\n────\n\n"))
+       "The teammate's request:\n" (string/trim request) "\n\n"
+       "Now do the work, then reply with ONLY your final answer — concise, no "
+       "step-by-step narration, and reference any pull requests as full URLs "
+       "(https://github.com/owner/repo/pull/123), never the #123 shorthand."))
 
 ;; Authenticate git pushes to github.com with GH_TOKEN, so the agent's plain
 ;; `git push` over HTTPS works without prompting (the token alone only auths the
@@ -358,7 +359,7 @@
     (spit (io/file settings-dir "settings.json")
           (json/write-str {:maxSessionTurns (agent-max-turns)})))
   (let [pb (doto (ProcessBuilder. [(cli-bin) "--yolo" "--output-format" "json"
-                                   "--model" model
+                                   "--model" (model)
                                    "--prompt" (build-agent-prompt request context)])
              (.directory (io/file workdir))
              (.redirectError java.lang.ProcessBuilder$Redirect/DISCARD))]
