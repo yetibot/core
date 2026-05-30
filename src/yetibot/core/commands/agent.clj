@@ -174,18 +174,20 @@
   (->> (re-seq #"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+" (or text ""))
        distinct vec))
 
-(defn resolve-mentions
-  "Replace Discord user mentions (<@id> / <@!id>) with @display-name using the
-   triggering message's mention list, so Gemini sees readable names, not raw ids."
-  [request mentions]
-  (reduce (fn [s {:keys [id username global-name]}]
-            (if id
-              (string/replace s
-                              (re-pattern (str "<@!?" (java.util.regex.Pattern/quote (str id)) ">"))
-                              (str "@" (or global-name username id)))
-              s))
-          (or request "")
-          mentions))
+(defn mention-glossary
+  "A note mapping each Discord mention in the message to the person's server
+   display name and their <@id> token. The request keeps its <@id> tokens so
+   Gemini's reply can ping people (Discord renders their server name); this just
+   tells Gemini who's who. Empty string when there are no mentions."
+  [mentions]
+  (let [lines (for [{:keys [id username global-name member]} mentions
+                    :when id]
+                (str "• <@" id "> is " (or (:nick member) global-name username (str "user " id))))]
+    (if (seq lines)
+      (str "People referenced in the request (write their <@id> token verbatim to "
+           "@-mention/ping them in your reply — that shows their server name):\n"
+           (string/join "\n" lines))
+      "")))
 
 (defn parse-json-response
   "Pull the `response` field out of Gemini's --output-format json stdout,
@@ -292,7 +294,7 @@
 ;; The agent prompt — Gemini does everything via gh + git
 ;; ---------------------------------------------------------------------------
 
-(defn build-agent-prompt [request context]
+(defn build-agent-prompt [request context mentions]
   (str "You are Yetibot — the team's coding-agent bot, appearing as @Yetibot in "
        "their chat. You're an autonomous software engineer who works from chat: a "
        "teammate gives you a request and you carry it out end to end. You can "
@@ -323,8 +325,11 @@
        "config user.name 'Yetibot' / user.email 'yetibot@yetibot.com', make a "
        "minimal change on a new branch, push to origin, and `gh pr create`.\n"
        "- If it's a question, just answer it.\n\n"
-       "Any @name is a person (a Discord user). Refer to people by name, never a "
-       "raw id.\n\n"
+       "When you refer to or address a person, write their Discord mention token "
+       "<@id> verbatim (e.g. <@49312021375614976>) — that pings them and Discord "
+       "shows their server name. Do NOT invent names or use raw numeric ids in "
+       "prose.\n\n"
+       (when-not (string/blank? mentions) (str mentions "\n\n"))
        (when-not (string/blank? context)
          (str "Recent conversation in this channel — this is your context; it may "
               "already name the repo, PR, issue, or people involved, so read it "
@@ -352,7 +357,7 @@
   "Run the Gemini CLI headlessly with structured JSON output (no intermediate
    narration on stdout; stderr is discarded). Returns
    {:response <final answer text or nil> :exit n :timed-out bool}."
-  [workdir request context token]
+  [workdir request context mentions token]
   ;; cap the agent's turn budget via a workspace settings file
   (let [settings-dir (io/file workdir ".gemini")]
     (.mkdirs settings-dir)
@@ -360,7 +365,7 @@
           (json/write-str {:maxSessionTurns (agent-max-turns)})))
   (let [pb (doto (ProcessBuilder. [(cli-bin) "--yolo" "--output-format" "json"
                                    "--model" (model)
-                                   "--prompt" (build-agent-prompt request context)])
+                                   "--prompt" (build-agent-prompt request context mentions)])
              (.directory (io/file workdir))
              (.redirectError java.lang.ProcessBuilder$Redirect/DISCARD))]
     (doto (.environment pb)
@@ -446,14 +451,14 @@
   "Async body: mint a token, run Gemini headlessly, then delete the transient
    status message and post one clean final reply — Gemini's answer plus links to
    any relevant PRs. No intermediate narration."
-  [{:keys [request target context-channel on-discord status-id]}]
+  [{:keys [request target context-channel on-discord status-id mentions]}]
   (binding [chat/*target* target]
     (sweep-stale-workdirs! (agent-workdir-max-age-ms))
     (let [dir (work-dir target)]
       (try
         (let [context (when on-discord (thread-context context-channel))
               token (github-token)
-              {:keys [response exit timed-out]} (run-gemini-agent dir request context token)
+              {:keys [response exit timed-out]} (run-gemini-agent dir request context mentions token)
               reply (cond
                       timed-out (say-timeout (quot (agent-timeout-ms) 60000))
                       (not (string/blank? response)) (say-final response (pr-urls response))
@@ -480,8 +485,9 @@
     :else
     (let [adapter chat/*adapter*
           {:keys [raw-event]} chat-source
-          ;; turn <@id> mentions into @names so Gemini talks about people, not ids
-          request (resolve-mentions request (:mentions raw-event))
+          ;; keep <@id> tokens in the request; give Gemini a name glossary so its
+          ;; reply pings the right people (Discord renders their server names)
+          mentions (mention-glossary (:mentions raw-event))
           channel (or (:channel-id raw-event) chat/*target*)
           msg-id (:id raw-event)
           on-discord (discord?)
@@ -495,7 +501,7 @@
         (try
           (binding [chat/*adapter* adapter]
             (run-agent {:request request :target target :context-channel channel
-                        :on-discord on-discord :status-id status-id}))
+                        :on-discord on-discord :status-id status-id :mentions mentions}))
           (finally (.release run-permit))))
       ;; the answer is posted out of band; suppress the framework's reply
       (chat/suppress {}))))
