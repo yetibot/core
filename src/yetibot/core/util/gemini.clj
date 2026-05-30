@@ -144,15 +144,18 @@
                  :max max-imgs}))))))
 
 (defn- record-image-generated!
-  "Record that an image was successfully generated. Persists to db."
-  []
-  (let [{:keys [count month]} (swap! usage-tracker update :count inc)
-        max-imgs (max-images-per-month)]
-    (persist-to-db! month count)
-    (info (format "gemini: image generated (%d/%d this month, $%.2f/$%.2f)"
-                  count max-imgs
-                  (* count (cost-per-image))
-                  (monthly-budget)))))
+  "Record generated media against the monthly budget. Persists to db.
+   `units` lets pricier generations (e.g. a Veo clip) count as multiple
+   image-equivalents so the shared dollar budget stays accurate."
+  ([] (record-image-generated! 1))
+  ([units]
+   (let [{:keys [count month]} (swap! usage-tracker update :count + units)
+         max-imgs (max-images-per-month)]
+     (persist-to-db! month count)
+     (info (format "gemini: media generated (%d/%d image-units this month, $%.2f/$%.2f)"
+                   count max-imgs
+                   (* count (cost-per-image))
+                   (monthly-budget))))))
 
 (defn- extract-image
   "Extract the first image part from the Gemini API response."
@@ -265,3 +268,92 @@
   (or (:value (get-config string? [:url]))
       (:value (get-config string? [:endpoint]))
       "http://localhost:3003"))
+
+;; -- Veo video generation --
+;; Veo is asynchronous: start a long-running operation, poll until done, then
+;; download the resulting mp4. Settings live under [:gemini :veo].
+
+(def ^:private api-base "https://generativelanguage.googleapis.com/v1beta")
+
+(def default-veo-model "veo-3.1-lite-generate-preview")
+
+(defn veo-model [] (or (-> config :veo :model) default-veo-model))
+
+(defn- veo-duration [] (long (or (parse-number (-> config :veo :duration)) 4)))
+
+(defn- veo-cost-per-second []
+  (or (parse-number (-> config :veo :cost-per-second))
+      (cond
+        (string/includes? (veo-model) "lite") 0.05
+        (string/includes? (veo-model) "fast") 0.15
+        :else 0.40)))
+
+(defn- veo-cost-units
+  "Express a Veo clip's dollar cost as a count of image-equivalents so it draws
+   down the shared monthly budget proportionally."
+  []
+  (max 1 (long (Math/ceil (/ (* (veo-duration) (veo-cost-per-second))
+                             (cost-per-image))))))
+
+(def ^:private veo-poll-interval-ms 6000)
+(def ^:private veo-max-polls 50) ; ~5 min ceiling
+
+(defn- veo-start
+  "Kick off a Veo generation; returns the long-running operation name."
+  [prompt]
+  (let [url (format "%s/models/%s:predictLongRunning?key=%s" api-base (veo-model) (:key config))
+        body {:instances [{:prompt prompt}]
+              :parameters {:aspectRatio "16:9" :durationSeconds (veo-duration)}}
+        resp (client/post url {:content-type :json
+                               :body (json/write-str body)
+                               :as :json
+                               :throw-exceptions false})]
+    (if (<= 200 (:status resp) 299)
+      (get-in resp [:body :name])
+      (let [msg (extract-api-error (:body resp))]
+        (error "veo: start failed" (:status resp) "-" msg)
+        (throw (ex-info (str "Veo API error: " msg)
+                        {:type :veo-api-error :status (:status resp)}))))))
+
+(defn- veo-poll
+  "Poll a Veo operation until done; returns the completed operation body."
+  [op-name]
+  (loop [n 0]
+    (let [body (:body (client/get (format "%s/%s?key=%s" api-base op-name (:key config))
+                                  {:as :json :throw-exceptions false}))]
+      (cond
+        (:error body) (throw (ex-info (str "Veo generation failed: "
+                                           (get-in body [:error :message]))
+                                      {:type :veo-api-error}))
+        (:done body) body
+        (>= n veo-max-polls) (throw (ex-info "Veo generation timed out"
+                                             {:type :veo-timeout}))
+        :else (do (Thread/sleep veo-poll-interval-ms) (recur (inc n)))))))
+
+(defn- veo-download
+  "Download the generated mp4 and return it base64-encoded."
+  [uri]
+  (let [resp (client/get uri {:headers {"x-goog-api-key" (:key config)}
+                              :as :byte-array
+                              :throw-exceptions false})]
+    (if (<= 200 (:status resp) 299)
+      (.encodeToString (Base64/getEncoder) ^bytes (:body resp))
+      (throw (ex-info (str "Veo video download failed: " (:status resp))
+                      {:type :veo-download-error :status (:status resp)})))))
+
+(defn generate-video
+  "Generate a short video with Veo from a text prompt. Checks the monthly budget,
+   polls the long-running operation, downloads the result, and records usage.
+   Returns {:data <base64 mp4> :mime-type \"video/mp4\"}."
+  [prompt]
+  (check-budget!)
+  (let [op (veo-start prompt)
+        _ (info "veo: generation started" op)
+        done (veo-poll op)
+        uri (get-in done [:response :generateVideoResponse :generatedSamples 0 :video :uri])]
+    (when (string/blank? uri)
+      (throw (ex-info "No video was generated. Try a different prompt."
+                      {:type :no-video-generated :response (:response done)})))
+    (let [data (veo-download uri)]
+      (record-image-generated! (veo-cost-units))
+      {:data data :mime-type "video/mp4"})))

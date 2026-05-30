@@ -108,7 +108,7 @@
     (guild-channels)))
 
 (defn- generated-image-info [msg]
-  (when-let [[_ id ext] (re-matches #".*/generated-images/([^.]+)\.(png|gif)$" (str/trim msg))]
+  (when-let [[_ id ext] (re-matches #".*/generated-images/([^.]+)\.(png|gif|mp4)$" (str/trim msg))]
     {:id id :ext ext}))
 
 (def discord-max-message-length 2000)
