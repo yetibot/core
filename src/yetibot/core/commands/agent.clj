@@ -329,10 +329,16 @@
       (.put "GEMINI_API_KEY" (gemini-key))
       (.put "GEMINI_CLI_TRUST_WORKSPACE" "true")
       (.put "GH_TOKEN" (or token ""))
-      ;; inject the credential helper via env-based git config (no global state)
-      (.put "GIT_CONFIG_COUNT" "1")
+      ;; inject git config via env (no global state): a credential helper that
+      ;; authenticates HTTPS pushes with GH_TOKEN, plus insteadOf rewrites so any
+      ;; SSH-style github remote is forced to HTTPS (where the token applies).
+      (.put "GIT_CONFIG_COUNT" "3")
       (.put "GIT_CONFIG_KEY_0" "credential.https://github.com.helper")
-      (.put "GIT_CONFIG_VALUE_0" git-credential-helper))
+      (.put "GIT_CONFIG_VALUE_0" git-credential-helper)
+      (.put "GIT_CONFIG_KEY_1" "url.https://github.com/.insteadOf")
+      (.put "GIT_CONFIG_VALUE_1" "git@github.com:")
+      (.put "GIT_CONFIG_KEY_2" "url.https://github.com/.insteadOf")
+      (.put "GIT_CONFIG_VALUE_2" "ssh://git@github.com/"))
     (info "running gemini agent" (cli-bin) "in" (str workdir))
     (let [proc (.start pb)
           timed-out (atom false)
@@ -386,6 +392,12 @@
         (catch Exception e (debug "start-thread! fell back:" (.getMessage e)) nil))
       channel-id))
 
+(defn- edit-msg!
+  "Edit a Discord message in place (best-effort)."
+  [channel-id message-id content]
+  (try @(discord/edit-message! (rest-conn) channel-id message-id :content content)
+       (catch Exception e (debug "edit-msg! failed:" (.getMessage e)))))
+
 (defn- thread-context
   "Recent conversation in the channel/thread, oldest-first, as plain text."
   [channel-id]
@@ -403,30 +415,56 @@
 
 (def ^:private max-progress-msgs 20)
 
+(def ^:private status-tail-chars 1500)
+(def ^:private edit-throttle-ms 2000)
+
 (defn run-agent
   "Async body: mint a token, run Gemini as an autonomous agent in a scratch dir,
-   relay its progress into `target`, and post a final summary with PR links."
-  [{:keys [request target context-channel on-discord]}]
+   and report progress. On Discord, fold all progress into the single status
+   message (`status-id`) via throttled in-place edits showing a rolling tail, so
+   the thread stays tidy; elsewhere, post a capped number of chunks. Finishes by
+   replacing the status with a summary including any PR links."
+  [{:keys [request target context-channel on-discord status-id]}]
   (binding [chat/*target* target]
     (sweep-stale-workdirs! (agent-workdir-max-age-ms))
     (let [dir (work-dir target)
-          posted (atom 0)]
+          live-edit? (and on-discord status-id)
+          tail (atom "")
+          last-edit (atom 0)
+          posted (atom 0)
+          relay (fn [chunk]
+                  (when-not (string/blank? chunk)
+                    (let [t (swap! tail #(let [s (str % "\n" chunk)]
+                                           (subs s (max 0 (- (count s) status-tail-chars)))))
+                          now (System/currentTimeMillis)]
+                      (cond
+                        live-edit?
+                        (when (> (- now @last-edit) edit-throttle-ms)
+                          (reset! last-edit now)
+                          (edit-msg! target status-id (say-progress t)))
+
+                        (< @posted max-progress-msgs)
+                        (do (swap! posted inc) (chat/send-msg (say-progress chunk)))))))
+          finish (fn [content]
+                   (if live-edit?
+                     (edit-msg! target status-id content)
+                     (chat/send-msg content)))]
       (try
         (let [context (when on-discord (thread-context context-channel))
               token (github-token)
-              relay (fn [chunk]
-                      (when (and (not (string/blank? chunk))
-                                 (< @posted max-progress-msgs))
-                        (swap! posted inc)
-                        (chat/send-msg (say-progress chunk))))
-              {:keys [exit out timed-out]} (run-gemini-agent dir request context token relay)]
-          (cond
-            timed-out (chat/send-msg (say-timeout (quot (agent-timeout-ms) 60000)))
-            (pos? exit) (chat/send-msg (say-broken (str "gemini exited " exit)))
-            :else (chat/send-msg (say-done (pr-urls out)))))
+              {:keys [exit out timed-out]} (run-gemini-agent dir request context token relay)
+              urls (pr-urls out)]
+          (finish
+           (cond
+             ;; a PR means success regardless of exit — Gemini sometimes errors
+             ;; its final stream ("Invalid stream") after the work is done
+             (seq urls) (say-done urls)
+             timed-out (say-timeout (quot (agent-timeout-ms) 60000))
+             (pos? exit) (say-broken (str "gemini exited " exit))
+             :else (say-done []))))
         (catch Exception e
           (error "agent command failed" e)
-          (chat/send-msg (say-broken (.getMessage e))))
+          (finish (say-broken (.getMessage e))))
         (finally
           (try (delete-tree! dir)
                (catch Exception e (warn "cleanup failed" (str dir) e))))))))
@@ -446,11 +484,13 @@
           target (if (and on-discord channel msg-id)
                    (start-thread! channel msg-id request)
                    chat/*target*)]
-      (binding [chat/*target* target] (chat/send-msg (say-thinking request)))
-      (future
-        (binding [chat/*adapter* adapter]
-          (run-agent {:request request :target target
-                      :context-channel channel :on-discord on-discord})))
+      ;; post the status message now; on Discord we edit it in place with progress
+      (let [status-id (:id (binding [chat/*target* target]
+                             (chat/send-msg (say-thinking request))))]
+        (future
+          (binding [chat/*adapter* adapter]
+            (run-agent {:request request :target target :context-channel channel
+                        :on-discord on-discord :status-id status-id}))))
       ;; everything is narrated out of band; suppress the framework's reply so it
       ;; doesn't post "No results" into the parent channel.
       (chat/suppress {}))))
