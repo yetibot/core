@@ -64,7 +64,7 @@
 
 ;; How long the headless Gemini run may take before the bot kills it, and how
 ;; many agent turns it may take. Both configurable under [:gemini :agent].
-(defn agent-timeout-ms [] (config-num [:gemini :agent :timeout-ms] 300000))
+(defn agent-timeout-ms [] (config-num [:gemini :agent :timeout-ms] 1200000))
 (defn agent-max-turns [] (config-num [:gemini :agent :max-turns] 50))
 ;; how long a leftover scratch dir may linger before the sweep reaps it (1 day)
 (defn agent-workdir-max-age-ms [] (config-num [:gemini :agent :workdir-max-age-ms] 86400000))
@@ -173,6 +173,19 @@
   (->> (re-seq #"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+" (or text ""))
        distinct vec))
 
+(defn resolve-mentions
+  "Replace Discord user mentions (<@id> / <@!id>) with @display-name using the
+   triggering message's mention list, so Gemini sees readable names, not raw ids."
+  [request mentions]
+  (reduce (fn [s {:keys [id username global-name]}]
+            (if id
+              (string/replace s
+                              (re-pattern (str "<@!?" (java.util.regex.Pattern/quote (str id)) ">"))
+                              (str "@" (or global-name username id)))
+              s))
+          (or request "")
+          mentions))
+
 (defn parse-json-response
   "Pull the `response` field out of Gemini's --output-format json stdout,
    tolerating any leading non-JSON noise."
@@ -279,19 +292,24 @@
 ;; ---------------------------------------------------------------------------
 
 (defn build-agent-prompt [request context]
-  (str "You are Yetibot's coding agent in a team chat, running non-interactively "
-       "in an empty scratch directory. Your job is to RESPOND to the user's "
-       "request — and, when it's warranted, turn it into a pull request or point "
-       "at an existing relevant one.\n\n"
+  (str "You are Yetibot's coding agent in a team chat, running non-interactively. "
+       "Your job is to RESPOND to the user's request — and, when warranted, turn "
+       "it into a pull request or point at an existing relevant one.\n\n"
+       "CRITICAL: your working directory is an EMPTY scratch dir. There is NO code "
+       "here. You must obtain everything yourself with the tools below. NEVER wait "
+       "for files to appear, NEVER ask the user to add code or rerun — you already "
+       "have full access. If the request mentions a repo, a PR, or 'CI', clone the "
+       "relevant repo first (e.g. `gh repo clone yetibot/core`) and work in it.\n\n"
        "Tools (shell):\n"
        "- `gh`: the GitHub CLI, authenticated (GH_TOKEN is set). Use it to "
-       "research — search repos/issues/PRs, read code, list existing pull "
-       "requests — and to clone and open PRs.\n"
+       "research — `gh search`, `gh repo list`, `gh pr list`, `gh pr checks`, "
+       "`gh run view --log-failed`, read code/issues/PRs — and to clone and open "
+       "PRs.\n"
        "- `git`: for local changes.\n\n"
        "You have WRITE access to the organization's repositories. Always use "
-       "HTTPS (clone with `gh repo clone <owner>/<repo>`) — never SSH, never fork. "
-       "git is preconfigured to authenticate pushes with your token, so push "
-       "branches straight to `origin`.\n\n"
+       "HTTPS (`gh repo clone <owner>/<repo>`) — never SSH, never fork. git is "
+       "preconfigured to authenticate pushes with your token, so push branches "
+       "straight to `origin`.\n\n"
        "Handling the request:\n"
        "- Research first with `gh`: which repo(s) are relevant, and is there "
        "already an open PR or issue addressing this? If so, link it rather than "
@@ -299,12 +317,14 @@
        "- If a code change is warranted and none exists yet: pick the right repo "
        "(yetibot's chat commands live in `yetibot/core` under "
        "`src/yetibot/core/commands/` and load dynamically — a new command is "
-       "usually just a new file there), clone over HTTPS, set git config "
-       "user.name 'Yetibot' / user.email 'yetibot@yetibot.com', make a minimal "
-       "focused change on a new branch, `git push -u origin <branch>`, and open a "
-       "pull request with `gh pr create`.\n"
+       "usually just a new file there), clone it, set git config user.name "
+       "'Yetibot' / user.email 'yetibot@yetibot.com', make a minimal focused "
+       "change on a new branch, `git push -u origin <branch>`, and open a pull "
+       "request with `gh pr create`.\n"
        "- If it's a question or discussion, just answer it, citing relevant "
        "code/PRs/issues.\n\n"
+       "Any @name in the request is a person (a Discord user, already resolved "
+       "from their id). Refer to people by name, never a raw id.\n\n"
        "Do the work, then reply with ONLY your final answer to the request — no "
        "step-by-step narration in the reply. Keep it concise (a few sentences). "
        "Reference any relevant pull requests as full URLs "
@@ -323,7 +343,7 @@
   "Forcibly kill a process and all of its descendants. Gemini spawns bun/git/gh
    children; killing only the parent would orphan them and pile up CPU load."
   [^Process proc]
-  (let [descendants (doall (iterator-seq (.iterator (.descendants proc))))]
+  (let [descendants (doall (iterator-seq (.iterator ^java.util.stream.Stream (.descendants proc))))]
     (doseq [^java.lang.ProcessHandle h (cons (.toHandle proc) descendants)]
       (try (.destroyForcibly h) (catch Exception _ nil)))))
 
@@ -459,6 +479,8 @@
     :else
     (let [adapter chat/*adapter*
           {:keys [raw-event]} chat-source
+          ;; turn <@id> mentions into @names so Gemini talks about people, not ids
+          request (resolve-mentions request (:mentions raw-event))
           channel (or (:channel-id raw-event) chat/*target*)
           msg-id (:id raw-event)
           on-discord (discord?)
