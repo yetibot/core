@@ -319,6 +319,14 @@
 (def ^:private git-credential-helper
   "!f() { echo username=x-access-token; echo \"password=$GH_TOKEN\"; }; f")
 
+(defn- kill-tree!
+  "Forcibly kill a process and all of its descendants. Gemini spawns bun/git/gh
+   children; killing only the parent would orphan them and pile up CPU load."
+  [^Process proc]
+  (let [descendants (doall (iterator-seq (.iterator (.descendants proc))))]
+    (doseq [^java.lang.ProcessHandle h (cons (.toHandle proc) descendants)]
+      (try (.destroyForcibly h) (catch Exception _ nil)))))
+
 (defn run-gemini-agent
   "Run the Gemini CLI headlessly with structured JSON output (no intermediate
    narration on stdout; stderr is discarded). Returns
@@ -356,7 +364,7 @@
                      (Thread/sleep (agent-timeout-ms))
                      (when (.isAlive proc)
                        (reset! timed-out true)
-                       (.destroyForcibly proc)))
+                       (kill-tree! proc)))
           stdout (slurp (.getInputStream proc))
           exit (.waitFor proc)]
       (future-cancel watchdog)
@@ -405,6 +413,14 @@
 ;; Command
 ;; ---------------------------------------------------------------------------
 
+;; One agent run at a time: each spawns Gemini (bun/node) + git clones, which on
+;; a small host easily over-subscribes the CPU. Excess invocations are turned
+;; away rather than queued.
+(defonce ^:private run-permit (java.util.concurrent.Semaphore. 1))
+
+(defn say-busy []
+  "🦴 grug already smashing one rock — wait til grug finish, then ask again 🪨")
+
 (defn run-agent
   "Async body: mint a token, run Gemini headlessly, then delete the transient
    status message and post one clean final reply — Gemini's answer plus links to
@@ -437,8 +453,10 @@
   "agent <prompt> # hand the request to Gemini (gh+git) and reply with its answer"
   {:yb/cat #{:util}}
   [{[_ request] :match chat-source :chat-source}]
-  (if-not (configured?)
-    (say-unconfigured)
+  (cond
+    (not (configured?)) (say-unconfigured)
+    (not (.tryAcquire run-permit)) (say-busy)
+    :else
     (let [adapter chat/*adapter*
           {:keys [raw-event]} chat-source
           channel (or (:channel-id raw-event) chat/*target*)
@@ -451,9 +469,11 @@
           ;; transient status; deleted when the final answer is posted
           status-id (:id (binding [chat/*target* target] (chat/send-msg (say-working))))]
       (future
-        (binding [chat/*adapter* adapter]
-          (run-agent {:request request :target target :context-channel channel
-                      :on-discord on-discord :status-id status-id})))
+        (try
+          (binding [chat/*adapter* adapter]
+            (run-agent {:request request :target target :context-channel channel
+                        :on-discord on-discord :status-id status-id}))
+          (finally (.release run-permit))))
       ;; the answer is posted out of band; suppress the framework's reply
       (chat/suppress {}))))
 
