@@ -55,6 +55,20 @@
 (defn gemini-key [] (config-str [:gemini :key]))
 (defn cli-bin [] (or (config-str [:gemini :cli]) "gemini"))
 
+(defn- config-num [path default]
+  (let [v (:value (get-config ::id path))]
+    (cond
+      (number? v) (long v)
+      (string? v) (try (Long/parseLong v) (catch Exception _ default))
+      :else default)))
+
+;; How long the headless Gemini run may take before the bot kills it, and how
+;; many agent turns it may take. Both configurable under [:gemini :agent].
+(defn agent-timeout-ms [] (config-num [:gemini :agent :timeout-ms] 300000))
+(defn agent-max-turns [] (config-num [:gemini :agent :max-turns] 50))
+;; how long a leftover scratch dir may linger before the sweep reaps it (1 day)
+(defn agent-workdir-max-age-ms [] (config-num [:gemini :agent :workdir-max-age-ms] 86400000))
+
 (defn github-pat [] (config-str [:github :token]))
 
 (defn app-id []
@@ -99,6 +113,10 @@
 (defn say-broken [msg]
   (str "💥 grug hit big rock: " msg "\ngrug sad 😵 — see log above maybe."))
 
+(defn say-timeout [minutes]
+  (str "⏰ grug run out of time (" minutes " min) and stop. "
+       "too big rock for grug — try smaller ask? 🦴"))
+
 (defn say-unconfigured []
   (str "🪨 grug brain not plugged in. need Gemini key + GitHub auth (App or token). grug wait 😴"))
 
@@ -116,8 +134,37 @@
         (string/replace #"(://)[^:/@\s]+(@)" "$1***$2")
         (string/replace #"gh[pousr]_[A-Za-z0-9]{20,}" "***"))))
 
-(defn- temp-dir []
-  (.toFile (Files/createTempDirectory "yetibot-agent" (make-array FileAttribute 0))))
+(def ^:private workdir-prefix "yetibot-agent-")
+
+(defn- delete-tree! [^java.io.File dir]
+  (when (.exists dir)
+    (doseq [f (reverse (file-seq dir))] (.delete f))))
+
+(defn- work-dir
+  "A unique scratch dir (under the system temp dir, i.e. /tmp) for one agent run,
+   namespaced by the thread/target so concurrent runs in different threads never
+   share a checkout. createTempDirectory guarantees uniqueness; the target tag
+   just makes ownership obvious on disk."
+  [target]
+  (let [tag (-> (str target) (string/replace #"[^A-Za-z0-9_-]" ""))
+        tag (subs tag 0 (min 40 (count tag)))]
+    (.toFile (Files/createTempDirectory (str workdir-prefix tag "-")
+                                        (make-array FileAttribute 0)))))
+
+(defn sweep-stale-workdirs!
+  "Best-effort cleanup of agent scratch dirs orphaned by a crash: delete any
+   leftover under the temp dir older than `max-age-ms`. Each run also cleans its
+   own dir in a finally; this is the safety net."
+  [max-age-ms]
+  (try
+    (let [cutoff (- (System/currentTimeMillis) max-age-ms)
+          tmp (io/file (System/getProperty "java.io.tmpdir"))]
+      (doseq [^java.io.File d (or (.listFiles tmp) [])
+              :when (and (.isDirectory d)
+                         (string/starts-with? (.getName d) workdir-prefix)
+                         (< (.lastModified d) cutoff))]
+        (delete-tree! d)))
+    (catch Exception e (debug "sweep-stale-workdirs! failed:" (.getMessage e)))))
 
 (defn pr-urls
   "GitHub pull request URLs mentioned in text, de-duplicated."
@@ -228,14 +275,22 @@
        "reading code/issues/PRs, cloning (`gh repo clone`), and opening pull "
        "requests (`gh pr create`).\n"
        "- `git`: for local changes.\n\n"
+       "You have WRITE access to the organization's repositories. Always use "
+       "HTTPS (clone with `gh repo clone <owner>/<repo>` or "
+       "`git clone https://github.com/<owner>/<repo>.git`) — do NOT use SSH and "
+       "do NOT fork. git is preconfigured to authenticate pushes to github.com "
+       "with your token, so push your branch straight to `origin`.\n\n"
        "Fulfill the user's request end to end:\n"
-       "1. Work out which repo(s) are involved (use gh to search if unsure).\n"
-       "2. Clone what you need into the current directory.\n"
+       "1. Work out which repo(s) are involved (use gh to search if unsure). "
+       "Note: yetibot's chat commands live in the `yetibot/core` repo under "
+       "`src/yetibot/core/commands/` and load dynamically, so a new command is "
+       "usually just a new file there.\n"
+       "2. Clone what you need into the current directory over HTTPS.\n"
        "3. Before committing, set: git config user.name 'Yetibot' and "
        "git config user.email 'yetibot@yetibot.com'.\n"
        "4. Make the change on a new branch, keeping it minimal and focused.\n"
-       "5. Commit, push, and open a pull request with `gh pr create` against the "
-       "default branch. Output the PR URL.\n"
+       "5. `git push -u origin <branch>` then open a pull request with "
+       "`gh pr create` against the default branch. Output the PR URL.\n"
        "6. If the request is just a question (no code change needed), answer it "
        "concisely and do NOT open a PR.\n\n"
        "Narrate what you're doing in short steps as you go. End with a brief "
@@ -244,11 +299,28 @@
          (str "Conversation so far:\n" (string/trim context) "\n\n"))
        "Request:\n" (string/trim request)))
 
+;; Authenticate git pushes to github.com with GH_TOKEN, so the agent's plain
+;; `git push` over HTTPS works without prompting (the token alone only auths the
+;; `gh` API, not git). The helper reads GH_TOKEN from the environment at runtime.
+(def ^:private git-credential-helper
+  "!f() { echo username=x-access-token; echo \"password=$GH_TOKEN\"; }; f")
+
+(defn- noise-line?
+  "Gemini CLI startup chatter that's not worth relaying to chat."
+  [line]
+  (boolean (re-find #"YOLO mode is enabled|256-color|Ripgrep is not available|\[STARTUP\]|Approval mode overridden"
+                    line)))
+
 (defn run-gemini-agent
   "Run the Gemini CLI as an autonomous agent in `workdir`, streaming combined
    stdout/stderr line-by-line to `on-chunk` (called with redacted text chunks).
    Returns {:exit n :out <full output>}."
   [workdir request context token on-chunk]
+  ;; cap the agent's turn budget via a workspace settings file
+  (let [settings-dir (io/file workdir ".gemini")]
+    (.mkdirs settings-dir)
+    (spit (io/file settings-dir "settings.json")
+          (json/write-str {:maxSessionTurns (agent-max-turns)})))
   (let [pb (doto (ProcessBuilder. [(cli-bin) "--yolo" "--model" model
                                    "--prompt" (build-agent-prompt request context)])
              (.directory (io/file workdir))
@@ -256,9 +328,20 @@
     (doto (.environment pb)
       (.put "GEMINI_API_KEY" (gemini-key))
       (.put "GEMINI_CLI_TRUST_WORKSPACE" "true")
-      (.put "GH_TOKEN" (or token "")))
+      (.put "GH_TOKEN" (or token ""))
+      ;; inject the credential helper via env-based git config (no global state)
+      (.put "GIT_CONFIG_COUNT" "1")
+      (.put "GIT_CONFIG_KEY_0" "credential.https://github.com.helper")
+      (.put "GIT_CONFIG_VALUE_0" git-credential-helper))
     (info "running gemini agent" (cli-bin) "in" (str workdir))
     (let [proc (.start pb)
+          timed-out (atom false)
+          ;; hard wall-clock cap: kill the run if it overruns
+          watchdog (future
+                     (Thread/sleep (agent-timeout-ms))
+                     (when (.isAlive proc)
+                       (reset! timed-out true)
+                       (.destroyForcibly proc)))
           full (StringBuilder.)]
       (with-open [rdr (io/reader (.getInputStream proc))]
         (loop [buf (StringBuilder.)]
@@ -267,15 +350,21 @@
               (nil? line)
               (when (pos? (.length buf)) (on-chunk (redact (str buf))))
 
+              (noise-line? line)
+              (recur buf)
+
               (>= (.length buf) 1200)
               (do (on-chunk (redact (str buf)))
+                  (.append full line) (.append full "\n")
                   (recur (doto (StringBuilder.) (.append line) (.append "\n"))))
 
               :else
               (do (.append full line) (.append full "\n")
                   (.append buf line) (.append buf "\n")
                   (recur buf))))))
-      {:exit (.waitFor proc) :out (str full)})))
+      (let [exit (.waitFor proc)]
+        (future-cancel watchdog)
+        {:exit exit :out (str full) :timed-out @timed-out}))))
 
 ;; ---------------------------------------------------------------------------
 ;; Discord thread plumbing (guarded; degrades to plain replies elsewhere)
@@ -319,7 +408,8 @@
    relay its progress into `target`, and post a final summary with PR links."
   [{:keys [request target context-channel on-discord]}]
   (binding [chat/*target* target]
-    (let [dir (temp-dir)
+    (sweep-stale-workdirs! (agent-workdir-max-age-ms))
+    (let [dir (work-dir target)
           posted (atom 0)]
       (try
         (let [context (when on-discord (thread-context context-channel))
@@ -329,16 +419,16 @@
                                  (< @posted max-progress-msgs))
                         (swap! posted inc)
                         (chat/send-msg (say-progress chunk))))
-              {:keys [exit out]} (run-gemini-agent dir request context token relay)]
+              {:keys [exit out timed-out]} (run-gemini-agent dir request context token relay)]
           (cond
+            timed-out (chat/send-msg (say-timeout (quot (agent-timeout-ms) 60000)))
             (pos? exit) (chat/send-msg (say-broken (str "gemini exited " exit)))
             :else (chat/send-msg (say-done (pr-urls out)))))
         (catch Exception e
           (error "agent command failed" e)
           (chat/send-msg (say-broken (.getMessage e))))
         (finally
-          (try (when (.exists dir)
-                 (doseq [f (reverse (file-seq dir))] (.delete f)))
+          (try (delete-tree! dir)
                (catch Exception e (warn "cleanup failed" (str dir) e))))))))
 
 (defn agent-cmd
