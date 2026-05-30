@@ -39,4 +39,4 @@
         (-> (response/response (java.io.ByteArrayInputStream. bytes))
             (response/content-type (or mime-type "image/gif"))
             (response/header "Cache-Control" "public, max-age=3600")))
-      (response/not-found "Image not found")))))
+      (response/not-found "Image not found"))))
