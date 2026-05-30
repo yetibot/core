@@ -35,22 +35,32 @@
     (agent/build-agent-prompt "do x" nil) => (contains "gh"))
   (fact "instructs it to open a pull request"
     (agent/build-agent-prompt "do x" nil) => (contains "pull request"))
+  (fact "asks for the final answer only (no narration)"
+    (agent/build-agent-prompt "do x" nil) => (contains "final answer"))
   (fact "includes conversation context when present"
     (agent/build-agent-prompt "do x" "alice: hi") => (contains "alice: hi"))
   (fact "omits the context section when blank"
     (agent/build-agent-prompt "do x" "") => #(not (string/includes? % "Conversation so far")))
-  (fact "tells gemini to use HTTPS and push directly (no SSH, no fork)"
-    (agent/build-agent-prompt "do x" nil) => (contains "HTTPS"))
-  (fact "states it has write access"
-    (agent/build-agent-prompt "do x" nil) => (contains "WRITE access")))
+  (fact "tells gemini to use HTTPS (no SSH, no fork)"
+    (agent/build-agent-prompt "do x" nil) => (contains "HTTPS")))
 
-(facts "about persona / relay"
-  (fact "say-done highlights relevant PR urls"
-    (agent/say-done ["https://github.com/yetibot/core/pull/1"]) => (contains "pull/1"))
-  (fact "say-progress passes Gemini's output through verbatim (no wrapper)"
-    (agent/say-progress "  Cloning yetibot/core  ") => "Cloning yetibot/core")
-  (fact "say-thinking echoes the request"
-    (agent/say-thinking "fix the thing") => (contains "fix the thing"))
+(facts "about parse-json-response"
+  (fact "pulls the response field"
+    (agent/parse-json-response "{\"response\": \"hi there\", \"stats\": {}}") => "hi there")
+  (fact "tolerates leading noise before the json"
+    (agent/parse-json-response "warning: foo\n{\"response\": \"ok\"}") => "ok")
+  (fact "nil on unparseable output"
+    (agent/parse-json-response "not json at all") => nil))
+
+(facts "about final messages"
+  (fact "say-working is a generic status, not the prompt"
+    (agent/say-working) => (contains "grug"))
+  (fact "say-final shows Gemini's answer"
+    (agent/say-final "Added the bagif command" nil) => (contains "Added the bagif command"))
+  (fact "say-final appends relevant PR links"
+    (agent/say-final "done" ["https://github.com/yetibot/core/pull/242"]) => (contains "pull/242"))
+  (fact "say-final copes with a blank answer"
+    (agent/say-final "" nil) => (contains "done"))
   (fact "say-timeout names the limit"
     (agent/say-timeout 5) => (contains "5 min")))
 

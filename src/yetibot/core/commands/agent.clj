@@ -97,21 +97,20 @@
 ;; Persona — grug/caveman/meme voice for the agent's chat messages only.
 ;; ---------------------------------------------------------------------------
 
-;; Yetibot is the middleman: a light grug ack to open, then it relays Gemini's
-;; own words verbatim (just trimmed for Discord) — no rewriting into a template.
+;; Yetibot is the middleman. One transient status message shows the latest step
+;; while Gemini works; it's deleted at the end and replaced by a clean summary.
 
-(defn say-thinking [prompt]
-  (str "🦴 grug on it: _" (string/trim prompt) "_ — asking Gemini, narrating below 🧠⚡"))
+(defn say-working
+  "Transient status message, deleted once Gemini returns its final answer."
+  []
+  "🦴 grug on it… 🧠⚡")
 
-(defn say-progress
-  "Gemini's output, passed through as Discord markdown (no wrapper)."
-  [chunk]
-  (string/trim chunk))
-
-(defn say-done
-  "A short footer highlighting the relevant PRs (opened or referenced)."
-  [pr-urls]
-  (str "🔗 " (string/join "  •  " pr-urls)))
+(defn say-final
+  "The clean final reply: Gemini's summary plus links to any relevant PRs."
+  [summary pr-urls]
+  (str (if (string/blank? summary) "✅ done." (str "✅ " summary))
+       (when (seq pr-urls)
+         (str "\n\n🔗 " (string/join "  •  " (distinct pr-urls))))))
 
 (defn say-broken [msg]
   (str "⚠️ Gemini error: " msg))
@@ -173,6 +172,16 @@
   [text]
   (->> (re-seq #"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+" (or text ""))
        distinct vec))
+
+(defn parse-json-response
+  "Pull the `response` field out of Gemini's --output-format json stdout,
+   tolerating any leading non-JSON noise."
+  [stdout]
+  (let [grab #(-> (json/read-str % :key-fn keyword) :response)]
+    (try (grab stdout)
+         (catch Exception _
+           (when-let [m (re-find #"(?s)\{.*\}" (or stdout ""))]
+             (try (grab m) (catch Exception _ nil)))))))
 
 ;; ---------------------------------------------------------------------------
 ;; GitHub auth — enough to mint a token to hand Gemini as GH_TOKEN
@@ -296,9 +305,10 @@
        "pull request with `gh pr create`.\n"
        "- If it's a question or discussion, just answer it, citing relevant "
        "code/PRs/issues.\n\n"
-       "Narrate your steps briefly as you go. Finish with a clear, direct answer "
-       "to the request, including links to any pull requests you opened or that "
-       "are relevant.\n\n"
+       "Do the work, then reply with ONLY your final answer to the request — no "
+       "step-by-step narration in the reply. Keep it concise (a few sentences). "
+       "Reference any relevant pull requests as full URLs "
+       "(e.g. https://github.com/yetibot/core/pull/123), never the #123 shorthand.\n\n"
        (when-not (string/blank? context)
          (str "Conversation so far:\n" (string/trim context) "\n\n"))
        "Request:\n" (string/trim request)))
@@ -309,26 +319,21 @@
 (def ^:private git-credential-helper
   "!f() { echo username=x-access-token; echo \"password=$GH_TOKEN\"; }; f")
 
-(defn- noise-line?
-  "Gemini CLI startup chatter that's not worth relaying to chat."
-  [line]
-  (boolean (re-find #"YOLO mode is enabled|256-color|Ripgrep is not available|\[STARTUP\]|Approval mode overridden"
-                    line)))
-
 (defn run-gemini-agent
-  "Run the Gemini CLI as an autonomous agent in `workdir`, streaming combined
-   stdout/stderr line-by-line to `on-chunk` (called with redacted text chunks).
-   Returns {:exit n :out <full output>}."
-  [workdir request context token on-chunk]
+  "Run the Gemini CLI headlessly with structured JSON output (no intermediate
+   narration on stdout; stderr is discarded). Returns
+   {:response <final answer text or nil> :exit n :timed-out bool}."
+  [workdir request context token]
   ;; cap the agent's turn budget via a workspace settings file
   (let [settings-dir (io/file workdir ".gemini")]
     (.mkdirs settings-dir)
     (spit (io/file settings-dir "settings.json")
           (json/write-str {:maxSessionTurns (agent-max-turns)})))
-  (let [pb (doto (ProcessBuilder. [(cli-bin) "--yolo" "--model" model
+  (let [pb (doto (ProcessBuilder. [(cli-bin) "--yolo" "--output-format" "json"
+                                   "--model" model
                                    "--prompt" (build-agent-prompt request context)])
              (.directory (io/file workdir))
-             (.redirectErrorStream true))]
+             (.redirectError java.lang.ProcessBuilder$Redirect/DISCARD))]
     (doto (.environment pb)
       (.put "GEMINI_API_KEY" (gemini-key))
       (.put "GEMINI_CLI_TRUST_WORKSPACE" "true")
@@ -352,29 +357,12 @@
                      (when (.isAlive proc)
                        (reset! timed-out true)
                        (.destroyForcibly proc)))
-          full (StringBuilder.)]
-      (with-open [rdr (io/reader (.getInputStream proc))]
-        (loop [buf (StringBuilder.)]
-          (let [line (.readLine rdr)]
-            (cond
-              (nil? line)
-              (when (pos? (.length buf)) (on-chunk (redact (str buf))))
-
-              (noise-line? line)
-              (recur buf)
-
-              (>= (.length buf) 1200)
-              (do (on-chunk (redact (str buf)))
-                  (.append full line) (.append full "\n")
-                  (recur (doto (StringBuilder.) (.append line) (.append "\n"))))
-
-              :else
-              (do (.append full line) (.append full "\n")
-                  (.append buf line) (.append buf "\n")
-                  (recur buf))))))
-      (let [exit (.waitFor proc)]
-        (future-cancel watchdog)
-        {:exit exit :out (str full) :timed-out @timed-out}))))
+          stdout (slurp (.getInputStream proc))
+          exit (.waitFor proc)]
+      (future-cancel watchdog)
+      {:response (redact (parse-json-response stdout))
+       :exit exit
+       :timed-out @timed-out})))
 
 ;; ---------------------------------------------------------------------------
 ;; Discord thread plumbing (guarded; degrades to plain replies elsewhere)
@@ -396,6 +384,12 @@
         (catch Exception e (debug "start-thread! fell back:" (.getMessage e)) nil))
       channel-id))
 
+(defn- delete-msg!
+  "Delete a Discord message (best-effort)."
+  [channel-id message-id]
+  (try @(discord/delete-message! (rest-conn) channel-id message-id)
+       (catch Exception e (debug "delete-msg! failed:" (.getMessage e)))))
+
 (defn- thread-context
   "Recent conversation in the channel/thread, oldest-first, as plain text."
   [channel-id]
@@ -411,46 +405,36 @@
 ;; Command
 ;; ---------------------------------------------------------------------------
 
-(def ^:private max-progress-msgs 25)
-
 (defn run-agent
-  "Async body: mint a token, run Gemini as an autonomous agent in a scratch dir,
-   and stream Gemini's own output into `target` as it works (capped). Gemini's
-   words are the substance; the bot only adds a short footer with PR links (or an
-   error/timeout note). A no-change/question run needs no footer — the streamed
-   output already is the answer."
-  [{:keys [request target context-channel on-discord]}]
+  "Async body: mint a token, run Gemini headlessly, then delete the transient
+   status message and post one clean final reply — Gemini's answer plus links to
+   any relevant PRs. No intermediate narration."
+  [{:keys [request target context-channel on-discord status-id]}]
   (binding [chat/*target* target]
     (sweep-stale-workdirs! (agent-workdir-max-age-ms))
-    (let [dir (work-dir target)
-          posted (atom 0)
-          relay (fn [chunk]
-                  (when (and (not (string/blank? chunk))
-                             (< @posted max-progress-msgs))
-                    (swap! posted inc)
-                    (chat/send-msg (say-progress chunk))))]
+    (let [dir (work-dir target)]
       (try
         (let [context (when on-discord (thread-context context-channel))
               token (github-token)
-              {:keys [exit out timed-out]} (run-gemini-agent dir request context token relay)
-              urls (pr-urls out)]
-          (cond
-            ;; a PR means success regardless of exit — Gemini sometimes errors its
-            ;; final stream ("Invalid stream") after the work is already done
-            (seq urls) (chat/send-msg (say-done urls))
-            timed-out (chat/send-msg (say-timeout (quot (agent-timeout-ms) 60000)))
-            (pos? exit) (chat/send-msg (say-broken (str "exited " exit)))
-            ;; no PR: Gemini's streamed output is the answer — no footer needed
-            :else nil))
+              {:keys [response exit timed-out]} (run-gemini-agent dir request context token)
+              reply (cond
+                      timed-out (say-timeout (quot (agent-timeout-ms) 60000))
+                      (not (string/blank? response)) (say-final response (pr-urls response))
+                      (pos? exit) (say-broken (str "exited " exit
+                                                   " — no answer returned (a PR may still have been opened)"))
+                      :else (say-final "done." nil))]
+          (when (and on-discord status-id) (delete-msg! target status-id))
+          (chat/send-msg reply))
         (catch Exception e
           (error "agent command failed" e)
+          (when (and on-discord status-id) (delete-msg! target status-id))
           (chat/send-msg (say-broken (.getMessage e))))
         (finally
           (try (delete-tree! dir)
                (catch Exception e (warn "cleanup failed" (str dir) e))))))))
 
 (defn agent-cmd
-  "agent <prompt> # grug hands it to Gemini, which uses gh+git to make a PR"
+  "agent <prompt> # hand the request to Gemini (gh+git) and reply with its answer"
   {:yb/cat #{:util}}
   [{[_ request] :match chat-source :chat-source}]
   (if-not (configured?)
@@ -463,14 +447,14 @@
           ;; on Discord, work inside a thread off the triggering message
           target (if (and on-discord channel msg-id)
                    (start-thread! channel msg-id request)
-                   chat/*target*)]
-      (binding [chat/*target* target] (chat/send-msg (say-thinking request)))
+                   chat/*target*)
+          ;; transient status; deleted when the final answer is posted
+          status-id (:id (binding [chat/*target* target] (chat/send-msg (say-working))))]
       (future
         (binding [chat/*adapter* adapter]
-          (run-agent {:request request :target target
-                      :context-channel channel :on-discord on-discord})))
-      ;; everything is narrated out of band; suppress the framework's reply so it
-      ;; doesn't post "No results" into the parent channel.
+          (run-agent {:request request :target target :context-channel channel
+                      :on-discord on-discord :status-id status-id})))
+      ;; the answer is posted out of band; suppress the framework's reply
       (chat/suppress {}))))
 
 ;; Register only when Gemini + GitHub auth are configured.
