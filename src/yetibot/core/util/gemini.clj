@@ -298,11 +298,22 @@
 (def ^:private veo-poll-interval-ms 6000)
 (def ^:private veo-max-polls 50) ; ~5 min ceiling
 
+(defn- veo-image-part
+  "Fetch an image URL and return a Veo instance image (base64), or nil. Used for
+   image-to-video — e.g. a mentioned Discord user's avatar becomes the opening frame."
+  [image-url]
+  (let [resp (client/get image-url {:as :byte-array :throw-exceptions false})
+        mime (first (string/split (get-in resp [:headers "Content-Type"] "image/png") #";"))]
+    (when (<= 200 (:status resp) 299)
+      {:mimeType mime
+       :bytesBase64Encoded (.encodeToString (Base64/getEncoder) ^bytes (:body resp))})))
+
 (defn- veo-start
-  "Kick off a Veo generation; returns the long-running operation name."
-  [prompt]
+  "Kick off a Veo generation; returns the long-running operation name.
+   When `image` is provided, Veo conditions the video on it (image-to-video)."
+  [prompt image]
   (let [url (format "%s/models/%s:predictLongRunning?key=%s" api-base (veo-model) (:key config))
-        body {:instances [{:prompt prompt}]
+        body {:instances [(cond-> {:prompt prompt} image (assoc :image image))]
               :parameters {:aspectRatio "16:9" :durationSeconds (veo-duration)}}
         resp (client/post url {:content-type :json
                                :body (json/write-str body)
@@ -344,16 +355,18 @@
 (defn generate-video
   "Generate a short video with Veo from a text prompt. Checks the monthly budget,
    polls the long-running operation, downloads the result, and records usage.
+   Optional image-urls condition the video (image-to-video); the first is used.
    Returns {:data <base64 mp4> :mime-type \"video/mp4\"}."
-  [prompt]
-  (check-budget!)
-  (let [op (veo-start prompt)
-        _ (info "veo: generation started" op)
-        done (veo-poll op)
-        uri (get-in done [:response :generateVideoResponse :generatedSamples 0 :video :uri])]
-    (when (string/blank? uri)
-      (throw (ex-info "No video was generated. Try a different prompt."
-                      {:type :no-video-generated :response (:response done)})))
-    (let [data (veo-download uri)]
-      (record-image-generated! (veo-cost-units))
-      {:data data :mime-type "video/mp4"})))
+  ([prompt] (generate-video prompt nil))
+  ([prompt image-urls]
+   (check-budget!)
+   (let [op (veo-start prompt (some-> (first image-urls) veo-image-part))
+         _ (info "veo: generation started" op)
+         done (veo-poll op)
+         uri (get-in done [:response :generateVideoResponse :generatedSamples 0 :video :uri])]
+     (when (string/blank? uri)
+       (throw (ex-info "No video was generated. Try a different prompt."
+                       {:type :no-video-generated :response (:response done)})))
+     (let [data (veo-download uri)]
+       (record-image-generated! (veo-cost-units))
+       {:data data :mime-type "video/mp4"}))))
