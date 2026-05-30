@@ -62,7 +62,9 @@
   (fact "say-final copes with a blank answer"
     (agent/say-final "" nil) => (contains "done"))
   (fact "say-timeout names the limit"
-    (agent/say-timeout 5) => (contains "5 min")))
+    (agent/say-timeout 5) => (contains "5 min"))
+  (fact "say-busy explains the agent is occupied"
+    (agent/say-busy) => (contains "grug")))
 
 (facts "about agent limits config defaults"
   (fact "default timeout is 5 minutes"
