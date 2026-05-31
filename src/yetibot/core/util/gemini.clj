@@ -298,11 +298,17 @@
 (def ^:private veo-poll-interval-ms 6000)
 (def ^:private veo-max-polls 50) ; ~5 min ceiling
 
+;; Cap connect + read time on every Veo HTTP call so a stalled Google API surfaces
+;; as an error instead of hanging the run forever — an otherwise silent failure
+;; where the user gets neither a video nor an error.
+(def ^:private veo-http-timeouts {:connection-timeout 10000 :socket-timeout 120000})
+
 (defn- veo-image-part
   "Fetch an image URL and return a Veo instance image (base64), or nil. Used for
    image-to-video — e.g. a mentioned Discord user's avatar becomes the opening frame."
   [image-url]
-  (let [resp (client/get image-url {:as :byte-array :throw-exceptions false})
+  (let [resp (client/get image-url (merge veo-http-timeouts
+                                          {:as :byte-array :throw-exceptions false}))
         mime (first (string/split (get-in resp [:headers "Content-Type"] "image/png") #";"))]
     (when (<= 200 (:status resp) 299)
       {:mimeType mime
@@ -315,10 +321,11 @@
   (let [url (format "%s/models/%s:predictLongRunning?key=%s" api-base (veo-model) (:key config))
         body {:instances [(cond-> {:prompt prompt} image (assoc :image image))]
               :parameters {:aspectRatio "16:9" :durationSeconds (veo-duration)}}
-        resp (client/post url {:content-type :json
-                               :body (json/write-str body)
-                               :as :json
-                               :throw-exceptions false})]
+        resp (client/post url (merge veo-http-timeouts
+                                     {:content-type :json
+                                      :body (json/write-str body)
+                                      :as :json
+                                      :throw-exceptions false}))]
     (if (<= 200 (:status resp) 299)
       (get-in resp [:body :name])
       (let [msg (extract-api-error (:body resp))]
@@ -331,7 +338,8 @@
   [op-name]
   (loop [n 0]
     (let [body (:body (client/get (format "%s/%s?key=%s" api-base op-name (:key config))
-                                  {:as :json :throw-exceptions false}))]
+                                  (merge veo-http-timeouts
+                                         {:as :json :throw-exceptions false})))]
       (cond
         (:error body) (throw (ex-info (str "Veo generation failed: "
                                            (get-in body [:error :message]))
@@ -344,9 +352,10 @@
 (defn- veo-download
   "Download the generated mp4 and return it base64-encoded."
   [uri]
-  (let [resp (client/get uri {:headers {"x-goog-api-key" (:key config)}
-                              :as :byte-array
-                              :throw-exceptions false})]
+  (let [resp (client/get uri (merge veo-http-timeouts
+                                    {:headers {"x-goog-api-key" (:key config)}
+                                     :as :byte-array
+                                     :throw-exceptions false}))]
     (if (<= 200 (:status resp) 299)
       (.encodeToString (Base64/getEncoder) ^bytes (:body resp))
       (throw (ex-info (str "Veo video download failed: " (:status resp))
