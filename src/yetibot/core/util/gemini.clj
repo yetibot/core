@@ -18,6 +18,8 @@
 (s/def ::monthly (s/keys :opt-un [::budget]))
 (s/def ::budget (s/or :string string? :number number?))
 
+(declare veo-cost-units)
+
 (s/def ::config (s/keys :req-un [::key] :opt-un [::cost ::monthly]))
 
 ;; All Gemini settings live under [:gemini] and share a single API key
@@ -120,12 +122,18 @@
   (let [{:keys [count]} @usage-tracker
         max-imgs (max-images-per-month)
         spent (* count (cost-per-image))
-        remaining (- (monthly-budget) spent)]
+        remaining (max 0.0 (- (monthly-budget) spent))
+        v-units (veo-cost-units)
+        images-left (long (Math/floor (/ remaining (cost-per-image))))
+        veo-clips-left (long (Math/floor (/ images-left v-units)))]
     {:images-generated count
      :max-images max-imgs
      :spent (double spent)
      :budget (monthly-budget)
      :remaining (double remaining)
+     :images-left images-left
+     :veo-clips-left veo-clips-left
+     :veo-cost-units v-units
      :month (:month @usage-tracker)}))
 
 (defn- check-budget!
