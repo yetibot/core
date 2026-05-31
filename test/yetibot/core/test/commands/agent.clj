@@ -159,3 +159,25 @@
     (let [kp (rsa-keypair)]
       (:valid? (jwt-verifies? (agent/app-jwt) (.getPublic kp))) => true
       (provided (agent/app-id) => "123" (agent/app-private-key) => (pkcs1-pem kp)))))
+
+;; --- restart resilience: resume runs a restart left in-flight ---
+
+(facts "about resume config defaults"
+  (fact "default max attempts is 2 — the original plus one retry"
+    (agent/agent-max-attempts) => 2))
+
+(facts "about resume-action"
+  (fact "resumes a fresh interrupted run"
+    (agent/resume-action 1 1000 2 100000) => :resume)
+  (fact "gives up once attempts reach the cap"
+    (agent/resume-action 2 1000 2 100000) => :give-up)
+  (fact "treats a run older than the cutoff as stale"
+    (agent/resume-action 1 200000 2 100000) => :stale)
+  (fact "the attempts cap wins over staleness"
+    (agent/resume-action 2 200000 2 100000) => :give-up))
+
+(facts "about resume-request"
+  (fact "prepends a dedup note so a resumed run won't open a duplicate PR"
+    (agent/resume-request "add a bagif command") => (contains "gh pr list"))
+  (fact "keeps the original request text"
+    (agent/resume-request "add a bagif command") => (contains "add a bagif command")))
