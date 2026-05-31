@@ -1,10 +1,16 @@
 (ns yetibot.core.commands.veo
-  (:require [taoensso.timbre :refer [info error]]
+  (:require [clojure.string :as string]
+            [taoensso.timbre :refer [info error]]
             [yetibot.core.hooks :refer [cmd-hook]]
             [yetibot.core.util.image-input :as image-input]
             [yetibot.core.util.gemini :as gemini]
             [yetibot.core.chat :as chat]
             [yetibot.core.webapp.routes.images :refer [store-image!]]))
+
+(defn redact
+  "Strip a leaked Gemini API key from an error message before it reaches chat."
+  [msg]
+  (some-> msg (string/replace #"key=[^\s&\"]+" "key=***")))
 
 (defn veo-cmd
   "veo <prompt> # generate a short AI video with Veo
@@ -36,13 +42,13 @@
                 (chat/send-msg msg))
               (catch Exception e
                 (error "veo: generation error in future:" (.getMessage e))
-                (let [err-msg (str "Video generation failed: " (.getMessage e))
+                (let [err-msg (str "Video generation failed: " (redact (.getMessage e)))
                       msg (if user-mention (str user-mention ": " err-msg) err-msg)]
                   (chat/send-msg msg))))))
         {:result/value (str "🎥 Grug start generating video for \"" prompt "\". This take some time (30s to 3m)...")})
       (catch Exception e
         (error "veo: initialization error:" (.getMessage e))
-        {:result/error (str "Video generation initialization failed: " (.getMessage e))}))
+        {:result/error (str "Video generation initialization failed: " (redact (.getMessage e)))}))
     {:result/error
      "Gemini API is not configured. Set `gemini.key` in config."}))
 
