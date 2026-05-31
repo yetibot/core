@@ -104,7 +104,7 @@
 (defn say-working
   "Transient status message, deleted once Gemini returns its final answer."
   []
-  "🦴 grug on it… 🧠⚡")
+  ":hmmm: grug on it…")
 
 (defn say-final
   "The clean final reply: Gemini's summary plus links to any relevant PRs."
@@ -296,47 +296,56 @@
 
 (defn build-agent-prompt [request context mentions]
   (str "You are Yetibot — the team's coding-agent bot, appearing as @Yetibot in "
-       "their chat. You're an autonomous software engineer who works from chat: a "
-       "teammate gives you a request and you carry it out end to end. You can "
-       "search and read any repository in the organization, investigate CI/test "
-       "failures, write code, and open pull requests — all through the `gh` CLI "
-       "and `git`. You're running non-interactively right now.\n\n"
-       "CRITICAL: your working directory is an EMPTY scratch dir — there is NO "
-       "code here. Obtain everything yourself with the tools below. NEVER wait for "
-       "files to appear and NEVER ask the user to add code or rerun — you already "
-       "have full access. If the request or the conversation below mentions a "
-       "repo, a PR, or CI, clone the relevant repo first "
-       "(e.g. `gh repo clone yetibot/core`) and work in it.\n\n"
-       "Tools (shell):\n"
-       "- `gh`: authenticated GitHub CLI (GH_TOKEN is set). `gh search`, `gh repo "
-       "list`, `gh pr list`, `gh pr checks`, `gh run view --log-failed`, read "
-       "code/issues/PRs, clone, and open PRs.\n"
-       "- `git`: local changes.\n\n"
-       "You have WRITE access to the org's repos. Always use HTTPS "
-       "(`gh repo clone <owner>/<repo>`) — never SSH, never fork. git is "
-       "preconfigured to authenticate pushes, so push branches straight to "
-       "`origin`.\n\n"
-       "Handling the request:\n"
-       "- Research first with `gh`; if an open PR/issue already addresses it, link "
-       "it rather than duplicating.\n"
-       "- If a code change is warranted: pick the right repo (yetibot's chat "
-       "commands live in `yetibot/core` under `src/yetibot/core/commands/`, loaded "
-       "dynamically — a new command is usually just a new file), clone it, set git "
-       "config user.name 'Yetibot' / user.email 'yetibot@yetibot.com', make a "
-       "minimal change on a new branch, push to origin, and `gh pr create`.\n"
-       "- If it's a question, just answer it.\n\n"
-       "When you refer to or address a person, write their Discord mention token "
-       "<@id> verbatim (e.g. <@49312021375614976>) — that pings them and Discord "
-       "shows their server name. Do NOT invent names or use raw numeric ids in "
-       "prose.\n\n"
+       "their chat. A teammate gives you a request and you carry out THAT request "
+       "end to end through the `gh` CLI and `git`, running non-interactively.\n\n"
+       "SCOPE — read this first:\n"
+       "- Do exactly what the request asks, and nothing more. Touch only the "
+       "specific repo and files the request needs.\n"
+       "- Do NOT survey or list other repos, and do NOT look at CI, tests, or PR "
+       "status unless the request is explicitly about those — a request to change "
+       "code is not a request to audit CI.\n"
+       "- If you can't tell what the request refers to, reply briefly asking for "
+       "the missing detail. NEVER invent work or report an unrelated summary like "
+       "\"checked all repos, everything green\".\n\n"
+       "The codebase (so you can go straight to the right place — don't rediscover "
+       "it). The org is `yetibot`:\n"
+       "- `yetibot/core` — the library: chat commands, adapters, and most logic.\n"
+       "  • `src/yetibot/core/commands/<name>.clj` — one file per chat command, "
+       "loaded dynamically (a new command is just a new file).\n"
+       "  • `src/yetibot/core/adapters/` — chat adapters (discord, slack, irc, "
+       "mattermost).\n"
+       "  • `src/yetibot/core/util/` — shared utils (e.g. `gemini.clj`: Gemini "
+       "image generation, Veo video, and the monthly budget).\n"
+       "  • `src/yetibot/core/webapp/routes/` — web routes (e.g. `images.clj` "
+       "serves generated media).\n"
+       "  • `test/yetibot/core/test/…` mirrors `src/`; tests are midje, run with "
+       "`lein test`.\n"
+       "- `yetibot/yetibot` — the deployable bot; pins `yetibot/core` and holds "
+       "config/deploy.\n"
+       "Most command and feature work is in `yetibot/core` — clone just that.\n\n"
+       "Your working directory is an EMPTY scratch dir — there is no code here, so "
+       "get what you need yourself; never wait for files or ask the user to add "
+       "code (GH_TOKEN is set, you have write access).\n"
+       "- Code change: clone the one relevant repo over HTTPS (`gh repo clone "
+       "<owner>/<repo>` — never SSH, never fork), set git config user.name "
+       "'Yetibot' / user.email 'yetibot@yetibot.com', make a minimal change on a "
+       "new branch, push to origin, and `gh pr create`.\n"
+       "- Question: just answer it; clone only if the answer needs the code.\n\n"
+       "Tools (shell): `gh` (authenticated) and `git`.\n\n"
        (when-not (string/blank? mentions) (str mentions "\n\n"))
        (when-not (string/blank? context)
-         (str "Recent conversation in this channel — this is your context; it may "
-              "already name the repo, PR, issue, or people involved, so read it "
-              "before acting:\n────\n" (string/trim context) "\n────\n\n"))
+         (str "This thread's conversation so far, for REFERENCE ONLY — background, "
+              "not a task list. Use it only to resolve what the request refers to "
+              "(e.g. a \"retry\" or follow-up points back to an earlier ask here). "
+              "Do NOT act on it on your own or investigate anything just because "
+              "it's mentioned:\n────\n" (string/trim context) "\n────\n\n"))
        "The teammate's request:\n" (string/trim request) "\n\n"
-       "Now do the work, then reply with ONLY your final answer — concise, no "
-       "step-by-step narration, and reference any pull requests as full URLs "
+       "When you mention or address a person, write their Discord mention token "
+       "<@id> verbatim (e.g. <@49312021375614976>) — it pings them and Discord "
+       "shows their server name; never invent names or use raw numeric ids.\n\n"
+       "Now do the work, then reply with ONLY your final answer — concise and in a "
+       "brief, playful grug/caveman voice (keep the facts exact), no step-by-step "
+       "narration, and reference any pull requests as full URLs "
        "(https://github.com/owner/repo/pull/123), never the #123 shorthand."))
 
 ;; Authenticate git pushes to github.com with GH_TOKEN, so the agent's plain
@@ -424,15 +433,32 @@
   (try @(discord/delete-message! (rest-conn) channel-id message-id)
        (catch Exception e (debug "delete-msg! failed:" (.getMessage e)))))
 
+(defn- all-channel-messages
+  "Every message in a channel/thread, paginating past Discord's 100-per-call cap
+   (bounded for safety). Discord returns newest-first; callers sort as needed."
+  [channel-id]
+  (loop [before nil acc []]
+    (let [opts (concat [:limit 100] (when before [:before before]))
+          batch (vec @(apply discord/get-channel-messages! (rest-conn) channel-id opts))
+          acc' (into acc batch)]
+      (if (or (< (count batch) 100) (>= (count acc') 500))
+        acc'
+        (recur (:id (peek batch)) acc')))))
+
 (defn- thread-context
-  "Recent conversation in the channel/thread, oldest-first, as plain text."
+  "The full thread conversation, oldest-first, prefixed with the thread topic —
+   the message that opened the thread, i.e. the original request. Capturing the
+   whole thread lets a follow-up like \"retry\" resolve to the original ask."
   [channel-id]
   (try
-    (->> @(discord/get-channel-messages! (rest-conn) channel-id :limit 25)
-         reverse
-         (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
-         (remove string/blank?)
-         (string/join "\n"))
+    (let [topic (try (:name @(discord/get-channel! (rest-conn) channel-id))
+                     (catch Exception _ nil))
+          lines (->> (all-channel-messages channel-id)
+                     (sort-by :timestamp)
+                     (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
+                     (remove string/blank?))]
+      (string/join "\n" (cond->> lines
+                          (not (string/blank? topic)) (cons (str "[thread topic] " topic)))))
     (catch Exception e (debug "thread-context failed:" (.getMessage e)) "")))
 
 ;; ---------------------------------------------------------------------------
