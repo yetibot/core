@@ -23,6 +23,8 @@
    [yetibot.core.adapters.adapter :as a]
    [yetibot.core.chat :as chat]
    [yetibot.core.config :refer [get-config]]
+   [yetibot.core.db :as db]
+   [yetibot.core.db.agent-run :as agent-run]
    [yetibot.core.hooks :refer [cmd-hook]])
   (:import
    [java.nio.file Files]
@@ -69,6 +71,17 @@
 (defn agent-max-turns [] (config-num [:gemini :agent :max-turns] 50))
 ;; how long a leftover scratch dir may linger before the sweep reaps it (1 day)
 (defn agent-workdir-max-age-ms [] (config-num [:gemini :agent :workdir-max-age-ms] 86400000))
+
+;; Restart resilience: an in-flight run is persisted and, after a restart that
+;; killed it, re-dispatched on the next boot.
+;;   max-attempts    - total runs (original + retries) before giving up
+;;   resume-stale-ms - skip resuming a run older than this (default 6h)
+;;   resume-ready-ms - how long to wait at boot for the DB + an adapter to be live
+;;   resume-stagger-ms - gap between resumed dispatches (2 cores, uncapped concurrency)
+(defn agent-max-attempts [] (config-num [:gemini :agent :max-attempts] 2))
+(defn agent-resume-stale-ms [] (config-num [:gemini :agent :resume-stale-ms] 21600000))
+(defn agent-resume-ready-ms [] (config-num [:gemini :agent :resume-ready-ms] 60000))
+(defn agent-resume-stagger-ms [] (config-num [:gemini :agent :resume-stagger-ms] 3000))
 
 (defn github-pat [] (config-str [:github :token]))
 
@@ -121,6 +134,25 @@
 
 (defn say-unconfigured []
   (str "🪨 grug brain not plugged in. need Gemini key + GitHub auth (App or token). grug wait 😴"))
+
+(defn say-resuming []
+  "🪨 grug got bonked by a restart — back on it…")
+
+(defn say-gave-up []
+  "💀 grug kept getting knocked out by restarts — try again when things settle?")
+
+(defn say-stale []
+  "💤 grug napped too long on that one — ask again?")
+
+(defn resume-request
+  "Prefix a request for a resumed run so Gemini continues whatever its interrupted
+   attempt already started instead of duplicating it."
+  [request]
+  (str "(Your previous attempt at this was interrupted by a restart before it could "
+       "finish. Before doing anything else, run `gh pr list` and check for a branch "
+       "you may have already pushed for this — if one exists, continue and finish "
+       "that work rather than opening a duplicate PR.)\n\n"
+       request))
 
 ;; ---------------------------------------------------------------------------
 ;; Safety
@@ -462,6 +494,40 @@
     (catch Exception e (debug "thread-context failed:" (.getMessage e)) "")))
 
 ;; ---------------------------------------------------------------------------
+;; Persistence — survive a restart that kills an in-flight run
+;; ---------------------------------------------------------------------------
+
+(defn- record-run!
+  "Persist an in-flight run so a restart can resume it; returns its run-id, or nil
+   if persistence failed (the run still proceeds, it just won't be resumable)."
+  [run]
+  (let [run-id (str (java.util.UUID/randomUUID))]
+    (try
+      (agent-run/create (assoc run :run-id run-id))
+      run-id
+      (catch Exception e
+        (warn "agent run persist failed (run will not be resumable):" (.getMessage e))
+        nil))))
+
+(defn- clear-run!
+  "Delete a run's record once it reaches any terminal outcome (best-effort)."
+  [run-id]
+  (when run-id
+    (try
+      (when-let [{:keys [id]} (first (agent-run/query {:where/map {:run-id run-id}}))]
+        (agent-run/delete id))
+      (catch Exception e (warn "agent run clear failed:" (.getMessage e))))))
+
+(defn resume-action
+  "Decide what to do with a run left in-flight by a restart: :give-up once it has
+   used up its attempts, :stale when it's older than the cutoff, else :resume."
+  [attempts age-ms max-attempts stale-ms]
+  (cond
+    (>= attempts max-attempts) :give-up
+    (> age-ms stale-ms) :stale
+    :else :resume))
+
+;; ---------------------------------------------------------------------------
 ;; Command
 ;; ---------------------------------------------------------------------------
 
@@ -469,7 +535,7 @@
   "Async body: mint a token, run Gemini headlessly, then delete the transient
    status message and post one clean final reply — Gemini's answer plus links to
    any relevant PRs. No intermediate narration."
-  [{:keys [request target context-channel on-discord status-id mentions]}]
+  [{:keys [request target context-channel on-discord status-id mentions run-id]}]
   (binding [chat/*target* target]
     (sweep-stale-workdirs! (agent-workdir-max-age-ms))
     (let [dir (work-dir target)]
@@ -491,7 +557,8 @@
           (chat/send-msg (say-broken (.getMessage e))))
         (finally
           (try (delete-tree! dir)
-               (catch Exception e (warn "cleanup failed" (str dir) e))))))))
+               (catch Exception e (warn "cleanup failed" (str dir) e)))
+          (clear-run! run-id))))))
 
 (defn agent-cmd
   "agent <prompt> # hand the request to Gemini (gh+git) and reply with its answer"
@@ -513,15 +580,103 @@
                    (start-thread! channel msg-id request)
                    chat/*target*)
           ;; transient status; deleted when the final answer is posted
-          status-id (:id (binding [chat/*target* target] (chat/send-msg (say-working))))]
+          status-id (:id (binding [chat/*target* target] (chat/send-msg (say-working))))
+          ;; persist the run so a restart that kills it can resume it
+          run-id (record-run! {:request request
+                               :target (some-> target str)
+                               :context-channel (some-> channel str)
+                               :status-id (some-> status-id str)
+                               :adapter-uuid (some-> adapter a/uuid str)
+                               :mentions mentions
+                               :on-discord on-discord})]
       (future
         (binding [chat/*adapter* adapter]
           (run-agent {:request request :target target :context-channel channel
-                      :on-discord on-discord :status-id status-id :mentions mentions})))
+                      :on-discord on-discord :status-id status-id :mentions mentions
+                      :run-id run-id})))
       ;; the answer is posted out of band; suppress the framework's reply
       (chat/suppress {}))))
+
+;; ---------------------------------------------------------------------------
+;; Resume — re-dispatch runs a restart left in-flight
+;; ---------------------------------------------------------------------------
+
+(defonce ^:private boot-time (System/currentTimeMillis))
+
+(defn- adapter-by-uuid
+  "The live adapter whose uuid matches a persisted run's adapter-uuid."
+  [uuid]
+  (some #(when (= uuid (some-> % a/uuid str)) %) (a/active-adapters)))
+
+(defn- adapter-ready? []
+  (boolean (some #(try (a/connected? %) (catch Exception _ false))
+                 (a/active-adapters))))
+
+(defn- await-ready
+  "Block (up to timeout-ms) until the DB is connected and an adapter is live, so a
+   resumed run can read its state and post a reply. Returns true once ready."
+  [timeout-ms]
+  (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
+    (loop []
+      (cond
+        (and @db/connected? (adapter-ready?)) true
+        (> (System/currentTimeMillis) deadline) false
+        :else (do (Thread/sleep 1000) (recur))))))
+
+(defn- say-to-run!
+  "Post msg into a run's thread on its adapter, clearing the dangling status first."
+  [{:keys [target adapter-uuid on-discord status-id]} msg]
+  (when-let [adapter (adapter-by-uuid adapter-uuid)]
+    (binding [chat/*adapter* adapter chat/*target* target]
+      (when (and on-discord status-id) (delete-msg! target status-id))
+      (chat/send-msg msg))))
+
+(defn- dispatch-resume!
+  "Re-run an interrupted run, restoring its adapter + thread and nudging Gemini to
+   continue any work it already started."
+  [{:keys [run-id request target context-channel on-discord status-id mentions
+           adapter-uuid]}]
+  (if-let [adapter (adapter-by-uuid adapter-uuid)]
+    (do
+      (binding [chat/*adapter* adapter chat/*target* target]
+        (chat/send-msg (say-resuming)))
+      (future
+        (binding [chat/*adapter* adapter]
+          (run-agent {:request (resume-request request) :target target
+                      :context-channel context-channel :on-discord on-discord
+                      :status-id status-id :mentions mentions :run-id run-id}))))
+    (warn "cannot resume agent run; adapter gone:" adapter-uuid)))
+
+(defn- resume-run!
+  [{:keys [id attempts created-at] :as row} now]
+  (case (resume-action attempts (- now (.getTime created-at))
+                       (agent-max-attempts) (agent-resume-stale-ms))
+    :give-up (do (say-to-run! row (say-gave-up)) (agent-run/delete id))
+    :stale   (do (say-to-run! row (say-stale)) (agent-run/delete id))
+    :resume  (do (agent-run/update-where {:run-id (:run-id row)}
+                                         {:attempts (inc attempts)})
+                 (dispatch-resume! row))))
+
+(defn resume-interrupted-runs!
+  "On boot, re-dispatch any agent runs a restart left in-flight. Runs in a future
+   so it never blocks startup; staggers dispatches to spare the box's few cores."
+  []
+  (future
+    (try
+      (when (await-ready (agent-resume-ready-ms))
+        (let [rows (->> (agent-run/find-all)
+                        (filter #(< (.getTime (:created-at %)) boot-time)))]
+          (when (seq rows)
+            (info "resuming" (count rows) "interrupted agent run(s)"))
+          (let [now (System/currentTimeMillis)]
+            (doseq [row rows]
+              (try (resume-run! row now)
+                   (catch Exception e (error "resume failed for run" (:run-id row) e)))
+              (Thread/sleep (agent-resume-stagger-ms))))))
+      (catch Exception e (error "resume-interrupted-runs! failed" e)))))
 
 ;; Register only when Gemini + GitHub auth are configured.
 (when (configured?)
   (cmd-hook #"agent"
-            #"(?s)(.+)" agent-cmd))
+            #"(?s)(.+)" agent-cmd)
+  (resume-interrupted-runs!))
