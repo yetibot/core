@@ -104,7 +104,7 @@
 (defn say-working
   "Transient status message, deleted once Gemini returns its final answer."
   []
-  ":hmmm: grug on it…")
+  "<:hmmm:1494137019805466734> grug on it…")
 
 (defn say-final
   "The clean final reply: Gemini's summary plus links to any relevant PRs."
