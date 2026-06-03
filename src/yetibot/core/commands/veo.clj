@@ -43,7 +43,7 @@
     (try
       (let [{:keys [prompt image-urls]} (image-input/extract-images match chat-source)
             preset (if (= cmd "gigaveo")
-                     (get model-presets "gigaveo")
+                     (assoc (get model-presets "gigaveo") :prompt prompt)
                      (let [parsed (parse-model-and-prompt prompt)]
                        (when (:model parsed)
                          parsed)))

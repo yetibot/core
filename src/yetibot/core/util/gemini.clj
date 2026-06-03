@@ -279,7 +279,7 @@
 
 (defn veo-model [] (or (-> config :veo :model) default-veo-model))
 
-(defn- veo-duration [] (long (or (parse-number (-> config :veo :duration)) 4)))
+(defn veo-duration [] (long (or (parse-number (-> config :veo :duration)) 4)))
 
 (defn- veo-cost-per-second-for-model [model]
   (or (parse-number (-> config :veo :cost-per-second))

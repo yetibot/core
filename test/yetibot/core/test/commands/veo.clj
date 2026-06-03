@@ -35,7 +35,7 @@
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "a cool robot dancing" {}) => {:prompt "a cool robot dancing" :image-urls nil}
-        (gemini/generate-video "a cool robot dancing" nil) => :video-bytes
+        (gemini/generate-video "a cool robot dancing" nil "veo-3.1-lite-generate-preview" 4) => :video-bytes
         (store-image! :video-bytes) => "img123"
         (gemini/yetibot-base-url) => "http://localhost:3000"
         (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4") => anything)))
@@ -50,7 +50,7 @@
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "a cool robot dancing" {}) => {:prompt "a cool robot dancing" :image-urls nil}
-        (gemini/generate-video "a cool robot dancing" nil) => (throw (Exception. "API Error"))
+        (gemini/generate-video "a cool robot dancing" nil "veo-3.1-lite-generate-preview" 4) => (throw (Exception. "API Error"))
         (chat/send-msg "<@user123>: Video generation failed: API Error") => anything))))
 
 (facts "about veo model and prompt parsing"
