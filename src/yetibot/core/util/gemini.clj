@@ -319,26 +319,45 @@
       {:mimeType mime
        :bytesBase64Encoded (.encodeToString (Base64/getEncoder) ^bytes (:body resp))})))
 
+(defn- veo-video-part
+  "Fetch a video URL and return a Veo instance video (base64), or nil."
+  [video-url]
+  (let [resp (client/get video-url (merge veo-http-timeouts
+                                          {:as :byte-array :throw-exceptions false}))]
+    (when (<= 200 (:status resp) 299)
+      {:inlineData {:mimeType "video/mp4"
+                    :data (.encodeToString (Base64/getEncoder) ^bytes (:body resp))}})))
+
 (defn- veo-start
   "Kick off a Veo generation; returns the long-running operation name.
-   When `image` is provided, Veo conditions the video on it (image-to-video)."
-  [prompt image model duration]
-  (let [model (or model (veo-model))
-        duration (or duration (veo-duration))
-        url (format "%s/models/%s:predictLongRunning?key=%s" api-base model (:key config))
-        body {:instances [(cond-> {:prompt prompt} image (assoc :image image))]
-              :parameters {:aspectRatio "16:9" :durationSeconds duration}}
-        resp (client/post url (merge veo-http-timeouts
-                                     {:content-type :json
-                                      :body (json/write-str body)
-                                      :as :json
-                                      :throw-exceptions false}))]
-    (if (<= 200 (:status resp) 299)
-      (get-in resp [:body :name])
-      (let [msg (extract-api-error (:body resp))]
-        (error "veo: start failed" (:status resp) "-" msg)
-        (throw (ex-info (str "Veo API error: " msg)
-                        {:type :veo-api-error :status (:status resp)}))))))
+   When `image` is provided, Veo conditions the video on it (image-to-video).
+   When `video` is provided, Veo extends it (video-to-video)."
+  ([prompt image model duration] (veo-start prompt image model duration nil))
+  ([prompt image model duration video]
+   (let [model (or model (veo-model))
+         duration (or duration (veo-duration))
+         url (format "%s/models/%s:predictLongRunning?key=%s" api-base model (:key config))
+         instance (cond-> {:prompt prompt}
+                    image (assoc :image image)
+                    video (assoc :video video))
+         parameters (if video
+                      {:numberOfVideos 1
+                       :resolution "720p"
+                       :durationSeconds "8"}
+                      {:aspectRatio "16:9" :durationSeconds duration})
+         body {:instances [instance]
+               :parameters parameters}
+         resp (client/post url (merge veo-http-timeouts
+                                      {:content-type :json
+                                       :body (json/write-str body)
+                                       :as :json
+                                       :throw-exceptions false}))]
+     (if (<= 200 (:status resp) 299)
+       (get-in resp [:body :name])
+       (let [msg (extract-api-error (:body resp))]
+         (error "veo: start failed" (:status resp) "-" msg)
+         (throw (ex-info (str "Veo API error: " msg)
+                         {:type :veo-api-error :status (:status resp)})))))))
 
 (defn- veo-poll
   "Poll a Veo operation until done; returns the completed operation body."
@@ -375,11 +394,16 @@
    Returns {:data <base64 mp4> :mime-type \"video/mp4\"}."
   ([prompt] (generate-video prompt nil))
   ([prompt image-urls] (generate-video prompt image-urls nil nil))
-  ([prompt image-urls model duration]
+  ([prompt image-urls model duration] (generate-video prompt image-urls model duration nil))
+  ([prompt image-urls model duration video-url]
    (check-budget!)
    (let [model (or model (veo-model))
          duration (or duration (veo-duration))
-         op (veo-start prompt (some-> (first image-urls) veo-image-part) model duration)
+         op (veo-start prompt
+                       (some-> (first image-urls) veo-image-part)
+                       model
+                       duration
+                       (some-> video-url veo-video-part))
          _ (info "veo: generation started" op)
          done (veo-poll op)
          uri (get-in done [:response :generateVideoResponse :generatedSamples 0 :video :uri])]

@@ -118,3 +118,35 @@
     (veo/redact "Video generation failed: API Error") => "Video generation failed: API Error")
   (fact "tolerates nil"
     (veo/redact nil) => nil))
+
+(facts "about video extraction"
+  (fact "extracts inline mp4 URLs and cleans prompt"
+    (veo/extract-videos "a cool robot http://example.com/robot.mp4" {})
+    => {:prompt "a cool robot" :video-urls ["http://example.com/robot.mp4"]})
+
+  (fact "extracts video attachments and removes them from chat source"
+    (let [chat-source {:raw-event {:attachments [{:filename "video.mp4" :url "http://example.com/video.mp4" :content-type "video/mp4"}]}}]
+      (veo/extract-videos "a cool robot" chat-source)
+      => {:prompt "a cool robot" :video-urls ["http://example.com/video.mp4"]}))
+
+  (fact "handles multiple input sources and removes video attachments from chat-source"
+    (let [chat-source {:raw-event {:attachments [{:filename "video.mp4" :url "http://example.com/video.mp4" :content-type "video/mp4"}
+                                                 {:filename "img.png" :url "http://example.com/img.png" :content-type "image/png"}]}}]
+      (veo/extract-videos "a cool robot" chat-source)
+      => {:prompt "a cool robot" :video-urls ["http://example.com/video.mp4"]})))
+
+(facts "about video extension with veo-cmd"
+  (fact "veo-cmd prepends startup message, upgrades lite model, sets duration to 8, and passes video-url to generate-video"
+    (binding [chat/*adapter* :mock-adapter
+              chat/*target* :mock-target
+              chat/*thread-ts* :mock-thread-ts]
+      (with-redefs [clojure.core/future-call (fn [f] (f))]
+        (veo/veo-cmd {:match "lite a cool robot http://example.com/input.mp4" :chat-source {} :user {:id "user123"} :cmd "veo"}))
+      => {:result/value "💸 🔥  time to burn some money!\n🎥 Grug start generating video for \"a cool robot\". This take some time (30s to 3m)..."}
+      (provided
+        (gemini/configured?) => true
+        (image-input/extract-images "lite a cool robot" {:raw-event {:attachments ()}}) => {:prompt "lite a cool robot" :image-urls nil}
+        (gemini/generate-video "a cool robot" nil "veo-3.1-generate-preview" 8 "http://example.com/input.mp4") => :video-bytes
+        (store-image! :video-bytes) => "img123"
+        (gemini/yetibot-base-url) => "http://localhost:3000"
+        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4") => anything))))
