@@ -38,7 +38,8 @@
         (gemini/generate-video "a cool robot dancing" nil "veo-3.1-lite-generate-preview" 4) => :video-bytes
         (store-image! :video-bytes) => "img123"
         (gemini/yetibot-base-url) => "http://localhost:3000"
-        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4") => anything)))
+        (gemini/calculate-video-cost "veo-3.1-lite-generate-preview" 4) => 0.20
+        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4 (Cost: $0.20)") => anything)))
 
   (fact "future handles failure, posts error message"
     (binding [chat/*adapter* :mock-adapter
@@ -92,7 +93,8 @@
         (gemini/generate-video "a cool robot" nil "veo-3.1-lite-generate-preview" 4) => :video-bytes
         (store-image! :video-bytes) => "img123"
         (gemini/yetibot-base-url) => "http://localhost:3000"
-        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4") => anything)))
+        (gemini/calculate-video-cost "veo-3.1-lite-generate-preview" 4) => 0.20
+        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4 (Cost: $0.20)") => anything)))
 
   (fact "veo-cmd with gigaveo cmd generates 8s video with flagship model"
     (binding [chat/*adapter* :mock-adapter
@@ -107,7 +109,8 @@
         (gemini/generate-video "a cool robot" nil "veo-3.1-generate-preview" 8) => :video-bytes
         (store-image! :video-bytes) => "img123"
         (gemini/yetibot-base-url) => "http://localhost:3000"
-        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4") => anything))))
+        (gemini/calculate-video-cost "veo-3.1-generate-preview" 8) => 3.20
+        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4 (Cost: $3.20)") => anything))))
 
 (facts "about redact"
   (fact "masks a leaked api key embedded in an error"
