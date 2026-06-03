@@ -64,8 +64,10 @@
               (let [video (gemini/generate-video final-prompt image-urls model duration)
                     id (store-image! video)
                     url (format "%s/generated-images/%s.mp4" (gemini/yetibot-base-url) id)
-                    msg (if user-mention (str user-mention ": " url) url)]
-                (info "veo: video generated, serving at" url)
+                    cost (gemini/calculate-video-cost model duration)
+                    cost-str (format " (Cost: $%.2f)" cost)
+                    msg (if user-mention (str user-mention ": " url cost-str) (str url cost-str))]
+                (info "veo: video generated, serving at" url "cost:" cost)
                 (chat/send-msg msg))
               (catch Exception e
                 (error "veo: generation error in future:" (.getMessage e))

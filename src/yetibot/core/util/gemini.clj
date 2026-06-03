@@ -288,6 +288,12 @@
         (string/includes? model "fast") 0.15
         :else 0.40)))
 
+(defn calculate-video-cost
+  "Calculate the estimated cost in USD of generating a video of the specified
+   duration using the given model."
+  [model duration]
+  (* duration (veo-cost-per-second-for-model model)))
+
 (defn- veo-cost-per-second [] (veo-cost-per-second-for-model (veo-model)))
 
 (defn- veo-cost-units-for-model [model duration]
