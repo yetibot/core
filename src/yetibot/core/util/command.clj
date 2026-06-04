@@ -102,7 +102,7 @@
    otherwise nil"
   ([body] (extract-command body config-prefix))
   ([body prefix]
-    (re-find (re-pattern (str "^\\" prefix "(.+)")) body)))
+    (re-find (re-pattern (str "(?s)^\\" prefix "(.+)")) body)))
 
 (defn embedded-cmds
   "Parse a string and only return a collection of any embedded commands instead

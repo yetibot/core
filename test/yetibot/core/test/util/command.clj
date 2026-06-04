@@ -52,4 +52,9 @@
        (fact "Nothing is extracted from a potential command if the prefix does not match"
              (let [prefix "?"
                    body "|command arg1 arg2"]
-               (extract-command body prefix) => nil?)))
+               (extract-command body prefix) => nil?))
+
+       (fact "Multiline commands are successfully extracted"
+             (let [prefix "!"
+                   body "!echo hello\nworld"]
+               (extract-command body prefix) => [body "echo hello\nworld"])))
