@@ -182,27 +182,18 @@
   (fact "keeps the original request text"
     (agent/resume-request "add a bagif command") => (contains "add a bagif command")))
 
-(facts "about agent CLI entry point (-main)"
-  (fact "list-commands prints available commands in JSON"
-    (with-out-str (agent/-main "list-commands")) => (contains "{\"commands\":[\"cmd1\",\"cmd2\"]}")
+(facts "about agent subcommands"
+  (fact "agent-list-commands-cmd returns available commands in JSON"
+    (agent/agent-list-commands-cmd {}) => {:result/value "{\"commands\":[\"cmd1\",\"cmd2\"]}"}
     (provided
-      (yetibot.core.db/start) => nil
-      (yetibot.core.loader/load-all) => nil
-      (yetibot.core.models.help/get-docs) => {"cmd1" "doc1" "cmd2" "doc2"}
-      (agent/exit-system 0) => nil))
+      (yetibot.core.models.help/get-docs) => {"cmd1" "doc1" "cmd2" "doc2"}))
 
-  (fact "list-aliases prints available aliases in JSON"
-    (with-out-str (agent/-main "list-aliases")) => (contains "\"cmd-name\":\"hello\"")
+  (fact "agent-list-aliases-cmd returns available aliases in JSON"
+    (agent/agent-list-aliases-cmd {}) => {:result/value "{\"aliases\":[{\"cmd-name\":\"hello\",\"cmd\":\"echo hello\"}]}"}
     (provided
-      (yetibot.core.db/start) => nil
-      (yetibot.core.loader/load-all) => nil
-      (yetibot.core.db.alias/find-all) => [{:cmd "echo hello" :cmd-name "hello"}]
-      (agent/exit-system 0) => nil))
+      (yetibot.core.db.alias/find-all) => [{:cmd "echo hello" :cmd-name "hello"}]))
 
-  (fact "run evaluates a yetibot command"
-    (with-out-str (agent/-main "run" "echo hello")) => (contains "hello")
+  (fact "agent-run-cmd evaluates a yetibot command"
+    (agent/agent-run-cmd {:match ["agent run echo hello" "echo hello"]}) => {:result/value "hello"}
     (provided
-      (yetibot.core.db/start) => nil
-      (yetibot.core.loader/load-all) => nil
-      (yetibot.core.handler/record-and-run-raw "echo hello" anything nil anything) => [{:result "hello"}]
-      (agent/exit-system 0) => nil)))
+      (yetibot.core.handler/record-and-run-raw "echo hello" anything nil anything) => [{:result "hello"}])) )

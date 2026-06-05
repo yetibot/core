@@ -372,14 +372,15 @@
        "'Yetibot' / user.email 'yetibot@yetibot.com', make a minimal change on a "
        "new branch, push to origin, and `gh pr create`.\n"
        "- Question: just answer it; clone only if the answer needs the code.\n\n"
-       "Tools (shell): `gh` (authenticated), `git`, and `lein` (to execute yetibot commands and look up aliases/commands).\n\n"
+       "Tools (shell): `gh` (authenticated), `git`, and `curl` (to query yetibot's runtime commands via the API).\n\n"
        "Introspecting and running Yetibot commands:\n"
-       "You can run and introspect Yetibot commands and aliases using the following command:\n"
-       "  `lein run -m yetibot.core.commands.agent <subcommand>`\n"
+       "You can query and execute Yetibot commands and aliases via Yetibot's HTTP API at `http://localhost:$YETIBOT_PORT/api`.\n"
+       "Run the following `curl` command with the appropriate `--data-urlencode command=...` payload:\n\n"
+       "  `curl -s -d \"chat-source={:adapter :agent :room \\\"agent-room\\\"}\" --data-urlencode \"command=agent <subcommand>\" http://localhost:$YETIBOT_PORT/api`\n\n"
        "Where `<subcommand>` is one of:\n"
-       "- `list-commands`: prints all available built-in commands as a JSON map\n"
-       "- `list-aliases`: prints all configured command aliases as a JSON map\n"
-       "- `run \"<cmd>\"`: runs the given yetibot command `<cmd>` and prints the output to stdout\n\n"
+       "- `list-commands`: returns all available built-in commands as a JSON map\n"
+       "- `list-aliases`: returns all configured command aliases as a JSON map\n"
+       "- `run <cmd>`: runs the given yetibot command `<cmd>` and returns the output\n\n"
        "For example, you can list aliases, find a weather/temp alias, run it to get its data, and then pipe that data to a kroki command to generate a graph!\n\n"
        (when-not (string/blank? mentions) (str mentions "\n\n"))
        (when-not (string/blank? context)
@@ -430,6 +431,7 @@
       (.put "GEMINI_API_KEY" (gemini-key))
       (.put "GEMINI_CLI_TRUST_WORKSPACE" "true")
       (.put "GH_TOKEN" (or token ""))
+      (.put "YETIBOT_PORT" (str (or (System/getenv "PORT") "3003")))
       ;; inject git config via env (no global state): a credential helper that
       ;; authenticates HTTPS pushes with GH_TOKEN, plus insteadOf rewrites so any
       ;; SSH-style github remote is forced to HTTPS (where the token applies).
@@ -692,76 +694,40 @@
               (Thread/sleep (agent-resume-stagger-ms))))))
       (catch Exception e (error "resume-interrupted-runs! failed" e)))))
 
+(defn agent-list-commands-cmd
+  "agent list-commands # print all available commands as JSON"
+  {:yb/cat #{:util}}
+  [_]
+  (let [commands (sort (keys (help/get-docs)))]
+    {:result/value (json/write-str {:commands commands})}))
+
+(defn agent-list-aliases-cmd
+  "agent list-aliases # print all configured aliases as JSON"
+  {:yb/cat #{:util}}
+  [_]
+  (let [aliases (try
+                  (db.alias/find-all)
+                  (catch Exception _
+                    (map (fn [[k v]] {:cmd-name k :cmd (first v)}) (help/get-alias-docs))))
+        res {:aliases (map #(select-keys % [:cmd-name :cmd]) aliases)}]
+    {:result/value (json/write-str res)}))
+
+(defn agent-run-cmd
+  "agent run <command> # run the given yetibot command and print result"
+  {:yb/cat #{:util}}
+  [{[_ cmd-str] :match}]
+  (let [user {:username "agent" :name "agent" :id "agent"}
+        chat-source {:adapter :agent :room "agent-room"}
+        results (binding [interp/*chat-source* chat-source]
+                  (record-and-run-raw cmd-str user nil {:record-yetibot-response? false}))
+        out (string/join "\n" (map #(or (:result %) (:error %)) results))]
+    {:result/value out}))
+
 ;; Register only when Gemini + GitHub auth are configured.
 (when (configured?)
   (cmd-hook #"agent"
+            #"list-commands" agent-list-commands-cmd
+            #"list-aliases" agent-list-aliases-cmd
+            #"run\s+(.+)" agent-run-cmd
             #"(?s)(.+)" agent-cmd)
   (resume-interrupted-runs!))
-
-(defn exit-system [code]
-  (System/exit code))
-
-(defn -main
-  "CLI entry point for the agent to query and run Yetibot commands.
-   Supported commands:
-   - list-commands (prints all command names as JSON)
-   - list-aliases (prints all aliases as JSON)
-   - run <command> (runs <command> and prints result)"
-  [& args]
-  (try
-    ;; Start DB if possible (gracefully ignore if it fails)
-    (try
-      (db/start)
-      (catch Exception e
-        (binding [*out* *err*]
-          (println "Warning: database could not be started:" (.getMessage e)))))
-    
-    ;; Load all plugins, observers, and commands
-    (loader/load-all)
-    
-    ;; Also load aliases from DB if connected
-    (try
-      (alias/load-aliases)
-      (catch Exception _ nil))
-
-    (let [subcmd (first args)
-          run-fn (fn []
-                   (condp = subcmd
-                     "list-commands"
-                     (let [commands (sort (keys (help/get-docs)))]
-                       (println (json/write-str {:commands commands})))
-
-                     "list-aliases"
-                     (let [aliases (try
-                                     (db.alias/find-all)
-                                     (catch Exception _
-                                       (map (fn [[k v]] {:cmd-name k :cmd (first v)}) (help/get-alias-docs))))]
-                       (println (json/write-str {:aliases (map #(select-keys % [:cmd-name :cmd]) aliases)})))
-
-                     "run"
-                     (let [cmd-str (clojure.string/join " " (rest args))
-                           user {:username "agent" :name "agent" :id "agent"}
-                           ;; We must bind *chat-source* to a mock map so that command evaluation has context
-                           chat-source {:adapter :agent :room "agent-room"}
-                           results (binding [interp/*chat-source* chat-source]
-                                     (record-and-run-raw cmd-str user nil {:record-yetibot-response? false}))]
-                       (run! (fn [r] (println (or (:result r) (:error r)))) results))
-
-                     ;; default helper message
-                     (println "Usage: lein run -m yetibot.core.commands.agent [list-commands | list-aliases | run <command>]")))]
-      (if @db/connected?
-        (run-fn)
-        (with-redefs [jdbc/get-connection (fn [& _] (reify java.sql.Connection (close [_] nil)))
-                      jdbc/query (constantly [])
-                      jdbc/insert! (constantly {})
-                      jdbc/update! (constantly nil)
-                      jdbc/delete! (constantly nil)
-                      jdbc/db-do-commands (constantly nil)
-                      jdbc/db-do-prepared (constantly nil)]
-          (run-fn))))
-    (catch Exception e
-      (binding [*out* *err*]
-        (println "Error in CLI execution:" (.getMessage e)))
-      (exit-system 1))
-    (finally
-      (exit-system 0))))
