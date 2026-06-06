@@ -20,7 +20,7 @@
       ;; no-op the future so the unit test never makes a real Veo HTTP call
       (with-redefs [clojure.core/future-call (fn [_] nil)]
         (veo/veo-cmd {:match "a cool robot dancing" :chat-source {} :user {:id "user123"}}))
-      => {:result/value "🎥 Grug start generating video for \"a cool robot dancing\". This take some time (30s to 3m)..."}
+      => {:result/value "🎥 Bonzi Buddy start generating video for \"a cool robot dancing\". This take some time (30s to 3m)..."}
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "a cool robot dancing" {}) => {:prompt "a cool robot dancing" :image-urls nil})))
@@ -31,7 +31,7 @@
               chat/*thread-ts* :mock-thread-ts]
       (with-redefs [clojure.core/future-call (fn [f] (f))]
         (veo/veo-cmd {:match "a cool robot dancing" :chat-source {} :user {:id "user123"}}))
-      => {:result/value "🎥 Grug start generating video for \"a cool robot dancing\". This take some time (30s to 3m)..."}
+      => {:result/value "🎥 Bonzi Buddy start generating video for \"a cool robot dancing\". This take some time (30s to 3m)..."}
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "a cool robot dancing" {}) => {:prompt "a cool robot dancing" :image-urls nil}
@@ -47,7 +47,7 @@
               chat/*thread-ts* :mock-thread-ts]
       (with-redefs [clojure.core/future-call (fn [f] (f))]
         (veo/veo-cmd {:match "a cool robot dancing" :chat-source {} :user {:id "user123"}}))
-      => {:result/value "🎥 Grug start generating video for \"a cool robot dancing\". This take some time (30s to 3m)..."}
+      => {:result/value "🎥 Bonzi Buddy start generating video for \"a cool robot dancing\". This take some time (30s to 3m)..."}
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "a cool robot dancing" {}) => {:prompt "a cool robot dancing" :image-urls nil}
@@ -86,7 +86,7 @@
               chat/*thread-ts* :mock-thread-ts]
       (with-redefs [clojure.core/future-call (fn [f] (f))]
         (veo/veo-cmd {:match "lite a cool robot" :chat-source {} :user {:id "user123"} :cmd "veo"}))
-      => {:result/value "🎥 Grug start generating video for \"a cool robot\". This take some time (30s to 3m)..."}
+      => {:result/value "🎥 Bonzi Buddy start generating video for \"a cool robot\". This take some time (30s to 3m)..."}
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "lite a cool robot" {}) => {:prompt "lite a cool robot" :image-urls nil}
@@ -102,7 +102,7 @@
               chat/*thread-ts* :mock-thread-ts]
       (with-redefs [clojure.core/future-call (fn [f] (f))]
         (veo/veo-cmd {:match "a cool robot" :chat-source {} :user {:id "user123"} :cmd "gigaveo"}))
-      => {:result/value "🎥 Grug start generating video for \"a cool robot\". This take some time (30s to 3m)..."}
+      => {:result/value "🎥 Bonzi Buddy start generating video for \"a cool robot\". This take some time (30s to 3m)..."}
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "a cool robot" {}) => {:prompt "a cool robot" :image-urls nil}
