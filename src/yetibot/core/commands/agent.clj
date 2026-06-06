@@ -372,16 +372,15 @@
        "'Yetibot' / user.email 'yetibot@yetibot.com', make a minimal change on a "
        "new branch, push to origin, and `gh pr create`.\n"
        "- Question: just answer it; clone only if the answer needs the code.\n\n"
-       "Tools (shell): `gh` (authenticated), `git`, and `curl` (to query yetibot's runtime commands via the API).\n\n"
+       "Tools (shell): `gh` (authenticated), `git`, and `./yetibot` (to run Yetibot commands directly).\n\n"
        "Introspecting and running Yetibot commands:\n"
-       "You can query and execute Yetibot commands and aliases via Yetibot's HTTP API at `http://localhost:$YETIBOT_PORT/api`.\n"
-       "Run the following `curl` command with the appropriate `--data-urlencode command=...` payload:\n\n"
-       "  `curl -s -d \"chat-source={:adapter :agent :room \\\"agent-room\\\"}\" --data-urlencode \"command=agent <subcommand>\" http://localhost:$YETIBOT_PORT/api`\n\n"
-       "Where `<subcommand>` is one of:\n"
-       "- `list-commands`: returns all available built-in commands as a JSON map\n"
-       "- `list-aliases`: returns all configured command aliases as a JSON map\n"
-       "- `run <cmd>`: runs the given yetibot command `<cmd>` and returns the output\n\n"
-       "For example, you can list aliases, find a weather/temp alias, run it to get its data, and then pipe that data to a kroki command to generate a graph!\n\n"
+       "You have a powerful local tool `./yetibot` in your working directory. You can use it to execute any built-in Yetibot command or alias directly in your shell.\n"
+       "Run `./yetibot <command>` with any command or alias to get its output. For example:\n"
+       "- `./yetibot agent list-commands`: returns all available built-in commands as a JSON map\n"
+       "- `./yetibot agent list-aliases`: returns all configured command aliases as a JSON map\n"
+       "- `./yetibot temps`: runs the `temps` alias to get weather/temp data\n"
+       "- `./yetibot kroki <payload>`: generates a chart using kroki\n\n"
+       "For example, you can run `./yetibot agent list-aliases`, find a weather/temp alias, run it using `./yetibot <alias-name>` to get its data, and then pass that data to another command like `./yetibot \"kroki ...\"` to generate a chart!\n\n"
        (when-not (string/blank? mentions) (str mentions "\n\n"))
        (when-not (string/blank? context)
          (str "This thread's conversation so far, for REFERENCE ONLY — background, "
@@ -422,6 +421,23 @@
     (.mkdirs settings-dir)
     (spit (io/file settings-dir "settings.json")
           (json/write-str {:maxSessionTurns (agent-max-turns)})))
+  ;; write the yetibot helper script
+  (let [yetibot-script (io/file workdir "yetibot")]
+    (spit yetibot-script
+          (str "#!/bin/bash\n"
+               "if [ $# -eq 0 ]; then\n"
+               "  echo \"Usage: yetibot <command>\"\n"
+               "  exit 1\n"
+               "fi\n"
+               "cmd=\"$*\"\n"
+               "if [[ \"$cmd\" == agent* ]]; then\n"
+               "  payload=\"$cmd\"\n"
+               "else\n"
+               "  payload=\"agent run $cmd\"\n"
+               "fi\n"
+               "curl -s -d \"chat-source={:adapter :agent :room \\\"agent-room\\\"}\" "
+               "--data-urlencode \"command=$payload\" \"http://localhost:${YETIBOT_PORT:-3003}/api\"\n"))
+    (.setExecutable yetibot-script true))
   (let [pb (doto (ProcessBuilder. [(cli-bin) "--yolo" "--output-format" "json"
                                    "--model" (model)
                                    "--prompt" (build-agent-prompt request context mentions)])

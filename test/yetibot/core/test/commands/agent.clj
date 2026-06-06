@@ -50,7 +50,9 @@
   (fact "includes the mention glossary when present"
     (agent/build-agent-prompt "do x" nil "• <@1> is Bob") => (contains "<@1> is Bob"))
   (fact "gives the bot an identity"
-    (agent/build-agent-prompt "do x" nil nil) => (contains "Yetibot")))
+    (agent/build-agent-prompt "do x" nil nil) => (contains "Yetibot"))
+  (fact "tells gemini to use `./yetibot` to run yetibot commands"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "./yetibot")))
 
 (facts "about parse-json-response"
   (fact "pulls the response field"
