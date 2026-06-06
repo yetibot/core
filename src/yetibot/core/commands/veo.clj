@@ -74,7 +74,7 @@
                 (let [err-msg (str "Video generation failed: " (redact (.getMessage e)))
                       msg (if user-mention (str user-mention ": " err-msg) err-msg)]
                   (chat/send-msg msg))))))
-        {:result/value (str "🎥 Grug start generating video for \"" final-prompt "\". This take some time (30s to 3m)...")})
+        {:result/value (str "🎥 Bonzi Buddy start generating video for \"" final-prompt "\". This take some time (30s to 3m)...")})
       (catch Exception e
         (error "veo: initialization error:" (.getMessage e))
         {:result/error (str "Video generation initialization failed: " (redact (.getMessage e)))}))

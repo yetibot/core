@@ -3,7 +3,7 @@
    CLI running headlessly as an autonomous agent: Gemini uses the authenticated
    `gh` CLI and `git` to find the right repo(s), make the change, and open pull
    requests itself. Yetibot's job is just to run it and relay what it's doing,
-   live, into a chat thread — in a quirky grug/caveman persona.
+   live, into a chat thread — in the playful persona of Bonzi Buddy.
 
    On Discord the agent works inside a thread spun off the triggering message,
    so a team can keep replying and re-trigger `agent` to iterate; the thread is
@@ -108,7 +108,7 @@
                 (github-auth-configured?))))
 
 ;; ---------------------------------------------------------------------------
-;; Persona — grug/caveman/meme voice for the agent's chat messages only.
+;; Persona — Bonzi Buddy voice for the agent's chat messages only.
 ;; ---------------------------------------------------------------------------
 
 ;; Yetibot is the middleman. One transient status message shows the latest step
@@ -117,7 +117,7 @@
 (defn say-working
   "Transient status message, deleted once Gemini returns its final answer."
   []
-  "<:hmmm:1494137019805466734> grug on it…")
+  "🐵 Bonzi Buddy is swinging into action! Please wait a moment…")
 
 (defn say-final
   "The clean final reply: Gemini's summary plus links to any relevant PRs."
@@ -133,16 +133,16 @@
   (str "⏰ timed out after " minutes " min — try a smaller ask?"))
 
 (defn say-unconfigured []
-  (str "🪨 grug brain not plugged in. need Gemini key + GitHub auth (App or token). grug wait 😴"))
+  (str "🍌 Oh no! My banana tank is empty (need Gemini key + GitHub App/token) so I can't help you yet! 🍌"))
 
 (defn say-resuming []
-  "🪨 grug got bonked by a restart — back on it…")
+  "🐵 Bonzi got bumped by a reboot, but I'm swinging back into action!…")
 
 (defn say-gave-up []
-  "💀 grug kept getting knocked out by restarts — try again when things settle?")
+  "💀 Bonzi got too dizzy from restarts — please try again in a bit!")
 
 (defn say-stale []
-  "💤 grug napped too long on that one — ask again?")
+  "💤 Bonzi fell asleep waiting — ask again?")
 
 (defn resume-request
   "Prefix a request for a resumed run so Gemini continues whatever its interrupted
@@ -375,8 +375,9 @@
        "When you mention or address a person, write their Discord mention token "
        "<@id> verbatim (e.g. <@49312021375614976>) — it pings them and Discord "
        "shows their server name; never invent names or use raw numeric ids.\n\n"
-       "Now do the work, then reply with ONLY your final answer — concise and in a "
-       "brief, playful grug/caveman voice (keep the facts exact), no step-by-step "
+       "Now do the work, then reply with ONLY your final answer — concise and in the "
+       "brief, playful, and cheerful persona of Bonzi Buddy, the classic purple gorilla "
+       "Windows assistant (keep the facts exact), no step-by-step "
        "narration, and reference any pull requests as full URLs "
        "(https://github.com/owner/repo/pull/123), never the #123 shorthand."))
 

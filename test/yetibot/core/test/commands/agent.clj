@@ -62,7 +62,7 @@
 
 (facts "about final messages"
   (fact "say-working is a generic status, not the prompt"
-    (agent/say-working) => (contains "grug"))
+    (agent/say-working) => (contains "Bonzi"))
   (fact "say-final shows Gemini's answer"
     (agent/say-final "Added the bagif command" nil) => (contains "Added the bagif command"))
   (fact "say-final appends relevant PR links"
@@ -93,7 +93,7 @@
 (facts "about agent-cmd guards"
   (fact "replies in persona when nothing is configured"
     (agent/agent-cmd {:match ["agent do x" "do x"] :chat-source {}})
-    => (contains "grug")
+    => (contains "banana")
     (provided (agent/configured?) => false)))
 
 ;; --- GitHub auth: enough to mint GH_TOKEN for Gemini ---
