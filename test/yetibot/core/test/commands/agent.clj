@@ -50,7 +50,9 @@
   (fact "includes the mention glossary when present"
     (agent/build-agent-prompt "do x" nil "• <@1> is Bob") => (contains "<@1> is Bob"))
   (fact "gives the bot an identity"
-    (agent/build-agent-prompt "do x" nil nil) => (contains "Yetibot")))
+    (agent/build-agent-prompt "do x" nil nil) => (contains "Yetibot"))
+  (fact "tells gemini to use yetibot tool to run yetibot commands"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "yetibot")))
 
 (facts "about parse-json-response"
   (fact "pulls the response field"
@@ -181,3 +183,19 @@
     (agent/resume-request "add a bagif command") => (contains "gh pr list"))
   (fact "keeps the original request text"
     (agent/resume-request "add a bagif command") => (contains "add a bagif command")))
+
+(facts "about agent subcommands"
+  (fact "agent-list-commands-cmd returns available commands in JSON"
+    (agent/agent-list-commands-cmd {}) => {:result/value "{\"commands\":[\"cmd1\",\"cmd2\"]}"}
+    (provided
+      (yetibot.core.models.help/get-docs) => {"cmd1" "doc1" "cmd2" "doc2"}))
+
+  (fact "agent-list-aliases-cmd returns available aliases in JSON"
+    (agent/agent-list-aliases-cmd {}) => {:result/value "{\"aliases\":[{\"cmd-name\":\"hello\",\"cmd\":\"echo hello\"}]}"}
+    (provided
+      (yetibot.core.db.alias/find-all) => [{:cmd "echo hello" :cmd-name "hello"}]))
+
+  (fact "agent-run-cmd evaluates a yetibot command"
+    (agent/agent-run-cmd {:match ["agent run echo hello" "echo hello"]}) => {:result/value "hello"}
+    (provided
+      (yetibot.core.handler/record-and-run-raw "echo hello" anything nil anything) => [{:result "hello"}])) )

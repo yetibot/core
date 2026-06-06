@@ -18,6 +18,7 @@
    [clojure.string :as string]
    [clojure.data.json :as json]
    [clj-http.client :as client]
+   [clojure.java.jdbc :as jdbc]
    [discljord.messaging :as discord]
    [taoensso.timbre :refer [debug info warn error]]
    [yetibot.core.adapters.adapter :as a]
@@ -25,13 +26,21 @@
    [yetibot.core.config :refer [get-config]]
    [yetibot.core.db :as db]
    [yetibot.core.db.agent-run :as agent-run]
-   [yetibot.core.hooks :refer [cmd-hook]])
+   [yetibot.core.db.alias :as db.alias]
+   [yetibot.core.db.util :as db.util]
+   [yetibot.core.hooks :refer [cmd-hook]]
+   [yetibot.core.interpreter :as interp]
+   [yetibot.core.loader :as loader]
+   [yetibot.core.models.help :as help]
+   [yetibot.core.commands.alias :as alias]
+   [yetibot.core.handler :refer [record-and-run-raw]])
   (:import
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]
    [java.security KeyFactory Signature]
    [java.security.spec PKCS8EncodedKeySpec]
-   [java.util Base64]))
+   [java.util Base64])
+  (:gen-class))
 
 ;; ---------------------------------------------------------------------------
 ;; Config
@@ -364,6 +373,14 @@
        "new branch, push to origin, and `gh pr create`.\n"
        "- Question: just answer it; clone only if the answer needs the code.\n\n"
        "Tools (shell): `gh` (authenticated) and `git`.\n\n"
+       "Introspecting and running Yetibot commands:\n"
+       "You have a built-in `yetibot` tool. You can use it to execute any built-in Yetibot command or alias directly. Do NOT run them as shell commands; always use the `yetibot` tool call.\n"
+       "Call the `yetibot` tool with the `command` argument (e.g. `{\"command\": \"temps\"}`). For example:\n"
+       "- `yetibot` with command \"agent list-commands\": returns all available built-in commands as a JSON map\n"
+       "- `yetibot` with command \"agent list-aliases\": returns all configured command aliases as a JSON map\n"
+       "- `yetibot` with command \"temps\": runs the `temps` alias to get weather/temp data\n"
+       "- `yetibot` with command \"kroki <payload>\": generates a chart using kroki\n\n"
+       "For example, you can call the `yetibot` tool with \"agent list-aliases\", find a weather/temp alias, run it using the `yetibot` tool to get its data, and then pass that data to another command like `yetibot` with \"kroki ...\" to generate a chart!\n\n"
        (when-not (string/blank? mentions) (str mentions "\n\n"))
        (when-not (string/blank? context)
          (str "This thread's conversation so far, for REFERENCE ONLY — background, "
@@ -400,11 +417,82 @@
    narration on stdout; stderr is discarded). Returns
    {:response <final answer text or nil> :exit n :timed-out bool}."
   [workdir request context mentions token]
-  ;; cap the agent's turn budget via a workspace settings file
+  ;; cap the agent's turn budget via a workspace settings file, and configure the custom tools
   (let [settings-dir (io/file workdir ".gemini")]
     (.mkdirs settings-dir)
     (spit (io/file settings-dir "settings.json")
-          (json/write-str {:maxSessionTurns (agent-max-turns)})))
+          (json/write-str {:maxSessionTurns (agent-max-turns)
+                           :tools {:discoveryCommand "./yetibot-tool.py --list"
+                                   :callCommand "./yetibot-tool.py"}})))
+  ;; write the yetibot custom tool script
+  (let [yetibot-tool-script (io/file workdir "yetibot-tool.py")]
+    (spit yetibot-tool-script
+          (str "#!/usr/bin/env python3\n"
+               "import sys\n"
+               "import json\n"
+               "import urllib.request\n"
+               "import urllib.parse\n"
+               "import os\n\n"
+               "if len(sys.argv) > 1 and sys.argv[1] == \"--list\":\n"
+               "    tools = [\n"
+               "        {\n"
+               "            \"name\": \"yetibot\",\n"
+               "            \"description\": \"Execute any built-in Yetibot command or alias. Examples: 'temps', 'kroki <payload>'.\",\n"
+               "            \"inputSchema\": {\n"
+               "                \"type\": \"object\",\n"
+               "                \"properties\": {\n"
+               "                    \"command\": {\n"
+               "                        \"type\": \"string\",\n"
+               "                        \"description\": \"The Yetibot command or alias with its arguments to execute.\"\n"
+               "                    }\n"
+               "                },\n"
+               "                \"required\": [\"command\"]\n"
+               "            }\n"
+               "        }\n"
+               "    ]\n"
+               "    print(json.dumps(tools))\n"
+               "    sys.exit(0)\n\n"
+               "if len(sys.argv) > 1 and sys.argv[1] == \"yetibot\":\n"
+               "    try:\n"
+               "        input_data = json.loads(sys.stdin.read())\n"
+               "        cmd = input_data.get(\"command\", \"\")\n"
+               "    except Exception as e:\n"
+               "        print(json.dumps({\n"
+               "            \"content\": [{\"type\": \"text\", \"text\": f\"Error parsing stdin JSON: {str(e)}\"}],\n"
+               "            \"isError\": True\n"
+               "        }))\n"
+               "        sys.exit(0)\n\n"
+               "    if not cmd:\n"
+               "        print(json.dumps({\n"
+               "            \"content\": [{\"type\": \"text\", \"text\": \"Error: command parameter is missing\"}],\n"
+               "            \"isError\": True\n"
+               "        }))\n"
+               "        sys.exit(0)\n\n"
+               "    if cmd.startswith(\"agent \"):\n"
+               "        payload = cmd\n"
+               "    else:\n"
+               "        payload = f\"agent run {cmd}\"\n\n"
+               "    port = os.environ.get(\"YETIBOT_PORT\", \"3003\")\n"
+               "    url = f\"http://localhost:{port}/api\"\n"
+               "    data = urllib.parse.urlencode({\n"
+               "        \"chat-source\": \"{:adapter :agent :room \\\"agent-room\\\"}\",\n"
+               "        \"command\": payload\n"
+               "    }).encode(\"utf-8\")\n\n"
+               "    try:\n"
+               "        req = urllib.request.Request(url, data=data, method=\"POST\")\n"
+               "        with urllib.request.urlopen(req) as response:\n"
+               "            res_text = response.read().decode(\"utf-8\")\n"
+               "        print(json.dumps({\n"
+               "            \"content\": [{\"type\": \"text\", \"text\": res_text}],\n"
+               "            \"isError\": False\n"
+               "        }))\n"
+               "    except Exception as e:\n"
+               "        print(json.dumps({\n"
+               "            \"content\": [{\"type\": \"text\", \"text\": f\"API request failed: {str(e)}\"}],\n"
+               "            \"isError\": True\n"
+               "        }))\n"
+               "    sys.exit(0)\n"))
+    (.setExecutable yetibot-tool-script true))
   (let [pb (doto (ProcessBuilder. [(cli-bin) "--yolo" "--output-format" "json"
                                    "--model" (model)
                                    "--prompt" (build-agent-prompt request context mentions)])
@@ -414,6 +502,7 @@
       (.put "GEMINI_API_KEY" (gemini-key))
       (.put "GEMINI_CLI_TRUST_WORKSPACE" "true")
       (.put "GH_TOKEN" (or token ""))
+      (.put "YETIBOT_PORT" (str (or (System/getenv "PORT") "3003")))
       ;; inject git config via env (no global state): a credential helper that
       ;; authenticates HTTPS pushes with GH_TOKEN, plus insteadOf rewrites so any
       ;; SSH-style github remote is forced to HTTPS (where the token applies).
@@ -676,8 +765,40 @@
               (Thread/sleep (agent-resume-stagger-ms))))))
       (catch Exception e (error "resume-interrupted-runs! failed" e)))))
 
+(defn agent-list-commands-cmd
+  "agent list-commands # print all available commands as JSON"
+  {:yb/cat #{:util}}
+  [_]
+  (let [commands (sort (keys (help/get-docs)))]
+    {:result/value (json/write-str {:commands commands})}))
+
+(defn agent-list-aliases-cmd
+  "agent list-aliases # print all configured aliases as JSON"
+  {:yb/cat #{:util}}
+  [_]
+  (let [aliases (try
+                  (db.alias/find-all)
+                  (catch Exception _
+                    (map (fn [[k v]] {:cmd-name k :cmd (first v)}) (help/get-alias-docs))))
+        res {:aliases (map #(select-keys % [:cmd-name :cmd]) aliases)}]
+    {:result/value (json/write-str res)}))
+
+(defn agent-run-cmd
+  "agent run <command> # run the given yetibot command and print result"
+  {:yb/cat #{:util}}
+  [{[_ cmd-str] :match}]
+  (let [user {:username "agent" :name "agent" :id "agent"}
+        chat-source {:adapter :agent :room "agent-room"}
+        results (binding [interp/*chat-source* chat-source]
+                  (record-and-run-raw cmd-str user nil {:record-yetibot-response? false}))
+        out (string/join "\n" (map #(or (:result %) (:error %)) results))]
+    {:result/value out}))
+
 ;; Register only when Gemini + GitHub auth are configured.
 (when (configured?)
   (cmd-hook #"agent"
+            #"list-commands" agent-list-commands-cmd
+            #"list-aliases" agent-list-aliases-cmd
+            #"run\s+(.+)" agent-run-cmd
             #"(?s)(.+)" agent-cmd)
   (resume-interrupted-runs!))
