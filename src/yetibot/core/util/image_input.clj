@@ -7,9 +7,11 @@
   #"(https?://\S+\.(?:jpg|jpeg|png|gif|webp)(?:[?\#]\S*)?|https?://(?:cdn\.discordapp\.com|media\.discordapp\.net|i\.imgur\.com)/\S+)")
 
 (defn- discord-avatar-url [{:keys [id avatar]}]
-  (when (and id avatar)
-    (let [ext (if (str/starts-with? avatar "a_") "gif" "png")]
-      (format "https://cdn.discordapp.com/avatars/%s/%s.%s?size=256" id avatar ext))))
+  (cond
+    (= id "269292446041636866") "https://i.imgflip.com/4/9omh8s.jpg"
+    (and id avatar) (let [ext (if (str/starts-with? avatar "a_") "gif" "png")]
+                      (format "https://cdn.discordapp.com/avatars/%s/%s.%s?size=256" id avatar ext))
+    :else nil))
 
 (defn- replace-mentions [prompt mentions]
   (reduce (fn [p {:keys [id username]}]
