@@ -23,7 +23,8 @@
    [yetibot.core.adapters.adapter :as a]
    [yetibot.core.chat :as chat]
    [yetibot.core.config :refer [get-config]]
-   [yetibot.core.hooks :refer [cmd-hook]])
+   [yetibot.core.hooks :refer [cmd-hook]]
+   [yetibot.core.util.gemini :as gemini])
   (:import
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]
@@ -474,9 +475,11 @@
     (sweep-stale-workdirs! (agent-workdir-max-age-ms))
     (let [dir (work-dir target)]
       (try
+        (gemini/check-budget!)
         (let [context (when on-discord (thread-context context-channel))
               token (github-token)
               {:keys [response exit timed-out]} (run-gemini-agent dir request context mentions token)
+              _ (gemini/record-image-generated! (gemini/agent-cost-units))
               reply (cond
                       timed-out (say-timeout (quot (agent-timeout-ms) 60000))
                       (not (string/blank? response)) (say-final response (pr-urls response))

@@ -11,10 +11,10 @@
   [_]
   (if (gemini/configured?)
     (try
-      (let [{:keys [images-generated max-images spent budget remaining images-left veo-clips-left veo-cost-units month]}
+      (let [{:keys [images-generated max-images spent budget remaining images-left veo-clips-left veo-cost-units agent-sessions-left agent-cost-units month]}
             (gemini/budget-status)]
-        {:result/value (format "Monthly Gemini budget status for %s:\n- Total Budget: $%.2f\n- Spent: $%.2f (%.1f%%)\n- Remaining: $%.2f\n- Image Units Generated: %d/%d\n- Remaining capacity: ~%d images OR ~%d Veo video clips (each clip costs %d image-units)"
-                               month budget spent (* 100 (/ spent budget)) remaining images-generated max-images images-left veo-clips-left veo-cost-units)
+        {:result/value (format "Monthly Gemini budget status for %s:\n- Total Budget: $%.2f\n- Spent: $%.2f (%.1f%%)\n- Remaining: $%.2f\n- Image Units Generated: %d/%d\n- Remaining capacity: ~%d images OR ~%d Veo video clips (each clip costs %d image-units) OR ~%d Agent prompt sessions (each session costs %d image-units)"
+                               month budget spent (* 100 (/ spent budget)) remaining images-generated max-images images-left veo-clips-left veo-cost-units agent-sessions-left agent-cost-units)
          :result/data (gemini/budget-status)})
       (catch Exception e
         (error "veo budget error:" (.getMessage e))

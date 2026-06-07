@@ -20,4 +20,6 @@
                                           :images-left 100
                                           :veo-clips-left 20
                                           :veo-cost-units 5
+                                          :agent-sessions-left 10
+                                          :agent-cost-units 10
                                           :month "2026-05"})))
