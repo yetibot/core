@@ -18,7 +18,13 @@
                       *target* (:room chat-source)]
               (info "chat-source" chat-source)
               (let [user {:username "api"}
-                    res (or text (handle-unparsed-expr chat-source user command))]
+                    raw-res (or text (handle-unparsed-expr chat-source user command))
+                    res (if (map? raw-res)
+                          (cond
+                            (contains? raw-res :value) (:value raw-res)
+                            (contains? raw-res :error) (:error raw-res)
+                            :else raw-res)
+                          raw-res)]
                 (chat-data-structure res)
                 res))
             (str "invalid chat-source:" chat-source))))
