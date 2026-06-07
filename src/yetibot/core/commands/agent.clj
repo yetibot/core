@@ -347,7 +347,12 @@
        "code is not a request to audit CI.\n"
        "- If you can't tell what the request refers to, reply briefly asking for "
        "the missing detail. NEVER invent work or report an unrelated summary like "
-       "\"checked all repos, everything green\".\n\n"
+       "\"checked all repos, everything green\".\n"
+       "- If you need more background context than what is provided in the thread "
+       "context, you are highly encouraged to search the entire channel's history "
+       "using the `yetibot` tool with the `history` command (e.g., `history` or "
+       "`history | grep keyword`). It is your job as an autonomous agent to "
+       "perform this extra search when needed!\n\n"
        "The codebase (so you can go straight to the right place — don't rediscover "
        "it). The org is `yetibot`:\n"
        "- `yetibot/core` — the library: chat commands, adapters, and most logic.\n"
@@ -573,14 +578,19 @@
    whole thread lets a follow-up like \"retry\" resolve to the original ask."
   [channel-id]
   (try
-    (let [topic (try (:name @(discord/get-channel! (rest-conn) channel-id))
-                     (catch Exception _ nil))
-          lines (->> (all-channel-messages channel-id)
-                     (sort-by :timestamp)
-                     (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
-                     (remove string/blank?))]
-      (string/join "\n" (cond->> lines
-                          (not (string/blank? topic)) (cons (str "[thread topic] " topic)))))
+    (let [channel @(discord/get-channel! (rest-conn) channel-id)
+          type (:type channel)]
+      (if (not (#{10 11 12} type))
+        ""
+        (let [lines (->> (all-channel-messages channel-id)
+                         (sort-by :timestamp)
+                         (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
+                         (remove string/blank?))]
+          (if (<= (count lines) 1)
+            ""
+            (let [topic (:name channel)]
+              (string/join "\n" (cond->> lines
+                                  (not (string/blank? topic)) (cons (str "[thread topic] " topic)))))))))
     (catch Exception e (debug "thread-context failed:" (.getMessage e)) "")))
 
 ;; ---------------------------------------------------------------------------
