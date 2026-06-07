@@ -184,6 +184,21 @@
   (fact "keeps the original request text"
     (agent/resume-request "add a bagif command") => (contains "add a bagif command")))
 
+(facts "about thread-context"
+  (fact "returns empty string if the channel is not a thread (type is not 10, 11, or 12)"
+    (#'agent/thread-context "channel-id-123") => ""
+    (provided
+      (#'agent/rest-conn) => "mock-conn"
+      (discljord.messaging/get-channel! "mock-conn" "channel-id-123") => (atom {:type 0 :name "general"})))
+
+  (fact "returns thread context if the channel is a thread (type 11)"
+    (#'agent/thread-context "thread-id-456") => "[thread topic] cool-thread\nalice: hello\nbob: world"
+    (provided
+      (#'agent/rest-conn) => "mock-conn"
+      (discljord.messaging/get-channel! "mock-conn" "thread-id-456") => (atom {:type 11 :name "cool-thread"})
+      (#'agent/all-channel-messages "thread-id-456") => [{:author {:username "alice"} :content "hello" :timestamp 1}
+                                                         {:author {:username "bob"} :content "world" :timestamp 2}])))
+
 (facts "about agent subcommands"
   (fact "agent-list-commands-cmd returns available commands in JSON"
     (agent/agent-list-commands-cmd {}) => {:result/value "{\"commands\":[\"cmd1\",\"cmd2\"]}"}

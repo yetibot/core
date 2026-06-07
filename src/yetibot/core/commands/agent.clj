@@ -573,14 +573,17 @@
    whole thread lets a follow-up like \"retry\" resolve to the original ask."
   [channel-id]
   (try
-    (let [topic (try (:name @(discord/get-channel! (rest-conn) channel-id))
-                     (catch Exception _ nil))
-          lines (->> (all-channel-messages channel-id)
-                     (sort-by :timestamp)
-                     (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
-                     (remove string/blank?))]
-      (string/join "\n" (cond->> lines
-                          (not (string/blank? topic)) (cons (str "[thread topic] " topic)))))
+    (let [channel @(discord/get-channel! (rest-conn) channel-id)
+          type (:type channel)]
+      (if (not (#{10 11 12} type))
+        ""
+        (let [topic (:name channel)
+              lines (->> (all-channel-messages channel-id)
+                         (sort-by :timestamp)
+                         (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
+                         (remove string/blank?))]
+          (string/join "\n" (cond->> lines
+                              (not (string/blank? topic)) (cons (str "[thread topic] " topic)))))))
     (catch Exception e (debug "thread-context failed:" (.getMessage e)) "")))
 
 ;; ---------------------------------------------------------------------------
