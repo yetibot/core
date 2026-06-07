@@ -108,8 +108,8 @@
     (guild-channels)))
 
 (defn- generated-image-info [msg]
-  (when-let [[_ id ext] (re-matches #".*/generated-images/([^.]+)\.(png|gif|mp4)$" (str/trim msg))]
-    {:id id :ext ext}))
+  (when-let [[url id ext] (re-find #"https?://\S+?/generated-images/([^./\s]+)\.(png|gif|mp4)" msg)]
+    {:url url :id id :ext ext}))
 
 (def discord-max-message-length 2000)
 
@@ -119,13 +119,23 @@
 
 (defn- send-msg [{:keys [conn]} msg]
   (try
-    (if-let [{:keys [id ext]} (generated-image-info msg)]
-      (when-let [{:keys [data]} (get @images/image-store id)]
+    (if-let [{:keys [url id ext]} (generated-image-info msg)]
+      (if-let [{:keys [data]} (get @images/image-store id)]
         (let [bytes (.decode (Base64/getDecoder) ^String data)
-              stream (java.io.ByteArrayInputStream. bytes)]
-          @(messaging/create-message!
-            (:rest @conn) chat/*target*
-            :stream {:content stream :filename (str id "." ext)})))
+              stream (java.io.ByteArrayInputStream. bytes)
+              clean-msg (str/replace msg url "")]
+          (if (str/blank? clean-msg)
+            @(messaging/create-message!
+              (:rest @conn) chat/*target*
+              :stream {:content stream :filename (str id "." ext)})
+            @(messaging/create-message!
+              (:rest @conn) chat/*target*
+              :content clean-msg
+              :stream {:content stream :filename (str id "." ext)})))
+        (if (> (count msg) discord-max-message-length)
+          (doseq [chunk (chunk-message msg)]
+            @(messaging/create-message! (:rest @conn) chat/*target* :content chunk))
+          @(messaging/create-message! (:rest @conn) chat/*target* :content msg)))
       (if (> (count msg) discord-max-message-length)
         (doseq [chunk (chunk-message msg)]
           @(messaging/create-message! (:rest @conn) chat/*target* :content chunk))
