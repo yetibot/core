@@ -52,7 +52,9 @@
   (fact "gives the bot an identity"
     (agent/build-agent-prompt "do x" nil nil) => (contains "Yetibot"))
   (fact "tells gemini to use yetibot tool to run yetibot commands"
-    (agent/build-agent-prompt "do x" nil nil) => (contains "yetibot")))
+    (agent/build-agent-prompt "do x" nil nil) => (contains "yetibot"))
+  (fact "encourages searching entire channel if needed"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "search the entire channel's history")))
 
 (facts "about parse-json-response"
   (fact "pulls the response field"
@@ -183,6 +185,28 @@
     (agent/resume-request "add a bagif command") => (contains "gh pr list"))
   (fact "keeps the original request text"
     (agent/resume-request "add a bagif command") => (contains "add a bagif command")))
+
+(facts "about thread-context"
+  (fact "returns empty string if the channel is not a thread (type is not 10, 11, or 12)"
+    (#'agent/thread-context "channel-id-123") => ""
+    (provided
+      (#'agent/rest-conn) => "mock-conn"
+      (discljord.messaging/get-channel! "mock-conn" "channel-id-123") => (atom {:type 0 :name "general"})))
+
+  (fact "returns thread context if the channel is a thread (type 11) with multiple messages"
+    (#'agent/thread-context "thread-id-456") => "[thread topic] cool-thread\nalice: hello\nbob: world"
+    (provided
+      (#'agent/rest-conn) => "mock-conn"
+      (discljord.messaging/get-channel! "mock-conn" "thread-id-456") => (atom {:type 11 :name "cool-thread"})
+      (#'agent/all-channel-messages "thread-id-456") => [{:author {:username "alice"} :content "hello" :timestamp 1}
+                                                         {:author {:username "bob"} :content "world" :timestamp 2}]))
+
+  (fact "returns empty string if the channel is a thread but has 1 or fewer messages (first message/prompt only)"
+    (#'agent/thread-context "thread-id-789") => ""
+    (provided
+      (#'agent/rest-conn) => "mock-conn"
+      (discljord.messaging/get-channel! "mock-conn" "thread-id-789") => (atom {:type 11 :name "cool-thread"})
+      (#'agent/all-channel-messages "thread-id-789") => [{:author {:username "alice"} :content "hello" :timestamp 1}])))
 
 (facts "about agent subcommands"
   (fact "agent-list-commands-cmd returns available commands in JSON"
