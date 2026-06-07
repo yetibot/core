@@ -58,7 +58,11 @@
                  ;; :monthly-budget 10.00
                  ;; estimated cost per image in USD (default: 0.045 for Gemini 3.1 Flash 512px)
                  ;; :cost-per-image 0.045
-                 }}
+                 }
+           ;; optional: custom Cloudflare AI Gateway URL or base URL for Gemini API proxying
+           ;; (e.g. "https://gateway.ai.cloudflare.com/v1/ACCOUNT_ID/GATEWAY_ID/google-ai-studio")
+           ;; :gateway-url ""
+           }
   :giphy {:key ""},
   :weather {:weatherbitio {:key "" :default {:zip ""}}},
   :command {:prefix "!"

@@ -5,6 +5,7 @@
    [clojure.string :as string]
    [clojure.data.json :as json]
    [clj-http.client :as client]
+   [yetibot.core.config :refer [get-config]]
    [yetibot.core.commands.agent :as agent])
   (:import
    [java.security KeyPairGenerator Signature]
@@ -80,7 +81,12 @@
   (fact "default max turns is 50"
     (agent/agent-max-turns) => 50)
   (fact "default model is the current Gemini 3.1 Pro"
-    (agent/model) => "gemini-3.1-pro-preview"))
+    (agent/model) => "gemini-3.1-pro-preview")
+  (fact "default gateway url is nil"
+    (agent/gateway-url) => nil)
+  (fact "gateway url can be overridden by config"
+    (agent/gateway-url) => "https://my-gateway.com"
+    (provided (get-config anything [:gemini :gateway-url]) => {:value "https://my-gateway.com"})))
 
 (facts "about mention-glossary"
   (fact "prefers the server nickname and keeps the <@id> token"

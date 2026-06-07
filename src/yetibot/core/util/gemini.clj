@@ -17,12 +17,19 @@
 (s/def ::per (s/or :string string? :number number?))
 (s/def ::monthly (s/keys :opt-un [::budget]))
 (s/def ::budget (s/or :string string? :number number?))
+(s/def ::gateway-url string?)
 
-(s/def ::config (s/keys :req-un [::key] :opt-un [::cost ::monthly]))
+(s/def ::config (s/keys :req-un [::key] :opt-un [::cost ::monthly ::gateway-url]))
 
 ;; All Gemini settings live under [:gemini] and share a single API key
 ;; (YB_GEMINI_KEY) with the rest of Yetibot's Gemini features.
 (def config (or (:value (get-config ::config [:gemini])) {}))
+
+(defn- api-base-url []
+  (or (:gateway-url config) "https://generativelanguage.googleapis.com"))
+
+(defn- api-base-v1beta []
+  (str (api-base-url) "/v1beta"))
 
 (def default-model "gemini-3.1-flash-image-preview")
 
@@ -232,8 +239,8 @@
    (let [api-key (:key config)
          model (gemini-model)
          url (format
-              "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s"
-              model api-key)
+              "%s/models/%s:generateContent?key=%s"
+              (api-base-v1beta) model api-key)
          image-parts (when (seq image-urls)
                        (keep url->inline-part image-urls))
          parts (into [{:text prompt}] image-parts)
@@ -272,8 +279,6 @@
 ;; -- Veo video generation --
 ;; Veo is asynchronous: start a long-running operation, poll until done, then
 ;; download the resulting mp4. Settings live under [:gemini :veo].
-
-(def ^:private api-base "https://generativelanguage.googleapis.com/v1beta")
 
 (def default-veo-model "veo-3.1-lite-generate-preview")
 
@@ -331,7 +336,7 @@
   [prompt image model duration]
   (let [model (or model (veo-model))
         duration (or duration (veo-duration))
-        url (format "%s/models/%s:predictLongRunning?key=%s" api-base model (:key config))
+        url (format "%s/models/%s:predictLongRunning?key=%s" (api-base-v1beta) model (:key config))
         body {:instances [(cond-> {:prompt prompt} image (assoc :image image))]
               :parameters {:aspectRatio "16:9" :durationSeconds duration}}
         resp (client/post url (merge veo-http-timeouts
@@ -350,7 +355,7 @@
   "Poll a Veo operation until done; returns the completed operation body."
   [op-name]
   (loop [n 0]
-    (let [body (:body (client/get (format "%s/%s?key=%s" api-base op-name (:key config))
+    (let [body (:body (client/get (format "%s/%s?key=%s" (api-base-v1beta) op-name (:key config))
                                   (merge veo-http-timeouts
                                          {:as :json :throw-exceptions false})))]
       (cond
