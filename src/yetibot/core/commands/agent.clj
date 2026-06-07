@@ -65,6 +65,7 @@
 (defn model [] (or (config-str [:gemini :agent :model]) "gemini-3.1-pro-preview"))
 
 (defn gemini-key [] (config-str [:gemini :key]))
+(defn gateway-url [] (config-str [:gemini :gateway-url]))
 (defn cli-bin [] (or (config-str [:gemini :cli]) "gemini"))
 
 (defn- config-num [path default]
@@ -498,21 +499,23 @@
                                    "--prompt" (build-agent-prompt request context mentions)])
              (.directory (io/file workdir))
              (.redirectError java.lang.ProcessBuilder$Redirect/DISCARD))]
-    (doto (.environment pb)
-      (.put "GEMINI_API_KEY" (gemini-key))
-      (.put "GEMINI_CLI_TRUST_WORKSPACE" "true")
-      (.put "GH_TOKEN" (or token ""))
-      (.put "YETIBOT_PORT" (str (or (System/getenv "PORT") "3003")))
-      ;; inject git config via env (no global state): a credential helper that
-      ;; authenticates HTTPS pushes with GH_TOKEN, plus insteadOf rewrites so any
-      ;; SSH-style github remote is forced to HTTPS (where the token applies).
-      (.put "GIT_CONFIG_COUNT" "3")
-      (.put "GIT_CONFIG_KEY_0" "credential.https://github.com.helper")
-      (.put "GIT_CONFIG_VALUE_0" git-credential-helper)
-      (.put "GIT_CONFIG_KEY_1" "url.https://github.com/.insteadOf")
-      (.put "GIT_CONFIG_VALUE_1" "git@github.com:")
-      (.put "GIT_CONFIG_KEY_2" "url.https://github.com/.insteadOf")
-      (.put "GIT_CONFIG_VALUE_2" "ssh://git@github.com/"))
+    (let [env (.environment pb)
+          env-map (cond-> {"GEMINI_API_KEY" (gemini-key)
+                           "GEMINI_CLI_TRUST_WORKSPACE" "true"
+                           "GH_TOKEN" (or token "")
+                           "YETIBOT_PORT" (str (or (System/getenv "PORT") "3003"))
+                           ;; inject git config via env (no global state): a credential helper that
+                           ;; authenticates HTTPS pushes with GH_TOKEN, plus insteadOf rewrites so any
+                           ;; SSH-style github remote is forced to HTTPS (where the token applies).
+                           "GIT_CONFIG_COUNT" "3"
+                           "GIT_CONFIG_KEY_0" "credential.https://github.com.helper"
+                           "GIT_CONFIG_VALUE_0" git-credential-helper
+                           "GIT_CONFIG_KEY_1" "url.https://github.com/.insteadOf"
+                           "GIT_CONFIG_VALUE_1" "git@github.com:"
+                           "GIT_CONFIG_KEY_2" "url.https://github.com/.insteadOf"
+                           "GIT_CONFIG_VALUE_2" "ssh://git@github.com/"}
+                    (gateway-url) (assoc "GOOGLE_GEMINI_BASE_URL" (gateway-url)))]
+      (.putAll env env-map))
     (info "running gemini agent" (cli-bin) "in" (str workdir))
     (let [proc (.start pb)
           timed-out (atom false)
