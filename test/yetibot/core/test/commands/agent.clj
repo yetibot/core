@@ -191,13 +191,20 @@
       (#'agent/rest-conn) => "mock-conn"
       (discljord.messaging/get-channel! "mock-conn" "channel-id-123") => (atom {:type 0 :name "general"})))
 
-  (fact "returns thread context if the channel is a thread (type 11)"
+  (fact "returns thread context if the channel is a thread (type 11) with multiple messages"
     (#'agent/thread-context "thread-id-456") => "[thread topic] cool-thread\nalice: hello\nbob: world"
     (provided
       (#'agent/rest-conn) => "mock-conn"
       (discljord.messaging/get-channel! "mock-conn" "thread-id-456") => (atom {:type 11 :name "cool-thread"})
       (#'agent/all-channel-messages "thread-id-456") => [{:author {:username "alice"} :content "hello" :timestamp 1}
-                                                         {:author {:username "bob"} :content "world" :timestamp 2}])))
+                                                         {:author {:username "bob"} :content "world" :timestamp 2}]))
+
+  (fact "returns empty string if the channel is a thread but has 1 or fewer messages (first message/prompt only)"
+    (#'agent/thread-context "thread-id-789") => ""
+    (provided
+      (#'agent/rest-conn) => "mock-conn"
+      (discljord.messaging/get-channel! "mock-conn" "thread-id-789") => (atom {:type 11 :name "cool-thread"})
+      (#'agent/all-channel-messages "thread-id-789") => [{:author {:username "alice"} :content "hello" :timestamp 1}])))
 
 (facts "about agent subcommands"
   (fact "agent-list-commands-cmd returns available commands in JSON"

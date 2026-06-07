@@ -577,13 +577,15 @@
           type (:type channel)]
       (if (not (#{10 11 12} type))
         ""
-        (let [topic (:name channel)
-              lines (->> (all-channel-messages channel-id)
+        (let [lines (->> (all-channel-messages channel-id)
                          (sort-by :timestamp)
                          (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
                          (remove string/blank?))]
-          (string/join "\n" (cond->> lines
-                              (not (string/blank? topic)) (cons (str "[thread topic] " topic)))))))
+          (if (<= (count lines) 1)
+            ""
+            (let [topic (:name channel)]
+              (string/join "\n" (cond->> lines
+                                  (not (string/blank? topic)) (cons (str "[thread topic] " topic)))))))))
     (catch Exception e (debug "thread-context failed:" (.getMessage e)) "")))
 
 ;; ---------------------------------------------------------------------------
