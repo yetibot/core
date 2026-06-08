@@ -33,12 +33,15 @@
 (facts
  "about start"
  (fact
-  "it will default to level :info and rolling-appender enabled when
-   no configs are provided"
-  (let [config (l/start)]
-    config => (contains {:level :info})
-    (get-in config [:appenders :rolling-appender]) => (contains
-                                                       {:enabled? true}))))
+  "it will default to level :info when no configs are provided"
+  (l/start) => (contains {:level :info})
+  (provided
+    (get-config anything anything) => {:error true}))
+ (fact
+  "it will default to rolling-appender enabled when no configs are provided"
+  (get-in (l/start) [:appenders :rolling-appender]) => (contains {:enabled? true})
+  (provided
+    (get-config anything anything) => {:error true})))
 
 (facts
  "about log-path-config"

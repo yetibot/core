@@ -28,6 +28,23 @@
       (assoc preset :prompt (second words))
       {:prompt raw-prompt})))
 
+(defn veo-budget-cmd
+  "veo budget # show monthly budget status"
+  {:yb/cat #{:info}}
+  [_]
+  (if (gemini/configured?)
+    (try
+      (let [{:keys [images-generated max-images spent budget remaining images-left veo-clips-left veo-cost-units agent-sessions-left agent-cost-units month]}
+            (gemini/budget-status)]
+        {:result/value (format "Monthly Gemini budget status for %s:\n- Total Budget: $%.2f\n- Spent: $%.2f (%.1f%%)\n- Remaining: $%.2f\n- Image Units Generated: %d/%d\n- Remaining capacity: ~%d images OR ~%d Veo video clips (each clip costs %d image-units) OR ~%d Agent prompt sessions (each session costs %d image-units)"
+                               month budget spent (* 100 (/ spent budget)) remaining images-generated max-images images-left veo-clips-left veo-cost-units agent-sessions-left agent-cost-units)
+         :result/data (gemini/budget-status)})
+      (catch Exception e
+        (error "veo budget error:" (.getMessage e))
+        {:result/error (str "Could not load budget status: " (.getMessage e))}))
+    {:result/error
+     "Gemini API is not configured. Set `gemini.key` in config."}))
+
 (defn veo-cmd
   "veo <prompt> # generate a short AI video with Veo
    gigaveo <prompt> # generate a high-quality 8-second video with flagship Veo 3.1 model
@@ -82,6 +99,7 @@
      "Gemini API is not configured. Set `gemini.key` in config."}))
 
 (cmd-hook #"veo"
+  #"budget" veo-budget-cmd
   #".+" veo-cmd)
 
 (cmd-hook #"gigaveo"

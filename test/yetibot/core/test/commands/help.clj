@@ -2,7 +2,8 @@
   (:require [midje.sweet :refer [facts fact => contains provided]]
             [yetibot.core.commands.help :as h]
             [yetibot.core.models.default-command :refer [fallback-enabled?
-                                                         fallback-help-text-override]]
+                                                         fallback-help-text-override
+                                                         configured-default-command]]
             [yetibot.core.models.help :refer [get-alias-docs get-docs get-docs-for
                                               fuzzy-get-docs-for]]))
 
@@ -11,7 +12,8 @@
  (fact
   "it will, by default, return text explaining how fallback commands are enabled
    and that the defalt command is `help`"
-  (h/fallback-help-text) => (contains "default command is `help`"))
+  (h/fallback-help-text) => (contains "default command is `help`")
+  (provided (configured-default-command) => "help"))
  
  (fact
   "it will tell you that fallback commands are disabled"
@@ -47,7 +49,8 @@
   (h/help-topics nil)
   => #"(?is)`help <command>`.*`category`.*default command is `help`.*available commands.*`one`.*`two`"
   (provided (get-docs) => {"two" 2
-                           "one" 1})))
+                           "one" 1}
+            (configured-default-command) => "help")))
 
 (facts
  "about help-for-topic"
