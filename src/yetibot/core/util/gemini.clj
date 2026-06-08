@@ -297,30 +297,47 @@
 
 (defn veo-model [] (or (-> config :veo :model) default-veo-model))
 
-(defn- veo-duration [] (long (or (parse-number (-> config :veo :duration)) 4)))
+(defn veo-duration [] (long (or (parse-number (-> config :veo :duration)) 4)))
 
-(defn- veo-cost-per-second []
+(defn- veo-cost-per-second-for-model [model]
   (or (parse-number (-> config :veo :cost-per-second))
       (cond
-        (string/includes? (veo-model) "lite") 0.05
-        (string/includes? (veo-model) "fast") 0.15
+        (string/includes? model "lite") 0.05
+        (string/includes? model "fast") 0.15
         :else 0.40)))
+
+(defn calculate-video-cost
+  "Calculate the estimated cost in USD of generating a video of the specified
+   duration using the given model."
+  [model duration]
+  (* duration (veo-cost-per-second-for-model model)))
+
+(defn- veo-cost-per-second [] (veo-cost-per-second-for-model (veo-model)))
+
+(defn- veo-cost-units-for-model [model duration]
+  (max 1 (long (Math/ceil (/ (* duration (veo-cost-per-second-for-model model))
+                             (cost-per-image))))))
 
 (defn- veo-cost-units
   "Express a Veo clip's dollar cost as a count of image-equivalents so it draws
    down the shared monthly budget proportionally."
   []
-  (max 1 (long (Math/ceil (/ (* (veo-duration) (veo-cost-per-second))
-                             (cost-per-image))))))
+  (veo-cost-units-for-model (veo-model) (veo-duration)))
 
 (def ^:private veo-poll-interval-ms 6000)
 (def ^:private veo-max-polls 50) ; ~5 min ceiling
+
+;; Cap connect + read time on every Veo HTTP call so a stalled Google API surfaces
+;; as an error instead of hanging the run forever — an otherwise silent failure
+;; where the user gets neither a video nor an error.
+(def ^:private veo-http-timeouts {:connection-timeout 10000 :socket-timeout 120000})
 
 (defn- veo-image-part
   "Fetch an image URL and return a Veo instance image (base64), or nil. Used for
    image-to-video — e.g. a mentioned Discord user's avatar becomes the opening frame."
   [image-url]
-  (let [resp (client/get image-url {:as :byte-array :throw-exceptions false})
+  (let [resp (client/get image-url (merge veo-http-timeouts
+                                          {:as :byte-array :throw-exceptions false}))
         mime (first (string/split (get-in resp [:headers "Content-Type"] "image/png") #";"))]
     (when (<= 200 (:status resp) 299)
       {:mimeType mime
@@ -329,14 +346,17 @@
 (defn- veo-start
   "Kick off a Veo generation; returns the long-running operation name.
    When `image` is provided, Veo conditions the video on it (image-to-video)."
-  [prompt image]
-  (let [url (format "%s/models/%s:predictLongRunning?key=%s" api-base (veo-model) (:key config))
+  [prompt image model duration]
+  (let [model (or model (veo-model))
+        duration (or duration (veo-duration))
+        url (format "%s/models/%s:predictLongRunning?key=%s" api-base model (:key config))
         body {:instances [(cond-> {:prompt prompt} image (assoc :image image))]
-              :parameters {:aspectRatio "16:9" :durationSeconds (veo-duration)}}
-        resp (client/post url {:content-type :json
-                               :body (json/write-str body)
-                               :as :json
-                               :throw-exceptions false})]
+              :parameters {:aspectRatio "16:9" :durationSeconds duration}}
+        resp (client/post url (merge veo-http-timeouts
+                                     {:content-type :json
+                                      :body (json/write-str body)
+                                      :as :json
+                                      :throw-exceptions false}))]
     (if (<= 200 (:status resp) 299)
       (get-in resp [:body :name])
       (let [msg (extract-api-error (:body resp))]
@@ -349,7 +369,8 @@
   [op-name]
   (loop [n 0]
     (let [body (:body (client/get (format "%s/%s?key=%s" api-base op-name (:key config))
-                                  {:as :json :throw-exceptions false}))]
+                                  (merge veo-http-timeouts
+                                         {:as :json :throw-exceptions false})))]
       (cond
         (:error body) (throw (ex-info (str "Veo generation failed: "
                                            (get-in body [:error :message]))
@@ -362,9 +383,10 @@
 (defn- veo-download
   "Download the generated mp4 and return it base64-encoded."
   [uri]
-  (let [resp (client/get uri {:headers {"x-goog-api-key" (:key config)}
-                              :as :byte-array
-                              :throw-exceptions false})]
+  (let [resp (client/get uri (merge veo-http-timeouts
+                                    {:headers {"x-goog-api-key" (:key config)}
+                                     :as :byte-array
+                                     :throw-exceptions false}))]
     (if (<= 200 (:status resp) 299)
       (.encodeToString (Base64/getEncoder) ^bytes (:body resp))
       (throw (ex-info (str "Veo video download failed: " (:status resp))
@@ -376,9 +398,12 @@
    Optional image-urls condition the video (image-to-video); the first is used.
    Returns {:data <base64 mp4> :mime-type \"video/mp4\"}."
   ([prompt] (generate-video prompt nil))
-  ([prompt image-urls]
+  ([prompt image-urls] (generate-video prompt image-urls nil nil))
+  ([prompt image-urls model duration]
    (check-budget!)
-   (let [op (veo-start prompt (some-> (first image-urls) veo-image-part))
+   (let [model (or model (veo-model))
+         duration (or duration (veo-duration))
+         op (veo-start prompt (some-> (first image-urls) veo-image-part) model duration)
          _ (info "veo: generation started" op)
          done (veo-poll op)
          uri (get-in done [:response :generateVideoResponse :generatedSamples 0 :video :uri])]
@@ -386,5 +411,5 @@
        (throw (ex-info "No video was generated. Try a different prompt."
                        {:type :no-video-generated :response (:response done)})))
      (let [data (veo-download uri)]
-       (record-image-generated! (veo-cost-units))
+       (record-image-generated! (veo-cost-units-for-model model duration))
        {:data data :mime-type "video/mp4"}))))

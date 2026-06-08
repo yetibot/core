@@ -3,7 +3,7 @@
    CLI running headlessly as an autonomous agent: Gemini uses the authenticated
    `gh` CLI and `git` to find the right repo(s), make the change, and open pull
    requests itself. Yetibot's job is just to run it and relay what it's doing,
-   live, into a chat thread — in a quirky grug/caveman persona.
+   live, into a chat thread — in the playful persona of Bonzi Buddy.
 
    On Discord the agent works inside a thread spun off the triggering message,
    so a team can keep replying and re-trigger `agent` to iterate; the thread is
@@ -18,19 +18,30 @@
    [clojure.string :as string]
    [clojure.data.json :as json]
    [clj-http.client :as client]
+   [clojure.java.jdbc :as jdbc]
    [discljord.messaging :as discord]
    [taoensso.timbre :refer [debug info warn error]]
    [yetibot.core.adapters.adapter :as a]
    [yetibot.core.chat :as chat]
    [yetibot.core.config :refer [get-config]]
+   [yetibot.core.db :as db]
+   [yetibot.core.db.agent-run :as agent-run]
+   [yetibot.core.db.alias :as db.alias]
+   [yetibot.core.db.util :as db.util]
    [yetibot.core.hooks :refer [cmd-hook]]
+   [yetibot.core.interpreter :as interp]
+   [yetibot.core.loader :as loader]
+   [yetibot.core.models.help :as help]
+   [yetibot.core.commands.alias :as alias]
+   [yetibot.core.handler :refer [record-and-run-raw]]
    [yetibot.core.util.gemini :as gemini])
   (:import
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]
    [java.security KeyFactory Signature]
    [java.security.spec PKCS8EncodedKeySpec]
-   [java.util Base64]))
+   [java.util Base64])
+  (:gen-class))
 
 ;; ---------------------------------------------------------------------------
 ;; Config
@@ -71,6 +82,17 @@
 ;; how long a leftover scratch dir may linger before the sweep reaps it (1 day)
 (defn agent-workdir-max-age-ms [] (config-num [:gemini :agent :workdir-max-age-ms] 86400000))
 
+;; Restart resilience: an in-flight run is persisted and, after a restart that
+;; killed it, re-dispatched on the next boot.
+;;   max-attempts    - total runs (original + retries) before giving up
+;;   resume-stale-ms - skip resuming a run older than this (default 6h)
+;;   resume-ready-ms - how long to wait at boot for the DB + an adapter to be live
+;;   resume-stagger-ms - gap between resumed dispatches (2 cores, uncapped concurrency)
+(defn agent-max-attempts [] (config-num [:gemini :agent :max-attempts] 2))
+(defn agent-resume-stale-ms [] (config-num [:gemini :agent :resume-stale-ms] 21600000))
+(defn agent-resume-ready-ms [] (config-num [:gemini :agent :resume-ready-ms] 60000))
+(defn agent-resume-stagger-ms [] (config-num [:gemini :agent :resume-stagger-ms] 3000))
+
 (defn github-pat [] (config-str [:github :token]))
 
 (defn app-id []
@@ -96,7 +118,7 @@
                 (github-auth-configured?))))
 
 ;; ---------------------------------------------------------------------------
-;; Persona — grug/caveman/meme voice for the agent's chat messages only.
+;; Persona — Bonzi Buddy voice for the agent's chat messages only.
 ;; ---------------------------------------------------------------------------
 
 ;; Yetibot is the middleman. One transient status message shows the latest step
@@ -105,7 +127,7 @@
 (defn say-working
   "Transient status message, deleted once Gemini returns its final answer."
   []
-  "<:hmmm:1494137019805466734> grug on it…")
+  "🐵 Bonzi Buddy is swinging into action! Please wait a moment…")
 
 (defn say-final
   "The clean final reply: Gemini's summary plus links to any relevant PRs."
@@ -121,7 +143,26 @@
   (str "⏰ timed out after " minutes " min — try a smaller ask?"))
 
 (defn say-unconfigured []
-  (str "🪨 grug brain not plugged in. need Gemini key + GitHub auth (App or token). grug wait 😴"))
+  (str "🍌 Oh no! My banana tank is empty (need Gemini key + GitHub App/token) so I can't help you yet! 🍌"))
+
+(defn say-resuming []
+  "🐵 Bonzi got bumped by a reboot, but I'm swinging back into action!…")
+
+(defn say-gave-up []
+  "💀 Bonzi got too dizzy from restarts — please try again in a bit!")
+
+(defn say-stale []
+  "💤 Bonzi fell asleep waiting — ask again?")
+
+(defn resume-request
+  "Prefix a request for a resumed run so Gemini continues whatever its interrupted
+   attempt already started instead of duplicating it."
+  [request]
+  (str "(Your previous attempt at this was interrupted by a restart before it could "
+       "finish. Before doing anything else, run `gh pr list` and check for a branch "
+       "you may have already pushed for this — if one exists, continue and finish "
+       "that work rather than opening a duplicate PR.)\n\n"
+       request))
 
 ;; ---------------------------------------------------------------------------
 ;; Safety
@@ -307,7 +348,12 @@
        "code is not a request to audit CI.\n"
        "- If you can't tell what the request refers to, reply briefly asking for "
        "the missing detail. NEVER invent work or report an unrelated summary like "
-       "\"checked all repos, everything green\".\n\n"
+       "\"checked all repos, everything green\".\n"
+       "- If you need more background context than what is provided in the thread "
+       "context, you are highly encouraged to search the entire channel's history "
+       "using the `yetibot` tool with the `history` command (e.g., `history` or "
+       "`history | grep keyword`). It is your job as an autonomous agent to "
+       "perform this extra search when needed!\n\n"
        "The codebase (so you can go straight to the right place — don't rediscover "
        "it). The org is `yetibot`:\n"
        "- `yetibot/core` — the library: chat commands, adapters, and most logic.\n"
@@ -333,6 +379,14 @@
        "new branch, push to origin, and `gh pr create`.\n"
        "- Question: just answer it; clone only if the answer needs the code.\n\n"
        "Tools (shell): `gh` (authenticated) and `git`.\n\n"
+       "Introspecting and running Yetibot commands:\n"
+       "You have a built-in `yetibot` tool. You can use it to execute any built-in Yetibot command or alias directly. Do NOT run them as shell commands; always use the `yetibot` tool call.\n"
+       "Call the `yetibot` tool with the `command` argument (e.g. `{\"command\": \"temps\"}`). For example:\n"
+       "- `yetibot` with command \"agent list-commands\": returns all available built-in commands as a JSON map\n"
+       "- `yetibot` with command \"agent list-aliases\": returns all configured command aliases as a JSON map\n"
+       "- `yetibot` with command \"temps\": runs the `temps` alias to get weather/temp data\n"
+       "- `yetibot` with command \"kroki <payload>\": generates a chart using kroki\n\n"
+       "For example, you can call the `yetibot` tool with \"agent list-aliases\", find a weather/temp alias, run it using the `yetibot` tool to get its data, and then pass that data to another command like `yetibot` with \"kroki ...\" to generate a chart!\n\n"
        (when-not (string/blank? mentions) (str mentions "\n\n"))
        (when-not (string/blank? context)
          (str "This thread's conversation so far, for REFERENCE ONLY — background, "
@@ -344,8 +398,9 @@
        "When you mention or address a person, write their Discord mention token "
        "<@id> verbatim (e.g. <@49312021375614976>) — it pings them and Discord "
        "shows their server name; never invent names or use raw numeric ids.\n\n"
-       "Now do the work, then reply with ONLY your final answer — concise and in a "
-       "brief, playful grug/caveman voice (keep the facts exact), no step-by-step "
+       "Now do the work, then reply with ONLY your final answer — concise and in the "
+       "brief, playful, and cheerful persona of Bonzi Buddy, the classic purple gorilla "
+       "Windows assistant (keep the facts exact), no step-by-step "
        "narration, and reference any pull requests as full URLs "
        "(https://github.com/owner/repo/pull/123), never the #123 shorthand."))
 
@@ -368,11 +423,82 @@
    narration on stdout; stderr is discarded). Returns
    {:response <final answer text or nil> :exit n :timed-out bool}."
   [workdir request context mentions token]
-  ;; cap the agent's turn budget via a workspace settings file
+  ;; cap the agent's turn budget via a workspace settings file, and configure the custom tools
   (let [settings-dir (io/file workdir ".gemini")]
     (.mkdirs settings-dir)
     (spit (io/file settings-dir "settings.json")
-          (json/write-str {:maxSessionTurns (agent-max-turns)})))
+          (json/write-str {:maxSessionTurns (agent-max-turns)
+                           :tools {:discoveryCommand "./yetibot-tool.py --list"
+                                   :callCommand "./yetibot-tool.py"}})))
+  ;; write the yetibot custom tool script
+  (let [yetibot-tool-script (io/file workdir "yetibot-tool.py")]
+    (spit yetibot-tool-script
+          (str "#!/usr/bin/env python3\n"
+               "import sys\n"
+               "import json\n"
+               "import urllib.request\n"
+               "import urllib.parse\n"
+               "import os\n\n"
+               "if len(sys.argv) > 1 and sys.argv[1] == \"--list\":\n"
+               "    tools = [\n"
+               "        {\n"
+               "            \"name\": \"yetibot\",\n"
+               "            \"description\": \"Execute any built-in Yetibot command or alias. Examples: 'temps', 'kroki <payload>'.\",\n"
+               "            \"inputSchema\": {\n"
+               "                \"type\": \"object\",\n"
+               "                \"properties\": {\n"
+               "                    \"command\": {\n"
+               "                        \"type\": \"string\",\n"
+               "                        \"description\": \"The Yetibot command or alias with its arguments to execute.\"\n"
+               "                    }\n"
+               "                },\n"
+               "                \"required\": [\"command\"]\n"
+               "            }\n"
+               "        }\n"
+               "    ]\n"
+               "    print(json.dumps(tools))\n"
+               "    sys.exit(0)\n\n"
+               "if len(sys.argv) > 1 and sys.argv[1] == \"yetibot\":\n"
+               "    try:\n"
+               "        input_data = json.loads(sys.stdin.read())\n"
+               "        cmd = input_data.get(\"command\", \"\")\n"
+               "    except Exception as e:\n"
+               "        print(json.dumps({\n"
+               "            \"content\": [{\"type\": \"text\", \"text\": f\"Error parsing stdin JSON: {str(e)}\"}],\n"
+               "            \"isError\": True\n"
+               "        }))\n"
+               "        sys.exit(0)\n\n"
+               "    if not cmd:\n"
+               "        print(json.dumps({\n"
+               "            \"content\": [{\"type\": \"text\", \"text\": \"Error: command parameter is missing\"}],\n"
+               "            \"isError\": True\n"
+               "        }))\n"
+               "        sys.exit(0)\n\n"
+               "    if cmd.startswith(\"agent \"):\n"
+               "        payload = cmd\n"
+               "    else:\n"
+               "        payload = f\"agent run {cmd}\"\n\n"
+               "    port = os.environ.get(\"YETIBOT_PORT\", \"3003\")\n"
+               "    url = f\"http://localhost:{port}/api\"\n"
+               "    data = urllib.parse.urlencode({\n"
+               "        \"chat-source\": \"{:adapter :agent :room \\\"agent-room\\\"}\",\n"
+               "        \"command\": payload\n"
+               "    }).encode(\"utf-8\")\n\n"
+               "    try:\n"
+               "        req = urllib.request.Request(url, data=data, method=\"POST\")\n"
+               "        with urllib.request.urlopen(req) as response:\n"
+               "            res_text = response.read().decode(\"utf-8\")\n"
+               "        print(json.dumps({\n"
+               "            \"content\": [{\"type\": \"text\", \"text\": res_text}],\n"
+               "            \"isError\": False\n"
+               "        }))\n"
+               "    except Exception as e:\n"
+               "        print(json.dumps({\n"
+               "            \"content\": [{\"type\": \"text\", \"text\": f\"API request failed: {str(e)}\"}],\n"
+               "            \"isError\": True\n"
+               "        }))\n"
+               "    sys.exit(0)\n"))
+    (.setExecutable yetibot-tool-script true))
   (let [pb (doto (ProcessBuilder. [(cli-bin) "--yolo" "--output-format" "json"
                                    "--model" (model)
                                    "--prompt" (build-agent-prompt request context mentions)])
@@ -382,6 +508,7 @@
       (.put "GEMINI_API_KEY" (gemini-key))
       (.put "GEMINI_CLI_TRUST_WORKSPACE" "true")
       (.put "GH_TOKEN" (or token ""))
+      (.put "YETIBOT_PORT" (str (or (System/getenv "PORT") "3003")))
       ;; inject git config via env (no global state): a credential helper that
       ;; authenticates HTTPS pushes with GH_TOKEN, plus insteadOf rewrites so any
       ;; SSH-style github remote is forced to HTTPS (where the token applies).
@@ -452,15 +579,54 @@
    whole thread lets a follow-up like \"retry\" resolve to the original ask."
   [channel-id]
   (try
-    (let [topic (try (:name @(discord/get-channel! (rest-conn) channel-id))
-                     (catch Exception _ nil))
-          lines (->> (all-channel-messages channel-id)
-                     (sort-by :timestamp)
-                     (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
-                     (remove string/blank?))]
-      (string/join "\n" (cond->> lines
-                          (not (string/blank? topic)) (cons (str "[thread topic] " topic)))))
+    (let [channel @(discord/get-channel! (rest-conn) channel-id)
+          type (:type channel)]
+      (if (not (#{10 11 12} type))
+        ""
+        (let [lines (->> (all-channel-messages channel-id)
+                         (sort-by :timestamp)
+                         (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
+                         (remove string/blank?))]
+          (if (<= (count lines) 1)
+            ""
+            (let [topic (:name channel)]
+              (string/join "\n" (cond->> lines
+                                  (not (string/blank? topic)) (cons (str "[thread topic] " topic)))))))))
     (catch Exception e (debug "thread-context failed:" (.getMessage e)) "")))
+
+;; ---------------------------------------------------------------------------
+;; Persistence — survive a restart that kills an in-flight run
+;; ---------------------------------------------------------------------------
+
+(defn- record-run!
+  "Persist an in-flight run so a restart can resume it; returns its run-id, or nil
+   if persistence failed (the run still proceeds, it just won't be resumable)."
+  [run]
+  (let [run-id (str (java.util.UUID/randomUUID))]
+    (try
+      (agent-run/create (assoc run :run-id run-id))
+      run-id
+      (catch Exception e
+        (warn "agent run persist failed (run will not be resumable):" (.getMessage e))
+        nil))))
+
+(defn- clear-run!
+  "Delete a run's record once it reaches any terminal outcome (best-effort)."
+  [run-id]
+  (when run-id
+    (try
+      (when-let [{:keys [id]} (first (agent-run/query {:where/map {:run-id run-id}}))]
+        (agent-run/delete id))
+      (catch Exception e (warn "agent run clear failed:" (.getMessage e))))))
+
+(defn resume-action
+  "Decide what to do with a run left in-flight by a restart: :give-up once it has
+   used up its attempts, :stale when it's older than the cutoff, else :resume."
+  [attempts age-ms max-attempts stale-ms]
+  (cond
+    (>= attempts max-attempts) :give-up
+    (> age-ms stale-ms) :stale
+    :else :resume))
 
 ;; ---------------------------------------------------------------------------
 ;; Command
@@ -470,7 +636,7 @@
   "Async body: mint a token, run Gemini headlessly, then delete the transient
    status message and post one clean final reply — Gemini's answer plus links to
    any relevant PRs. No intermediate narration."
-  [{:keys [request target context-channel on-discord status-id mentions]}]
+  [{:keys [request target context-channel on-discord status-id mentions run-id]}]
   (binding [chat/*target* target]
     (sweep-stale-workdirs! (agent-workdir-max-age-ms))
     (let [dir (work-dir target)]
@@ -494,7 +660,8 @@
           (chat/send-msg (say-broken (.getMessage e))))
         (finally
           (try (delete-tree! dir)
-               (catch Exception e (warn "cleanup failed" (str dir) e))))))))
+               (catch Exception e (warn "cleanup failed" (str dir) e)))
+          (clear-run! run-id))))))
 
 (defn agent-cmd
   "agent <prompt> # hand the request to Gemini (gh+git) and reply with its answer"
@@ -516,15 +683,135 @@
                    (start-thread! channel msg-id request)
                    chat/*target*)
           ;; transient status; deleted when the final answer is posted
-          status-id (:id (binding [chat/*target* target] (chat/send-msg (say-working))))]
+          status-id (:id (binding [chat/*target* target] (chat/send-msg (say-working))))
+          ;; persist the run so a restart that kills it can resume it
+          run-id (record-run! {:request request
+                               :target (some-> target str)
+                               :context-channel (some-> channel str)
+                               :status-id (some-> status-id str)
+                               :adapter-uuid (some-> adapter a/uuid str)
+                               :mentions mentions
+                               :on-discord on-discord})]
       (future
         (binding [chat/*adapter* adapter]
           (run-agent {:request request :target target :context-channel channel
-                      :on-discord on-discord :status-id status-id :mentions mentions})))
+                      :on-discord on-discord :status-id status-id :mentions mentions
+                      :run-id run-id})))
       ;; the answer is posted out of band; suppress the framework's reply
       (chat/suppress {}))))
+
+;; ---------------------------------------------------------------------------
+;; Resume — re-dispatch runs a restart left in-flight
+;; ---------------------------------------------------------------------------
+
+(defonce ^:private boot-time (System/currentTimeMillis))
+
+(defn- adapter-by-uuid
+  "The live adapter whose uuid matches a persisted run's adapter-uuid."
+  [uuid]
+  (some #(when (= uuid (some-> % a/uuid str)) %) (a/active-adapters)))
+
+(defn- adapter-ready? []
+  (boolean (some #(try (a/connected? %) (catch Exception _ false))
+                 (a/active-adapters))))
+
+(defn- await-ready
+  "Block (up to timeout-ms) until the DB is connected and an adapter is live, so a
+   resumed run can read its state and post a reply. Returns true once ready."
+  [timeout-ms]
+  (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
+    (loop []
+      (cond
+        (and @db/connected? (adapter-ready?)) true
+        (> (System/currentTimeMillis) deadline) false
+        :else (do (Thread/sleep 1000) (recur))))))
+
+(defn- say-to-run!
+  "Post msg into a run's thread on its adapter, clearing the dangling status first."
+  [{:keys [target adapter-uuid on-discord status-id]} msg]
+  (when-let [adapter (adapter-by-uuid adapter-uuid)]
+    (binding [chat/*adapter* adapter chat/*target* target]
+      (when (and on-discord status-id) (delete-msg! target status-id))
+      (chat/send-msg msg))))
+
+(defn- dispatch-resume!
+  "Re-run an interrupted run, restoring its adapter + thread and nudging Gemini to
+   continue any work it already started."
+  [{:keys [run-id request target context-channel on-discord status-id mentions
+           adapter-uuid]}]
+  (if-let [adapter (adapter-by-uuid adapter-uuid)]
+    (do
+      (binding [chat/*adapter* adapter chat/*target* target]
+        (chat/send-msg (say-resuming)))
+      (future
+        (binding [chat/*adapter* adapter]
+          (run-agent {:request (resume-request request) :target target
+                      :context-channel context-channel :on-discord on-discord
+                      :status-id status-id :mentions mentions :run-id run-id}))))
+    (warn "cannot resume agent run; adapter gone:" adapter-uuid)))
+
+(defn- resume-run!
+  [{:keys [id attempts created-at] :as row} now]
+  (case (resume-action attempts (- now (.getTime created-at))
+                       (agent-max-attempts) (agent-resume-stale-ms))
+    :give-up (do (say-to-run! row (say-gave-up)) (agent-run/delete id))
+    :stale   (do (say-to-run! row (say-stale)) (agent-run/delete id))
+    :resume  (do (agent-run/update-where {:run-id (:run-id row)}
+                                         {:attempts (inc attempts)})
+                 (dispatch-resume! row))))
+
+(defn resume-interrupted-runs!
+  "On boot, re-dispatch any agent runs a restart left in-flight. Runs in a future
+   so it never blocks startup; staggers dispatches to spare the box's few cores."
+  []
+  (future
+    (try
+      (when (await-ready (agent-resume-ready-ms))
+        (let [rows (->> (agent-run/find-all)
+                        (filter #(< (.getTime (:created-at %)) boot-time)))]
+          (when (seq rows)
+            (info "resuming" (count rows) "interrupted agent run(s)"))
+          (let [now (System/currentTimeMillis)]
+            (doseq [row rows]
+              (try (resume-run! row now)
+                   (catch Exception e (error "resume failed for run" (:run-id row) e)))
+              (Thread/sleep (agent-resume-stagger-ms))))))
+      (catch Exception e (error "resume-interrupted-runs! failed" e)))))
+
+(defn agent-list-commands-cmd
+  "agent list-commands # print all available commands as JSON"
+  {:yb/cat #{:util}}
+  [_]
+  (let [commands (sort (keys (help/get-docs)))]
+    {:result/value (json/write-str {:commands commands})}))
+
+(defn agent-list-aliases-cmd
+  "agent list-aliases # print all configured aliases as JSON"
+  {:yb/cat #{:util}}
+  [_]
+  (let [aliases (try
+                  (db.alias/find-all)
+                  (catch Exception _
+                    (map (fn [[k v]] {:cmd-name k :cmd (first v)}) (help/get-alias-docs))))
+        res {:aliases (map #(select-keys % [:cmd-name :cmd]) aliases)}]
+    {:result/value (json/write-str res)}))
+
+(defn agent-run-cmd
+  "agent run <command> # run the given yetibot command and print result"
+  {:yb/cat #{:util}}
+  [{[_ cmd-str] :match}]
+  (let [user {:username "agent" :name "agent" :id "agent"}
+        chat-source {:adapter :agent :room "agent-room"}
+        results (binding [interp/*chat-source* chat-source]
+                  (record-and-run-raw cmd-str user nil {:record-yetibot-response? false}))
+        out (string/join "\n" (map #(or (:result %) (:error %)) results))]
+    {:result/value out}))
 
 ;; Register only when Gemini + GitHub auth are configured.
 (when (configured?)
   (cmd-hook #"agent"
-            #"(?s)(.+)" agent-cmd))
+            #"list-commands" agent-list-commands-cmd
+            #"list-aliases" agent-list-aliases-cmd
+            #"run\s+(.+)" agent-run-cmd
+            #"(?s)(.+)" agent-cmd)
+  (resume-interrupted-runs!))

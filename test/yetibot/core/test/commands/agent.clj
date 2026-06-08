@@ -50,7 +50,11 @@
   (fact "includes the mention glossary when present"
     (agent/build-agent-prompt "do x" nil "• <@1> is Bob") => (contains "<@1> is Bob"))
   (fact "gives the bot an identity"
-    (agent/build-agent-prompt "do x" nil nil) => (contains "Yetibot")))
+    (agent/build-agent-prompt "do x" nil nil) => (contains "Yetibot"))
+  (fact "tells gemini to use yetibot tool to run yetibot commands"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "yetibot"))
+  (fact "encourages searching entire channel if needed"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "search the entire channel's history")))
 
 (facts "about parse-json-response"
   (fact "pulls the response field"
@@ -62,7 +66,7 @@
 
 (facts "about final messages"
   (fact "say-working is a generic status, not the prompt"
-    (agent/say-working) => (contains "grug"))
+    (agent/say-working) => (contains "Bonzi"))
   (fact "say-final shows Gemini's answer"
     (agent/say-final "Added the bagif command" nil) => (contains "Added the bagif command"))
   (fact "say-final appends relevant PR links"
@@ -93,7 +97,7 @@
 (facts "about agent-cmd guards"
   (fact "replies in persona when nothing is configured"
     (agent/agent-cmd {:match ["agent do x" "do x"] :chat-source {}})
-    => (contains "grug")
+    => (contains "banana")
     (provided (agent/configured?) => false)))
 
 ;; --- GitHub auth: enough to mint GH_TOKEN for Gemini ---
@@ -159,3 +163,63 @@
     (let [kp (rsa-keypair)]
       (:valid? (jwt-verifies? (agent/app-jwt) (.getPublic kp))) => true
       (provided (agent/app-id) => "123" (agent/app-private-key) => (pkcs1-pem kp)))))
+
+;; --- restart resilience: resume runs a restart left in-flight ---
+
+(facts "about resume config defaults"
+  (fact "default max attempts is 2 — the original plus one retry"
+    (agent/agent-max-attempts) => 2))
+
+(facts "about resume-action"
+  (fact "resumes a fresh interrupted run"
+    (agent/resume-action 1 1000 2 100000) => :resume)
+  (fact "gives up once attempts reach the cap"
+    (agent/resume-action 2 1000 2 100000) => :give-up)
+  (fact "treats a run older than the cutoff as stale"
+    (agent/resume-action 1 200000 2 100000) => :stale)
+  (fact "the attempts cap wins over staleness"
+    (agent/resume-action 2 200000 2 100000) => :give-up))
+
+(facts "about resume-request"
+  (fact "prepends a dedup note so a resumed run won't open a duplicate PR"
+    (agent/resume-request "add a bagif command") => (contains "gh pr list"))
+  (fact "keeps the original request text"
+    (agent/resume-request "add a bagif command") => (contains "add a bagif command")))
+
+(facts "about thread-context"
+  (fact "returns empty string if the channel is not a thread (type is not 10, 11, or 12)"
+    (#'agent/thread-context "channel-id-123") => ""
+    (provided
+      (#'agent/rest-conn) => "mock-conn"
+      (discljord.messaging/get-channel! "mock-conn" "channel-id-123") => (atom {:type 0 :name "general"})))
+
+  (fact "returns thread context if the channel is a thread (type 11) with multiple messages"
+    (#'agent/thread-context "thread-id-456") => "[thread topic] cool-thread\nalice: hello\nbob: world"
+    (provided
+      (#'agent/rest-conn) => "mock-conn"
+      (discljord.messaging/get-channel! "mock-conn" "thread-id-456") => (atom {:type 11 :name "cool-thread"})
+      (#'agent/all-channel-messages "thread-id-456") => [{:author {:username "alice"} :content "hello" :timestamp 1}
+                                                         {:author {:username "bob"} :content "world" :timestamp 2}]))
+
+  (fact "returns empty string if the channel is a thread but has 1 or fewer messages (first message/prompt only)"
+    (#'agent/thread-context "thread-id-789") => ""
+    (provided
+      (#'agent/rest-conn) => "mock-conn"
+      (discljord.messaging/get-channel! "mock-conn" "thread-id-789") => (atom {:type 11 :name "cool-thread"})
+      (#'agent/all-channel-messages "thread-id-789") => [{:author {:username "alice"} :content "hello" :timestamp 1}])))
+
+(facts "about agent subcommands"
+  (fact "agent-list-commands-cmd returns available commands in JSON"
+    (agent/agent-list-commands-cmd {}) => {:result/value "{\"commands\":[\"cmd1\",\"cmd2\"]}"}
+    (provided
+      (yetibot.core.models.help/get-docs) => {"cmd1" "doc1" "cmd2" "doc2"}))
+
+  (fact "agent-list-aliases-cmd returns available aliases in JSON"
+    (agent/agent-list-aliases-cmd {}) => {:result/value "{\"aliases\":[{\"cmd-name\":\"hello\",\"cmd\":\"echo hello\"}]}"}
+    (provided
+      (yetibot.core.db.alias/find-all) => [{:cmd "echo hello" :cmd-name "hello"}]))
+
+  (fact "agent-run-cmd evaluates a yetibot command"
+    (agent/agent-run-cmd {:match ["agent run echo hello" "echo hello"]}) => {:result/value "hello"}
+    (provided
+      (yetibot.core.handler/record-and-run-raw "echo hello" anything nil anything) => [{:result "hello"}])) )
