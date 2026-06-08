@@ -398,11 +398,12 @@
        "When you mention or address a person, write their Discord mention token "
        "<@id> verbatim (e.g. <@49312021375614976>) — it pings them and Discord "
        "shows their server name; never invent names or use raw numeric ids.\n\n"
-       "Now do the work, then reply with ONLY your final answer — concise and in the "
-       "brief, playful, and cheerful persona of Bonzi Buddy, the classic purple gorilla "
-       "Windows assistant (keep the facts exact), no step-by-step "
-       "narration, and reference any pull requests as full URLs "
-       "(https://github.com/owner/repo/pull/123), never the #123 shorthand."))
+       "Now do the work, then reply with ONLY your final answer — concise, direct, "
+       "and in the brief, playful, and cheerful persona of Bonzi Buddy, the classic purple "
+       "gorilla Windows assistant (keep the facts exact). Do NOT include any step-by-step "
+       "narration or lists of justifications/explanations in your final reply. "
+       "Just provide the final conclusion or result. Reference any pull requests as full "
+       "URLs (https://github.com/owner/repo/pull/123), never the #123 shorthand."))
 
 ;; Authenticate git pushes to github.com with GH_TOKEN, so the agent's plain
 ;; `git push` over HTTPS works without prompting (the token alone only auths the
@@ -423,13 +424,16 @@
    narration on stdout; stderr is discarded). Returns
    {:response <final answer text or nil> :exit n :timed-out bool}."
   [workdir request context mentions token]
-  ;; cap the agent's turn budget via a workspace settings file, and configure the custom tools
+  ;; cap the agent's turn budget via a workspace settings file, configure custom tools, and hide model reasoning to keep responses concise
   (let [settings-dir (io/file workdir ".gemini")]
     (.mkdirs settings-dir)
     (spit (io/file settings-dir "settings.json")
           (json/write-str {:maxSessionTurns (agent-max-turns)
                            :tools {:discoveryCommand "./yetibot-tool.py --list"
-                                   :callCommand "./yetibot-tool.py"}})))
+                                   :callCommand "./yetibot-tool.py"}
+                           :ui {:inlineThinkingMode "off"}
+                           :modelConfig {:generateContentConfig {:thinkingConfig {:includeThoughts false
+                                                                                  :thinkingBudget 16000}}}})))
   ;; write the yetibot custom tool script
   (let [yetibot-tool-script (io/file workdir "yetibot-tool.py")]
     (spit yetibot-tool-script
