@@ -18,6 +18,8 @@
 (s/def ::monthly (s/keys :opt-un [::budget]))
 (s/def ::budget (s/or :string string? :number number?))
 
+(declare veo-cost-units)
+
 (s/def ::config (s/keys :req-un [::key] :opt-un [::cost ::monthly]))
 
 ;; All Gemini settings live under [:gemini] and share a single API key
@@ -65,6 +67,12 @@
 
 (defn- max-images-per-month []
   (long (Math/floor (/ (monthly-budget) (cost-per-image)))))
+
+(defn- agent-cost-per-session []
+  (or (parse-number (-> config :agent :cost-per-session)) 1.00))
+
+(defn agent-cost-units []
+  (max 1 (long (Math/ceil (/ (agent-cost-per-session) (cost-per-image))))))
 
 (defn- current-month []
   (.format (YearMonth/now) (DateTimeFormatter/ofPattern "yyyy-MM")))
@@ -120,15 +128,25 @@
   (let [{:keys [count]} @usage-tracker
         max-imgs (max-images-per-month)
         spent (* count (cost-per-image))
-        remaining (- (monthly-budget) spent)]
+        remaining (max 0.0 (- (monthly-budget) spent))
+        v-units (veo-cost-units)
+        a-units (agent-cost-units)
+        images-left (long (Math/floor (/ remaining (cost-per-image))))
+        veo-clips-left (long (Math/floor (/ images-left v-units)))
+        agent-sessions-left (long (Math/floor (/ images-left a-units)))]
     {:images-generated count
      :max-images max-imgs
      :spent (double spent)
      :budget (monthly-budget)
      :remaining (double remaining)
+     :images-left images-left
+     :veo-clips-left veo-clips-left
+     :veo-cost-units v-units
+     :agent-sessions-left agent-sessions-left
+     :agent-cost-units a-units
      :month (:month @usage-tracker)}))
 
-(defn- check-budget!
+(defn check-budget!
   "Throw if the monthly image generation budget has been exhausted."
   []
   (reset-if-new-month!)
@@ -137,13 +155,13 @@
     (when (>= count max-imgs)
       (let [spent (* count (cost-per-image))]
         (throw (ex-info
-                (format "Monthly image budget exhausted: %d/%d images ($%.2f/$%.2f). Resets next month."
+                (format "Monthly Gemini budget exhausted: %d/%d image-units ($%.2f/$%.2f). Resets next month."
                         count max-imgs spent (monthly-budget))
                 {:type :budget-exceeded
                  :count count
                  :max max-imgs}))))))
 
-(defn- record-image-generated!
+(defn record-image-generated!
   "Record generated media against the monthly budget. Persists to db.
    `units` lets pricier generations (e.g. a Veo clip) count as multiple
    image-equivalents so the shared dollar budget stays accurate."
