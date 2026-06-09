@@ -69,7 +69,9 @@
   (long (Math/floor (/ (monthly-budget) (cost-per-image)))))
 
 (defn- agent-cost-per-session []
-  (or (parse-number (-> config :agent :cost-per-session)) 1.00))
+  "Estimated USD an agent reply draws from the shared monthly budget. Defaults to
+   a fast Kimi chat turn; override with [:gemini :agent :cost-per-session]."
+  (or (parse-number (-> config :agent :cost-per-session)) 0.05))
 
 (defn agent-cost-units []
   (max 1 (long (Math/ceil (/ (agent-cost-per-session) (cost-per-image))))))
