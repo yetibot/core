@@ -51,14 +51,34 @@
           :key "path-to-key"}]},
   :url "http://localhost:3003",
   :ebay {:appid ""},
-  :gemini {:api {:key ""
-                 ;; optional: override the default model (gemini-3.1-flash-image-preview)
-                 ;; :model "gemini-3.1-flash-image-preview"
-                 ;; monthly budget in USD for image generation (default: 10.00)
-                 ;; :monthly-budget 10.00
-                 ;; estimated cost per image in USD (default: 0.045 for Gemini 3.1 Flash 512px)
-                 ;; :cost-per-image 0.045
-                 }}
+  ;; Gemini powers image (banana) and video (veo) generation. The monthly budget
+  ;; below is a single USD pool shared across banana + veo + agent.
+  :gemini {:key ""
+           ;; optional: override the default image model (gemini-3.1-flash-image-preview)
+           ;; :model "gemini-3.1-flash-image-preview"
+           ;; shared monthly budget in USD (default: 5.00)
+           ;; :monthly {:budget 5.00}
+           ;; estimated cost per image in USD (default: 0.039)
+           ;; :cost {:per 0.039}
+           ;; how much one agent reply draws from the shared budget (default: 0.05)
+           ;; :agent {:cost-per-session 0.05}
+           }
+  ;; The `agent` command answers with a fast Kimi model, routed through a
+  ;; Cloudflare AI Gateway (below) for unified observability and cost control.
+  :agent {:model "kimi-k2.5"}
+  ;; Cloudflare AI Gateway: proxies the agent's model calls to an upstream
+  ;; provider. Moonshot/Kimi is reached via a custom provider — create one in the
+  ;; gateway with base URL https://api.moonshot.ai/v1 and name it (e.g. "moonshot").
+  :cloudflare {:ai-gateway {:account-id ""
+                            :gateway-id ""
+                            ;; provider route prefix; for a custom provider named
+                            ;; "moonshot" this is "custom-moonshot" (the default)
+                            :provider "custom-moonshot"
+                            ;; the upstream provider's API key (sent as the Bearer token)
+                            :api-key ""
+                            ;; optional: only when the gateway has Authenticated Gateway on
+                            ;; :auth-token ""
+                            }}
   :giphy {:key ""},
   :weather {:weatherbitio {:key "" :default {:zip ""}}},
   :command {:prefix "!"
