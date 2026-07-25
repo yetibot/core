@@ -39,4 +39,14 @@
     (api command-cs req) => "error occurred"
     (provided
       (handle-unparsed-expr anything anything "echo hello") => {:error "error occurred"}
-      (chat-data-structure "error occurred") => nil))))
+      (chat-data-structure "error occurred") => nil)))
+
+ (let [agent-cs {:chat-source "{:adapter :agent :room \"agent-room\"}"
+                 :command "echo hello"}
+       req "/api"]
+   (fact
+    "will evaluate command but NOT call chat-data-structure when chat-source is for agent-room / has no :uuid"
+    (api agent-cs req) => "hello from command"
+    (provided
+      (handle-unparsed-expr anything anything "echo hello") => {:settings {} :skip-next-n 0 :value "hello from command" :data nil}
+      (chat-data-structure "hello from command") => nil :times 0))))

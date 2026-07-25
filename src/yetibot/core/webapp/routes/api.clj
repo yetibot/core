@@ -25,7 +25,10 @@
                             (contains? raw-res :error) (:error raw-res)
                             :else raw-res)
                           raw-res)]
-                (chat-data-structure res)
+                (when (and (:uuid chat-source)
+                           (not= (:room chat-source) "agent-room")
+                           (not= (:adapter chat-source) :agent))
+                  (chat-data-structure res))
                 res))
             (str "invalid chat-source:" chat-source))))
 
