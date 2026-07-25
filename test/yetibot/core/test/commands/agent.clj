@@ -73,6 +73,8 @@
     (agent/say-final "done" ["https://github.com/yetibot/core/pull/242"]) => (contains "pull/242"))
   (fact "say-final copes with a blank answer"
     (agent/say-final "" nil) => (contains "done"))
+  (fact "say-final appends the model and cost footer"
+    (agent/say-final "Added features" nil) => (contains "Sent via gemini-3.1-pro-preview | Cost: $1.00"))
   (fact "say-timeout names the limit"
     (agent/say-timeout 5) => (contains "5 min")))
 

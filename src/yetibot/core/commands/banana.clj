@@ -35,9 +35,10 @@
                    (str "Generate an image: " prompt) nil image-urls)
             id (store-image! image)
             base-url (gemini/yetibot-base-url)
-            image-url (format "%s/generated-images/%s.png" base-url id)]
+            image-url (format "%s/generated-images/%s.png" base-url id)
+            footer (format "\n\nSent via %s | Cost: $%.3f" (gemini/gemini-model) (gemini/cost-per-image))]
         (info "banana: image generated successfully, serving at" image-url)
-        {:result/value image-url
+        {:result/value (str image-url footer)
          :result/data {:id id :prompt match :url image-url}})
       (catch Exception e
         (error "banana: Gemini image generation error:" (.getMessage e))
