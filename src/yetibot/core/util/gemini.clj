@@ -55,7 +55,7 @@
   "Default monthly budget in USD for image generation."
   5.00)
 
-(defn- cost-per-image []
+(defn cost-per-image []
    (or (parse-number (-> config :cost :per))
        (case (gemini-model)
          "gemini-3.1-flash-image-preview" 0.039
@@ -68,7 +68,7 @@
 (defn- max-images-per-month []
   (long (Math/floor (/ (monthly-budget) (cost-per-image)))))
 
-(defn- agent-cost-per-session []
+(defn agent-cost-per-session []
   (or (parse-number (-> config :agent :cost-per-session)) 1.00))
 
 (defn agent-cost-units []

@@ -132,9 +132,11 @@
 (defn say-final
   "The clean final reply: Gemini's summary plus links to any relevant PRs."
   [summary pr-urls]
-  (str (if (string/blank? summary) "✅ done." (str "✅ " summary))
-       (when (seq pr-urls)
-         (str "\n\n🔗 " (string/join "  •  " (distinct pr-urls))))))
+  (let [footer (format "\n\nSent via %s | Cost: $%.2f" (model) (gemini/agent-cost-per-session))]
+    (str (if (string/blank? summary) "✅ done." (str "✅ " summary))
+         (when (seq pr-urls)
+           (str "\n\n🔗 " (string/join "  •  " (distinct pr-urls))))
+         footer)))
 
 (defn say-broken [msg]
   (str "⚠️ Gemini error: " msg))
