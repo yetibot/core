@@ -131,12 +131,14 @@
 
 (defn say-final
   "The clean final reply: Gemini's summary plus links to any relevant PRs."
-  [summary pr-urls]
-  (let [footer (format "\n\nSent via %s | Cost: $%.2f" (model) (gemini/agent-cost-per-session))]
-    (str (if (string/blank? summary) "✅ done." (str "✅ " summary))
-         (when (seq pr-urls)
-           (str "\n\n🔗 " (string/join "  •  " (distinct pr-urls))))
-         footer)))
+  ([summary pr-urls] (say-final summary pr-urls nil))
+  ([summary pr-urls actual-cost]
+   (let [cost (or actual-cost (gemini/agent-cost-per-session))
+         footer (format "\n\nSent via %s | Cost: $%.2f" (model) cost)]
+     (str (if (string/blank? summary) "✅ done." (str "✅ " summary))
+          (when (seq pr-urls)
+            (str "\n\n🔗 " (string/join "  •  " (distinct pr-urls))))
+          footer))))
 
 (defn say-broken [msg]
   (str "⚠️ Gemini error: " msg))
@@ -233,15 +235,19 @@
            (string/join "\n" lines))
       "")))
 
+(defn parse-json-raw
+  "Parse the raw JSON string of Gemini output, tolerating leading non-JSON noise."
+  [stdout]
+  (try (json/read-str stdout :key-fn keyword)
+       (catch Exception _
+         (when-let [m (re-find #"(?s)\{.*\}" (or stdout ""))]
+           (try (json/read-str m :key-fn keyword) (catch Exception _ nil))))))
+
 (defn parse-json-response
   "Pull the `response` field out of Gemini's --output-format json stdout,
    tolerating any leading non-JSON noise."
   [stdout]
-  (let [grab #(-> (json/read-str % :key-fn keyword) :response)]
-    (try (grab stdout)
-         (catch Exception _
-           (when-let [m (re-find #"(?s)\{.*\}" (or stdout ""))]
-             (try (grab m) (catch Exception _ nil)))))))
+  (:response (parse-json-raw stdout)))
 
 ;; ---------------------------------------------------------------------------
 ;; GitHub auth — enough to mint a token to hand Gemini as GH_TOKEN
@@ -537,9 +543,11 @@
           stdout (slurp (.getInputStream proc))
           exit (.waitFor proc)]
       (future-cancel watchdog)
-      {:response (redact (parse-json-response stdout))
-       :exit exit
-       :timed-out @timed-out})))
+      (let [parsed (parse-json-raw stdout)]
+        {:response (redact (:response parsed))
+         :stats (:stats parsed)
+         :exit exit
+         :timed-out @timed-out}))))
 
 ;; ---------------------------------------------------------------------------
 ;; Discord thread plumbing (guarded; degrades to plain replies elsewhere)
@@ -650,14 +658,19 @@
         (gemini/check-budget!)
         (let [context (when on-discord (thread-context context-channel))
               token (github-token)
-              {:keys [response exit timed-out]} (run-gemini-agent dir request context mentions token)
-              _ (gemini/record-image-generated! (gemini/agent-cost-units))
+              {:keys [response stats exit timed-out]} (run-gemini-agent dir request context mentions token)
+              actual-cost (gemini/calculate-stats-cost stats)
+              cost-units (if (pos? actual-cost)
+                           (gemini/calculate-cost-units actual-cost)
+                           (gemini/agent-cost-units))
+              _ (gemini/record-image-generated! cost-units)
+              actual-cost-val (if (pos? actual-cost) actual-cost nil)
               reply (cond
                       timed-out (say-timeout (quot (agent-timeout-ms) 60000))
-                      (not (string/blank? response)) (say-final response (pr-urls response))
+                      (not (string/blank? response)) (say-final response (pr-urls response) actual-cost-val)
                       (pos? exit) (say-broken (str "exited " exit
                                                    " — no answer returned (a PR may still have been opened)"))
-                      :else (say-final "done." nil))]
+                      :else (say-final "done." nil actual-cost-val))]
           (when (and on-discord status-id) (delete-msg! target status-id))
           (chat/send-msg reply))
         (catch Exception e

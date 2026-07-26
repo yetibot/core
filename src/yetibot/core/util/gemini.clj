@@ -74,6 +74,53 @@
 (defn agent-cost-units []
   (max 1 (long (Math/ceil (/ (agent-cost-per-session) (cost-per-image))))))
 
+(defn model-pricing
+  "Return pricing per 1M tokens for a model name:
+   {:input <regular input $/1M> :cached <cached input $/1M> :output <output $/1M>}"
+  [model-name]
+  (let [name-lower (string/lower-case (str model-name))]
+    (cond
+      ;; Pro models
+      (string/includes? name-lower "pro")
+      {:input 2.00 :cached 0.50 :output 12.00}
+
+      ;; Flash-lite / Lite models
+      (or (string/includes? name-lower "flash-lite")
+          (string/includes? name-lower "lite"))
+      {:input 0.10 :cached 0.025 :output 0.40}
+
+      ;; Flash models
+      (string/includes? name-lower "flash")
+      {:input 0.075 :cached 0.01875 :output 0.30}
+
+      ;; Fallback (conservative Pro pricing as default)
+      :else
+      {:input 2.00 :cached 0.50 :output 12.00})))
+
+(defn calculate-stats-cost
+  "Calculate the actual cost of a session given its stats map from Gemini CLI."
+  [stats]
+  (if-let [models (get stats :models)]
+    (reduce
+      (fn [total-cost [model-name model-data]]
+        (let [tokens (get model-data :tokens)
+              pricing (model-pricing model-name)
+              input-cnt (or (:input tokens) (- (or (:prompt tokens) 0) (or (:cached tokens) 0)))
+              cached-cnt (or (:cached tokens) 0)
+              output-cnt (or (:candidates tokens) 0)
+              cost (+ (* (/ input-cnt 1000000.0) (:input pricing))
+                      (* (/ cached-cnt 1000000.0) (:cached pricing))
+                      (* (/ output-cnt 1000000.0) (:output pricing)))]
+          (+ total-cost cost)))
+      0.0
+      models)
+    0.0))
+
+(defn calculate-cost-units
+  "Calculate image-equivalent units for a dollar cost."
+  [dollar-cost]
+  (max 1 (long (Math/ceil (/ dollar-cost (cost-per-image))))))
+
 (defn- current-month []
   (.format (YearMonth/now) (DateTimeFormatter/ofPattern "yyyy-MM")))
 
