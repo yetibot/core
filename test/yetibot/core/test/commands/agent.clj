@@ -64,6 +64,16 @@
   (fact "nil on unparseable output"
     (agent/parse-json-response "not json at all") => nil))
 
+(facts "about parse-json-raw"
+  (fact "pulls the entire parsed map"
+    (agent/parse-json-raw "{\"response\": \"hi there\", \"stats\": {\"a\": 1}}")
+    => {:response "hi there" :stats {:a 1}})
+  (fact "tolerates leading noise before the json"
+    (agent/parse-json-raw "warning: foo\n{\"response\": \"ok\", \"stats\": {}}")
+    => {:response "ok" :stats {}})
+  (fact "nil on unparseable output"
+    (agent/parse-json-raw "not json at all") => nil))
+
 (facts "about final messages"
   (fact "say-working is a generic status, not the prompt"
     (agent/say-working) => (contains "Bonzi"))
@@ -75,6 +85,9 @@
     (agent/say-final "" nil) => (contains "done"))
   (fact "say-final appends the model and cost footer"
     (agent/say-final "Added features" nil) => (contains "Sent via gemini-3.1-pro-preview | Cost: $1.00"))
+  (fact "say-final accepts actual-cost and prints it correctly in the footer"
+    (agent/say-final "Added features" nil 0.12) => (contains "Sent via gemini-3.1-pro-preview | Cost: $0.12")
+    (agent/say-final "Added features" nil 1.234) => (contains "Sent via gemini-3.1-pro-preview | Cost: $1.23"))
   (fact "say-timeout names the limit"
     (agent/say-timeout 5) => (contains "5 min")))
 
