@@ -87,9 +87,26 @@
     (agent/say-final "Added features" nil) => (contains "Sent via gemini-3.1-pro-preview | Cost: $1.00"))
   (fact "say-final accepts actual-cost and prints it correctly in the footer"
     (agent/say-final "Added features" nil 0.12) => (contains "Sent via gemini-3.1-pro-preview | Cost: $0.12")
-    (agent/say-final "Added features" nil 1.234) => (contains "Sent via gemini-3.1-pro-preview | Cost: $1.23"))
+    (agent/say-final "Added features" nil 1.234) => (contains "Sent via gemini-3.1-pro-preview | Cost: $1.23")
+    (agent/say-final "Added features" nil 0.000475) => (contains "Sent via gemini-3.1-pro-preview | Cost: $0.0005")
+    (agent/say-final "Added features" nil 0.004) => (contains "Sent via gemini-3.1-pro-preview | Cost: $0.0040")
+    (agent/say-final "Added features" nil 0.0) => (contains "Sent via gemini-3.1-pro-preview | Cost: $0.00"))
   (fact "say-timeout names the limit"
     (agent/say-timeout 5) => (contains "5 min")))
+
+(facts "about format-cost"
+  (fact "nil or zero costs return 0.00"
+    (agent/format-cost nil) => "0.00"
+    (agent/format-cost 0) => "0.00"
+    (agent/format-cost 0.0) => "0.00")
+  (fact "costs under 0.01 are formatted to 4 decimal places"
+    (agent/format-cost 0.000475) => "0.0005"
+    (agent/format-cost 0.004) => "0.0040"
+    (agent/format-cost 0.0099) => "0.0099")
+  (fact "costs 0.01 or above are formatted to 2 decimal places"
+    (agent/format-cost 0.01) => "0.01"
+    (agent/format-cost 0.12) => "0.12"
+    (agent/format-cost 1.234) => "1.23"))
 
 (facts "about agent limits config defaults"
   (fact "default timeout is 15 minutes"

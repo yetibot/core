@@ -129,12 +129,21 @@
   []
   "🐵 Bonzi Buddy is swinging into action! Please wait a moment…")
 
+(defn format-cost
+  "Format cost to 4 decimal places if it's less than $0.01, otherwise 2 decimal places."
+  [cost]
+  (cond
+    (nil? cost) "0.00"
+    (zero? cost) "0.00"
+    (< cost 0.01) (format "%.4f" cost)
+    :else (format "%.2f" cost)))
+
 (defn say-final
   "The clean final reply: Gemini's summary plus links to any relevant PRs."
   ([summary pr-urls] (say-final summary pr-urls nil))
   ([summary pr-urls actual-cost]
    (let [cost (or actual-cost (gemini/agent-cost-per-session))
-         footer (format "\n\nSent via %s | Cost: $%.2f" (model) cost)]
+         footer (format "\n\nSent via %s | Cost: $%s" (model) (format-cost cost))]
      (str (if (string/blank? summary) "✅ done." (str "✅ " summary))
           (when (seq pr-urls)
             (str "\n\n🔗 " (string/join "  •  " (distinct pr-urls))))
