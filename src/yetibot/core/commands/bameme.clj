@@ -52,9 +52,10 @@ Make the image funny, bold, and immediately recognizable as a meme.")
             image (gemini/generate-image meme-prompt meme-system-prompt image-urls)
             id (store-image! image)
             base-url (gemini/yetibot-base-url)
-            image-url (format "%s/generated-images/%s.png" base-url id)]
+            image-url (format "%s/generated-images/%s.png" base-url id)
+            footer (format "\n\nSent via %s | Cost: $%.3f" (gemini/gemini-model) (gemini/cost-per-image))]
         (info "bameme: meme generated successfully, serving at" image-url)
-        {:result/value image-url
+        {:result/value (str image-url footer)
          :result/data {:id id :prompt match :url image-url}})
       (catch Exception e
         (error "bameme: Gemini meme generation error:" (.getMessage e))

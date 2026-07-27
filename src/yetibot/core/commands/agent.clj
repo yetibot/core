@@ -61,9 +61,9 @@
 (defn- config-str [path]
   (:value (get-config ::str path)))
 
-;; Gemini model for the agent. Defaults to the strongest current Pro model;
-;; override with [:gemini :agent :model] (e.g. "gemini-3.5-flash") for speed.
-(defn model [] (or (config-str [:gemini :agent :model]) "gemini-3.1-pro-preview"))
+;; Gemini model for the agent. Defaults to the cheapest current Flash model;
+;; override with [:gemini :agent :model] (e.g. "gemini-3.1-pro-preview") for reasoning.
+(defn model [] (or (config-str [:gemini :agent :model]) "gemini-3.6-flash"))
 
 (defn gemini-key [] (config-str [:gemini :key]))
 (defn cli-bin [] (or (config-str [:gemini :cli]) "gemini"))
