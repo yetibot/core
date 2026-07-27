@@ -84,13 +84,13 @@
   (fact "say-final copes with a blank answer"
     (agent/say-final "" nil) => (contains "done"))
   (fact "say-final appends the model and cost footer"
-    (agent/say-final "Added features" nil) => (contains "Sent via gemini-3.1-pro-preview | Cost: $1.00"))
+    (agent/say-final "Added features" nil) => (contains "Sent via gemini-3.6-flash | Cost: $1.00"))
   (fact "say-final accepts actual-cost and prints it correctly in the footer"
-    (agent/say-final "Added features" nil 0.12) => (contains "Sent via gemini-3.1-pro-preview | Cost: $0.12")
-    (agent/say-final "Added features" nil 1.234) => (contains "Sent via gemini-3.1-pro-preview | Cost: $1.23")
-    (agent/say-final "Added features" nil 0.000475) => (contains "Sent via gemini-3.1-pro-preview | Cost: $0.0005")
-    (agent/say-final "Added features" nil 0.004) => (contains "Sent via gemini-3.1-pro-preview | Cost: $0.0040")
-    (agent/say-final "Added features" nil 0.0) => (contains "Sent via gemini-3.1-pro-preview | Cost: $0.00"))
+    (agent/say-final "Added features" nil 0.12) => (contains "Sent via gemini-3.6-flash | Cost: $0.12")
+    (agent/say-final "Added features" nil 1.234) => (contains "Sent via gemini-3.6-flash | Cost: $1.23")
+    (agent/say-final "Added features" nil 0.000475) => (contains "Sent via gemini-3.6-flash | Cost: $0.0005")
+    (agent/say-final "Added features" nil 0.004) => (contains "Sent via gemini-3.6-flash | Cost: $0.0040")
+    (agent/say-final "Added features" nil 0.0) => (contains "Sent via gemini-3.6-flash | Cost: $0.00"))
   (fact "say-timeout names the limit"
     (agent/say-timeout 5) => (contains "5 min")))
 
@@ -113,8 +113,8 @@
     (agent/agent-timeout-ms) => 900000)
   (fact "default max turns is 50"
     (agent/agent-max-turns) => 50)
-  (fact "default model is the current Gemini 3.1 Pro"
-    (agent/model) => "gemini-3.1-pro-preview"))
+  (fact "default model is the current Gemini 3.6 Flash"
+    (agent/model) => "gemini-3.6-flash"))
 
 (facts "about mention-glossary"
   (fact "prefers the server nickname and keeps the <@id> token"
