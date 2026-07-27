@@ -53,8 +53,8 @@
     (agent/build-agent-prompt "do x" nil nil) => (contains "Yetibot"))
   (fact "tells gemini to use yetibot tool to run yetibot commands"
     (agent/build-agent-prompt "do x" nil nil) => (contains "yetibot"))
-  (fact "encourages searching entire channel if needed"
-    (agent/build-agent-prompt "do x" nil nil) => (contains "search the entire channel's history")))
+  (fact "encourages searching channel history if needed"
+    (agent/build-agent-prompt "do x" nil nil) => (contains "search the channel's history")))
 
 (facts "about parse-json-response"
   (fact "pulls the response field"

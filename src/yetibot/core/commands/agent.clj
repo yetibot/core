@@ -358,10 +358,12 @@
        "the missing detail. NEVER invent work or report an unrelated summary like "
        "\"checked all repos, everything green\".\n"
        "- If you need more background context than what is provided in the thread "
-       "context, you are highly encouraged to search the entire channel's history "
-       "using the `yetibot` tool with the `history` command (e.g., `history` or "
-       "`history | grep keyword`). It is your job as an autonomous agent to "
-       "perform this extra search when needed!\n\n"
+       "context (which is kept short for efficient context engineering and low cost), "
+       "you are highly encouraged to search the channel's history using smart "
+       "Discord/SQL search queries via the `yetibot` tool and the `history` command "
+       "(e.g., `history | grep keyword`). This executes efficient, targeted database queries "
+       "and minimizes prompt costs! It is your job as an autonomous agent to perform "
+       "this extra search when needed.\n\n"
        "The codebase (so you can go straight to the right place — don't rediscover "
        "it). The org is `yetibot`:\n"
        "- `yetibot/core` — the library: chat commands, adapters, and most logic.\n"
@@ -576,16 +578,13 @@
        (catch Exception e (debug "delete-msg! failed:" (.getMessage e)))))
 
 (defn- all-channel-messages
-  "Every message in a channel/thread, paginating past Discord's 100-per-call cap
-   (bounded for safety). Discord returns newest-first; callers sort as needed."
+  "The most recent messages in a channel/thread (bounded to 20 for cost efficiency)."
   [channel-id]
-  (loop [before nil acc []]
-    (let [opts (concat [:limit 100] (when before [:before before]))
-          batch (vec @(apply discord/get-channel-messages! (rest-conn) channel-id opts))
-          acc' (into acc batch)]
-      (if (or (< (count batch) 100) (>= (count acc') 500))
-        acc'
-        (recur (:id (peek batch)) acc')))))
+  (try
+    (vec @(discord/get-channel-messages! (rest-conn) channel-id :limit 20))
+    (catch Exception e
+      (debug "all-channel-messages failed:" (.getMessage e))
+      [])))
 
 (defn- thread-context
   "The full thread conversation, oldest-first, prefixed with the thread topic —
