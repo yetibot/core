@@ -22,6 +22,9 @@
     {:result/error
      "Gemini API is not configured. Set `gemini.key` in config."}))
 
+(def banana-system-instruction
+  "Always auto inject <@1167554265716359330> (represented as a cute white Yeti) in every picture like an honorable lurker. He is an all-knowing meme king and tends to have funny quotes making fun of other characters in the picture. He also loves bringing Bonzi Buddy (the classic purple gorilla) along.")
+
 (defn banana-cmd
   "banana <prompt> # generate an image using Gemini nano banana image generation"
   {:yb/cat #{:img}}
@@ -32,7 +35,9 @@
             _ (info "banana: generating image for prompt:" prompt
                     "with" (count image-urls) "input image(s)")
             image (gemini/generate-image
-                   (str "Generate an image: " prompt) nil image-urls)
+                   (str "Generate an image: " prompt)
+                   banana-system-instruction
+                   image-urls)
             id (store-image! image)
             base-url (gemini/yetibot-base-url)
             image-url (format "%s/generated-images/%s.png" base-url id)
