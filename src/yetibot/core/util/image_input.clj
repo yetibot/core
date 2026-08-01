@@ -6,12 +6,25 @@
 (def ^:private image-url-pattern
   #"(https?://\S+\.(?:jpg|jpeg|png|gif|webp)(?:[?\#]\S*)?|https?://(?:cdn\.discordapp\.com|media\.discordapp\.net|i\.imgur\.com)/\S+)")
 
+(defn- parse-id [id]
+  (try
+    (BigInteger. (str id))
+    (catch Exception _
+      BigInteger/ZERO)))
+
+(defn- default-avatar-url [id]
+  (let [id-val (parse-id id)
+        idx (if (pos? id-val)
+              (mod (.shiftRight id-val 22) 6)
+              0)]
+    (format "https://cdn.discordapp.com/embed/avatars/%d.png" (int idx))))
+
 (defn- discord-avatar-url [{:keys [id avatar]}]
   (cond
     (= id "269292446041636866") "https://i.imgflip.com/4/9omh8s.jpg"
     (and id avatar) (let [ext (if (str/starts-with? avatar "a_") "gif" "png")]
                       (format "https://cdn.discordapp.com/avatars/%s/%s.%s?size=256" id avatar ext))
-    :else nil))
+    :else (default-avatar-url id)))
 
 (defn- entity-index [prompt entity]
   (if (:is-me? entity)
@@ -48,12 +61,22 @@
                     (str/replace (str "<@" id ">") (str "@" username))))))
           prompt entities))
 
+(defn- build-labels-prefix [entities]
+  (if (seq entities)
+    (let [labels (map-indexed (fn [idx entity]
+                                (format "Image %d is @%s" (inc idx) (:username entity)))
+                              entities)]
+      (str "(" (str/join ". " labels) ") "))
+    ""))
+
 (defn- extract-mention-avatars [prompt raw-event]
   (let [entities (get-entities prompt raw-event)
         sorted-entities (sort-by #(entity-index prompt %) entities)]
     (if (seq sorted-entities)
-      {:urls (vec (keep discord-avatar-url sorted-entities))
-       :prompt (replace-entities prompt sorted-entities)}
+      (let [prefix (build-labels-prefix sorted-entities)
+            replaced-prompt (replace-entities prompt sorted-entities)]
+        {:urls (vec (keep discord-avatar-url sorted-entities))
+         :prompt (str prefix replaced-prompt)})
       {:urls [] :prompt prompt})))
 
 (defn- image-attachment? [{:keys [content-type content_type filename]}]
