@@ -13,18 +13,48 @@
                       (format "https://cdn.discordapp.com/avatars/%s/%s.%s?size=256" id avatar ext))
     :else nil))
 
-(defn- replace-mentions [prompt mentions]
-  (reduce (fn [p {:keys [id username]}]
-            (-> p
-                (str/replace (str "<@!" id ">") (str "@" username))
-                (str/replace (str "<@" id ">") (str "@" username))))
-          prompt mentions))
+(defn- entity-index [prompt entity]
+  (if (:is-me? entity)
+    (let [matcher (re-matcher #"(?i)\bme\b" prompt)]
+      (if (.find matcher)
+        (.start matcher)
+        Integer/MAX_VALUE))
+    (let [id (:id entity)
+          idx1 (str/index-of prompt (str "<@" id ">"))
+          idx2 (str/index-of prompt (str "<@!" id ">"))]
+      (cond
+        (and idx1 idx2) (min idx1 idx2)
+        idx1 idx1
+        idx2 idx2
+        :else Integer/MAX_VALUE))))
+
+(defn- get-entities [prompt raw-event]
+  (let [mentions (or (:mentions raw-event) [])
+        author (:author raw-event)
+        has-me? (boolean (and author (re-find #"(?i)\bme\b" prompt)))
+        me-mention (when (and has-me? author)
+                     (assoc author :is-me? true))]
+    (cond-> (vec mentions)
+      me-mention (conj me-mention))))
+
+(defn- replace-entities [prompt entities]
+  (reduce (fn [p entity]
+            (if (:is-me? entity)
+              (str/replace p #"(?i)\bme\b" (str "@" (:username entity)))
+              (let [id (:id entity)
+                    username (:username entity)]
+                (-> p
+                    (str/replace (str "<@!" id ">") (str "@" username))
+                    (str/replace (str "<@" id ">") (str "@" username))))))
+          prompt entities))
 
 (defn- extract-mention-avatars [prompt raw-event]
-  (if-let [mentions (seq (:mentions raw-event))]
-    {:urls (vec (keep discord-avatar-url mentions))
-     :prompt (replace-mentions prompt mentions)}
-    {:urls [] :prompt prompt}))
+  (let [entities (get-entities prompt raw-event)
+        sorted-entities (sort-by #(entity-index prompt %) entities)]
+    (if (seq sorted-entities)
+      {:urls (vec (keep discord-avatar-url sorted-entities))
+       :prompt (replace-entities prompt sorted-entities)}
+      {:urls [] :prompt prompt})))
 
 (defn- image-attachment? [{:keys [content-type content_type filename]}]
   (let [ct (or content-type content_type "")]
