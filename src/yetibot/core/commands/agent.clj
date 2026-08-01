@@ -395,7 +395,7 @@
        "- Code change: clone the one relevant repo over HTTPS (`gh repo clone "
        "<owner>/<repo>` — never SSH, never fork), set git config user.name "
        "'Yetibot' / user.email 'yetibot@yetibot.com', make a minimal change on a "
-       "new branch, push to origin, and `gh pr create`.\n"
+       "new branch, push to origin, `gh pr create`, and enable auto-merge (e.g. `gh pr merge --auto --squash` or `--merge`).\n"
        "- Question: just answer it; clone only if the answer needs the code.\n\n"
        "Tools (shell): `gh` (authenticated) and `git`.\n\n"
        "Introspecting and running Yetibot commands:\n"
