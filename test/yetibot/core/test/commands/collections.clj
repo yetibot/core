@@ -382,4 +382,11 @@
    (fact
     "using 'unquote' collections command, it should always return 'foo\" bar';
      pretty sure this is a bug :)"
-    value => "foo\" bar")))
+    value => "foo\" bar"))
+
+ (let [{{:result/keys [value]} :result}
+       (ci/command-execution-info "repeat 2 range 5"
+                                  {:run-command? true})]
+   (fact
+    "using 'repeat' collections command on 'range 5' (an odd number of elements), it should succeed and not throw No value supplied"
+    value => [["0" "1" "2" "3" "4"] ["0" "1" "2" "3" "4"]])))
