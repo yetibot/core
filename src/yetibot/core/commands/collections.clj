@@ -670,8 +670,11 @@
           ;; - others return an error like {:result/error}
           ;; - others just return a plain value
           ;; so look for all 3 forms
-          values (map (fn [{:result/keys [value error] :as arg}]
-                        (or value error arg)) results)
+          values (map (fn [arg]
+                        (if (map? arg)
+                          (let [{:result/keys [value error]} arg]
+                            (or value error arg))
+                          arg)) results)
           data (map :result/data results)
           ]
       (info (pr-str (doall results)))
