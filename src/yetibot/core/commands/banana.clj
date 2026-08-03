@@ -23,7 +23,7 @@
      "Gemini API is not configured. Set `gemini.key` in config."}))
 
 (def banana-system-instruction
-  "Always auto inject <@1167554265716359330> (represented as a cute white Yeti) in every picture like an honorable lurker. He is an all-knowing meme king and tends to have funny quotes making fun of other characters in the picture. He also loves bringing Bonzi Buddy (the classic purple gorilla) along.")
+  "Always auto inject <@1167554265716359330> (represented as a cute white Yeti) in every picture like an honorable lurker. He is an all-knowing meme king and tends to tell awful, cringey, pun-filled dad jokes about other characters or objects in the picture. The worse and more eye-roll inducing the dad jokes are, the better! He also loves bringing Bonzi Buddy (the classic purple gorilla) along.")
 
 (defn banana-cmd
   "banana <prompt> # generate an image using Gemini nano banana image generation"
