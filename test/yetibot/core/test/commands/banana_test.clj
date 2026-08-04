@@ -27,7 +27,7 @@
 (facts "about banana-cmd"
        (fact "it generates an image and returns URL with model and cost footer"
              (b/banana-cmd {:match "banana monkey" :chat-source {}})
-             => (contains {:result/value #"http://localhost:3003/generated-images/img123.png\n\nSent via gemini-3.1-flash-image-preview \| Cost: \$0.039"
+             => (contains {:result/value #"http://localhost:3003/generated-images/img123.png\n\nSent via gemini-3.6-flash-image-preview \| Cost: \$0.039"
                            :result/data {:id "img123" :prompt "banana monkey" :url "http://localhost:3003/generated-images/img123.png"}})
              (provided
                (gemini/configured?) => true
@@ -35,5 +35,5 @@
                (gemini/generate-image "Generate an image: monkey" b/banana-system-instruction []) => {:data "bytes" :mime-type "image/png"}
                (yetibot.core.webapp.routes.images/store-image! {:data "bytes" :mime-type "image/png"}) => "img123"
                (gemini/yetibot-base-url) => "http://localhost:3003"
-               (gemini/gemini-model) => "gemini-3.1-flash-image-preview"
+               (gemini/gemini-model) => "gemini-3.6-flash-image-preview"
                (gemini/cost-per-image) => 0.039)))

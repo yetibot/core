@@ -13,11 +13,11 @@
   (some-> msg (string/replace #"key=[^\s&\"]+" "key=***")))
 
 (def model-presets
-  {"lite" {:model "veo-3.1-lite-generate-preview" :duration 4}
-   "fast" {:model "veo-3.1-fast-generate-preview" :duration 4}
-   "gigaveo" {:model "veo-3.1-generate-preview" :duration 8}
-   "preview" {:model "veo-3.1-generate-preview" :duration 8}
-   "better" {:model "veo-3.1-generate-preview" :duration 8}})
+  {"lite" {:model "veo-3.6-lite-generate-preview" :duration 4}
+   "fast" {:model "veo-3.6-fast-generate-preview" :duration 4}
+   "gigaveo" {:model "veo-3.6-generate-preview" :duration 8}
+   "preview" {:model "veo-3.6-generate-preview" :duration 8}
+   "better" {:model "veo-3.6-generate-preview" :duration 8}})
 
 (defn parse-model-and-prompt
   [raw-prompt]
@@ -47,7 +47,7 @@
 
 (defn veo-cmd
   "veo <prompt> # generate a short AI video with Veo
-   gigaveo <prompt> # generate a high-quality 8-second video with flagship Veo 3.1 model
+   gigaveo <prompt> # generate a high-quality 8-second video with flagship Veo 3.6 model
 
    Examples:
    veo a cat jumping
