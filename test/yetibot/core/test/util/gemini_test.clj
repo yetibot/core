@@ -22,19 +22,19 @@
 
 (facts "about model pricing"
        (fact "it maps pro models to pro pricing"
-             (gemini/model-pricing "gemini-3.1-pro") => {:input 2.00 :cached 0.50 :output 12.00}
-             (gemini/model-pricing "gemini-3.1-pro-preview-customtools") => {:input 2.00 :cached 0.50 :output 12.00})
+             (gemini/model-pricing "gemini-3.6-pro") => {:input 2.00 :cached 0.50 :output 12.00}
+             (gemini/model-pricing "gemini-3.6-pro-preview-customtools") => {:input 2.00 :cached 0.50 :output 12.00})
        (fact "it maps flash-lite models to lite pricing"
              (gemini/model-pricing "gemini-2.5-flash-lite") => {:input 0.10 :cached 0.025 :output 0.40})
        (fact "it maps flash models to flash pricing"
-             (gemini/model-pricing "gemini-3.1-flash") => {:input 0.075 :cached 0.01875 :output 0.30})
+             (gemini/model-pricing "gemini-3.6-flash") => {:input 0.075 :cached 0.01875 :output 0.30})
        (fact "it defaults to pro pricing"
              (gemini/model-pricing "unknown-model") => {:input 2.00 :cached 0.50 :output 12.00}))
 
 (facts "about stats cost calculation"
        (fact "it calculates correct cost based on tokens and model type"
              (gemini/calculate-stats-cost
-              {:models {:gemini-3.1-pro-preview {:tokens {:input 100000 :candidates 10000 :cached 0}}}})
+              {:models {:gemini-3.6-pro-preview {:tokens {:input 100000 :candidates 10000 :cached 0}}}})
              => (roughly 0.32)
              (gemini/calculate-stats-cost
               {:models {:gemini-2.5-flash-lite {:tokens {:input 50000 :candidates 2000 :cached 10000}}}})
