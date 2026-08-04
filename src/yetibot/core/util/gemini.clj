@@ -26,7 +26,7 @@
 ;; (YB_GEMINI_KEY) with the rest of Yetibot's Gemini features.
 (def config (or (:value (get-config ::config [:gemini])) {}))
 
-(def default-model "gemini-3.6-flash-image-preview")
+(def default-model "gemini-3.1-flash-image-preview")
 
 (defn gemini-model [] default-model)
 
@@ -48,7 +48,7 @@
 ;; -- Monthly budget throttling --
 
 (def ^:private default-cost-per-image
-   "Default estimated cost per generated image in USD (gemini-3.6-flash-image-preview pricing, tied to default-model)."
+   "Default estimated cost per generated image in USD (gemini-3.1-flash-image-preview pricing, tied to default-model)."
    0.039)
 
 (def ^:private default-monthly-budget
@@ -58,7 +58,7 @@
 (defn cost-per-image []
    (or (parse-number (-> config :cost :per))
        (case (gemini-model)
-         "gemini-3.6-flash-image-preview" 0.039
+         "gemini-3.1-flash-image-preview" 0.039
          ;; Add other models and their costs here as needed
          default-cost-per-image)))
 
