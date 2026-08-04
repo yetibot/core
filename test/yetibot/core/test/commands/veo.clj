@@ -35,11 +35,11 @@
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "a cool robot dancing" {}) => {:prompt "a cool robot dancing" :image-urls nil}
-        (gemini/generate-video "a cool robot dancing" nil "veo-3.6-lite-generate-preview" 4) => :video-bytes
+        (gemini/generate-video "a cool robot dancing" nil "veo-3.1-generate-preview" 4) => :video-bytes
         (store-image! :video-bytes) => "img123"
         (gemini/yetibot-base-url) => "http://localhost:3000"
-        (gemini/calculate-video-cost "veo-3.6-lite-generate-preview" 4) => 0.20
-        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4 (Cost: $0.20)") => anything)))
+        (gemini/calculate-video-cost "veo-3.1-generate-preview" 4) => 1.60
+        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4 (Cost: $1.60)") => anything)))
 
   (fact "future handles failure, posts error message"
     (binding [chat/*adapter* :mock-adapter
@@ -51,25 +51,25 @@
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "a cool robot dancing" {}) => {:prompt "a cool robot dancing" :image-urls nil}
-        (gemini/generate-video "a cool robot dancing" nil "veo-3.6-lite-generate-preview" 4) => (throw (Exception. "API Error"))
+        (gemini/generate-video "a cool robot dancing" nil "veo-3.1-generate-preview" 4) => (throw (Exception. "API Error"))
         (chat/send-msg "<@user123>: Video generation failed: API Error") => anything))))
 
 (facts "about veo model and prompt parsing"
   (fact "correctly parses lite preset"
     (veo/parse-model-and-prompt "lite a cute cat")
-    => {:model "veo-3.6-lite-generate-preview" :duration 4 :prompt "a cute cat"})
+    => {:model "veo-3.1-generate-preview" :duration 4 :prompt "a cute cat"})
 
   (fact "correctly parses fast preset"
     (veo/parse-model-and-prompt "fast a cute cat")
-    => {:model "veo-3.6-fast-generate-preview" :duration 4 :prompt "a cute cat"})
+    => {:model "veo-3.1-generate-preview" :duration 4 :prompt "a cute cat"})
 
   (fact "correctly parses gigaveo preset"
     (veo/parse-model-and-prompt "gigaveo a cute cat")
-    => {:model "veo-3.6-generate-preview" :duration 8 :prompt "a cute cat"})
+    => {:model "veo-3.1-generate-preview" :duration 8 :prompt "a cute cat"})
 
   (fact "correctly parses better preset"
     (veo/parse-model-and-prompt "better a cute cat")
-    => {:model "veo-3.6-generate-preview" :duration 8 :prompt "a cute cat"})
+    => {:model "veo-3.1-generate-preview" :duration 8 :prompt "a cute cat"})
 
   (fact "ignores preset when no prompt text follows"
     (veo/parse-model-and-prompt "lite")
@@ -90,11 +90,11 @@
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "lite a cool robot" {}) => {:prompt "lite a cool robot" :image-urls nil}
-        (gemini/generate-video "a cool robot" nil "veo-3.6-lite-generate-preview" 4) => :video-bytes
+        (gemini/generate-video "a cool robot" nil "veo-3.1-generate-preview" 4) => :video-bytes
         (store-image! :video-bytes) => "img123"
         (gemini/yetibot-base-url) => "http://localhost:3000"
-        (gemini/calculate-video-cost "veo-3.6-lite-generate-preview" 4) => 0.20
-        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4 (Cost: $0.20)") => anything)))
+        (gemini/calculate-video-cost "veo-3.1-generate-preview" 4) => 1.60
+        (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4 (Cost: $1.60)") => anything)))
 
   (fact "veo-cmd with gigaveo cmd generates 8s video with flagship model"
     (binding [chat/*adapter* :mock-adapter
@@ -106,10 +106,10 @@
       (provided
         (gemini/configured?) => true
         (image-input/extract-images "a cool robot" {}) => {:prompt "a cool robot" :image-urls nil}
-        (gemini/generate-video "a cool robot" nil "veo-3.6-generate-preview" 8) => :video-bytes
+        (gemini/generate-video "a cool robot" nil "veo-3.1-generate-preview" 8) => :video-bytes
         (store-image! :video-bytes) => "img123"
         (gemini/yetibot-base-url) => "http://localhost:3000"
-        (gemini/calculate-video-cost "veo-3.6-generate-preview" 8) => 3.20
+        (gemini/calculate-video-cost "veo-3.1-generate-preview" 8) => 3.20
         (chat/send-msg "<@user123>: http://localhost:3000/generated-images/img123.mp4 (Cost: $3.20)") => anything))))
 
 (facts "about redact"
