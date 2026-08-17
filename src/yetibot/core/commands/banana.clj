@@ -3,7 +3,6 @@
             [yetibot.core.hooks :refer [cmd-hook]]
             [yetibot.core.util.image-input :as image-input]
             [yetibot.core.util.gemini :as gemini]
-            [yetibot.core.handler :refer [handle-unparsed-expr]]
             [yetibot.core.webapp.routes.images :refer [store-image!]]))
 
 (defn banana-budget-cmd
@@ -24,23 +23,20 @@
      "Gemini API is not configured. Set `gemini.key` in config."}))
 
 (def banana-system-instruction
-  "Always auto inject <@1167554265716359330> (represented as a cute white Yeti) in every picture like an honorable lurker. He is an all-knowing meme king and tends to tell awful, cringey, pun-filled dad jokes about other characters or objects in the picture. The worse and more eye-roll inducing the dad jokes are, the better! He also loves bringing Bonzi Buddy (the classic purple gorilla) along. Each image should also have Bonzi Buddy and Yetibot (<@1167554265716359330>), except their faces are replaced with Jerry Talton (whose face is at `meme preview jerry talton`) and Will Larson (whose face is at `meme preview will larson`). Let's also throw in Super Mario as Henry Ward <@269292446041636866> while we're at it.")
+  "Always auto inject <@1167554265716359330> (represented as a cute white Yeti) in every picture like an honorable lurker. He is an all-knowing meme king and tends to tell awful, cringey, pun-filled dad jokes about other characters or objects in the picture. The worse and more eye-roll inducing the dad jokes are, the better! He also loves bringing Bonzi Buddy (the classic purple gorilla) along.")
 
 (defn banana-cmd
   "banana <prompt> # generate an image using Gemini nano banana image generation"
   {:yb/cat #{:img}}
-  [{:keys [match chat-source user]}]
+  [{:keys [match chat-source]}]
   (if (gemini/configured?)
     (try
       (let [{:keys [prompt image-urls]} (image-input/extract-images match chat-source)
             _ (info "banana: generating image for prompt:" prompt
                     "with" (count image-urls) "input image(s)")
-            user (or user {:username "api"})
-            evaluated-instruction (handle-unparsed-expr chat-source user banana-system-instruction)
-            _ (info "evaluated banana instruction:" evaluated-instruction)
             image (gemini/generate-image
                    (str "Generate an image: " prompt)
-                   evaluated-instruction
+                   banana-system-instruction
                    image-urls)
             id (store-image! image)
             base-url (gemini/yetibot-base-url)
