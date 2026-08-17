@@ -32,7 +32,8 @@
              (provided
                (gemini/configured?) => true
                (yetibot.core.util.image-input/extract-images "banana monkey" {}) => {:prompt "monkey" :image-urls []}
-               (gemini/generate-image "Generate an image: monkey" b/banana-system-instruction []) => {:data "bytes" :mime-type "image/png"}
+               (yetibot.core.handler/handle-unparsed-expr {} {:username "api"} b/banana-system-instruction) => "mocked evaluated instruction"
+               (gemini/generate-image "Generate an image: monkey" "mocked evaluated instruction" []) => {:data "bytes" :mime-type "image/png"}
                (yetibot.core.webapp.routes.images/store-image! {:data "bytes" :mime-type "image/png"}) => "img123"
                (gemini/yetibot-base-url) => "http://localhost:3003"
                (gemini/gemini-model) => "gemini-3.1-flash-image-preview"
