@@ -13,8 +13,9 @@
   (if (xai/configured?)
     (try
       (let [{:keys [prompt image-urls]} (image-input/extract-images match chat-source)
-            _ (info "image: generating image for prompt:" prompt)
-            image (xai/generate-image prompt)
+            _ (info "image: generating image for prompt:" prompt
+                    "with" (count image-urls) "input image(s)")
+            image (xai/generate-image prompt image-urls)
             id (store-image! image)
             base-url (gemini/yetibot-base-url)
             image-url (format "%s/generated-images/%s.png" base-url id)

@@ -16,6 +16,17 @@
              (provided
                (xai/configured?) => true
                (yetibot.core.util.image-input/extract-images "image space kitty" {}) => {:prompt "space kitty" :image-urls []}
-               (xai/generate-image "space kitty") => {:data "grokbytes" :mime-type "image/jpeg"}
+               (xai/generate-image "space kitty" []) => {:data "grokbytes" :mime-type "image/jpeg"}
+               (yetibot.core.webapp.routes.images/store-image! {:data "grokbytes" :mime-type "image/jpeg"}) => "grok123"
+               (gemini/yetibot-base-url) => "http://localhost:3003"))
+
+       (fact "it generates an image with extracted image URLs when links or attachments are present"
+             (img/image-cmd {:match "image space kitty https://example.com/kitty.jpg" :chat-source {}})
+             => (contains {:result/value #"http://localhost:3003/generated-images/grok123.png\n\nSent via grok-imagine-image-2.0"
+                           :result/data {:id "grok123" :prompt "image space kitty https://example.com/kitty.jpg" :url "http://localhost:3003/generated-images/grok123.png"}})
+             (provided
+               (xai/configured?) => true
+               (yetibot.core.util.image-input/extract-images "image space kitty https://example.com/kitty.jpg" {}) => {:prompt "space kitty" :image-urls ["https://example.com/kitty.jpg"]}
+               (xai/generate-image "space kitty" ["https://example.com/kitty.jpg"]) => {:data "grokbytes" :mime-type "image/jpeg"}
                (yetibot.core.webapp.routes.images/store-image! {:data "grokbytes" :mime-type "image/jpeg"}) => "grok123"
                (gemini/yetibot-base-url) => "http://localhost:3003")))

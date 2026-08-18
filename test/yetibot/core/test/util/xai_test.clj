@@ -25,6 +25,18 @@
                  => {:status 200
                      :body {:data [{:b64_json "b64data123"}]}})))
 
+       (fact "it generates an image with image-urls using the edits endpoint"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-image "a green banana" ["https://example.com/img1.jpg"]) => {:data "b64data123" :mime-type "image/jpeg"}
+               (provided
+                 (client/post "https://api.x.ai/v1/images/edits"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}
+                                         :content-type :json
+                                         :as :json
+                                         :body string?}))
+                 => {:status 200
+                     :body {:data [{:b64_json "b64data123"}]}})))
+
        (fact "it throws an error when API returns non-200 status"
              (with-redefs [xai/config {:key "secret-key"}]
                (xai/generate-image "a green banana") => (throws Exception #"xAI API error: Rate limit exceeded")
