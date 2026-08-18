@@ -22,6 +22,7 @@
         body {:model "grok-imagine-image-2.0"
               :prompt prompt
               :n 1
+              :quality "low"
               :response_format "b64_json"}
         response (client/post url
                               {:headers {"Authorization" (str "Bearer " api-key)}
