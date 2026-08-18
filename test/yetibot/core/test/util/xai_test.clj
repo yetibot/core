@@ -21,7 +21,7 @@
                               (contains {:headers {"Authorization" "Bearer secret-key"}
                                          :content-type :json
                                          :as :json
-                                         :body string?}))
+                                         :body (fn [b] (= "low" (get (json/read-str b) "quality")))}))
                  => {:status 200
                      :body {:data [{:b64_json "b64data123"}]}})))
 
@@ -33,7 +33,7 @@
                               (contains {:headers {"Authorization" "Bearer secret-key"}
                                          :content-type :json
                                          :as :json
-                                         :body string?}))
+                                         :body (fn [b] (= "low" (get (json/read-str b) "quality")))}))
                  => {:status 429
                      :body {:error {:message "Rate limit exceeded"}}})))
 
@@ -45,6 +45,6 @@
                               (contains {:headers {"Authorization" "Bearer secret-key"}
                                          :content-type :json
                                          :as :json
-                                         :body string?}))
+                                         :body (fn [b] (= "low" (get (json/read-str b) "quality")))}))
                  => {:status 200
                      :body {:data []}}))))
