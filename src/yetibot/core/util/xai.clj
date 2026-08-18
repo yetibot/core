@@ -7,12 +7,35 @@
             [yetibot.core.config :refer [get-config]]))
 
 (s/def ::key string?)
-(s/def ::config (s/keys :req-un [::key]))
+(s/def ::cost-per-image (s/or :string string? :number number?))
+(s/def ::cost-per-prompt (s/or :string string? :number number?))
+(s/def ::config (s/keys :req-un [::key] :opt-un [::cost-per-image ::cost-per-prompt]))
 
 (def config (or (:value (get-config ::config [:xai])) {}))
 
 (defn configured? []
   (some? (:key config)))
+
+(defn- parse-number
+  "Parse a string to a number, returning the number unchanged if it's already a number.
+   Returns nil if parsing fails."
+  [v]
+  (if (string? v)
+    (try
+      (Double/parseDouble v)
+      (catch Exception _ nil))
+    v))
+
+(def ^:private default-cost-per-image 0.04)
+(def ^:private default-cost-per-prompt 0.01)
+
+(defn cost-per-image []
+  (or (parse-number (:cost-per-image config))
+      default-cost-per-image))
+
+(defn cost-per-prompt []
+  (or (parse-number (:cost-per-prompt config))
+      default-cost-per-prompt))
 
 (defn generate-image
   "Call the xAI API to generate an image from a text prompt."

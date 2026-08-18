@@ -10,8 +10,9 @@
 
        (fact "it generates text and returns response with model footer when configured"
              (g/grok-cmd {:match "what is 2+2" :chat-source {}})
-             => (contains {:result/value "4\n\nSent via grok-4.6"
+             => (contains {:result/value "4\n\nSent via grok-4.6 | Cost: $0.010"
                            :result/data {:prompt "what is 2+2" :response "4"}})
              (provided
                (xai/configured?) => true
+               (xai/cost-per-prompt) => 0.01
                (xai/generate-text "what is 2+2") => "4")))

@@ -18,7 +18,7 @@
             id (store-image! image)
             base-url (gemini/yetibot-base-url)
             image-url (format "%s/generated-images/%s.png" base-url id)
-            footer "\n\nSent via grok-imagine-image-2.0"]
+            footer (format "\n\nSent via grok-imagine-image-2.0 | Cost: $%.3f" (xai/cost-per-image))]
         (info "image: image generated successfully, serving at" image-url)
         {:result/value (str image-url footer)
          :result/data {:id id :prompt match :url image-url}})
