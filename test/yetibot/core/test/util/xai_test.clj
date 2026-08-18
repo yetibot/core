@@ -21,9 +21,30 @@
                               (contains {:headers {"Authorization" "Bearer secret-key"}
                                          :content-type :json
                                          :as :json
-                                         :body string?}))
+                                         :body (fn [b]
+                                                 (let [parsed (json/read-str b)]
+                                                   (and (= "low" (get parsed "quality"))
+                                                        (= "grok-imagine-image-2.0" (get parsed "model"))
+                                                        (= "a green banana" (get parsed "prompt")))))}))
                  => {:status 200
                      :body {:data [{:b64_json "b64data123"}]}})))
+
+       (fact "it edits an image via /v1/images/edits when image-urls are provided"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-image "make it cool" ["https://example.com/img.png"]) => {:data "editb64data" :mime-type "image/jpeg"}
+               (provided
+                 (client/post "https://api.x.ai/v1/images/edits"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}
+                                         :content-type :json
+                                         :as :json
+                                         :body (fn [b]
+                                                 (let [parsed (json/read-str b)]
+                                                   (and (= "low" (get parsed "quality"))
+                                                        (= "grok-imagine-image-2.0" (get parsed "model"))
+                                                        (= "make it cool" (get parsed "prompt"))
+                                                        (= {"url" "https://example.com/img.png" "type" "image_url"} (get parsed "image")))))}))
+                 => {:status 200
+                     :body {:data [{:b64_json "editb64data"}]}})))
 
        (fact "it throws an error when API returns non-200 status"
              (with-redefs [xai/config {:key "secret-key"}]
@@ -48,3 +69,17 @@
                                          :body string?}))
                  => {:status 200
                      :body {:data []}}))))
+
+(facts "about xai generate-text"
+       (fact "it generates text and calculates cost based on usage"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-text "hello") => {:text "grok-response" :cost 0.000080}
+               (provided
+                 (client/post "https://api.x.ai/v1/chat/completions"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}
+                                         :content-type :json
+                                         :as :json
+                                         :body string?}))
+                 => {:status 200
+                     :body {:choices [{:message {:content "grok-response"}}]
+                            :usage {:prompt_tokens 10 :completion_tokens 10}}}))))
