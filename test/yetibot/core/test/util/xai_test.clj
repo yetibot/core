@@ -12,6 +12,28 @@
              (with-redefs [xai/config {}]
                (xai/configured?)) => false))
 
+(facts "about xai cost-per-image"
+       (fact "it returns default if not overridden in config"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/cost-per-image)) => 0.04)
+       (fact "it returns the configured number value"
+             (with-redefs [xai/config {:key "secret-key" :cost-per-image 0.055}]
+               (xai/cost-per-image)) => 0.055)
+       (fact "it returns the parsed string value from config"
+             (with-redefs [xai/config {:key "secret-key" :cost-per-image "0.065"}]
+               (xai/cost-per-image)) => 0.065))
+
+(facts "about xai cost-per-prompt"
+       (fact "it returns default if not overridden in config"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/cost-per-prompt)) => 0.01)
+       (fact "it returns the configured number value"
+             (with-redefs [xai/config {:key "secret-key" :cost-per-prompt 0.025}]
+               (xai/cost-per-prompt)) => 0.025)
+       (fact "it returns the parsed string value from config"
+             (with-redefs [xai/config {:key "secret-key" :cost-per-prompt "0.035"}]
+               (xai/cost-per-prompt)) => 0.035))
+
 (facts "about xai generate-image"
        (fact "it generates an image successfully when API returns valid data"
              (with-redefs [xai/config {:key "secret-key"}]

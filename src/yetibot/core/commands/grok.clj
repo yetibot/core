@@ -12,7 +12,7 @@
       (let [prompt match
             _ (info "grok: generating text for prompt:" prompt)
             text (xai/generate-text prompt)
-            footer "\n\nSent via grok-4.6"]
+            footer (format "\n\nSent via grok-4.6 | Cost: $%.3f" (xai/cost-per-prompt))]
         {:result/value (str text footer)
          :result/data {:prompt prompt :response text}})
       (catch Exception e
