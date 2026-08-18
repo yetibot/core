@@ -42,3 +42,29 @@
         (throw (ex-info (str "xAI API error: " error-msg)
                         {:type :xai-api-error
                          :status status}))))))
+
+(defn generate-text
+  "Call the xAI API to generate text from a prompt using grok-4.6."
+  [prompt]
+  (let [api-key (:key config)
+        url "https://api.x.ai/v1/chat/completions"
+        body {:model "grok-4.6"
+              :messages [{:role "user" :content prompt}]}
+        response (client/post url
+                              {:headers {"Authorization" (str "Bearer " api-key)}
+                               :content-type :json
+                               :body (json/write-str body)
+                               :as :json
+                               :throw-exceptions false})
+        status (:status response)]
+    (if (<= 200 status 299)
+      (if-let [text (get-in (:body response) [:choices 0 :message :content])]
+        text
+        (throw (ex-info "No chat completion content returned from xAI API."
+                        {:response-body (:body response)})))
+      (let [error-msg (or (get-in (:body response) [:error :message])
+                          (str "HTTP error " status))]
+        (error "xai: API error" status "-" error-msg)
+        (throw (ex-info (str "xAI API error: " error-msg)
+                        {:type :xai-api-error
+                         :status status}))))))
