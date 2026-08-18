@@ -16,20 +16,25 @@
 
 (defn generate-image
   "Call the xAI API to generate an image from a text prompt."
-  [prompt]
-  (let [api-key (:key config)
-        url "https://api.x.ai/v1/images/generations"
-        body {:model "grok-imagine-image-2.0"
-              :prompt prompt
-              :n 1
-              :response_format "b64_json"}
-        response (client/post url
-                              {:headers {"Authorization" (str "Bearer " api-key)}
-                               :content-type :json
-                               :body (json/write-str body)
-                               :as :json
-                               :throw-exceptions false})
-        status (:status response)]
+  ([prompt] (generate-image prompt nil))
+  ([prompt image-urls]
+   (let [api-key (:key config)
+         use-edits? (seq image-urls)
+         url (if use-edits?
+               "https://api.x.ai/v1/images/edits"
+               "https://api.x.ai/v1/images/generations")
+         body (cond-> {:model "grok-imagine-image-2.0"
+                       :prompt prompt
+                       :n 1
+                       :response_format "b64_json"}
+                use-edits? (assoc :images (mapv (fn [u] {:type "image_url" :url u}) image-urls)))
+         response (client/post url
+                               {:headers {"Authorization" (str "Bearer " api-key)}
+                                :content-type :json
+                                :body (json/write-str body)
+                                :as :json
+                                :throw-exceptions false})
+         status (:status response)]
     (if (<= 200 status 299)
       (if-let [b64-data (get-in (:body response) [:data 0 :b64_json])]
         {:data b64-data
@@ -41,7 +46,7 @@
         (error "xai: API error" status "-" error-msg)
         (throw (ex-info (str "xAI API error: " error-msg)
                         {:type :xai-api-error
-                         :status status}))))))
+                         :status status})))))))
 
 (defn generate-text
   "Call the xAI API to generate text from a prompt using grok-4.6."
