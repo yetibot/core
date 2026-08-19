@@ -26,9 +26,16 @@
          url (if has-images?
                "https://api.x.ai/v1/images/edits"
                "https://api.x.ai/v1/images/generations")
-         final-prompt (if (and has-images? (clojure.string/blank? prompt))
-                        "remix this image"
-                        prompt)
+         final-prompt (cond
+                        (not has-images?) prompt
+                        (clojure.string/blank? prompt) (if (> (count image-urls) 1)
+                                                         "combine these images beautifully"
+                                                         "remix this image")
+                        (and (> (count image-urls) 1)
+                             (not (clojure.string/includes? (clojure.string/lower-case prompt) "combine"))
+                             (not (clojure.string/includes? (clojure.string/lower-case prompt) "merge")))
+                        (str "Combine these images: " prompt)
+                        :else prompt)
          body (let [b {:model "grok-imagine-image-2.0"
                        :prompt final-prompt
                        :n 1
