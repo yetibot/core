@@ -29,4 +29,16 @@
                (yetibot.core.util.image-input/extract-images "sketch this" (contains {:raw-event map?})) => {:prompt "sketch this" :image-urls ["https://example.com/source.jpg"]}
                (xai/generate-image "sketch this" ["https://example.com/source.jpg"]) => {:data "grokbytes" :mime-type "image/jpeg"}
                (yetibot.core.webapp.routes.images/store-image! {:data "grokbytes" :mime-type "image/jpeg"}) => "grok123"
+               (gemini/yetibot-base-url) => "http://localhost:3003"))
+
+       (fact "it generates an edited image with multiple images when multiple image-urls/attachments are provided"
+             (img/image-cmd {:match "sketch these" :chat-source {:raw-event {:attachments [{:url "https://example.com/source1.jpg" :content-type "image/jpeg"}
+                                                                                          {:url "https://example.com/source2.jpg" :content-type "image/jpeg"}]}}})
+             => (contains {:result/value #"http://localhost:3003/generated-images/grok123.png\n\nSent via grok-imagine-image-2.0 \| Cost: \$0.04"
+                           :result/data {:id "grok123" :prompt "sketch these" :url "http://localhost:3003/generated-images/grok123.png"}})
+             (provided
+               (xai/configured?) => true
+               (yetibot.core.util.image-input/extract-images "sketch these" (contains {:raw-event map?})) => {:prompt "sketch these" :image-urls ["https://example.com/source1.jpg" "https://example.com/source2.jpg"]}
+               (xai/generate-image "sketch these" ["https://example.com/source1.jpg" "https://example.com/source2.jpg"]) => {:data "grokbytes" :mime-type "image/jpeg"}
+               (yetibot.core.webapp.routes.images/store-image! {:data "grokbytes" :mime-type "image/jpeg"}) => "grok123"
                (gemini/yetibot-base-url) => "http://localhost:3003")))

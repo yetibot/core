@@ -29,14 +29,17 @@
          final-prompt (if (and has-images? (clojure.string/blank? prompt))
                         "remix this image"
                         prompt)
-         body (cond-> {:model "grok-imagine-image-2.0"
+         body (let [b {:model "grok-imagine-image-2.0"
                        :prompt final-prompt
                        :n 1
                        :quality "low"
-                       :response_format "b64_json"}
-                has-images?
-                (assoc :image {:url (first image-urls)
-                               :type "image_url"}))
+                       :response_format "b64_json"}]
+                (if has-images?
+                  (if (> (count image-urls) 1)
+                    (assoc b :images (mapv (fn [u] {:url u :type "image_url"}) image-urls))
+                    (assoc b :image {:url (first image-urls)
+                                     :type "image_url"}))
+                  b))
          response (client/post url
                                {:headers {"Authorization" (str "Bearer " api-key)}
                                 :content-type :json
