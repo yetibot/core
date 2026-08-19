@@ -87,6 +87,28 @@
                  => {:status 200
                      :body {:data [{:b64_json "editb64data"}]}})))
 
+       (fact "it prepends 'Combine these images: ' to the prompt when multiple images are passed and prompt does not have combine/merge"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-image "sketch these" ["https://example.com/img1.png" "https://example.com/img2.png"]) => {:data "editb64data" :mime-type "image/jpeg"}
+               (provided
+                 (client/post "https://api.x.ai/v1/images/edits"
+                              (contains {:body (fn [b]
+                                                 (let [parsed (json/read-str b)]
+                                                   (= "Combine these images: sketch these" (get parsed "prompt"))))}))
+                 => {:status 200
+                     :body {:data [{:b64_json "editb64data"}]}})))
+
+       (fact "it defaults blank prompt to 'combine these images beautifully' when multiple images are passed"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-image "" ["https://example.com/img1.png" "https://example.com/img2.png"]) => {:data "editb64data" :mime-type "image/jpeg"}
+               (provided
+                 (client/post "https://api.x.ai/v1/images/edits"
+                              (contains {:body (fn [b]
+                                                 (let [parsed (json/read-str b)]
+                                                   (= "combine these images beautifully" (get parsed "prompt"))))}))
+                 => {:status 200
+                     :body {:data [{:b64_json "editb64data"}]}})))
+
        (fact "it throws an error when API returns non-200 status"
              (with-redefs [xai/config {:key "secret-key"}]
                (xai/generate-image "a green banana") => (throws Exception #"xAI API error: Rate limit exceeded")

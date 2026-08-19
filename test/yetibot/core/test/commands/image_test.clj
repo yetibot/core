@@ -31,7 +31,7 @@
                (yetibot.core.webapp.routes.images/store-image! {:data "grokbytes" :mime-type "image/jpeg"}) => "grok123"
                (gemini/yetibot-base-url) => "http://localhost:3003"))
 
-       (fact "it generates an edited image with multiple images when multiple image-urls/attachments are provided"
+       (fact "it generates an edited image with multiple images using grok even when Gemini is configured"
              (img/image-cmd {:match "sketch these" :chat-source {:raw-event {:attachments [{:url "https://example.com/source1.jpg" :content-type "image/jpeg"}
                                                                                           {:url "https://example.com/source2.jpg" :content-type "image/jpeg"}]}}})
              => (contains {:result/value #"http://localhost:3003/generated-images/grok123.png\n\nSent via grok-imagine-image-2.0 \| Cost: \$0.04"
