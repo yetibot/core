@@ -14,7 +14,8 @@
 
 (facts "about xai generate-image"
        (fact "it generates an image successfully when API returns valid data"
-             (with-redefs [xai/config {:key "secret-key"}]
+             (with-redefs [xai/config {:key "secret-key"}
+                           xai/optimize-image-prompt identity]
                (xai/generate-image "a green banana") => {:data "b64data123" :mime-type "image/jpeg"}
                (provided
                  (client/post "https://api.x.ai/v1/images/generations"
@@ -110,7 +111,8 @@
                      :body {:data [{:b64_json "editb64data"}]}})))
 
        (fact "it throws an error when API returns non-200 status"
-             (with-redefs [xai/config {:key "secret-key"}]
+             (with-redefs [xai/config {:key "secret-key"}
+                           xai/optimize-image-prompt identity]
                (xai/generate-image "a green banana") => (throws Exception #"xAI API error: Rate limit exceeded")
                (provided
                  (client/post "https://api.x.ai/v1/images/generations"
@@ -122,7 +124,8 @@
                      :body {:error {:message "Rate limit exceeded"}}})))
 
        (fact "it throws an error when API response is missing image data"
-             (with-redefs [xai/config {:key "secret-key"}]
+             (with-redefs [xai/config {:key "secret-key"}
+                           xai/optimize-image-prompt identity]
                (xai/generate-image "a green banana") => (throws Exception #"No image data returned from xAI API")
                (provided
                  (client/post "https://api.x.ai/v1/images/generations"
@@ -146,3 +149,19 @@
                  => {:status 200
                      :body {:choices [{:message {:content "grok-response"}}]
                             :usage {:prompt_tokens 10 :completion_tokens 10}}}))))
+
+(facts "about xai optimize-image-prompt"
+       (fact "it returns blank prompt unchanged"
+             (xai/optimize-image-prompt "") => "")
+
+       (fact "it optimizes prompt via generate-text when prompt is present"
+             (with-redefs [xai/generate-text (fn [p] {:text "optimized visual description" :cost 0.001})]
+               (xai/optimize-image-prompt "A slapping B") => "optimized visual description"))
+
+       (fact "it falls back gracefully on generate-text exceptions"
+             (with-redefs [xai/generate-text (fn [p] (throw (Exception. "API Error")))]
+               (xai/optimize-image-prompt "A slapping B") => "A slapping B"))
+
+       (fact "it falls back when generate-text returns nil"
+             (with-redefs [xai/generate-text (fn [p] {:text nil})]
+               (xai/optimize-image-prompt "A slapping B") => "A slapping B")))
