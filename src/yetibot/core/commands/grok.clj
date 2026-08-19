@@ -41,10 +41,6 @@
   (if (xai/configured?)
     (try
       (let [prompt match
-            _ (info "grok: generating text for prompt:" prompt)
-            {:keys [text cost]} (xai/generate-text prompt)
-            footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
-            response-text (str text footer)
             {:keys [raw-event]} chat-source
             channel-id (or (:channel-id raw-event) chat/*target*)
             msg-id (:id raw-event)
@@ -52,10 +48,23 @@
         (if (and on-discord channel-id msg-id)
           (let [thread-channel (start-thread! channel-id msg-id prompt)]
             (binding [chat/*target* thread-channel]
-              (chat/chat-data-structure response-text))
+              (chat/chat-data-structure "Thinking...")
+              (try
+                (let [_ (info "grok: generating text for prompt:" prompt)
+                      {:keys [text cost]} (xai/generate-text prompt)
+                      footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
+                      response-text (str text footer)]
+                  (chat/chat-data-structure response-text))
+                (catch Exception e
+                  (error "grok: text generation error:" (.getMessage e))
+                  (chat/chat-data-structure (str "Text generation failed: " (.getMessage e))))))
             (chat/suppress {}))
-          {:result/value response-text
-           :result/data {:prompt prompt :response text}}))
+          (let [_ (info "grok: generating text for prompt:" prompt)
+                {:keys [text cost]} (xai/generate-text prompt)
+                footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
+                response-text (str text footer)]
+            {:result/value response-text
+             :result/data {:prompt prompt :response text}})))
       (catch Exception e
         (error "grok: text generation error:" (.getMessage e))
         {:result/error (str "Text generation failed: " (.getMessage e))}))
