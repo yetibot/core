@@ -46,6 +46,24 @@
                  => {:status 200
                      :body {:data [{:b64_json "editb64data"}]}})))
 
+       (fact "it edits multiple images via /v1/images/edits when multiple image-urls are provided"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-image "combine these" ["https://example.com/img1.png" "https://example.com/img2.png"]) => {:data "editb64data" :mime-type "image/jpeg"}
+               (provided
+                 (client/post "https://api.x.ai/v1/images/edits"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}
+                                         :content-type :json
+                                         :as :json
+                                         :body (fn [b]
+                                                 (let [parsed (json/read-str b)]
+                                                   (and (= "low" (get parsed "quality"))
+                                                        (= "grok-imagine-image-2.0" (get parsed "model"))
+                                                        (= "combine these" (get parsed "prompt"))
+                                                        (= [{"url" "https://example.com/img1.png" "type" "image_url"}
+                                                            {"url" "https://example.com/img2.png" "type" "image_url"}] (get parsed "images")))))}))
+                 => {:status 200
+                     :body {:data [{:b64_json "editb64data"}]}})))
+
        (fact "it throws an error when API returns non-200 status"
              (with-redefs [xai/config {:key "secret-key"}]
                (xai/generate-image "a green banana") => (throws Exception #"xAI API error: Rate limit exceeded")
