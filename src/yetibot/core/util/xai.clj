@@ -36,7 +36,7 @@
                        :response_format "b64_json"}]
                 (if has-images?
                   (if (> (count image-urls) 1)
-                    (assoc b :images (mapv (fn [u] {:url u :type "image_url"}) (take 3 image-urls)))
+                    (assoc b :images (mapv (fn [u] {:url u :type "image_url"}) image-urls))
                     (assoc b :image {:url (first image-urls)
                                      :type "image_url"}))
                   b))
