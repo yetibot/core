@@ -90,10 +90,15 @@
        (filter image-attachment?)
        (mapv :url)))
 
-(defn- extract-inline-urls [prompt]
-  (let [urls (mapv first (re-seq image-url-pattern prompt))
-        cleaned (reduce #(str/replace %1 %2 "") prompt urls)]
-    {:urls urls :prompt (str/trim cleaned)}))
+(defn- extract-inline-urls [prompt start-idx]
+  (let [urls (distinct (mapv first (re-seq image-url-pattern prompt)))
+        url-to-label (into {} (map-indexed (fn [idx url]
+                                             [url (str "Image " (+ start-idx idx 1))])
+                                           urls))
+        cleaned (reduce (fn [p [url label]]
+                          (str/replace p url label))
+                        prompt url-to-label)]
+    {:urls (vec urls) :prompt (str/trim cleaned)}))
 
 (defn extract-images
   "Extract all image inputs from a command's prompt and chat-source.
@@ -104,6 +109,7 @@
   (let [raw-event (:raw-event chat-source)
         {avatar-urls :urls p1 :prompt} (extract-mention-avatars prompt raw-event)
         attachment-urls (extract-attachment-urls raw-event)
-        {inline-urls :urls p2 :prompt} (extract-inline-urls p1)]
+        start-idx (+ (count avatar-urls) (count attachment-urls))
+        {inline-urls :urls p2 :prompt} (extract-inline-urls p1 start-idx)]
     {:prompt p2
      :image-urls (into [] cat [avatar-urls attachment-urls inline-urls])}))

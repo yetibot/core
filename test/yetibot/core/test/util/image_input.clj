@@ -71,4 +71,30 @@
       "<@123456789>"
       {:raw-event {:mentions [{:id "123456789" :username "alice"}]}})
     => {:prompt "(Image 1 is @alice) @alice"
-        :image-urls ["https://cdn.discordapp.com/embed/avatars/5.png"]}))
+        :image-urls ["https://cdn.discordapp.com/embed/avatars/5.png"]})
+
+  (fact
+    "a single inline image URL is extracted and mapped to Image 1"
+    (img-input/extract-images
+      "extremely jacked benching https://i.imgflip.com/zuckerburg.jpg for reps"
+      {})
+    => {:prompt "extremely jacked benching Image 1 for reps"
+        :image-urls ["https://i.imgflip.com/zuckerburg.jpg"]})
+
+  (fact
+    "multiple inline image URLs are extracted and mapped sequentially"
+    (img-input/extract-images
+      "compare https://example.com/one.png and https://example.com/two.jpg side by side"
+      {})
+    => {:prompt "compare Image 1 and Image 2 side by side"
+        :image-urls ["https://example.com/one.png"
+                     "https://example.com/two.jpg"]})
+
+  (fact
+    "a mention and an inline URL are both extracted and mapped sequentially in prompt and urls list"
+    (img-input/extract-images
+      "extremely jacked <@123456789> benching https://i.imgflip.com/zuckerburg.jpg for reps"
+      {:raw-event {:mentions [{:id "123456789" :avatar "avatar123" :username "alice"}]}})
+    => {:prompt "(Image 1 is @alice) extremely jacked @alice benching Image 2 for reps"
+        :image-urls ["https://cdn.discordapp.com/avatars/123456789/avatar123.png?size=256"
+                     "https://i.imgflip.com/zuckerburg.jpg"]}))
