@@ -35,6 +35,25 @@
         (error "xai: failed to optimize prompt:" (.getMessage e))
         prompt))))
 
+(defn- extract-api-error
+  "Extract a human-readable error message from an xAI API error response body."
+  [body status]
+  (try
+    (let [parsed (if (string? body)
+                   (json/read-str body :key-fn keyword)
+                   body)]
+      (if (map? parsed)
+        (let [err (:error parsed)]
+          (cond
+            (map? err) (or (:message err) (str "HTTP error " status))
+            (string? err) err
+            (string? (:message parsed)) (:message parsed)
+            (string? (:detail parsed)) (:detail parsed)
+            :else (str "HTTP error " status)))
+        (str "HTTP error " status)))
+    (catch Exception _
+      (str "HTTP error " status))))
+
 (defn generate-image
   "Call the xAI API to generate an image from a text prompt.
    If image-urls is provided and non-empty, performs image editing via the /v1/images/edits endpoint."
@@ -82,8 +101,7 @@
           :mime-type "image/jpeg"}
          (throw (ex-info "No image data returned from xAI API."
                          {:response-body (:body response)})))
-       (let [error-msg (or (get-in (:body response) [:error :message])
-                           (str "HTTP error " status))]
+       (let [error-msg (extract-api-error (:body response) status)]
          (error "xai: API error" status "-" error-msg)
          (throw (ex-info (str "xAI API error: " error-msg)
                          {:type :xai-api-error
@@ -115,8 +133,7 @@
           {:text text :cost cost})
         (throw (ex-info "No chat completion content returned from xAI API."
                         {:response-body (:body response)})))
-      (let [error-msg (or (get-in (:body response) [:error :message])
-                          (str "HTTP error " status))]
+      (let [error-msg (extract-api-error (:body response) status)]
         (error "xai: API error" status "-" error-msg)
         (throw (ex-info (str "xAI API error: " error-msg)
                         {:type :xai-api-error

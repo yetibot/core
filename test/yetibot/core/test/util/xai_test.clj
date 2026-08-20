@@ -123,6 +123,46 @@
                  => {:status 429
                      :body {:error {:message "Rate limit exceeded"}}})))
 
+       (fact "it throws an error when API returns flat error message (non-nested)"
+             (with-redefs [xai/config {:key "secret-key"}
+                           xai/optimize-image-prompt identity]
+               (xai/generate-image "a green banana") => (throws Exception #"xAI API error: Argument not supported")
+               (provided
+                 (client/post "https://api.x.ai/v1/images/generations"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}
+                                         :content-type :json
+                                         :as :json
+                                         :body string?}))
+                 => {:status 400
+                     :body {:code "invalid_request_error"
+                            :error "Argument not supported"}})))
+
+       (fact "it throws an error when API returns flat error message as a raw JSON string"
+             (with-redefs [xai/config {:key "secret-key"}
+                           xai/optimize-image-prompt identity]
+               (xai/generate-image "a green banana") => (throws Exception #"xAI API error: Custom JSON string error")
+               (provided
+                 (client/post "https://api.x.ai/v1/images/generations"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}
+                                         :content-type :json
+                                         :as :json
+                                         :body string?}))
+                 => {:status 400
+                     :body "{\"error\": \"Custom JSON string error\"}"})))
+
+       (fact "it falls back to HTTP error status code when API response is unparseable"
+             (with-redefs [xai/config {:key "secret-key"}
+                           xai/optimize-image-prompt identity]
+               (xai/generate-image "a green banana") => (throws Exception #"xAI API error: HTTP error 400")
+               (provided
+                 (client/post "https://api.x.ai/v1/images/generations"
+                     (contains {:headers {"Authorization" "Bearer secret-key"}
+                                :content-type :json
+                                :as :json
+                                :body string?}))
+                 => {:status 400
+                     :body "Bad Request"})))
+
        (fact "it throws an error when API response is missing image data"
              (with-redefs [xai/config {:key "secret-key"}
                            xai/optimize-image-prompt identity]
