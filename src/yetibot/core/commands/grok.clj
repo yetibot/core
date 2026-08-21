@@ -34,6 +34,26 @@
         (catch Exception e (info "start-thread! fell back:" (.getMessage e)) nil))
       channel-id))
 
+(defn- format-stream-message [thinking content cost finished?]
+  (let [footer (if finished?
+                 (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
+                 "")
+        max-len 1900
+        content-len (count content)
+        footer-len (count footer)
+        allowed-thinking-len (- max-len content-len footer-len 100)]
+    (if (and (not (empty? thinking)) (> allowed-thinking-len 100))
+      (let [truncated-thinking (if (> (count thinking) allowed-thinking-len)
+                                 (str "...\n" (subs thinking (- (count thinking) allowed-thinking-len)))
+                                 thinking)
+            blockquote (clojure.string/replace truncated-thinking #"(?m)^" "> ")]
+        (if (empty? content)
+          (str "*Thinking...*\n" blockquote)
+          (str "*Thinking...*\n" blockquote "\n\n" content footer)))
+      (if (empty? content)
+        "*Thinking...*"
+        (str content footer)))))
+
 (defn grok-cmd
   "grok <prompt> # ask grok a question"
   {:yb/cat #{:ai}}
@@ -41,10 +61,6 @@
   (if (xai/configured?)
     (try
       (let [prompt match
-            _ (info "grok: generating text for prompt:" prompt)
-            {:keys [text cost]} (xai/generate-text prompt)
-            footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
-            response-text (str text footer)
             {:keys [raw-event]} chat-source
             channel-id (or (:channel-id raw-event) chat/*target*)
             msg-id (:id raw-event)
@@ -52,10 +68,48 @@
         (if (and on-discord channel-id msg-id)
           (let [thread-channel (start-thread! channel-id msg-id prompt)]
             (binding [chat/*target* thread-channel]
-              (chat/chat-data-structure response-text))
+              (let [thinking-msg @(discord/create-message! (rest-conn) thread-channel :content "*Thinking...*")
+                    message-id (:id thinking-msg)]
+                (if-not message-id
+                  (info "Could not create initial message on Discord thread")
+                  (try
+                    (let [thinking (atom "")
+                          content (atom "")
+                          cost-atom (atom 0.0)
+                          last-update (atom (System/currentTimeMillis))]
+                      (xai/generate-text-stream
+                        prompt
+                        (fn [{:keys [type text usage done]}]
+                          (cond
+                            (= type :thinking) (swap! thinking str text)
+                            (= type :content) (swap! content str text)
+                            (= type :usage) (let [prompt-tokens (get usage :prompt_tokens 0)
+                                                  completion-tokens (get usage :completion_tokens 0)
+                                                  raw-cost (+ (* prompt-tokens 0.000002)
+                                                              (* completion-tokens 0.000006))]
+                                              (reset! cost-atom (/ (Math/round (* raw-cost 1000000.0)) 1000000.0)))
+                            :else nil)
+                          (let [now (System/currentTimeMillis)]
+                            (when (or done (>= (- now @last-update) 1000))
+                              (reset! last-update now)
+                              (let [formatted-msg (format-stream-message @thinking @content @cost-atom (true? done))]
+                                (try
+                                  @(discord/edit-message! (rest-conn) thread-channel message-id :content formatted-msg)
+                                  (catch Exception e
+                                    (info "Failed to edit Discord message during stream:" (.getMessage e))))))))))
+                    (catch Exception e
+                      (error "grok: text generation error:" (.getMessage e))
+                      (try
+                        @(discord/edit-message! (rest-conn) thread-channel message-id :content (str "Text generation failed: " (.getMessage e)))
+                        (catch Exception edit-err
+                          (info "Failed to edit Discord message after error:" (.getMessage edit-err)))))))))
             (chat/suppress {}))
-          {:result/value response-text
-           :result/data {:prompt prompt :response text}}))
+          (let [_ (info "grok: generating text for prompt:" prompt)
+                {:keys [text cost]} (xai/generate-text prompt)
+                footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
+                response-text (str text footer)]
+            {:result/value response-text
+             :result/data {:prompt prompt :response text}})))
       (catch Exception e
         (error "grok: text generation error:" (.getMessage e))
         {:result/error (str "Text generation failed: " (.getMessage e))}))

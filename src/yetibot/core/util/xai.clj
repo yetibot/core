@@ -2,6 +2,7 @@
   "Shared utilities for interacting with the xAI API."
   (:require [clj-http.client :as client]
             [clojure.data.json :as json]
+            [clojure.string :as str]
             [clojure.spec.alpha :as s]
             [taoensso.timbre :refer [info error]]
             [yetibot.core.config :refer [get-config]]))
@@ -138,3 +139,47 @@
         (throw (ex-info (str "xAI API error: " error-msg)
                         {:type :xai-api-error
                          :status status}))))))
+
+(defn generate-text-stream
+  "Call the xAI API to generate text from a prompt using grok-4.6 with streaming.
+   Calls `on-chunk` function with a map of {:type :thinking/:content, :text string?, :done boolean?}
+   on every line/chunk."
+  [prompt on-chunk]
+  (let [api-key (:key config)
+        url "https://api.x.ai/v1/chat/completions"
+        body {:model "grok-4.6"
+              :messages [{:role "user" :content prompt}]
+              :stream true
+              :stream_options {:include_usage true}}
+        response (client/post url
+                              {:headers {"Authorization" (str "Bearer " api-key)}
+                               :content-type :json
+                               :body (json/write-str body)
+                               :as :reader
+                               :throw-exceptions false})]
+    (if (<= 200 (:status response) 299)
+      (with-open [reader (:body response)]
+        (doseq [line (line-seq reader)]
+          (let [trimmed (str/trim line)]
+            (when (and (not (empty? trimmed)) (str/starts-with? trimmed "data: "))
+              (let [data-str (subs trimmed 6)]
+                (if (= data-str "[DONE]")
+                  (on-chunk {:done true})
+                  (try
+                    (let [chunk-json (json/read-str data-str :key-fn keyword)
+                          delta (get-in chunk-json [:choices 0 :delta])
+                          reasoning (:reasoning_content delta)
+                          content (:content delta)
+                          usage (:usage chunk-json)]
+                      (cond
+                        reasoning (on-chunk {:type :thinking :text reasoning})
+                        content (on-chunk {:type :content :text content})
+                        usage (on-chunk {:type :usage :usage usage})
+                        :else nil))
+                    (catch Exception e
+                      (info "Failed to parse JSON stream chunk" e)))))))))
+      (let [error-msg (str "HTTP error " (:status response))]
+        (error "xai: API error" (:status response) "-" error-msg)
+        (throw (ex-info (str "xAI API error: " error-msg)
+                        {:type :xai-api-error
+                         :status (:status response)}))))))
