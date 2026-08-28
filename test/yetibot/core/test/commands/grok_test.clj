@@ -2,7 +2,8 @@
   (:require [midje.sweet :refer [facts fact => contains provided]]
             [yetibot.core.commands.grok :as g]
             [yetibot.core.util.xai :as xai]
-            [yetibot.core.chat :as chat]))
+            [yetibot.core.chat :as chat]
+            [yetibot.core.commands.agent :as agent]))
 
 (facts "about grok-cmd"
        (fact "it returns an error if xAI is not configured"
@@ -27,3 +28,14 @@
                (g/discord?) => true
                (g/start-thread! "chan-1" "msg-1" "what is 2+2") => "thread-1"
                (chat/chat-data-structure "4\n\nSent via grok-4.6 | Cost: $0.0001") => nil)))
+
+(facts "about grok-agent-cmd"
+       (fact "it returns an error if agent is not configured"
+             (g/grok-agent-cmd {:match ["grok agent test" "test"] :chat-source {}}) => (contains {:result/error string?})
+             (provided (agent/configured?) => false))
+
+       (fact "it delegates to agent-cmd when agent is configured"
+             (g/grok-agent-cmd {:match ["grok agent test" "test"] :chat-source {}}) => "agent-result"
+             (provided
+               (agent/configured?) => true
+               (agent/agent-cmd (contains {:match ["test" "test"]})) => "agent-result")))

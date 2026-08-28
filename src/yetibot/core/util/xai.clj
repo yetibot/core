@@ -21,19 +21,21 @@
 (defn optimize-image-prompt
   "Use Grok text generation to rewrite/optimize the prompt to make subjects,
    direction of actions, and spatial relationships extremely explicit."
-  [prompt]
-  (if (clojure.string/blank? prompt)
-    prompt
-    (try
-      (let [system-prompt "You are an expert image prompt optimizer. The user wants to generate an image from the prompt. To ensure that the image generator does NOT reverse the subjects or people (e.g., if the user says 'A slapping B', it shouldn't show B slapping A), rewrite the prompt into a highly detailed, visually unambiguous description of the scene. Clearly define who is the active subject (initiating the action) and who is the passive object (receiving the action). Describe their physical actions, relative positions (e.g. 'on the left, person A is doing X; on the right, person B is reacting to X'), poses, facial expressions, and composition in explicit detail. Do NOT use ambiguous phrasing. Ensure the direction of the action is 100% clear. Keep the final description concise but extremely descriptive and visually specific for an image generator (like Grok Imagine). Do NOT include any meta-text, conversational preamble, or explanations; return ONLY the optimized image prompt."
-            full-prompt (str system-prompt "\n\nUser prompt: \"" prompt "\"")
-            {:keys [text]} (generate-text full-prompt)]
-        (if (and text (not (clojure.string/blank? text)))
-          (clojure.string/trim text)
-          prompt))
-      (catch Exception e
-        (error "xai: failed to optimize prompt:" (.getMessage e))
-        prompt))))
+  ([prompt] (optimize-image-prompt prompt nil))
+  ([prompt system-instruction]
+   (if (clojure.string/blank? prompt)
+     prompt
+     (try
+       (let [system-prompt (cond-> "You are an expert image prompt optimizer. The user wants to generate an image from the prompt. To ensure that the image generator does NOT reverse the subjects or people (e.g., if the user says 'A slapping B', it shouldn't show B slapping A), rewrite the prompt into a highly detailed, visually unambiguous description of the scene. Clearly define who is the active subject (initiating the action) and who is the passive object (receiving the action). Describe their physical actions, relative positions (e.g. 'on the left, person A is doing X; on the right, person B is reacting to X'), poses, facial expressions, and composition in explicit detail. Do NOT use ambiguous phrasing. Ensure the direction of the action is 100% clear. Keep the final description concise but extremely descriptive and visually specific for an image generator (like Grok Imagine). Do NOT include any meta-text, conversational preamble, or explanations; return ONLY the optimized image prompt."
+                             system-instruction (str "\n\nAdditional instruction: " system-instruction))
+             full-prompt (str system-prompt "\n\nUser prompt: \"" prompt "\"")
+             {:keys [text]} (generate-text full-prompt)]
+         (if (and text (not (clojure.string/blank? text)))
+           (clojure.string/trim text)
+           prompt))
+       (catch Exception e
+         (error "xai: failed to optimize prompt:" (.getMessage e))
+         prompt)))))
 
 (defn- extract-api-error
   "Extract a human-readable error message from an xAI API error response body."
@@ -57,16 +59,22 @@
 (defn generate-image
   "Call the xAI API to generate an image from a text prompt.
    If image-urls is provided and non-empty, performs image editing via the /v1/images/edits endpoint."
-  ([prompt] (generate-image prompt nil))
-  ([prompt image-urls]
+  ([prompt] (generate-image prompt nil nil))
+  ([prompt image-urls] (generate-image prompt nil image-urls))
+  ([prompt system-instruction image-urls]
+   (println "DEBUG: generate-image called with prompt=" (pr-str prompt) "system-instruction=" (pr-str system-instruction) "image-urls=" (pr-str image-urls))
    (let [api-key (:key config)
          has-images? (seq image-urls)
          url (if has-images?
                "https://api.x.ai/v1/images/edits"
                "https://api.x.ai/v1/images/generations")
          optimized-prompt (if has-images?
-                            prompt
-                            (optimize-image-prompt prompt))
+                            (if system-instruction
+                              (str system-instruction "\n\n" prompt)
+                              prompt)
+                            (if system-instruction
+                              (optimize-image-prompt prompt system-instruction)
+                              (optimize-image-prompt prompt)))
          final-prompt (cond
                         (not has-images?) optimized-prompt
                         (clojure.string/blank? prompt) (if (> (count image-urls) 1)

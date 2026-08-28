@@ -16,7 +16,7 @@
              (provided
                (xai/configured?) => true
                (yetibot.core.util.image-input/extract-images "image space kitty" {}) => {:prompt "space kitty" :image-urls []}
-               (xai/generate-image "space kitty" []) => {:data "grokbytes" :mime-type "image/jpeg"}
+               (xai/generate-image "space kitty" img/image-system-instruction []) => {:data "grokbytes" :mime-type "image/jpeg"}
                (yetibot.core.webapp.routes.images/store-image! {:data "grokbytes" :mime-type "image/jpeg"}) => "grok123"
                (gemini/yetibot-base-url) => "http://localhost:3003"))
 
@@ -27,7 +27,7 @@
              (provided
                (xai/configured?) => true
                (yetibot.core.util.image-input/extract-images "sketch this" (contains {:raw-event map?})) => {:prompt "sketch this" :image-urls ["https://example.com/source.jpg"]}
-               (xai/generate-image "sketch this" ["https://example.com/source.jpg"]) => {:data "grokbytes" :mime-type "image/jpeg"}
+               (xai/generate-image "sketch this" img/image-system-instruction ["https://example.com/source.jpg"]) => {:data "grokbytes" :mime-type "image/jpeg"}
                (yetibot.core.webapp.routes.images/store-image! {:data "grokbytes" :mime-type "image/jpeg"}) => "grok123"
                (gemini/yetibot-base-url) => "http://localhost:3003"))
 
@@ -39,6 +39,6 @@
              (provided
                (xai/configured?) => true
                (yetibot.core.util.image-input/extract-images "sketch these" (contains {:raw-event map?})) => {:prompt "sketch these" :image-urls ["https://example.com/source1.jpg" "https://example.com/source2.jpg"]}
-               (xai/generate-image "sketch these" ["https://example.com/source1.jpg" "https://example.com/source2.jpg"]) => {:data "grokbytes" :mime-type "image/jpeg"}
+               (xai/generate-image "sketch these" img/image-system-instruction ["https://example.com/source1.jpg" "https://example.com/source2.jpg"]) => {:data "grokbytes" :mime-type "image/jpeg"}
                (yetibot.core.webapp.routes.images/store-image! {:data "grokbytes" :mime-type "image/jpeg"}) => "grok123"
                (gemini/yetibot-base-url) => "http://localhost:3003")))
