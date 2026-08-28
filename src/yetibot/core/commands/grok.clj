@@ -5,7 +5,8 @@
             [yetibot.core.adapters.adapter :as a]
             [yetibot.core.chat :as chat]
             [discljord.messaging :as discord]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [yetibot.core.commands.agent :as agent]))
 
 (defn- format-cost
   "Format cost to 4 decimal places if it's less than $0.01, otherwise 2 decimal places."
@@ -62,5 +63,14 @@
     {:result/error
      "xAI API is not configured. Set `xai.key` in config."}))
 
+(defn grok-agent-cmd
+  "grok agent <prompt> # run the autonomous agent using Grok's agent powers"
+  {:yb/cat #{:util}}
+  [{[_ prompt] :match :as opts}]
+  (if (agent/configured?)
+    (agent/agent-cmd (assoc opts :match [prompt prompt]))
+    {:result/error "Agent is not configured."}))
+
 (cmd-hook #"grok"
+  #"agent\s+(?s)(.+)" grok-agent-cmd
   #".+" grok-cmd)
