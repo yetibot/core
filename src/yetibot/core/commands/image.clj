@@ -7,7 +7,7 @@
             [yetibot.core.webapp.routes.images :refer [store-image!]]))
 
 (def image-system-instruction
-  "Always auto inject <@1167554265716359330> (represented as a cute white Yeti) in every picture like an honorable lurker. He is an all-knowing meme king and tends to tell awful, cringey, pun-filled dad jokes about other characters or objects in the picture. The worse and more eye-roll inducing the dad jokes are, the better! He also loves bringing Bonzi Buddy (the classic purple gorilla) along.")
+  "Always include Bonzi Buddy (the purple gorilla desktop assistant) and Yetibot as characters in the scene. Weave in light dad-joke energy (puns, groaners, “hi-yo” energy) without making the image text-heavy unless the user asked for it. Keep the rest of the user’s description as the main subject.")
 
 (defn image-cmd
   "image <prompt> (or img <prompt>) # generate an image using grok image 2.0"
