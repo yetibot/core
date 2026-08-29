@@ -69,22 +69,25 @@
                "https://api.x.ai/v1/images/edits"
                "https://api.x.ai/v1/images/generations")
          optimized-prompt (if has-images?
-                            (if system-instruction
-                              (str system-instruction "\n\n" prompt)
-                              prompt)
+                            nil
                             (if system-instruction
                               (optimize-image-prompt prompt system-instruction)
                               (optimize-image-prompt prompt)))
-         final-prompt (cond
-                        (not has-images?) optimized-prompt
-                        (clojure.string/blank? prompt) (if (> (count image-urls) 1)
-                                                         "combine these images beautifully"
-                                                         "remix this image")
-                        (and (> (count image-urls) 1)
-                             (not (clojure.string/includes? (clojure.string/lower-case prompt) "combine"))
-                             (not (clojure.string/includes? (clojure.string/lower-case prompt) "merge")))
-                        (str "Combine these images: " prompt)
-                        :else prompt)
+         base-prompt (cond
+                       (not has-images?) nil
+                       (clojure.string/blank? prompt) (if (> (count image-urls) 1)
+                                                        "combine these images beautifully"
+                                                        "remix this image")
+                       (and (> (count image-urls) 1)
+                            (not (clojure.string/includes? (clojure.string/lower-case prompt) "combine"))
+                            (not (clojure.string/includes? (clojure.string/lower-case prompt) "merge")))
+                       (str "Combine these images: " prompt)
+                       :else prompt)
+         final-prompt (if has-images?
+                        (if system-instruction
+                          (str system-instruction "\n\n" base-prompt)
+                          base-prompt)
+                        optimized-prompt)
          body (let [b {:model "grok-imagine-image-2.0"
                        :prompt final-prompt
                        :n 1

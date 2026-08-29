@@ -110,6 +110,17 @@
                  => {:status 200
                      :body {:data [{:b64_json "editb64data"}]}})))
 
+       (fact "it prepends system-instruction to the prompt when has-images? is true"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-image "make it cool" "Always include Bonzi Buddy" ["https://example.com/img.png"]) => {:data "editb64data" :mime-type "image/jpeg"}
+               (provided
+                 (client/post "https://api.x.ai/v1/images/edits"
+                              (contains {:body (fn [b]
+                                                 (let [parsed (json/read-str b)]
+                                                   (= "Always include Bonzi Buddy\n\nmake it cool" (get parsed "prompt"))))}))
+                 => {:status 200
+                     :body {:data [{:b64_json "editb64data"}]}})))
+
        (fact "it throws an error when API returns non-200 status"
              (with-redefs [xai/config {:key "secret-key"}
                            xai/optimize-image-prompt identity]
