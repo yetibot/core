@@ -7,7 +7,7 @@
             [yetibot.core.webapp.routes.images :refer [store-image!]]))
 
 (defn grokimage-cmd
-  "grokimage <prompt> (or grokimg <prompt>) # generate an image using grok image 2.0"
+  "grokimage <prompt> (or gi/gimg/grokimg <prompt>) # generate an image using grok image 2.0"
   {:yb/cat #{:img}}
   [{:keys [match chat-source]}]
   (if (xai/configured?)
@@ -29,5 +29,5 @@
     {:result/error
      "xAI API is not configured. Set `xai.key` in config."}))
 
-(cmd-hook #"grokimage|grokimg|grok-image"
+(cmd-hook #"grokimage|grokimg|grok-image|gimg|gi"
   #".*" grokimage-cmd)
