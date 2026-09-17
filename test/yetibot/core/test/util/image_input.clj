@@ -98,3 +98,32 @@
     => {:prompt "(Image 1 is @alice) extremely jacked @alice benching Image 2 for reps"
         :image-urls ["https://cdn.discordapp.com/avatars/123456789/avatar123.png?size=256"
                      "https://i.imgflip.com/zuckerburg.jpg"]}))
+
+(facts
+  "about resolving discord mentions directly"
+  (fact
+    "it replaces discord mentions with @username"
+    (img-input/resolve-mentions
+      "Hello <@123456789> and <@!987654321>"
+      {:mentions [{:id "123456789" :username "alice"}
+                  {:id "987654321" :username "bob"}]})
+    => "Hello @alice and @bob")
+
+  (fact
+    "it handles non-string inputs safely"
+    (img-input/resolve-mentions nil {:mentions [{:id "123" :username "alice"}]})
+    => nil)
+
+  (fact
+    "it handles missing or empty mentions list"
+    (img-input/resolve-mentions "Hello <@123>" nil)
+    => "Hello <@123>")
+
+  (fact
+    "it handles missing usernames or ids gracefully"
+    (img-input/resolve-mentions
+      "Hello <@123> and <@456>"
+      {:mentions [{:id "123"}
+                  {:username "bob"}]})
+    => "Hello <@123> and <@456>")
+  )

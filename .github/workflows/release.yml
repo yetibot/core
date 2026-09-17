@@ -11,7 +11,7 @@ jobs:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
     # Docker Hub image that `container-job` executes in
-    container: clojure:lein-bullseye
+    container: clojure:temurin-17-lein-bookworm
     services:
       # Label used to access the service container
       postgres:
