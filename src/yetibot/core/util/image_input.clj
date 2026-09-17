@@ -50,16 +50,28 @@
     (cond-> (vec mentions)
       me-mention (conj me-mention))))
 
+(defn resolve-mentions
+  "Replace Discord mentions (<@id> and <@!id>) with @username in text using mentions from raw-event."
+  [text raw-event]
+  (if (string? text)
+    (let [mentions (or (:mentions raw-event) [])]
+      (reduce (fn [t entity]
+                (let [id (:id entity)
+                      username (:username entity)]
+                  (if (and id username)
+                    (-> t
+                        (str/replace (str "<@!" id ">") (str "@" username))
+                        (str/replace (str "<@" id ">") (str "@" username)))
+                    t)))
+              text mentions))
+    text))
+
 (defn- replace-entities [prompt entities]
-  (reduce (fn [p entity]
-            (if (:is-me? entity)
-              (str/replace p #"(?i)\bme\b" (str "@" (:username entity)))
-              (let [id (:id entity)
-                    username (:username entity)]
-                (-> p
-                    (str/replace (str "<@!" id ">") (str "@" username))
-                    (str/replace (str "<@" id ">") (str "@" username))))))
-          prompt entities))
+  (let [p-mentions (resolve-mentions prompt {:mentions entities})
+        me-entity (first (filter :is-me? entities))]
+    (if (and me-entity (string? p-mentions))
+      (str/replace p-mentions #"(?i)\bme\b" (str "@" (:username me-entity)))
+      p-mentions)))
 
 (defn- build-labels-prefix [entities]
   (if (seq entities)
