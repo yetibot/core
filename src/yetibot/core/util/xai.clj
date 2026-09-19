@@ -138,18 +138,21 @@
                                :throw-exceptions false})
         status (:status response)]
     (if (<= 200 status 299)
-      (if-let [text (get-in (:body response) [:choices 0 :message :content])]
-        (let [reasoning (or (get-in (:body response) [:choices 0 :message :reasoning_content])
-                            (get-in (:body response) [:choices 0 :message :reasoning]))
-              usage (get-in (:body response) [:usage])
-              prompt-tokens (get usage :prompt_tokens 0)
-              completion-tokens (get usage :completion_tokens 0)
-              raw-cost (+ (* prompt-tokens 0.000002)
-                          (* completion-tokens 0.000006))
-              cost (/ (Math/round (* raw-cost 1000000.0)) 1000000.0)]
-          {:text text :reasoning reasoning :cost cost})
-        (throw (ex-info "No chat completion content returned from xAI API."
-                        {:response-body (:body response)})))
+      (let [message (get-in (:body response) [:choices 0 :message])
+            text (:content message)
+            reasoning (or (:reasoning_content message)
+                          (:reasoning message))]
+        (if (or text reasoning)
+          (let [usage (get-in (:body response) [:usage])
+                prompt-tokens (get usage :prompt_tokens 0)
+                completion-tokens (get usage :completion_tokens 0)
+                raw-cost (+ (* prompt-tokens 0.000002)
+                            (* completion-tokens 0.000006))
+                cost (/ (Math/round (* raw-cost 1000000.0)) 1000000.0)]
+            (cond-> {:text text :cost cost}
+              reasoning (assoc :reasoning reasoning)))
+          (throw (ex-info "No chat completion content or reasoning returned from xAI API."
+                          {:response-body (:body response)}))))
       (let [error-msg (extract-api-error (:body response) status)]
         (error "xai: API error" status "-" error-msg)
         (throw (ex-info (str "xAI API error: " error-msg)
