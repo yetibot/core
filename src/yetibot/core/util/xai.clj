@@ -124,8 +124,12 @@
   [prompt]
   (let [api-key (:key config)
         url "https://api.x.ai/v1/chat/completions"
+        messages (if (and (sequential? prompt)
+                          (map? (first prompt)))
+                   prompt
+                   [{:role "user" :content prompt}])
         body {:model "grok-4.6"
-              :messages [{:role "user" :content prompt}]}
+              :messages messages}
         response (client/post url
                               {:headers {"Authorization" (str "Bearer " api-key)}
                                :content-type :json

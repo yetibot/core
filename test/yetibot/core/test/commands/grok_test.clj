@@ -3,7 +3,8 @@
             [yetibot.core.commands.grok :as g]
             [yetibot.core.util.xai :as xai]
             [yetibot.core.chat :as chat]
-            [yetibot.core.commands.agent :as agent]))
+            [yetibot.core.commands.agent :as agent]
+            [discljord.messaging :as discord]))
 
 (facts "about grok-cmd"
        (fact "it returns an error if xAI is not configured"
@@ -27,6 +28,29 @@
                (xai/generate-text "what is 2+2") => {:text "4" :cost 0.00012}
                (g/discord?) => true
                (g/start-thread! "chan-1" "msg-1" "what is 2+2") => "thread-1"
+               (chat/chat-data-structure "4\n\nSent via grok-4.6 | Cost: $0.0001") => nil))
+
+       (fact "on Discord inside a thread, it retrieves and includes thread history"
+             (meta (g/grok-cmd {:match "what is the next number?"
+                                :chat-source {:raw-event {:channel-id "thread-1" :id "msg-2"}}}))
+             => (contains {:suppress true})
+             (provided
+               (xai/configured?) => true
+               (g/discord?) => true
+               (g/rest-conn) => "mock-rest-conn"
+               (discord/get-channel! "mock-rest-conn" "thread-1") => (atom {:type 11 :name "grok thread"})
+               (discord/get-channel-messages! "mock-rest-conn" "thread-1" :limit 20) => (atom [{:id "msg-1"
+                                                                                                :content "grok the numbers 1, 2, 3"
+                                                                                                :timestamp 1000
+                                                                                                :author {:username "Alice" :bot false}}
+                                                                                               {:id "msg-2"
+                                                                                                :content "grok what is the next number?"
+                                                                                                :timestamp 2000
+                                                                                                :author {:username "Alice" :bot false}}])
+               (xai/generate-text [{:role "user" :content "the numbers 1, 2, 3"}
+                                   {:role "user" :content "what is the next number?"}])
+               => {:text "4" :cost 0.00012}
+               (g/start-thread! "thread-1" "msg-2" "what is the next number?") => "thread-1"
                (chat/chat-data-structure "4\n\nSent via grok-4.6 | Cost: $0.0001") => nil)))
 
 (facts "about grok-agent-cmd"
