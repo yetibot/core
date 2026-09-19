@@ -190,7 +190,7 @@
 (facts "about xai generate-text"
        (fact "it generates text and calculates cost based on usage"
              (with-redefs [xai/config {:key "secret-key"}]
-               (xai/generate-text "hello") => {:text "grok-response" :cost 0.000080}
+               (xai/generate-text "hello") => (contains {:text "grok-response" :cost 0.000080})
                (provided
                  (client/post "https://api.x.ai/v1/chat/completions"
                               (contains {:headers {"Authorization" "Bearer secret-key"}
@@ -199,6 +199,19 @@
                                          :body string?}))
                  => {:status 200
                      :body {:choices [{:message {:content "grok-response"}}]
+                            :usage {:prompt_tokens 10 :completion_tokens 10}}})))
+
+       (fact "it generates text and includes reasoning_content when present"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-text "hello") => (contains {:text "grok-response" :reasoning "thinking process" :cost 0.000080})
+               (provided
+                 (client/post "https://api.x.ai/v1/chat/completions"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}
+                                         :content-type :json
+                                         :as :json
+                                         :body string?}))
+                 => {:status 200
+                     :body {:choices [{:message {:content "grok-response" :reasoning_content "thinking process"}}]
                             :usage {:prompt_tokens 10 :completion_tokens 10}}}))))
 
 (facts "about xai optimize-image-prompt"

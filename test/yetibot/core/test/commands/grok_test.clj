@@ -30,7 +30,8 @@
                (g/rest-conn) => "mock-rest-conn"
                (g/start-thread! "chan-1" "msg-1" "what is 2+2") => "thread-1"
                (discord/create-message! "mock-rest-conn" "thread-1" :content "*thinking* ▰") => (atom {:id "thinking-msg-id"})
-               (discord/edit-message! "mock-rest-conn" "thread-1" "thinking-msg-id" :content "4\n\nSent via grok-4.6 | Cost: $0.0001") => (atom {})))
+               (discord/delete-message! "mock-rest-conn" "thread-1" "thinking-msg-id") => (atom {})
+               (chat/chat-data-structure "4\n\nSent via grok-4.6 | Cost: $0.0001") => nil))
 
        (fact "on Discord inside a thread, it retrieves and includes thread history"
              (meta (g/grok-cmd {:match "what is the next number?"
@@ -54,7 +55,8 @@
                => {:text "4" :cost 0.00012}
                (g/start-thread! "thread-1" "msg-2" "what is the next number?") => "thread-1"
                (discord/create-message! "mock-rest-conn" "thread-1" :content "*thinking* ▰") => (atom {:id "thinking-msg-id"})
-               (discord/edit-message! "mock-rest-conn" "thread-1" "thinking-msg-id" :content "4\n\nSent via grok-4.6 | Cost: $0.0001") => (atom {}))))
+               (discord/delete-message! "mock-rest-conn" "thread-1" "thinking-msg-id") => (atom {})
+               (chat/chat-data-structure "4\n\nSent via grok-4.6 | Cost: $0.0001") => nil)))
 
 (facts "about grok-agent-cmd"
        (fact "it returns an error if agent is not configured"
@@ -66,3 +68,12 @@
              (provided
                (agent/configured?) => true
                (agent/agent-cmd (contains {:match ["test" "test"]})) => "agent-result")))
+
+(facts "about format-grok-response"
+       (fact "returns text untouched if reasoning is blank"
+             (#'g/format-grok-response "hello" "") => "hello"
+             (#'g/format-grok-response "hello" nil) => "hello")
+
+       (fact "adds blockquote formatted reasoning if present"
+             (#'g/format-grok-response "hello" "first step\nsecond step")
+             => "### 🧠 Thinking Process\n> first step\n> second step\n\nhello"))
