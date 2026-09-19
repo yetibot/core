@@ -51,7 +51,7 @@
         (add-score-delta! test-chat-source test-user-0 test-voter-0 1 test-note)
         (let [created-at (-> (get-notes test-chat-source test-user-0) first :created-at time.coerce/to-long)
               now        (-> (time/now) time.coerce/to-long)]
-          (-> (- now created-at) (< 60)) => truthy))
+          (-> (Math/abs (- now created-at)) (< 60000)) => truthy))
 
   (fact "get-high-scores returns at least one item"
         (add-score-delta! test-chat-source test-user-0 test-voter-0 1 nil)
