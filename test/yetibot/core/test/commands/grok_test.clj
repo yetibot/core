@@ -27,8 +27,10 @@
                (xai/configured?) => true
                (xai/generate-text "what is 2+2") => {:text "4" :cost 0.00012}
                (g/discord?) => true
+               (g/rest-conn) => "mock-rest-conn"
                (g/start-thread! "chan-1" "msg-1" "what is 2+2") => "thread-1"
-               (chat/chat-data-structure "4\n\nSent via grok-4.6 | Cost: $0.0001") => nil))
+               (discord/create-message! "mock-rest-conn" "thread-1" :content "*thinking* ▰") => (atom {:id "thinking-msg-id"})
+               (discord/edit-message! "mock-rest-conn" "thread-1" "thinking-msg-id" :content "4\n\nSent via grok-4.6 | Cost: $0.0001") => (atom {})))
 
        (fact "on Discord inside a thread, it retrieves and includes thread history"
              (meta (g/grok-cmd {:match "what is the next number?"
@@ -51,7 +53,8 @@
                                    {:role "user" :content "what is the next number?"}])
                => {:text "4" :cost 0.00012}
                (g/start-thread! "thread-1" "msg-2" "what is the next number?") => "thread-1"
-               (chat/chat-data-structure "4\n\nSent via grok-4.6 | Cost: $0.0001") => nil)))
+               (discord/create-message! "mock-rest-conn" "thread-1" :content "*thinking* ▰") => (atom {:id "thinking-msg-id"})
+               (discord/edit-message! "mock-rest-conn" "thread-1" "thinking-msg-id" :content "4\n\nSent via grok-4.6 | Cost: $0.0001") => (atom {}))))
 
 (facts "about grok-agent-cmd"
        (fact "it returns an error if agent is not configured"
