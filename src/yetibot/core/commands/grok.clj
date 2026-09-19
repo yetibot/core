@@ -91,6 +91,11 @@
         (info "get-thread-messages failed:" (.getMessage e))
         [{:role "user" :content current-prompt}]))))
 
+(defn- get-thinking-string [seconds]
+  (let [num-blocks (inc (mod (dec seconds) 10))
+        blocks (apply str (repeat num-blocks "▰"))]
+    (str "*thinking* " blocks)))
+
 (defn grok-cmd
   "grok <prompt> # ask grok a question"
   {:yb/cat #{:ai}}
@@ -108,17 +113,67 @@
                           msgs
                           prompt))
                       prompt)
-            _ (info "grok: generating text with payload:" (pr-str payload))
-            {:keys [text cost]} (xai/generate-text payload)
-            footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
-            response-text (str text footer)]
+            _ (info "grok: generating text with payload:" (pr-str payload))]
         (if (and on-discord channel-id msg-id)
-          (let [thread-channel (start-thread! channel-id msg-id prompt)]
-            (binding [chat/*target* thread-channel]
-              (chat/chat-data-structure response-text))
-            (chat/suppress {}))
-          {:result/value response-text
-           :result/data {:prompt prompt :response text}}))
+          (let [thread-channel (start-thread! channel-id msg-id prompt)
+                conn (rest-conn)
+                initial-msg (try
+                              @(discord/create-message! conn thread-channel :content "*thinking* ▰")
+                              (catch Exception e
+                                (info "Failed to create initial thinking message:" (.getMessage e))
+                                nil))
+                msg-id-to-edit (:id initial-msg)
+                gen-future (future
+                             (try
+                               (let [res (xai/generate-text payload)]
+                                 {:status :success :result res})
+                               (catch Exception e
+                                 {:status :error :error e})))
+                _ (when msg-id-to-edit
+                    (loop [sec 1]
+                      (if (realized? gen-future)
+                        nil
+                        (do
+                          (Thread/sleep 1000)
+                          (when-not (realized? gen-future)
+                            (try
+                              @(discord/edit-message! conn thread-channel msg-id-to-edit
+                                                      :content (get-thinking-string sec))
+                              (catch Exception e
+                                (info "Failed to edit thinking message:" (.getMessage e)))))
+                          (recur (inc sec))))))
+                gen-res @gen-future]
+            (if (= (:status gen-res) :success)
+              (let [{:keys [text cost]} (:result gen-res)
+                    footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
+                    response-text (str text footer)]
+                (if msg-id-to-edit
+                  (try
+                    @(discord/edit-message! conn thread-channel msg-id-to-edit :content response-text)
+                    (catch Exception e
+                      (info "Failed to replace thinking message with final text, creating new message:" (.getMessage e))
+                      (binding [chat/*target* thread-channel]
+                        (chat/chat-data-structure response-text))))
+                  (binding [chat/*target* thread-channel]
+                    (chat/chat-data-structure response-text)))
+                (chat/suppress {}))
+              (let [err (:error gen-res)
+                    err-msg (str "Text generation failed: " (.getMessage err))]
+                (error "grok: text generation error:" (.getMessage err))
+                (if msg-id-to-edit
+                  (try
+                    @(discord/edit-message! conn thread-channel msg-id-to-edit :content err-msg)
+                    (catch Exception e
+                      (binding [chat/*target* thread-channel]
+                        (chat/chat-data-structure err-msg))))
+                  (binding [chat/*target* thread-channel]
+                    (chat/chat-data-structure err-msg)))
+                (chat/suppress {}))))
+          (let [{:keys [text cost]} (xai/generate-text payload)
+                footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
+                response-text (str text footer)]
+            {:result/value response-text
+             :result/data {:prompt prompt :response text}})))
       (catch Exception e
         (error "grok: text generation error:" (.getMessage e))
         {:result/error (str "Text generation failed: " (.getMessage e))}))
