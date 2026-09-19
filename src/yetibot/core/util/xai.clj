@@ -120,7 +120,7 @@
 
 (defn generate-text
   "Call the xAI API to generate text from a prompt using grok-4.6.
-   Returns a map with :text and :cost (in USD)."
+   Returns a map with :text, optionally :reasoning, and :cost (in USD)."
   [prompt]
   (let [api-key (:key config)
         url "https://api.x.ai/v1/chat/completions"
@@ -139,13 +139,15 @@
         status (:status response)]
     (if (<= 200 status 299)
       (if-let [text (get-in (:body response) [:choices 0 :message :content])]
-        (let [usage (get-in (:body response) [:usage])
+        (let [reasoning (or (get-in (:body response) [:choices 0 :message :reasoning_content])
+                            (get-in (:body response) [:choices 0 :message :reasoning]))
+              usage (get-in (:body response) [:usage])
               prompt-tokens (get usage :prompt_tokens 0)
               completion-tokens (get usage :completion_tokens 0)
               raw-cost (+ (* prompt-tokens 0.000002)
                           (* completion-tokens 0.000006))
               cost (/ (Math/round (* raw-cost 1000000.0)) 1000000.0)]
-          {:text text :cost cost})
+          {:text text :reasoning reasoning :cost cost})
         (throw (ex-info "No chat completion content returned from xAI API."
                         {:response-body (:body response)})))
       (let [error-msg (extract-api-error (:body response) status)]

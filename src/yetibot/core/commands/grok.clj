@@ -96,6 +96,14 @@
         blocks (apply str (repeat num-blocks "▰"))]
     (str "*thinking* " blocks)))
 
+(defn- format-grok-response [text reasoning]
+  (if-not (string/blank? reasoning)
+    (str "### 🧠 Thinking Process\n"
+         (string/join "\n" (map #(str "> " %) (string/split-lines reasoning)))
+         "\n\n"
+         text)
+    text))
+
 (defn grok-cmd
   "grok <prompt> # ask grok a question"
   {:yb/cat #{:ai}}
@@ -144,34 +152,33 @@
                           (recur (inc sec))))))
                 gen-res @gen-future]
             (if (= (:status gen-res) :success)
-              (let [{:keys [text cost]} (:result gen-res)
+              (let [{:keys [text reasoning cost]} (:result gen-res)
+                    formatted-text (format-grok-response text reasoning)
                     footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
-                    response-text (str text footer)]
-                (if msg-id-to-edit
+                    response-text (str formatted-text footer)]
+                (when msg-id-to-edit
                   (try
-                    @(discord/edit-message! conn thread-channel msg-id-to-edit :content response-text)
+                    @(discord/delete-message! conn thread-channel msg-id-to-edit)
                     (catch Exception e
-                      (info "Failed to replace thinking message with final text, creating new message:" (.getMessage e))
-                      (binding [chat/*target* thread-channel]
-                        (chat/chat-data-structure response-text))))
-                  (binding [chat/*target* thread-channel]
-                    (chat/chat-data-structure response-text)))
+                      (info "Failed to delete thinking message:" (.getMessage e)))))
+                (binding [chat/*target* thread-channel]
+                  (chat/chat-data-structure response-text))
                 (chat/suppress {}))
               (let [err (:error gen-res)
                     err-msg (str "Text generation failed: " (.getMessage err))]
                 (error "grok: text generation error:" (.getMessage err))
-                (if msg-id-to-edit
+                (when msg-id-to-edit
                   (try
-                    @(discord/edit-message! conn thread-channel msg-id-to-edit :content err-msg)
+                    @(discord/delete-message! conn thread-channel msg-id-to-edit)
                     (catch Exception e
-                      (binding [chat/*target* thread-channel]
-                        (chat/chat-data-structure err-msg))))
-                  (binding [chat/*target* thread-channel]
-                    (chat/chat-data-structure err-msg)))
+                      (info "Failed to delete thinking message:" (.getMessage e)))))
+                (binding [chat/*target* thread-channel]
+                  (chat/chat-data-structure err-msg))
                 (chat/suppress {}))))
-          (let [{:keys [text cost]} (xai/generate-text payload)
+          (let [{:keys [text reasoning cost]} (xai/generate-text payload)
+                formatted-text (format-grok-response text reasoning)
                 footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
-                response-text (str text footer)]
+                response-text (str formatted-text footer)]
             {:result/value response-text
              :result/data {:prompt prompt :response text}})))
       (catch Exception e
