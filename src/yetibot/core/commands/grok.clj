@@ -23,7 +23,9 @@
   (and chat/*adapter*
        (= "discord" (some-> (a/platform-name chat/*adapter*) string/lower-case))))
 
-(defn rest-conn [] (:rest @(:conn chat/*adapter*)))
+(defn rest-conn []
+  (when-let [conn-atom (:conn chat/*adapter*)]
+    (:rest @conn-atom)))
 
 (defn start-thread!
   "Spin a Discord thread off the triggering message; returns the thread channel
@@ -35,6 +37,60 @@
         (catch Exception e (info "start-thread! fell back:" (.getMessage e)) nil))
       channel-id))
 
+(defn- clean-grok-prompt [content]
+  (if (string? content)
+    (string/trim (string/replace content #"^(?i)grok\s*" ""))
+    content))
+
+(defn- clean-assistant-response [content]
+  (if (string? content)
+    (string/trim (string/replace content #"(?s)\n\nSent via grok.*" ""))
+    content))
+
+(defn- all-channel-messages
+  "The most recent messages in a channel/thread (bounded to 20 for cost efficiency)."
+  [channel-id]
+  (try
+    (if-let [conn (rest-conn)]
+      (if-let [fut (discord/get-channel-messages! conn channel-id :limit 20)]
+        (vec @fut)
+        [])
+      [])
+    (catch Exception e
+      (info "all-channel-messages failed:" (.getMessage e))
+      [])))
+
+(defn- get-thread-messages
+  "Fetch thread history and format it for xAI chat completions."
+  [channel-id triggering-msg-id current-prompt]
+  (if-not (rest-conn)
+    [{:role "user" :content current-prompt}]
+    (try
+      (if-let [conn (rest-conn)]
+        (if-let [channel-fut (discord/get-channel! conn channel-id)]
+          (let [channel @channel-fut
+                type (:type channel)]
+            (if (not (#{10 11 12} type))
+              [{:role "user" :content current-prompt}]
+              (let [hist (all-channel-messages channel-id)
+                    filtered (remove #(= (:id %) triggering-msg-id) hist)
+                    sorted (sort-by :timestamp filtered)
+                    formatted (map (fn [m]
+                                     (let [is-bot? (or (get-in m [:author :bot])
+                                                       (= (:username (:author m)) "Yetibot"))
+                                           content (:content m)]
+                                       (if is-bot?
+                                         {:role "assistant" :content (clean-assistant-response content)}
+                                         {:role "user" :content (clean-grok-prompt content)})))
+                                   sorted)
+                    valid-messages (filter #(not (string/blank? (:content %))) formatted)]
+                (conj (vec valid-messages) {:role "user" :content current-prompt}))))
+          [{:role "user" :content current-prompt}])
+        [{:role "user" :content current-prompt}])
+      (catch Exception e
+        (info "get-thread-messages failed:" (.getMessage e))
+        [{:role "user" :content current-prompt}]))))
+
 (defn grok-cmd
   "grok <prompt> # ask grok a question"
   {:yb/cat #{:ai}}
@@ -42,14 +98,20 @@
   (if (xai/configured?)
     (try
       (let [prompt match
-            _ (info "grok: generating text for prompt:" prompt)
-            {:keys [text cost]} (xai/generate-text prompt)
-            footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
-            response-text (str text footer)
             {:keys [raw-event]} chat-source
             channel-id (or (:channel-id raw-event) chat/*target*)
             msg-id (:id raw-event)
-            on-discord (discord?)]
+            on-discord (discord?)
+            payload (if (and on-discord channel-id msg-id)
+                      (let [msgs (get-thread-messages channel-id msg-id prompt)]
+                        (if (> (count msgs) 1)
+                          msgs
+                          prompt))
+                      prompt)
+            _ (info "grok: generating text with payload:" (pr-str payload))
+            {:keys [text cost]} (xai/generate-text payload)
+            footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
+            response-text (str text footer)]
         (if (and on-discord channel-id msg-id)
           (let [thread-channel (start-thread! channel-id msg-id prompt)]
             (binding [chat/*target* thread-channel]
