@@ -161,7 +161,7 @@
               (if (= (:status gen-res) :success)
                 (let [{:keys [text reasoning cost]} (:result gen-res)
                       formatted-text (format-grok-response text reasoning)
-                      footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
+                      footer (format "\n\nSent via grok-4.7 | Cost: $%s" (format-cost cost))
                       response-text (str formatted-text footer)]
                   (when msg-id-to-edit
                     (try
@@ -184,7 +184,7 @@
                   (chat/suppress {})))))
           (let [{:keys [text reasoning cost]} (xai/generate-text payload)
                 formatted-text (format-grok-response text reasoning)
-                footer (format "\n\nSent via grok-4.6 | Cost: $%s" (format-cost cost))
+                footer (format "\n\nSent via grok-4.7 | Cost: $%s" (format-cost cost))
                 response-text (str formatted-text footer)]
             (cond-> {:result/value response-text
                      :result/data {:prompt prompt :response text}}

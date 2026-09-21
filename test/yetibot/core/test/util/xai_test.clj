@@ -196,7 +196,10 @@
                               (contains {:headers {"Authorization" "Bearer secret-key"}
                                          :content-type :json
                                          :as :json
-                                         :body string?}))
+                                         :body (fn [b]
+                                                 (let [parsed (json/read-str b)]
+                                                   (and (= "grok-4.7" (get parsed "model"))
+                                                        (= [{"type" "web_search"} {"type" "x_search"}] (get parsed "tools")))))}))
                  => {:status 200
                      :body {:choices [{:message {:content "grok-response"}}]
                             :usage {:prompt_tokens 10 :completion_tokens 10}}})))
@@ -209,7 +212,10 @@
                               (contains {:headers {"Authorization" "Bearer secret-key"}
                                          :content-type :json
                                          :as :json
-                                         :body string?}))
+                                         :body (fn [b]
+                                                 (let [parsed (json/read-str b)]
+                                                   (and (= "grok-4.7" (get parsed "model"))
+                                                        (= [{"type" "web_search"} {"type" "x_search"}] (get parsed "tools")))))}))
                  => {:status 200
                      :body {:choices [{:message {:content "grok-response" :reasoning_content "thinking process"}}]
                             :usage {:prompt_tokens 10 :completion_tokens 10}}}))))
