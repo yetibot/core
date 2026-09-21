@@ -13,7 +13,7 @@
 
        (fact "it generates text and returns response with model footer when configured"
              (g/grok-cmd {:match "what is 2+2" :chat-source {}})
-             => (contains {:result/value "4\n\nSent via grok-4.6 | Cost: $0.0001"
+             => (contains {:result/value "4\n\nSent via grok-4.7 | Cost: $0.0001"
                            :result/data {:prompt "what is 2+2" :response "4"}})
              (provided
                (xai/configured?) => true
@@ -31,7 +31,7 @@
                (g/start-thread! "chan-1" "msg-1" "what is 2+2") => "thread-1"
                (discord/create-message! "mock-rest-conn" "thread-1" :content "*thinking* ▰") => (atom {:id "thinking-msg-id"})
                (discord/delete-message! "mock-rest-conn" "thread-1" "thinking-msg-id") => (atom {})
-               (chat/chat-data-structure "4\n\nSent via grok-4.6 | Cost: $0.0001") => nil))
+               (chat/chat-data-structure "4\n\nSent via grok-4.7 | Cost: $0.0001") => nil))
 
        (fact "on Discord inside a thread, it retrieves and includes thread history"
              (meta (g/grok-cmd {:match "what is the next number?"
@@ -56,7 +56,7 @@
                (g/start-thread! "thread-1" "msg-2" "what is the next number?") => "thread-1"
                (discord/create-message! "mock-rest-conn" "thread-1" :content "*thinking* ▰") => (atom {:id "thinking-msg-id"})
                (discord/delete-message! "mock-rest-conn" "thread-1" "thinking-msg-id") => (atom {})
-               (chat/chat-data-structure "4\n\nSent via grok-4.6 | Cost: $0.0001") => nil)))
+               (chat/chat-data-structure "4\n\nSent via grok-4.7 | Cost: $0.0001") => nil)))
 
 (facts "about grok-agent-cmd"
        (fact "it returns an error if agent is not configured"

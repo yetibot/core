@@ -119,7 +119,7 @@
                           :status status})))))))
 
 (defn generate-text
-  "Call the xAI API to generate text from a prompt using grok-4.6.
+  "Call the xAI API to generate text from a prompt using grok-4.7.
    Returns a map with :text, optionally :reasoning, and :cost (in USD)."
   [prompt]
   (let [api-key (:key config)
@@ -128,8 +128,9 @@
                           (map? (first prompt)))
                    prompt
                    [{:role "user" :content prompt}])
-        body {:model "grok-4.6"
-              :messages messages}
+        body {:model "grok-4.7"
+              :messages messages
+              :tools [{:type "web_search"} {:type "x_search"}]}
         response (client/post url
                               {:headers {"Authorization" (str "Bearer " api-key)}
                                :content-type :json
