@@ -123,13 +123,13 @@
    Returns a map with :text, optionally :reasoning, and :cost (in USD)."
   [prompt]
   (let [api-key (:key config)
-        url "https://api.x.ai/v1/chat/completions"
-        messages (if (and (sequential? prompt)
-                          (map? (first prompt)))
-                   prompt
-                   [{:role "user" :content prompt}])
+        url "https://api.x.ai/v1/responses"
+        input (if (and (sequential? prompt)
+                       (map? (first prompt)))
+                prompt
+                [{:role "user" :content prompt}])
         body {:model "grok-4.7"
-              :messages messages
+              :input input
               :tools [{:type "web_search"} {:type "x_search"}]}
         response (client/post url
                               {:headers {"Authorization" (str "Bearer " api-key)}
@@ -139,20 +139,25 @@
                                :throw-exceptions false})
         status (:status response)]
     (if (<= 200 status 299)
-      (let [message (get-in (:body response) [:choices 0 :message])
-            text (:content message)
-            reasoning (or (:reasoning_content message)
-                          (:reasoning message))]
+      (let [content (get-in (:body response) [:output 0 :content])
+            text (some (fn [c] (when (= (:type c) "output_text") (:text c))) content)
+            reasoning (some (fn [c] (when (= (:type c) "reasoning") (:text c))) content)]
         (if (or text reasoning)
           (let [usage (get-in (:body response) [:usage])
-                prompt-tokens (get usage :prompt_tokens 0)
-                completion-tokens (get usage :completion_tokens 0)
+                prompt-tokens (or (get usage :prompt_tokens)
+                                  (get usage :input_tokens)
+                                  0)
+                completion-tokens (or (get usage :completion_tokens)
+                                      (get usage :output_tokens)
+                                      0)
                 raw-cost (+ (* prompt-tokens 0.000002)
                             (* completion-tokens 0.000006))
                 cost (/ (Math/round (* raw-cost 1000000.0)) 1000000.0)]
-            (cond-> {:text text :cost cost}
+            (cond-> {}
+              text (assoc :text text)
+              cost (assoc :cost cost)
               reasoning (assoc :reasoning reasoning)))
-          (throw (ex-info "No chat completion content or reasoning returned from xAI API."
+          (throw (ex-info "No output text or reasoning returned from xAI Responses API."
                           {:response-body (:body response)}))))
       (let [error-msg (extract-api-error (:body response) status)]
         (error "xai: API error" status "-" error-msg)

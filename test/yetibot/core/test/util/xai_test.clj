@@ -192,7 +192,7 @@
              (with-redefs [xai/config {:key "secret-key"}]
                (xai/generate-text "hello") => (contains {:text "grok-response" :cost 0.000080})
                (provided
-                 (client/post "https://api.x.ai/v1/chat/completions"
+                 (client/post "https://api.x.ai/v1/responses"
                               (contains {:headers {"Authorization" "Bearer secret-key"}
                                          :content-type :json
                                          :as :json
@@ -201,14 +201,15 @@
                                                    (and (= "grok-4.7" (get parsed "model"))
                                                         (= [{"type" "web_search"} {"type" "x_search"}] (get parsed "tools")))))}))
                  => {:status 200
-                     :body {:choices [{:message {:content "grok-response"}}]
+                     :body {:output [{:type "message"
+                                      :content [{:type "output_text" :text "grok-response"}]}]
                             :usage {:prompt_tokens 10 :completion_tokens 10}}})))
 
-       (fact "it generates text and includes reasoning_content when present"
+       (fact "it generates text and includes reasoning when present"
              (with-redefs [xai/config {:key "secret-key"}]
                (xai/generate-text "hello") => (contains {:text "grok-response" :reasoning "thinking process" :cost 0.000080})
                (provided
-                 (client/post "https://api.x.ai/v1/chat/completions"
+                 (client/post "https://api.x.ai/v1/responses"
                               (contains {:headers {"Authorization" "Bearer secret-key"}
                                          :content-type :json
                                          :as :json
@@ -217,7 +218,9 @@
                                                    (and (= "grok-4.7" (get parsed "model"))
                                                         (= [{"type" "web_search"} {"type" "x_search"}] (get parsed "tools")))))}))
                  => {:status 200
-                     :body {:choices [{:message {:content "grok-response" :reasoning_content "thinking process"}}]
+                     :body {:output [{:type "message"
+                                      :content [{:type "reasoning" :text "thinking process"}
+                                                {:type "output_text" :text "grok-response"}]}]
                             :usage {:prompt_tokens 10 :completion_tokens 10}}}))))
 
 (facts "about xai optimize-image-prompt"
