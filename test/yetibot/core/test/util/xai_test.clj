@@ -202,7 +202,8 @@
                                                         (= [{"type" "web_search"} {"type" "x_search"}] (get parsed "tools")))))}))
                  => {:status 200
                      :body {:output [{:type "message"
-                                      :content [{:type "output_text" :text "grok-response"}]}]
+                                      :message {:role "assistant"
+                                                :content [{:type "text" :text "grok-response"}]}}]
                             :usage {:prompt_tokens 10 :completion_tokens 10}}})))
 
        (fact "it generates text and includes reasoning when present"
@@ -218,9 +219,11 @@
                                                    (and (= "grok-4.7" (get parsed "model"))
                                                         (= [{"type" "web_search"} {"type" "x_search"}] (get parsed "tools")))))}))
                  => {:status 200
-                     :body {:output [{:type "message"
-                                      :content [{:type "reasoning" :text "thinking process"}
-                                                {:type "output_text" :text "grok-response"}]}]
+                     :body {:output [{:type "reasoning"
+                                      :reasoning {:text "thinking process"}}
+                                     {:type "message"
+                                      :message {:role "assistant"
+                                                :content [{:type "text" :text "grok-response"}]}}]
                             :usage {:prompt_tokens 10 :completion_tokens 10}}}))))
 
 (facts "about xai optimize-image-prompt"
