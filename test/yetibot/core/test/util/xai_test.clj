@@ -224,6 +224,58 @@
                                      {:type "message"
                                       :message {:role "assistant"
                                                 :content [{:type "text" :text "grok-response"}]}}]
+                            :usage {:prompt_tokens 10 :completion_tokens 10}}})))
+
+       (fact "it generates text using the real xAI Responses API schema (message with output_text and content block)"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-text "hello") => (contains {:text "real-grok-response" :cost 0.000080})
+               (provided
+                 (client/post "https://api.x.ai/v1/responses"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}}))
+                 => {:status 200
+                     :body {:output [{:type "message"
+                                      :role "assistant"
+                                      :content [{:type "output_text" :text "real-grok-response"}]}]
+                            :usage {:prompt_tokens 10 :completion_tokens 10}}})))
+
+       (fact "it generates text with flat string content in message block"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-text "hello") => (contains {:text "flat-grok-response" :cost 0.000080})
+               (provided
+                 (client/post "https://api.x.ai/v1/responses"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}}))
+                 => {:status 200
+                     :body {:output [{:type "message"
+                                      :role "assistant"
+                                      :content "flat-grok-response"}]
+                            :usage {:prompt_tokens 10 :completion_tokens 10}}})))
+
+       (fact "it extracts reasoning from the real xAI Responses API schema (reasoning with content block array)"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-text "hello") => (contains {:text "grok-response" :reasoning "real thinking process" :cost 0.000080})
+               (provided
+                 (client/post "https://api.x.ai/v1/responses"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}}))
+                 => {:status 200
+                     :body {:output [{:type "reasoning"
+                                      :content [{:type "reasoning_text" :text "real thinking process"}]}
+                                     {:type "message"
+                                      :role "assistant"
+                                      :content [{:type "output_text" :text "grok-response"}]}]
+                            :usage {:prompt_tokens 10 :completion_tokens 10}}})))
+
+       (fact "it extracts reasoning from a flat text reasoning block"
+             (with-redefs [xai/config {:key "secret-key"}]
+               (xai/generate-text "hello") => (contains {:text "grok-response" :reasoning "flat reasoning text" :cost 0.000080})
+               (provided
+                 (client/post "https://api.x.ai/v1/responses"
+                              (contains {:headers {"Authorization" "Bearer secret-key"}}))
+                 => {:status 200
+                     :body {:output [{:type "reasoning"
+                                      :text "flat reasoning text"}
+                                     {:type "message"
+                                      :role "assistant"
+                                      :content "grok-response"}]
                             :usage {:prompt_tokens 10 :completion_tokens 10}}}))))
 
 (facts "about xai optimize-image-prompt"
