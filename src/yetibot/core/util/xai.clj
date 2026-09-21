@@ -118,20 +118,44 @@
                        {:type :xai-api-error
                         :status status})))))))
 
-       (defn- extract-text [output]
-       (some (fn [item]
-        (when (= (some-> (:type item) name) "message")
-          (some (fn [content-block]
-                  (when (= (some-> (:type content-block) name) "text")
-                    (:text content-block)))
-                (get-in item [:message :content]))))
-       output))
+(defn- extract-text-from-item [item]
+  (let [content (or (:content item) (get-in item [:message :content]))]
+    (cond
+      (string? content) content
+      (sequential? content) (let [texts (keep (fn [c]
+                                                (when (map? c)
+                                                  (:text c)))
+                                              content)]
+                              (when (seq texts)
+                                (clojure.string/join "" texts)))
+      (string? (:text item)) (:text item)
+      :else nil)))
 
-       (defn- extract-reasoning [output]
-       (some (fn [item]
-        (when (= (some-> (:type item) name) "reasoning")
-          (get-in item [:reasoning :text])))
-       output))
+(defn- extract-reasoning-from-item [item]
+  (let [content (:content item)]
+    (cond
+      (string? content) content
+      (sequential? content) (let [texts (keep (fn [c]
+                                                (when (map? c)
+                                                  (:text c)))
+                                              content)]
+                              (when (seq texts)
+                                (clojure.string/join "" texts)))
+      (string? (:text item)) (:text item)
+      (string? (get-in item [:reasoning :text])) (get-in item [:reasoning :text])
+      :else nil)))
+
+(defn- extract-text [output]
+  (some (fn [item]
+          (when (= (some-> (:type item) name) "message")
+            (extract-text-from-item item)))
+        output))
+
+(defn- extract-reasoning [output]
+  (some (fn [item]
+          (when (= (some-> (:type item) name) "reasoning")
+            (extract-reasoning-from-item item)))
+        output))
 
        (defn generate-text
        "Call the xAI API to generate text from a prompt using grok-4.7.
