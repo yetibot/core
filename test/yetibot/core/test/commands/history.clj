@@ -47,6 +47,7 @@
           :where/args [false "foo"]
           :where/map {:chat_source_adapter ":test"
                       :chat_source_room "foo"}
+          :order/clause "created_at ASC, id ASC"
           :limit/clause "1"}) => '({:is-command true,
                                     :is-private false,
                                     :user-name "test",
@@ -75,7 +76,7 @@
           :where/map {:chat_source_adapter ":test"
                       :chat_source_room "foo"}
           :limit/clause "1"
-          :order/clause "created_at DESC"}) =>
+          :order/clause "created_at DESC, id DESC"}) =>
         '({:is-command nil,
            :is-private false,
            :user-name "test",
@@ -162,9 +163,12 @@
                 "devth in local at 03:09 PM 03/19: !foo  | echo bar %s baz"))
        (provided
         (query
-         #:where{:clause "(is_private = ? OR chat_source_room = ?) AND (is_command = ? OR body NOT LIKE ?) AND body ~ ?"
-                 :args [false "foo" false "!history%" "foo"]
-                 :map {:chat_source_adapter ":test"}}) =>
+         {:where/clause (str "(is_private = ? OR chat_source_room = ?) AND "
+                             "(is_command = ? OR body NOT LIKE ?) AND body ~ ?")
+          :where/args [false "foo" false "!history%" "foo"]
+          :where/map {:chat_source_adapter ":test"}
+          :limit/clause "30"
+          :order/clause "created_at DESC, id DESC"}) =>
         '({:is-command true,
            :is-private true,
            :user-name "devth",
@@ -220,6 +224,7 @@
          {:where/clause "(is_private = ? OR chat_source_room = ?) AND (chat_source_room = ?) AND (is_command = ? OR body NOT LIKE ?)"
           :where/args [false "foo" "local" false "!history%"]
           :where/map {:chat_source_adapter ":test"}
+          :order/clause "created_at ASC, id ASC"
           :limit/clause "1"}) =>
         '({:is-command true,
            :is-private true,
@@ -248,6 +253,7 @@
          {:where/clause "(is_private = ? OR chat_source_room = ?) AND (user_name = ? OR user_name = ?)"
           :where/args [false "foo" "devth" "yetibot"]
           :where/map {:chat_source_adapter ":test"}
+          :order/clause "created_at ASC, id ASC"
           :limit/clause "1"}) =>
         '({:is-command true,
            :is-private false,
@@ -277,7 +283,7 @@
           :where/args [false "foo" "2019-03-20T00:00:00.000Z"]
           :where/map {:chat_source_adapter ":test"}
           :limit/clause "1"
-          :order/clause "created_at DESC"}) =>
+          :order/clause "created_at DESC, id DESC"}) =>
         '({:is-command false,
            :is-private true,
            :user-name "yetibot-devth",
@@ -307,7 +313,7 @@
           :where/args [false "foo" "2019-03-20T00:00:00.000Z"]
           :where/map {:chat_source_adapter ":test"}
           :limit/clause "1"
-          :order/clause "created_at DESC"}) =>
+          :order/clause "created_at DESC, id DESC"}) =>
         '({:is-command false,
            :is-private true,
            :user-name "yetibot-dev",
