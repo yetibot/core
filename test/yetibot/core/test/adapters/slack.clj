@@ -218,16 +218,15 @@
 (facts
  "about stop"
  (fact
-  "it will reset whether it should ping and refernce the UUID implmentation
-   and send a slack RTM event and reset the connection"
+  "stops pinging, closes Slack, and clears the connection"
   (let [ping? (atom true)
         conn (atom {:dispatcher :myconn})
         adapter {:should-ping? ping? :conn conn}]
-    (slack/stop adapter) => :didstop
-    (provided (reset! ping? false) => :didreset
-              (a/uuid adapter) => :diduuid
-              (slack-rtm/send-event :myconn :close) => :didsendevent
-              (reset! conn nil) => :didstop))))
+    (slack/stop adapter) => nil
+    (provided (a/uuid adapter) => :diduuid
+              (slack-rtm/send-event :myconn :close) => :didsendevent)
+    @ping? => false
+    @conn => nil)))
 
 ; (facts
 ;  "about on-channel-left"
