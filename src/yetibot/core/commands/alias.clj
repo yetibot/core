@@ -1,7 +1,7 @@
 (ns yetibot.core.commands.alias
   (:require
     [clojure.set :refer [difference]]
-    [taoensso.timbre :refer [info]]
+    [taoensso.timbre :refer [error info]]
     [clojure.string :as s]
     [yetibot.core.util.format :refer [pseudo-format-n *subst-prefix*
                                       remove-surrounding-quotes]]
@@ -46,16 +46,12 @@
    alias sayhi = echo hi, $1"
   [{:keys [cmd-name cmd]}]
   (let [docstring (str cmd-name " # alias for " cmd)
-        existing-alias (existing-alias cmd-name)
         cmd-fn (build-alias-cmd-fn cmd)]
     (cmd-hook (re-pattern cmd-name)
       _ cmd-fn)
     ;; manually add docs since the meta on cmd-fn is lost in cmd-hook
     (help/add-docs cmd-name [docstring] true)
-    (info "wire-alias" existing-alias)
-    (if existing-alias
-      (format "Replaced existing alias %s. Was `%s`" cmd-name (:cmd existing-alias))
-      (format "%s alias created" cmd-name))))
+    (info "wire-alias" cmd-name)))
 
 (defn add-alias [{:keys [cmd-name cmd user-id] :as alias-info}]
   (let [new-alias-map {:user-id user-id :cmd-name cmd-name :cmd cmd}]
@@ -68,7 +64,8 @@
 
 (defn load-aliases []
   (let [alias-cmds (model/find-all)]
-    (run! #(wire-alias %) alias-cmds)))
+    (run! wire-alias alias-cmds)
+    (info "Loaded aliases" (count alias-cmds))))
 
 (defn- built-in? [cmd]
   ;; subtract known aliases from every command registered in `help`
@@ -89,9 +86,12 @@
         (str "Can not alias existing built-in command " a-name)
         (let [cmd (remove-surrounding-quotes a-cmd)
               alias-map {:user-id (:username user) :cmd-name cmd-name :cmd cmd}
-              ;; get wire-alias response before `add-alias` to determine whether
-              ;; it was updated or created
-              response (wire-alias alias-map)]
+              existing (existing-alias cmd-name)
+              response (if existing
+                         (format "Replaced existing alias %s. Was `%s`"
+                                 cmd-name (:cmd existing))
+                         (format "%s alias created" cmd-name))]
+          (wire-alias alias-map)
           (add-alias alias-map)
           response)))
     {:result/error
@@ -123,7 +123,14 @@
     {:result/error
      (format "Could not find alias %s." cmd)}))
 
-(defonce loader (future (load-aliases)))
+(defonce loader
+  (future
+    (try
+      (load-aliases)
+      (catch Exception e
+        ;; Keep credentials and stored command bodies out of the failure log.
+        (error "Alias loading failed" {:exception (.getName (class e))})
+        (throw e)))))
 
 (comment
 
