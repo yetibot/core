@@ -11,6 +11,7 @@
     [yetibot.core.hooks :refer [cmd-hook obs-hook]]
     [yetibot.core.util.command :as command]
     [yetibot.core.interpreter :refer [*chat-source*]]
+    [yetibot.core.parser :as parser]
     [yetibot.core.util.format :refer [remove-surrounding-quotes]]))
 
 (def cli-options
@@ -115,17 +116,34 @@
 
 (defonce hook (obs-hook all-event-types #'obs-handler))
 
+(defn- quote-command [cmd]
+  ;; A copied definition must not run its pipes or subexpressions immediately.
+  ;; Check the real grammar: a command containing quotes may need either style.
+  (some (fn [quote]
+          (let [quoted (str quote cmd quote)
+                tree (parser/parser (str "echo " quoted))]
+            (when (and (vector? tree) (= 2 (count tree))
+                       (not-any? #(and (vector? %) (= :sub-expr (first %)))
+                                 (tree-seq coll? seq tree)))
+              quoted)))
+        ["\"" "'"]))
+
 (defn format-observer
   [{:keys [id user-id user-pattern channel-pattern event-type pattern cmd]}]
-  (str
-    (if-not (s/blank? pattern) pattern (str "[any pattern]"))
-    ": " cmd " "
-    "[event type: " event-type "] "
-    (when id (str "[id " id "] "))
-    (when user-pattern (str "[user pattern: " user-pattern "]"))
-    (when channel-pattern
-      (str "[channel pattern: " channel-pattern "]"))
-    (when user-id (str "[created by " user-id "]"))))
+  (let [definition (str command/config-prefix "obs -e " event-type
+                        (when user-pattern (str " -u " user-pattern))
+                        (when channel-pattern (str " -c " channel-pattern))
+                        (when-not (s/blank? pattern) (str " " pattern))
+                        " = ")
+        quoted (quote-command cmd)]
+    (str (if quoted (str definition quoted)
+             (str "[not copyable] " definition cmd))
+         (when (or id user-id)
+           (str "\n" (s/join " " (cond-> []
+                                   id (conj (str "[id " id "]"))
+                                   user-id
+                                   (conj (str "[created by "
+                                              user-id "]")))))))))
 
 (defn wire-observer
   "Simply acknowledges that the observe was created or replaced. The wiring is
@@ -139,43 +157,51 @@
   (parse-opts (map trim (split opts-str #" ")) cli-options))
 
 (defn observe-cmd
-  "observe [-e event-type] [-u user-pattern] [-c channel-pattern] <pattern> = <cmd> # create an observer
+  "observe <pattern> = <command> # run a command when an event matches
 
-   When a match occurs the <cmd> will be executed. <cmd> may contain a piped
-   expression but it must be quoted. <cmd> can also include template variables:
+   `obs` and `observer` are aliases. Choose a type with `-e`; the default is
+   `message`, so reactions need `-e react`. Patterns are case-sensitive regexes.
 
-     `{{channel}}` - the channel that the observer triggered in
-     `{{username}}` - the username of the user that triggered the observer
-     `{{body}}` - the body of the message that triggered the observer
+   Messages: match the message text (commands are ignored).
+     !obs hello = echo Hello, {{username}}!
 
-   Only applies to `react` observer types:
+   Discord reactions: match the Unicode emoji or custom emoji name.
+     !obs -e react 💬 = echo {{message-username}}: {{body}}
 
-     `{{reaction}}` - the reaction e.g. :rage:
-     `{{message-username}}` - username that originally posted the messsage
+   Slack reactions: match the emoji name, not its picture or :colons:.
+   Underscores become spaces: `speech_balloon` matches `speech balloon`.
+     !obs -e react speech balloon = echo {{username}} reacted: {{body}}
 
-   [event-type] is optional. If omitted, it will default to `message`.
-   Valid event types are: `message`, `leave`, `enter`, `sound`, `kick`, `react`.
+   Joins and leaves: match the username, or omit the pattern to match anyone.
+     !obs -e enter = echo Welcome, {{username}}!
+     !obs -e leave = echo Goodbye, {{username}}!
 
-   [user-pattern] is an optional regex pattern. When specified, it creates an
-   observer that only fires for a specific user or users that match the pattern.
+   `-e sound` and `-e kick` also match usernames. Event support depends on the
+   adapter; Discord currently emits message/react, not joins/leaves/sound/kick.
 
-   [channel-pattern] is an optional regex pattern. When specified it creates an
-   observer that only fires for matching channel names.
+   Optional filters go before the pattern:
+     -u <regex> restricts the triggering username (the reactor for reactions).
+     -c <regex> restricts the channel (Slack name or Discord channel ID).
+   Without -c, the observer can fire in any channel the bot receives events in.
+     !obs -u ^alice$ -c ^general$ hello = echo Hi, Alice!
 
-   Examples:
+   Quote a command containing pipes or subexpressions so it runs on the event,
+   not while creating the observer:
+     !obs hello = \"echo {{body}} | upper\"
 
-   1. Generate a meme when appropriate
-   !observe y.?u.?no = meme y u no:
+   Template variables:
+     {{username}}: triggering user; for reactions, the person who reacted.
+     {{body}}: message text; for reactions, the message being reacted to.
+     {{reaction}}: reaction emoji/name (react events only).
+     {{message-username}}: original message author (react events only).
+     {{channel}}: Slack channel name or Discord channel/thread ID.
 
-   2. Lookup the temperature any time someone mentions something that looks like
-   a zip code:
-   !observe \\b\\d{5}\\b = \"weather | head 2 | tail\"
+   List with !obs or !obs list. Each first line is a copyable creation command;
+   its ID/creator are shown separately. Pasting creates another observer.
+   Unsupported quote combinations are marked [not copyable], not evaluated.
+   Remove an observer with !obs remove <id>.
 
-   3. Generate a rage meme with the body of the message any time someone reacts
-   with a rage reaction (Slack only):
-   !observe -e react rage = meme rage: {{body}}
-
-   Observers can be easily abused. Use them with caution & restraint 🙏"
+   Observers run commands automatically. Use filters and avoid noisy loops."
   {:yb/cat #{:util}}
   [{[_ opts-str cmd] :match user :user}]
   (info "observer user" (pr-str user))
@@ -225,7 +251,7 @@
       (format "Observer `%s` removed" id))))
 
 (defn load-observers []
-  (run! #(wire-observer %) (model/find-all)))
+  (run! wire-observer (model/find-all)))
 
 (defonce loader (future (load-observers)))
 
