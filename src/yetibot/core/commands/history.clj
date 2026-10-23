@@ -5,7 +5,6 @@
    [clojure.tools.cli :refer [parse-opts]]
    [taoensso.timbre :refer [debug info trace color-str]]
    [yetibot.core.models.history :as h]
-   [yetibot.core.db.history :refer [query]]
    [clojure.string :refer [blank? join split]]
    [yetibot.core.hooks :refer [cmd-hook]]))
 
@@ -46,20 +45,26 @@
                  :extra-query extra-query}))
   ;; only inspect the first `next-cmd`
   (let [[next-cmd & args] (split-cmd (first next-cmds))
-        ;; only head and tail accept an integer arg
-        possible-int-arg (or (when (and (not (empty? args))
-                                        (or (= "head" next-cmd)
-                                            (= "tail" next-cmd)))
-                               (read-string (first args)))
-                             1)]
-    (condp = next-cmd
-      "count" (str (h/count-entities extra-query))
-      "head" (h/head possible-int-arg extra-query)
-      "tail" (h/tail possible-int-arg extra-query)
-      "random" (h/random extra-query)
-      "grep" (h/grep (join " " args) extra-query)
-      :else nil
-      )))
+        count-command? (contains? #{"head" "tail"} next-cmd)
+        count-args (remove blank? args)
+        possible-int-arg
+        (when count-command?
+          (if (empty? count-args) 1
+            (when (and (= 1 (count count-args))
+                       (re-matches #"[0-9]+" (first count-args)))
+              (try (Long/parseLong (first count-args))
+                   (catch NumberFormatException _ nil)))))]
+    (if (and count-command?
+             (not (and possible-int-arg
+                       (<= 0 possible-int-arg h/max-limit))))
+      {:result/error "History count must be an integer from 0 to 1000."}
+      (case next-cmd
+        "count" (str (h/count-entities extra-query))
+        "head" (h/head possible-int-arg extra-query)
+        "tail" (h/tail possible-int-arg extra-query)
+        "random" (h/random extra-query)
+        "grep" (h/grep (join " " args) extra-query)
+        nil))))
 
 (def cli-options
   [["-h" "--include-history-commands"]
@@ -147,11 +152,16 @@
    few collection commands where it will bake the expression into a single SQL
    query instead of trying to naively evaluate in memory:
 
-   history | grep <query> - uses Postgres' ~ operator to search
-   history | tail [<n>] - uses LIMIT n and ORDER_BY
-   history | head [<n>] - uses LIMIT n and ORDER_BY
+   history | grep <query> - latest 30 matches using Postgres' ~ operator
+   history | tail [<n>] - latest n messages in chronological order
+   history | head [<n>] - earliest n messages in chronological order
+
    history | random - uses LIMIT 1 Postgres' ORDER_BY random()
-   history | count - uses COUNT(*)"
+   history | count - uses COUNT(*)
+
+   head/tail default to 1; n must be an integer from 0 to 1000.
+   Default history returns the latest 30 messages in chronological order.
+   Equal timestamps are ordered by message id."
   {:yb/cat #{:util}}
   [{:keys [match chat-source next-cmds skip-next-n] :as cmd-map}]
   (debug "history-cmd cmd-map" (pr-str cmd-map))
@@ -264,23 +274,21 @@
 
             next-commands (take 1 next-cmds)
 
-            history (if (> skip-n 0)
+            history (if (pos? skip-n)
                       (do
                         (reset! skip-next-n skip-n)
                         (history-for-cmd-sequence next-commands
                                                   extra-query))
                       ;; default to last 30 items if there were no filters
-                      (take
-                       30 (query extra-query)))]
+                      (h/tail h/default-limit extra-query))]
 
         (debug "computed history" (pr-str history))
         ;; format
-        (if (= (first next-commands) "count")
-          ;; count doesn't need any formatting since it's just a raw number
-          history
-          ;; everything else needs to be formatted for display
-          {:result/value (h/format-all history)
-           :result/data history})))))
+        (cond
+          (:result/error history) history
+          (= (first next-commands) "count") history
+          :else {:result/value (h/format-all history)
+                 :result/data history})))))
 
 (cmd-hook #"history"
   _ history-cmd)

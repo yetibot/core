@@ -16,7 +16,16 @@
   (not= (:value (get-config ::yetibot-history-disabled [:history :disabled]))
         "true"))
 
-(defn flatten-one [n] (if (= 1 n) first identity))
+(def default-limit 30)
+(def max-limit 1000)
+
+(defn flatten-one [n] (if (= 1 n) first vec))
+
+(defn- checked-limit [n]
+  (when-not (and (integer? n) (<= 0 n max-limit))
+    (throw (ex-info "History count must be an integer from 0 to 1000."
+                    {:history/invalid-count true})))
+  (str n))
 
 (defn count-entities
   [extra-query]
@@ -31,8 +40,9 @@
   [n extra-query]
   ((flatten-one n)
    (query
-    (merge-queries extra-query
-                   {:limit/clause (str n)}))))
+    (assoc extra-query
+           :order/clause "created_at ASC, id ASC"
+           :limit/clause (checked-limit n)))))
 
 (comment
   (head 1 {})
@@ -41,12 +51,11 @@
 (defn tail
   [n extra-query]
   ((flatten-one n)
-   (-> (query
-        (merge-queries
-         extra-query
-         {:order/clause "created_at DESC"
-          :limit/clause (str n)}))
-       reverse)))
+   (reverse
+     (query
+       (assoc extra-query
+              :order/clause "created_at DESC, id DESC"
+              :limit/clause (checked-limit n))))))
 
 (defn random
   [extra-query]
@@ -56,11 +65,10 @@
                                 :limit/clause "1"}))))
 
 (defn grep [pattern extra-query]
-  (query
-   (merge-queries
-    extra-query
-    {:where/clause "body ~ ?"
-     :where/args  [pattern]})))
+  (tail default-limit
+        (merge-queries extra-query
+                       {:where/clause "body ~ ?"
+                        :where/args [pattern]})))
 
 (defn last-chat-for-channel
   "Takes chat source and returns the last chat for the channel.
@@ -158,9 +166,10 @@
           (t/format-time (from-date created-at)) body))
 
 (defn format-all [entities]
-  (if (sequential? entities)
-    (map format-entity entities)
-    (format-entity entities)))
+  (cond
+    (nil? entities) []
+    (sequential? entities) (map format-entity entities)
+    :else (format-entity entities)))
 
 ;;;; write
 
