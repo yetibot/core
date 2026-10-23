@@ -21,38 +21,40 @@
   (fn [event-type event-data _conn yetibot-user]
     event-type))
 
+(defn- discord-user [user bot-id]
+  (assoc (users/create-user (:username user) user)
+         :yetibot? (= (:id user) bot-id)))
+
 ;; also has :message-reaction-remove
 (defmethod handle-event :message-reaction-add
-  [event-type event-data _conn yetibot-user]
-  (let [message-id (:message-id event-data)
-        channel-id (:channel-id event-data)
-        message-author-id (:message-author-id event-data)
-        emoji-name (-> event-data
-                       :emoji
-                       :name)
-        rest-conn (:rest @_conn)
-        yetibot? (= message-author-id (:id @yetibot-user))]
-    (if (and
-         (= emoji-name "❌")
-         (= yetibot? true))
+  [_ event-data conn yetibot-user]
+  (let [{:keys [message-id channel-id message-author-id user-id]} event-data
+        emoji-name (get-in event-data [:emoji :name])
+        rest-conn (:rest @conn)
+        bot-id (:id @yetibot-user)
+        ;; The gateway's message-author-id is optional. Fetch only if needed;
+        ;; known bot-message delete/ignore events require no message lookup.
+        message (delay @(messaging/get-channel-message!
+                          rest-conn channel-id message-id))
+        author-id (or message-author-id (get-in @message [:author :id]))
+        own-message? (= author-id bot-id)]
+    (cond
+      (and own-message? (= emoji-name "❌"))
       (messaging/delete-message! rest-conn channel-id message-id)
-      (if (= yetibot? true)
-        (timbre/debug "We don't handle" emoji-name "from yetibot")
-        (let [cs (assoc (chat/chat-source channel-id)
-                        :guild-id (:guild-id event-data)
-                        :raw-event event-data)
-              user-model (assoc (users/get-user cs message-author-id)
-                                :yetibot? yetibot?)
-              message-content (:content @(messaging/get-channel-message! rest-conn channel-id message-id))]
-          (binding [chat/*target* (:channel-id event-data)]
-            (handler/handle-raw
-             cs
-             user-model
-             :react
-             @yetibot-user
-             {:reaction emoji-name
-              :body message-content
-              :message-user message-author-id})))))))
+
+      own-message?
+      (timbre/debug "We don't handle" emoji-name "from yetibot")
+
+      :else
+      (let [cs (assoc (chat/chat-source channel-id)
+                      :guild-id (:guild-id event-data) :raw-event event-data)
+            reactor (or (get-in event-data [:member :user])
+                        @(messaging/get-user! rest-conn user-id))]
+        (binding [chat/*target* channel-id]
+          (handler/handle-raw
+            cs (discord-user reactor bot-id) :react @yetibot-user
+            {:reaction emoji-name :body (:content @message)
+             :message-user (discord-user (:author @message) bot-id)}))))))
 
 
 (defmethod handle-event :message-create
