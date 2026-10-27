@@ -37,6 +37,26 @@ adds two numbers:
 See Yetibot's own [commands](https://github.com/devth/yetibot/tree/master/src/yetibot/commands)
 for more complex and diverse examples.
 
+## Editing Discord commands
+
+Edit a command message in Discord to rerun it. Yetibot updates its original
+text reply in place, including error replies, and removes any extra chunks
+left over from a longer previous result. Generated-image attachments are
+replaced by a new upload and the old bot message is deleted. Removing the
+command from the message removes its tracked replies.
+
+Only actual content edits rerun commands; link-preview updates and duplicate
+content events do not. Attachments and author information are retained when
+Discord sends a partial update. If an older run finishes after an edit, its
+result cannot overwrite the newer reply. Rerunning also repeats the command's
+side effects, including paid model/image requests.
+
+Reply tracking covers the 1,000 most recently run commands per Discord
+connection and is reset on restart. An edit outside that cache can execute as
+a new command, but cannot replace an earlier untracked reply. Replies sent
+through the chat adapter are tracked; messages a plugin sends directly through
+Discord's API are not.
+
 ## Dev postgres
 
 To quickly provision a postgresql database to work against, run:
