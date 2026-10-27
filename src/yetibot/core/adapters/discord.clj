@@ -1,6 +1,7 @@
 (ns yetibot.core.adapters.discord
   (:require [clojure.spec.alpha :as spec]
             [clojure.core.async :as async]
+            [clojure.core.cache :as cache]
             [clojure.string :as str]
             [discljord.messaging :as messaging]
             [discljord.connections :as discord-ws]
@@ -57,27 +58,82 @@
              :message-user (discord-user (:author @message) bot-id)}))))))
 
 
+(def ^:private command-cache-size 1000)
+
+(def ^:dynamic ^:private *command-output*
+  "Collect adapter output until a command finishes, before replacing its replies."
+  nil)
+
+(defn- command? [event]
+  (and (string? (:content event))
+       (:cmd? (handler/->parsed-message-info (:content event)))))
+
+(defn- bot-message? [event yetibot-user]
+  (or (get-in event [:author :bot])
+      (= (:id @yetibot-user) (get-in event [:author :id]))))
+
+(defn- run-message! [event yetibot-user]
+  (let [cs (assoc (chat/chat-source (:channel-id event)) :raw-event event)]
+    (binding [chat/*target* (:channel-id event)]
+      (handler/handle-raw cs
+                         (discord-user (:author event) (:id @yetibot-user))
+                         :message @yetibot-user {:body (:content event)}))))
+
+(declare replace-replies!)
+
+(defn- run-command! [event conn yetibot-user]
+  (let [key [(:channel-id event) (:id event)]
+        previous (get-in @conn [:commands key])
+        revision (Object.)
+        entry {:event event
+               :revision (or (:revision previous) (atom nil))
+               :lock (or (:lock previous) (Object.))
+               :replies (or (:replies previous) (atom []))}
+        output (atom [])
+        _ (reset! (:revision entry) revision)
+        _ (swap! conn update :commands
+                 #(cache/miss (or % (cache/lru-cache-factory
+                                     {} :threshold command-cache-size))
+                              key entry))
+        completion (binding [*command-output* output]
+                     (when (command? event) (run-message! event yetibot-user)))]
+    (async/thread
+      (try
+        (when completion (async/<!! completion))
+        (locking (:lock entry)
+          (when (identical? revision @(:revision entry))
+            (replace-replies! conn (:replies entry) @output)))
+        (catch Exception e
+          (timbre/error e "Error replacing Discord command replies"))))))
+
 (defmethod handle-event :message-create
-  [event-type event-data _conn yetibot-user]
-  (if (not= (:id @yetibot-user) (-> event-data
-                                    :author
-                                    :id))
-    (let [user-model (users/create-user
-                      (-> event-data
-                          :author
-                          :username)
-                      (event-data :author :id))
-          message (:content event-data)
-          cs (assoc (chat/chat-source (:channel-id event-data))
-                    :raw-event event-data)]
-      (binding [chat/*target* (:channel-id event-data)]
-        (handler/handle-raw
-         cs
-         user-model
-         :message
-         @yetibot-user
-         {:body message})))
-    (timbre/debug "Message from Yetibot => ignoring")))
+  [_ event-data conn yetibot-user]
+  (when-not (bot-message? event-data yetibot-user)
+    (if (and (:id event-data) (command? event-data))
+      (run-command! event-data conn yetibot-user)
+      (run-message! event-data yetibot-user))))
+
+(defmethod handle-event :message-update
+  [_ event-data conn yetibot-user]
+  ;; Discord also sends updates for link previews. Only content/attachment
+  ;; changes should rerun commands; partial events retain the original context.
+  (when (and (contains? event-data :content)
+             (not (bot-message? event-data yetibot-user)))
+    (let [previous (get-in @conn [:commands [(:channel-id event-data)
+                                           (:id event-data)]])]
+      (when (or previous (command? event-data))
+        (let [original (or (:event previous)
+                           @(messaging/get-channel-message!
+                              (:rest @conn) (:channel-id event-data)
+                              (:id event-data)))
+              event (assoc (merge original event-data)
+                           :author (merge (:author original) (:author event-data)))]
+          (when (and (:id (:author event))
+                     (not (bot-message? event yetibot-user))
+                     (or (nil? previous)
+                         (not= (select-keys original [:content :attachments])
+                               (select-keys event [:content :attachments]))))
+            (run-command! event conn yetibot-user)))))))
 
 (defn start
   "start the discord connection"
@@ -119,31 +175,58 @@
   (let [chunks (partition-all discord-max-message-length msg)]
     (map str/join chunks)))
 
+(defn- message-parts [msg]
+  (let [{:keys [url id ext]} (generated-image-info msg)
+        data (:data (get @images/image-store id))]
+    (if data
+      (let [clean-msg (str/replace msg url "")]
+        [(cond-> {:image data :filename (str id "." ext)}
+           (not (str/blank? clean-msg)) (assoc :content clean-msg))])
+      (mapv #(hash-map :content %) (chunk-message msg)))))
+
+(defn- create-message! [conn target {:keys [image filename] :as part}]
+  (let [options (cond-> (select-keys part [:content])
+                  image (assoc :stream
+                               {:content (java.io.ByteArrayInputStream.
+                                           (.decode (Base64/getDecoder)
+                                                    ^String image))
+                                :filename filename}))]
+    @(apply messaging/create-message! (:rest @conn) target (mapcat identity options))))
+
 (defn- send-msg [{:keys [conn]} msg]
   (try
-    (if-let [{:keys [url id ext]} (generated-image-info msg)]
-      (if-let [{:keys [data]} (get @images/image-store id)]
-        (let [bytes (.decode (Base64/getDecoder) ^String data)
-              stream (java.io.ByteArrayInputStream. bytes)
-              clean-msg (str/replace msg url "")]
-          (if (str/blank? clean-msg)
-            @(messaging/create-message!
-              (:rest @conn) chat/*target*
-              :stream {:content stream :filename (str id "." ext)})
-            @(messaging/create-message!
-              (:rest @conn) chat/*target*
-              :content clean-msg
-              :stream {:content stream :filename (str id "." ext)})))
-        (if (> (count msg) discord-max-message-length)
-          (doseq [chunk (chunk-message msg)]
-            @(messaging/create-message! (:rest @conn) chat/*target* :content chunk))
-          @(messaging/create-message! (:rest @conn) chat/*target* :content msg)))
-      (if (> (count msg) discord-max-message-length)
-        (doseq [chunk (chunk-message msg)]
-          @(messaging/create-message! (:rest @conn) chat/*target* :content chunk))
-        @(messaging/create-message! (:rest @conn) chat/*target* :content msg)))
+    (let [parts (mapv #(assoc % :target chat/*target*) (message-parts msg))]
+      (if *command-output*
+        (do (swap! *command-output* into parts) nil)
+        (last (mapv #(create-message! conn (:target %) %) parts))))
     (catch Exception e
       (timbre/error "Error sending Discord message:" e))))
+
+(defn- delete-reply! [conn {:keys [id target]}]
+  @(messaging/delete-message! (:rest @conn) target id))
+
+(defn- replace-replies! [conn replies parts]
+  (doseq [[index {:keys [target image content] :as part}] (map-indexed vector parts)]
+    (let [old (get @replies index)
+          ;; discljord 1.3.1 cannot edit attachment uploads. Upload a replacement
+          ;; first, then remove the old image; ordinary text keeps its message ID.
+          edit? (and old (= target (:target old))
+                     (not image) (not (:image? old)))
+          edited (when edit?
+                   @(messaging/edit-message! (:rest @conn) target (:id old)
+                                             :content content))
+          missing? (= 10008 (or (:code edited) (:code (ex-data edited))))
+          message (if (and edit? (not missing?))
+                    edited
+                    (create-message! conn target part))]
+      (when-not (:id message)
+        (throw (ex-info "Discord did not return a replacement message ID" {})))
+      (swap! replies assoc index {:id (:id message) :target target
+                                 :image? (boolean image)})
+      (when (and old (not edit?)) (delete-reply! conn old))))
+  (doseq [old (drop (count parts) @replies)]
+    (delete-reply! conn old))
+  (swap! replies #(vec (take (count parts) %))))
 
 (defn stop
   "stop the discord connection"

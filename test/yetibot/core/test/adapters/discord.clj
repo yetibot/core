@@ -1,10 +1,15 @@
 (ns yetibot.core.test.adapters.discord
-  (:require             [yetibot.core.adapters.discord :as discord]
+  (:require             [clojure.core.async :as async]
+                        [yetibot.core.adapters.discord :as discord]
                         [discljord.messaging :as messaging]
                         [yetibot.core.handler :as handler]
                         [yetibot.core.models.users :as users]
+                        [yetibot.core.models.channel :as channel]
+                        [yetibot.core.interpreter :as interp]
                         [yetibot.core.chat :as chat]
                         [yetibot.core.commands.observe :as obs]
+                        [yetibot.core.commands.echo]
+                        [yetibot.core.models.history :as history]
                         [yetibot.core.db.observe :as observers]
                         [yetibot.core.webapp.routes.images :as images]
                         [midje.sweet :refer [fact facts anything => provided]]))
@@ -166,4 +171,308 @@
   => "created-message-result"
   (provided (messaging/create-message! :fake-rest 456
                                       :stream anything) => (future "created-message-result"))))
-            
+
+(defn- await-event [result]
+  (when result
+    (let [[value port] (async/alts!! [result (async/timeout 3000)])]
+      (when-not (= port result)
+        (throw (ex-info "Discord command did not finish" {})))
+      value)))
+
+(def command-message
+  {:id "command" :channel-id "channel"
+   :author {:id "alice" :username "alice"}
+   :content "!echo before"
+   :attachments [{:url "https://example.com/input.png"
+                  :content-type "image/png"}]})
+
+(defn- with-discord-session [evaluate f]
+  (let [adapter (discord/make-discord {:name "test"})
+        conn (:conn adapter)
+        calls (atom [])
+        next-id (atom 0)]
+    (reset! conn {:rest :rest})
+    (reset! (:yetibot-user adapter) {:id "bot"})
+    (with-redefs [chat/chat-source (fn [room] {:adapter :discord :room room})
+                  channel/settings-for-chat-source (constantly {})
+                  observers/find-all (constantly [])
+                  handler/record-and-run-raw
+                  (fn [body user _]
+                    (evaluate body user interp/*chat-source*))
+                  messaging/create-message!
+                  (fn [_ target & options]
+                    (let [id (str (swap! next-id inc))
+                          payload (apply hash-map options)]
+                      (swap! calls conj [:create target id payload])
+                      (delay {:id id :channel-id target})))
+                  messaging/edit-message!
+                  (fn [_ target id & options]
+                    (swap! calls conj [:edit target id (apply hash-map options)])
+                    (delay {:id id :channel-id target}))
+                  messaging/delete-message!
+                  (fn [_ target id]
+                    (swap! calls conj [:delete target id])
+                    (delay true))]
+      (binding [chat/*adapter* adapter]
+        (f (fn [type event]
+             (discord/handle-event type event conn (:yetibot-user adapter)))
+           calls conn)))))
+
+(defn- echo-result [body _ _]
+  [{:result (subs body 6)}])
+
+(fact "editing a command updates its original reply and preserves input context"
+  (let [contexts (atom [])]
+    (with-discord-session
+      (fn [body user source]
+        (swap! contexts conj [body (:id user) (:raw-event source)])
+        [{:result (subs body 6)}])
+      (fn [event! calls _]
+        (await-event (event! :message-create command-message))
+        (await-event (event! :message-update
+                            {:id "command" :channel-id "channel"
+                             :content "!echo after"}))
+        @calls => [[:create "channel" "1" {:content "before"}]
+                   [:edit "channel" "1" {:content "after"}]]
+        (mapv second @contexts) => ["alice" "alice"]
+        (get-in @contexts [1 2 :attachments]) => (:attachments command-message)
+        (get-in @contexts [1 2 :content]) => "!echo after"))))
+
+(fact "embed-only, duplicate and bot updates never rerun a command"
+  (with-discord-session echo-result
+    (fn [event! calls _]
+      (await-event (event! :message-create command-message))
+      (doseq [update [{:embeds [{:title "Preview"}]}
+                      {:content "!echo before"}
+                      {:author {:id "bot"} :content "!echo loop"}]]
+        (event! :message-update
+                (merge {:id "command" :channel-id "channel"} update)))
+      @calls => [[:create "channel" "1" {:content "before"}]])))
+
+(fact "shorter edited replies remove obsolete Discord chunks"
+  (with-discord-session echo-result
+    (fn [event! calls _]
+      (let [long-text (apply str (repeat 2100 "x"))]
+        (await-event (event! :message-create
+                            (assoc command-message :content (str "!echo " long-text))))
+        (await-event (event! :message-update
+                            {:id "command" :channel-id "channel"
+                             :content "!echo short"}))
+        (mapv #(subvec % 0 3) @calls)
+        => [[:create "channel" "1"] [:create "channel" "2"]
+            [:edit "channel" "1"] [:delete "channel" "2"]]
+        (last (nth @calls 2)) => {:content "short"}))))
+
+(fact "removing a command clears its replies without executing ordinary text"
+  (with-discord-session echo-result
+    (fn [event! calls _]
+      (await-event (event! :message-create command-message))
+      (await-event (event! :message-update
+                          {:id "command" :channel-id "channel"
+                           :content "never mind"}))
+      @calls => [[:create "channel" "1" {:content "before"}]
+                 [:delete "channel" "1"]])))
+
+(fact "an edited command replaces the original error with the new result"
+  (with-discord-session
+    (fn [body _ _]
+      [(if (= body "!echo before")
+         {:error? true :result "Invalid input"}
+         {:result "fixed"})])
+    (fn [event! calls _]
+      (await-event (event! :message-create command-message))
+      (await-event (event! :message-update
+                          {:id "command" :channel-id "channel"
+                           :content "!echo fixed"}))
+      @calls => [[:create "channel" "1" {:content "Invalid input"}]
+                 [:edit "channel" "1" {:content "fixed"}]])))
+
+(fact "generated-image replies are replaced along with their old attachments"
+  (with-redefs [images/image-store
+                (atom {"old" {:data "SGVsbG8="} "new" {:data "V29ybGQ="}})]
+    (with-discord-session echo-result
+      (fn [event! calls _]
+        (await-event (event! :message-create
+                            (assoc command-message :content
+                                   "!echo https://bot.example/generated-images/old.png")))
+        (await-event (event! :message-update
+                            {:id "command" :channel-id "channel"
+                             :content "!echo https://bot.example/generated-images/new.png"}))
+        (mapv #(subvec % 0 3) @calls)
+        => [[:create "channel" "1"] [:create "channel" "2"]
+            [:delete "channel" "1"]]
+        (get-in @calls [0 3 :stream :filename]) => "old.png"
+        (get-in @calls [1 3 :stream :filename]) => "new.png"))))
+
+(fact "editing into a command fetches the full Discord message when it is not cached"
+  (let [fetched (atom [])]
+    (with-discord-session echo-result
+      (fn [event! calls _]
+        (with-redefs [messaging/get-channel-message!
+                      (fn [_ target id]
+                        (swap! fetched conj [target id])
+                        (delay (assoc command-message :content "ordinary message")))]
+          (await-event (event! :message-update
+                              {:id "command" :channel-id "channel"
+                               :content "!echo new command"})))
+        @fetched => [["channel" "command"]]
+        @calls => [[:create "channel" "1" {:content "new command"}]]))))
+
+(fact "a reply deleted by the user is recreated on the next command edit"
+  (with-discord-session echo-result
+    (fn [event! calls _]
+      (await-event (event! :message-create command-message))
+      (with-redefs [messaging/edit-message!
+                    (fn [& _] (delay (ex-info "Unknown Message" {:code 10008})))]
+        (await-event (event! :message-update
+                            {:id "command" :channel-id "channel"
+                             :content "!echo restored"})))
+      @calls => [[:create "channel" "1" {:content "before"}]
+                 [:create "channel" "2" {:content "restored"}]])))
+
+(fact "reply tracking isolates commands in different channels"
+  (with-discord-session echo-result
+    (fn [event! calls _]
+      (await-event (event! :message-create command-message))
+      (await-event (event! :message-create
+                          (assoc command-message :channel-id "elsewhere")))
+      (await-event (event! :message-update
+                          {:id "command" :channel-id "elsewhere"
+                           :content "!echo changed"}))
+      (mapv #(subvec % 0 3) @calls)
+      => [[:create "channel" "1"] [:create "elsewhere" "2"]
+          [:edit "elsewhere" "2"]])))
+
+(fact "real echo commands rerun through the interpreter and update their reply"
+  (let [run-raw handler/record-and-run-raw]
+    (with-redefs [history/add (constantly nil)]
+      (with-discord-session
+        (fn [body user _] (run-raw body user {:id "bot" :username "yetibot"}))
+        (fn [event! calls _]
+          (await-event (event! :message-create command-message))
+          (await-event (event! :message-update
+                              {:id "command" :channel-id "channel"
+                               :content "!echo after"}))
+          @calls => [[:create "channel" "1" {:content "before"}]
+                     [:edit "channel" "1" {:content "after"}]])))))
+
+(fact "embedded command edits reconcile multiple replies"
+  (with-discord-session
+    (fn [body _ _]
+      (mapv #(hash-map :result %)
+            (if (= body "`echo one` `echo two`") ["one" "two"] ["three"])))
+    (fn [event! calls _]
+      (await-event (event! :message-create
+                          (assoc command-message :content "`echo one` `echo two`")))
+      (await-event (event! :message-update
+                          {:id "command" :channel-id "channel"
+                           :content "`echo three`"}))
+      @calls => [[:create "channel" "1" {:content "one"}]
+                 [:create "channel" "2" {:content "two"}]
+                 [:edit "channel" "1" {:content "three"}]
+                 [:delete "channel" "2"]])))
+
+(fact "bounded tracking does not discard a command still running during eviction"
+  (let [started (promise)
+        release (promise)]
+    (with-redefs-fn {#'discord/command-cache-size 1}
+      (fn []
+        (with-discord-session
+          (fn [body _ _]
+            (when (= body "!echo before") (deliver started true) @release)
+            [{:result (subs body 6)}])
+          (fn [event! calls conn]
+            (let [original (event! :message-create command-message)]
+              (try
+                (deref started 3000 :timeout) => true
+                (await-event (event! :message-create
+                                    (assoc command-message :id "another"
+                                           :content "!echo another")))
+                (count (:commands @conn)) => 1
+                (finally (deliver release true)))
+              (await-event original)
+              @calls => [[:create "channel" "1" {:content "another"}]
+                         [:create "channel" "2" {:content "before"}]])))))))
+
+(fact "eviction cannot let an obsolete revision overwrite an edited reply"
+  (let [started (promise)
+        release (promise)]
+    (with-redefs-fn {#'discord/command-cache-size 1}
+      (fn []
+        (with-discord-session
+          (fn [body _ _]
+            (when (= body "!echo before") (deliver started true) @release)
+            [{:result (subs body 6)}])
+          (fn [event! calls _]
+            (let [original (event! :message-create command-message)]
+              (try
+                (deref started 3000 :timeout) => true
+                (await-event (event! :message-update
+                                    {:id "command" :channel-id "channel"
+                                     :content "!echo newest"}))
+                (await-event (event! :message-create
+                                    (assoc command-message :id "another"
+                                           :content "!echo another")))
+                (finally (deliver release true)))
+              (await-event original)
+              @calls => [[:create "channel" "1" {:content "newest"}]
+                         [:create "channel" "2" {:content "another"}]])))))))
+
+(fact "partial author objects retain the original username and attachments"
+  (let [seen (atom [])]
+    (with-discord-session
+      (fn [body user source]
+        (swap! seen conj [(:username user) (get-in source [:raw-event :attachments])])
+        [{:result (subs body 6)}])
+      (fn [event! _ _]
+        (await-event (event! :message-create command-message))
+        (await-event (event! :message-update
+                            {:id "command" :channel-id "channel"
+                             :author {:id "alice"} :content "!echo updated"}))
+        (last @seen) => ["alice" (:attachments command-message)]))))
+
+(fact "a pending Discord send does not block accepting an edit on the gateway"
+  (let [sending (promise)
+        release (promise)]
+    (with-discord-session echo-result
+      (fn [event! calls _]
+        (let [create messaging/create-message!]
+          (with-redefs [messaging/create-message!
+                        (fn [& args]
+                          (deliver sending true)
+                          @release
+                          (apply create args))]
+            (let [original (event! :message-create command-message)
+                  edited (promise)]
+              (try
+                (deref sending 3000 :timeout) => true
+                (future (deliver edited
+                                 (event! :message-update
+                                         {:id "command" :channel-id "channel"
+                                          :content "!echo newest"})))
+                (not= :timeout (deref edited 1000 :timeout)) => true
+                (finally (deliver release true)))
+              (await-event original)
+              (await-event (deref edited 3000 nil))
+              @calls => [[:create "channel" "1" {:content "before"}]
+                         [:edit "channel" "1" {:content "newest"}]])))))))
+
+(fact "late completion of an old command cannot overwrite its edited result"
+  (let [started (promise)
+        release (promise)]
+    (with-discord-session
+      (fn [body _ _]
+        (when (= body "!echo before")
+          (deliver started true)
+          @release)
+        [{:result (subs body 6)}])
+      (fn [event! calls _]
+        (let [original (event! :message-create command-message)]
+          (try
+            (deref started 3000 :timeout) => true
+            (await-event (event! :message-update
+                                {:id "command" :channel-id "channel"
+                                 :content "!echo newest"}))
+            (finally (deliver release true)))
+          (await-event original)
+          @calls => [[:create "channel" "1" {:content "newest"}]])))))
