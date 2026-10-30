@@ -1,5 +1,6 @@
 (ns yetibot.core.test.adapters.discord
   (:require             [clojure.core.async :as async]
+                        [clojure.string :as str]
                         [yetibot.core.adapters.discord :as discord]
                         [discljord.messaging :as messaging]
                         [yetibot.core.handler :as handler]
@@ -193,7 +194,8 @@
         next-id (atom 0)]
     (reset! conn {:rest :rest})
     (reset! (:yetibot-user adapter) {:id "bot"})
-    (with-redefs [chat/chat-source (fn [room] {:adapter :discord :room room})
+    (with-redefs [users/users (atom {})
+                  chat/chat-source (fn [room] {:adapter :discord :room room})
                   channel/settings-for-chat-source (constantly {})
                   observers/find-all (constantly [])
                   handler/record-and-run-raw
@@ -204,15 +206,15 @@
                     (let [id (str (swap! next-id inc))
                           payload (apply hash-map options)]
                       (swap! calls conj [:create target id payload])
-                      (delay {:id id :channel-id target})))
+                      (deliver (promise) {:id id :channel-id target})))
                   messaging/edit-message!
                   (fn [_ target id & options]
                     (swap! calls conj [:edit target id (apply hash-map options)])
-                    (delay {:id id :channel-id target}))
+                    (deliver (promise) {:id id :channel-id target}))
                   messaging/delete-message!
                   (fn [_ target id]
                     (swap! calls conj [:delete target id])
-                    (delay true))]
+                    (deliver (promise) true))]
       (binding [chat/*adapter* adapter]
         (f (fn [type event]
              (discord/handle-event type event conn (:yetibot-user adapter)))
@@ -476,3 +478,478 @@
             (finally (deliver release true)))
           (await-event original)
           @calls => [[:create "channel" "1" {:content "newest"}]])))))
+
+;; Resolve at runtime so the proof-first tests can exercise the missing API.
+(defn- publish-output! [target chunks]
+  (if-let [publish (ns-resolve 'yetibot.core.adapters.discord
+                              'publish-command-output!)]
+    (publish target chunks)
+    :missing-api))
+
+(defn- live-part [content]
+  {:content content :allowed-mentions {:parse []}})
+
+(defn- live-edit [content]
+  {:content content :allowed_mentions {:parse []}})
+
+(fact "live answers append before completion and replay without duplicates"
+  (let [published (promise)
+        release (promise)]
+    (with-discord-session
+      (fn [_ _ _]
+        (deliver published [(publish-output! "thread" ["first @everyone"])
+                            (publish-output! "thread" ["second" "third"])])
+        @release
+        [])
+      (fn [event! calls conn]
+        (let [completion (event! :message-create command-message)]
+          (try
+            (deref published 3000 :timeout) => [:published :published]
+            ;; The command is still paused: these must be actual REST creates.
+            @calls => [[:create "thread" "1" (live-part "first @everyone")]
+                       [:create "thread" "2" (live-part "second")]
+                       [:create "thread" "3" (live-part "third")]]
+            (finally (deliver release true)))
+          (await-event completion)
+          @calls => [[:create "thread" "1" (live-part "first @everyone")]
+                     [:create "thread" "2" (live-part "second")]
+                     [:create "thread" "3" (live-part "third")]
+                     [:edit "thread" "1" (live-edit "first @everyone")]
+                     [:edit "thread" "2" (live-edit "second")]
+                     [:edit "thread" "3" (live-edit "third")]]
+          @(get-in @conn [:commands ["channel" "command"] :replies])
+          => [{:id "1" :target "thread" :image? false}
+              {:id "2" :target "thread" :image? false}
+              {:id "3" :target "thread" :image? false}])))))
+
+(fact "live edits reuse IDs, suppress mentions, and remove obsolete chunks"
+  (with-discord-session
+    (fn [body _ _]
+      (publish-output! "thread"
+                       (if (= body "!echo before") ["old" "extra"] ["new"]))
+      [])
+    (fn [event! calls _]
+      (await-event (event! :message-create command-message))
+      (reset! calls [])
+      (await-event (event! :message-update
+                          {:id "command" :channel-id "channel"
+                           :content "!echo new"}))
+      @calls => [[:edit "thread" "1" (live-edit "new")]
+                 [:edit "thread" "1" (live-edit "new")]
+                 [:delete "thread" "2"]])))
+
+(fact "old bound callbacks cannot publish after a newer revision or eviction"
+  (let [started (promise)
+        release (promise)
+        status (promise)]
+    (with-redefs-fn {#'discord/command-cache-size 1}
+      (fn []
+        (with-discord-session
+          (fn [body _ _]
+            (if (= body "!echo before")
+              (do (deliver started true)
+                  @release
+                  (deliver status (publish-output! "thread" ["obsolete"])))
+              (publish-output! "thread" [(subs body 6)]))
+            [])
+          (fn [event! calls _]
+            (let [original (event! :message-create command-message)]
+              (try
+                (deref started 3000 :timeout) => true
+                (await-event (event! :message-update
+                                    {:id "command" :channel-id "channel"
+                                     :content "!echo newest"}))
+                (await-event (event! :message-create
+                                    (assoc command-message :id "another"
+                                           :content "!echo another")))
+                (reset! calls [])
+                (finally (deliver release true)))
+              (await-event original)
+              (deref status 3000 :timeout) => :stale
+              @calls => [])))))))
+
+(fact "outside command context publication is unavailable without IO"
+  (with-discord-session echo-result
+    (fn [_ calls _]
+      (publish-output! "thread" ["standalone"]) => :unavailable
+      @calls => [])))
+
+(fact "invalid live chunks fail statically before IO or output mutation"
+  (let [errors (atom [])]
+    (with-discord-session
+      (fn [_ _ _]
+        (doseq [chunks [nil '("secret") [nil] [42] [{:image "secret"}]
+                        [(str/join (repeat 2001 "s"))]
+                        (vec (repeat 31 "secret"))]]
+          (swap! errors conj
+                 (try (publish-output! "thread" chunks)
+                      :no-error
+                      (catch IllegalArgumentException e (.getMessage e)))))
+        (publish-output! "thread" [(str/join (repeat 2000 "x"))])
+        [])
+      (fn [event! calls _]
+        (await-event (event! :message-create command-message))
+        @errors => (vec (repeat 7 "Invalid Discord command output chunks"))
+        (mapv first @calls) => [:create :edit]
+        (count (get-in @calls [0 3 :content])) => 2000))))
+
+(fact "live output preserves buffered indices without sending the prefix early"
+  (let [published (promise)
+        release (promise)]
+    (with-discord-session
+      (fn [_ _ _]
+        (#'discord/send-msg chat/*adapter* "buffered")
+        (deliver published (publish-output! "thread" ["live"]))
+        @release
+        [{:result "terminal"}])
+      (fn [event! calls conn]
+        (let [completion (event! :message-create command-message)]
+          (try
+            (deref published 3000 :timeout) => :published
+            @calls => [[:create "thread" "1" (live-part "live")]]
+            (finally (deliver release true)))
+          (await-event completion)
+          @calls => [[:create "thread" "1" (live-part "live")]
+                     [:create "channel" "2" {:content "buffered"}]
+                     [:edit "thread" "1" (live-edit "live")]
+                     [:create "channel" "3" {:content "terminal"}]]
+          (mapv :id @(get-in @conn [:commands ["channel" "command"] :replies]))
+          => ["2" "1" "3"])))))
+
+(fact "live target changes and missing messages use shared replacement"
+  (with-discord-session
+    (fn [body _ _]
+      (publish-output! (if (= body "!echo before") "old-thread" "new-thread")
+                       ["live"])
+      [])
+    (fn [event! calls _]
+      (await-event (event! :message-create command-message))
+      (reset! calls [])
+      (await-event (event! :message-update
+                          {:id "command" :channel-id "channel"
+                           :content "!echo moved"}))
+      @calls => [[:create "new-thread" "2" (live-part "live")]
+                 [:delete "old-thread" "1"]
+                 [:edit "new-thread" "2" (live-edit "live")]]
+      (reset! calls [])
+      (let [edit messaging/edit-message!]
+        (with-redefs [messaging/edit-message!
+                      (fn [rest target id & options]
+                        (if (= id "2")
+                          (deliver (promise) {:code 10008})
+                          (apply edit rest target id options)))]
+          (await-event (event! :message-update
+                              {:id "command" :channel-id "channel"
+                               :content "!echo missing"}))))
+      @calls => [[:create "new-thread" "3" (live-part "live")]
+                 [:edit "new-thread" "3" (live-edit "live")]])))
+
+(fact "eviction before edit shares ownership until every generation retires"
+  (let [started (promise)
+        release (promise)
+        status (promise)]
+    (with-redefs-fn {#'discord/command-cache-size 1}
+      (fn []
+        (with-discord-session
+          (fn [body _ _]
+            (if (= body "!echo before")
+              (do (deliver started true)
+                  @release
+                  (deliver status (publish-output! "thread" ["obsolete"])))
+              (publish-output! "thread" [(subs body 6)]))
+            [])
+          (fn [event! calls conn]
+            (with-redefs [messaging/get-channel-message!
+                          (fn [& _] (delay command-message))]
+              (let [original (event! :message-create command-message)]
+                (try
+                  (deref started 3000 :timeout) => true
+                  (await-event
+                    (event! :message-create
+                            (assoc command-message :id "other"
+                                   :content "!echo other")))
+                  (get-in @conn [:commands ["channel" "command"]]) => nil
+                  (await-event
+                    (event! :message-update
+                            {:id "command" :channel-id "channel"
+                             :content "!echo newest"}))
+                  ;; Newer finished first: original still needs its ownership.
+                  (count (:active-commands @conn)) => 1
+                  (set (keys (get-in @conn
+                                    [:active-commands ["channel" "command"]])))
+                  => #{:revision :lock :replies :running}
+                  (await-event
+                    (event! :message-create
+                            (assoc command-message :id "last"
+                                   :content "!echo last")))
+                  (await-event
+                    (event! :message-update
+                            {:id "command" :channel-id "channel"
+                             :content "!echo final"}))
+                  (get-in (last @calls) [3 :content]) => "final"
+                  (reset! calls [])
+                  (finally (deliver release true)))
+                (await-event original)
+                (deref status 3000 :timeout) => :stale
+                @calls => []
+                (:active-commands @conn) => {}))))))))
+
+(fact "older retirement cannot remove newer active ownership after eviction"
+  (let [started (promise)
+        old-release (promise)
+        new-started (promise)
+        new-release (promise)
+        new-status (promise)]
+    (with-redefs-fn {#'discord/command-cache-size 1}
+      (fn []
+        (with-discord-session
+          (fn [body _ _]
+            (case body
+              "!echo before" (do (deliver started true) @old-release)
+              "!echo pending" (do (deliver new-started true)
+                                  @new-release
+                                  (deliver new-status
+                                           (publish-output! "thread" ["old"])))
+              (publish-output! "thread" [(subs body 6)]))
+            [])
+          (fn [event! calls conn]
+            (let [original (event! :message-create command-message)]
+              (try
+                (deref started 3000 :timeout) => true
+                (let [newer (event! :message-update
+                                    {:id "command" :channel-id "channel"
+                                     :content "!echo pending"})]
+                  (try
+                    (deref new-started 3000 :timeout) => true
+                    (deliver old-release true)
+                    (await-event original)
+                    (count (:active-commands @conn)) => 1
+                    (await-event
+                      (event! :message-create
+                              (assoc command-message :id "other"
+                                     :content "!echo other")))
+                    (with-redefs [messaging/get-channel-message!
+                                  (fn [& _] (delay command-message))]
+                      (await-event
+                        (event! :message-update
+                                {:id "command" :channel-id "channel"
+                                 :content "!echo latest"})))
+                    (reset! calls [])
+                    (finally (deliver new-release true)))
+                  (await-event newer)
+                  (deref new-status 3000 :timeout) => :stale
+                  @calls => []
+                  (:active-commands @conn) => {})
+                (finally
+                  (deliver old-release true)
+                  (deliver new-release true))))))))))
+
+(fact "retired callbacks stay stale and active metadata cleans up on errors"
+  (let [callback (promise)]
+    (with-discord-session
+      (fn [_ _ _]
+        (deliver callback (bound-fn [] (publish-output! "thread" ["late"])))
+        [])
+      (fn [event! calls conn]
+        (await-event (event! :message-create command-message))
+        ((deref callback 3000 (constantly :missing))) => :stale
+        @calls => []
+        (:active-commands @conn) => {}
+        (with-redefs [handler/handle-raw
+                      (fn [& _] (throw (Exception. "dispatch failure")))]
+          (try (event! :message-create command-message)
+               (catch Exception _ :failed)) => :failed)
+        (:active-commands @conn) => {})))
+  (with-discord-session echo-result
+    (fn [event! _ conn]
+      (with-redefs [messaging/create-message!
+                    (fn [& _] (deliver (promise) nil))]
+        (await-event (event! :message-create command-message)))
+      (:active-commands @conn) => {})))
+
+(defn- with-short-live-deadline [f]
+  ;; Resolve the override only when implemented, allowing a real baseline RED.
+  (if-let [timeout-var (ns-resolve 'yetibot.core.adapters.discord
+                                 'live-delivery-timeout-ms)]
+    (with-redefs-fn {timeout-var 40} f)
+    (f)))
+
+(defn- delivery-error [f]
+  (try (f)
+       :no-error
+       (catch Exception e
+         [(.getMessage e) (ex-data e) (.getCause e)])))
+
+(facts "failed partial live creates retain confirmed IDs without replaying gaps"
+  (doseq [response [{:code 50013} nil :throw]]
+    (let [status (promise)]
+      (with-discord-session
+        (fn [_ _ _]
+          (deliver status
+                   (delivery-error
+                     #(publish-output! "thread" ["first" "failed" "unsent"])))
+          [{:result "later"}])
+        (fn [event! calls conn]
+          (let [create messaging/create-message!
+                attempt (atom 0)]
+            (with-redefs [messaging/create-message!
+                          (fn [& args]
+                            (let [result (apply create args)]
+                              (if (= 2 (swap! attempt inc))
+                                (if (= response :throw)
+                                  (throw (ex-info "secret" {:secret "body"}))
+                                  (deliver (promise) response))
+                                result)))]
+              (await-event (event! :message-create command-message))))
+          (deref status 3000 :timeout)
+          => ["Discord live delivery failed" {} nil]
+          @calls => [[:create "thread" "1" (live-part "first")]
+                     [:create "thread" "2" (live-part "failed")]
+                     [:edit "thread" "1" (live-edit "first")]
+                     [:create "channel" "3" {:content "later"}]]
+          @(get-in @conn [:commands ["channel" "command"] :replies])
+          => [{:id "1" :target "thread" :image? false}
+              nil nil {:id "3" :target "channel" :image? false}]
+          (:active-commands @conn) => {})))))
+
+(fact "unresolved live create times out without resending or holding the lock"
+  (let [held (promise)
+        status (promise)
+        started (promise)]
+    (with-short-live-deadline
+      (fn []
+        (with-discord-session
+          (fn [body _ _]
+            (if (= body "!echo before")
+              (do (deliver status
+                           (delivery-error
+                             #(publish-output! "thread" ["first" "unknown"
+                                                         "unsent"])))
+                  [{:result "later"}])
+              [{:result "newer"}]))
+          (fn [event! calls conn]
+            (let [create messaging/create-message!
+                  attempt (atom 0)]
+              (with-redefs [messaging/create-message!
+                            (fn [& args]
+                              (let [result (apply create args)]
+                                (if (= 2 (swap! attempt inc))
+                                  (do (deliver started true) held)
+                                  result)))]
+                (let [original (event! :message-create command-message)
+                      newer (atom nil)]
+                  (try
+                    (deref started 3000 :timeout) => true
+                    (deref status 500 :timeout)
+                    => ["Discord live delivery failed" {} nil]
+                    (let [[_ port]
+                          (async/alts!! [original (async/timeout 500)])]
+                      (= port original) => true)
+                    @calls => [[:create "thread" "1" (live-part "first")]
+                               [:create "thread" "2" (live-part "unknown")]
+                               [:edit "thread" "1" (live-edit "first")]
+                               [:create "channel" "3" {:content "later"}]]
+                    (reset! calls [])
+                    (reset! newer
+                            (event! :message-update
+                                    {:id "command" :channel-id "channel"
+                                     :content "!echo newer"}))
+                    (let [[_ port]
+                          (async/alts!! [@newer (async/timeout 500)])]
+                      (= port @newer) => true)
+                    ;; Both generations finish while the REST value is held.
+                    (realized? held) => false
+                    (mapv first @calls) => [:create :delete :delete]
+                    (:active-commands @conn) => {}
+                    (finally (deliver held {:id "late-unknown"})))
+                  (await-event original)
+                  (await-event @newer))))))))))
+
+(facts "live edit and delete waits and terminal replay are bounded"
+  (doseq [operation [:edit :delete :terminal]]
+    (let [held (promise)
+          status (atom nil)
+          entered (promise)]
+      (with-short-live-deadline
+        (fn []
+          (with-discord-session
+            (fn [body _ _]
+              (reset! status
+                      (delivery-error
+                        #(publish-output!
+                           (if (= body "!echo before") "old" "new")
+                           ["live"])))
+              [])
+            (fn [event! calls conn]
+              (when (not= operation :terminal)
+                (await-event (event! :message-create command-message)))
+              (let [edit messaging/edit-message!
+                    delete messaging/delete-message!
+                    block (fn [] (deliver entered true) held)]
+                (with-redefs [messaging/edit-message!
+                              (fn [& args]
+                                (if (= operation :terminal)
+                                  (block)
+                                  (apply edit args)))
+                              messaging/delete-message!
+                              (fn [& args]
+                                (if (= operation :delete)
+                                  (block)
+                                  (apply delete args)))]
+                  ;; :edit uses the same target, :delete changes the target.
+                  (let [target (if (= operation :edit) "old" "new")
+                        publish (ns-resolve 'yetibot.core.adapters.discord
+                                            'publish-command-output!)
+                        original-publish @publish]
+                    (with-redefs-fn
+                      (cond-> {}
+                        (= operation :edit)
+                        (assoc #'messaging/edit-message!
+                               (fn [& _] (block))
+                               publish (fn [_ chunks]
+                                         (original-publish target chunks))))
+                      (fn []
+                        (let [completion
+                              (event! (if (= operation :terminal)
+                                        :message-create :message-update)
+                                      (assoc command-message
+                                             :content "!echo next"))]
+                          (try
+                            (deref entered 3000 :timeout) => true
+                            (let [[_ port]
+                                  (async/alts!! [completion
+                                                 (async/timeout 500)])]
+                              (= port completion) => true)
+                            (when-not (= operation :terminal)
+                              @status => ["Discord live delivery failed"
+                                          {} nil])
+                            (finally (deliver held {:id "late"})))
+                          (await-event completion)
+                          (:active-commands @conn) => {})))))))))))))
+
+(fact "one live batch shares its remaining deadline across REST operations"
+  (let [waits (atom [])
+        ids (atom 0)]
+    (with-redefs-fn
+      {(ns-resolve 'yetibot.core.adapters.discord
+                   'live-delivery-timeout-ms) 200}
+      (fn []
+        (with-discord-session
+          (fn [_ _ _]
+            (publish-output! "thread" ["first" "second"]) => :published
+            [])
+          (fn [event! _ _]
+            (with-redefs [messaging/create-message!
+                          (fn [& _]
+                            (let [id (str (swap! ids inc))]
+                              (reify
+                                clojure.lang.IDeref
+                                (deref [_] {:id id})
+                                clojure.lang.IBlockingDeref
+                                (deref [_ timeout-ms _]
+                                  (swap! waits conj timeout-ms)
+                                  (when (= id "1") (Thread/sleep 40))
+                                  {:id id}))))]
+              (await-event (event! :message-create command-message)))
+            (count @waits) => 2
+            (< (get @waits 1 1000) (- (get @waits 0 0) 20)) => true))))))
