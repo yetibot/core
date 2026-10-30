@@ -402,21 +402,26 @@
 ;               (users/get-user :mycs user) => {}
 ;               (slack/find-yetibot-user :myconn :mycs) => {:id user}))))
 
-(facts
- "about on-pong"
- (fact
-  "it .."
-  (let [connection-last-active-timestamp (atom 123)
-        connection-latency (atom 123)
-        ping-time (atom 123)]
-    (slack/on-pong {:conn :myconn
-                    :event :myevent
-                    :connection-last-active-timestamp connection-last-active-timestamp
-                    :connection-latency connection-latency
-                    :ping-time ping-time}
-                   :pong-event) => :did-reset-latency
-    (provided (reset! connection-last-active-timestamp anything) => :did-reset-last
-              (reset! connection-latency anything) => :did-reset-latency))))
+(facts "about on-pong"
+  (doseq [foreign? [false true]]
+    (let [last-active (atom 123)
+          latency (atom 123)
+          foreign (atom false)
+          ;; A foreign write deterministically exposes a global reset! fake.
+          ping-time (if foreign? (delay (reset! foreign true) 123) (atom 123))
+          before (System/currentTimeMillis)
+          result (slack/on-pong
+                   {:conn :myconn :event :myevent
+                    :connection-last-active-timestamp last-active
+                    :connection-latency latency :ping-time ping-time}
+                   :pong-event)
+          after (System/currentTimeMillis)]
+      (fact "updates real timestamp/latency atoms without intercepting others"
+        (<= before @last-active after) => true
+        @latency => (- @last-active 123)
+        result => @latency
+        @ping-time => 123
+        @foreign => foreign?))))
 
 (facts
  "about react"
