@@ -64,6 +64,10 @@
   "Collect adapter output until a command finishes, before replacing its replies."
   nil)
 
+(def ^:dynamic ^:private *command-context*
+  "Request-local live output ownership; never stored in the command cache."
+  nil)
+
 (defn- command? [event]
   (and (string? (:content event))
        (:cmd? (handler/->parsed-message-info (:content event)))))
@@ -79,32 +83,97 @@
                          (discord-user (:author event) (:id @yetibot-user))
                          :message @yetibot-user {:body (:content event)}))))
 
+(def ^:private live-delivery-timeout-ms 30000)
+(def ^:dynamic ^:private *delivery-deadline* nil)
+
+(defn- live-deadline []
+  (+ (System/nanoTime) (* 1000000 live-delivery-timeout-ms)))
+
+(defn- delivery-error []
+  (ex-info "Discord live delivery failed" {}))
+
+(defn- delivery! [dispatch]
+  (if-not *delivery-deadline*
+    @(dispatch)
+    (try
+      ;; A single monotonic deadline covers the whole batch, not each chunk.
+      (let [remaining (- *delivery-deadline* (System/nanoTime))]
+        (when-not (pos? remaining) (throw (delivery-error)))
+        (let [result (dispatch)
+              remaining (- *delivery-deadline* (System/nanoTime))
+              timeout (Object.)]
+          (when-not (and (pos? remaining)
+                         (instance? clojure.lang.IBlockingDeref result))
+            (throw (delivery-error)))
+          (let [value (deref result
+                             (long (Math/ceil (/ remaining 1000000.0)))
+                             timeout)]
+            (when (identical? timeout value) (throw (delivery-error)))
+            value)))
+      ;; No raw transport exception, response data, or content escapes here.
+      (catch Exception _ (throw (delivery-error))))))
+
 (declare replace-replies!)
 
+(defn- register-command! [event conn revision]
+  ;; This short metadata lock never waits on the per-command REST IO lock.
+  (locking conn
+    (let [key [(:channel-id event) (:id event)]
+          previous (or (get-in @conn [:active-commands key])
+                       (get-in @conn [:commands key]))
+          owner {:revision (or (:revision previous) (atom nil))
+                 :lock (or (:lock previous) (Object.))
+                 :replies (or (:replies previous) (atom []))
+                 :running (or (:running previous) (atom #{}))}
+          entry (assoc (dissoc owner :running) :event event)]
+      (reset! (:revision owner) revision)
+      (swap! (:running owner) conj revision)
+      (swap! conn
+             (fn [state]
+               (-> state
+                   (assoc-in [:active-commands key] owner)
+                   (update :commands
+                           #(cache/miss
+                              (or % (cache/lru-cache-factory
+                                      {} :threshold command-cache-size))
+                              key entry)))))
+      [key owner entry])))
+
+(defn- retire-command! [conn key owner revision]
+  (locking conn
+    (let [running (:running owner)]
+      (swap! running disj revision)
+      (when (and (empty? @running)
+                 (identical? running
+                             (get-in @conn [:active-commands key :running])))
+        (swap! conn update :active-commands dissoc key)))))
+
 (defn- run-command! [event conn yetibot-user]
-  (let [key [(:channel-id event) (:id event)]
-        previous (get-in @conn [:commands key])
-        revision (Object.)
-        entry {:event event
-               :revision (or (:revision previous) (atom nil))
-               :lock (or (:lock previous) (Object.))
-               :replies (or (:replies previous) (atom []))}
+  (let [revision (Object.)
+        [key owner entry] (register-command! event conn revision)
         output (atom [])
-        _ (reset! (:revision entry) revision)
-        _ (swap! conn update :commands
-                 #(cache/miss (or % (cache/lru-cache-factory
-                                     {} :threshold command-cache-size))
-                              key entry))
-        completion (binding [*command-output* output]
-                     (when (command? event) (run-message! event yetibot-user)))]
-    (async/thread
-      (try
-        (when completion (async/<!! completion))
-        (locking (:lock entry)
-          (when (identical? revision @(:revision entry))
-            (replace-replies! conn (:replies entry) @output)))
-        (catch Exception e
-          (timbre/error e "Error replacing Discord command replies"))))))
+        live? (atom false)]
+    (try
+      (let [completion
+            (binding [*command-output* output
+                      *command-context* {:conn conn :entry entry
+                                         :running (:running owner)
+                                         :revision revision :output output
+                                         :live? live?}]
+              (when (command? event) (run-message! event yetibot-user)))]
+        (async/thread
+          (try
+            (when completion (async/<!! completion))
+            (locking (:lock entry)
+              (when (identical? revision @(:revision entry))
+                (binding [*delivery-deadline* (when @live? (live-deadline))]
+                  (replace-replies! conn (:replies entry) @output))))
+            (catch Exception e
+              (timbre/error e "Error replacing Discord command replies"))
+            (finally (retire-command! conn key owner revision)))))
+      (catch Throwable e
+        (retire-command! conn key owner revision)
+        (throw e)))))
 
 (defmethod handle-event :message-create
   [_ event-data conn yetibot-user]
@@ -185,13 +254,14 @@
       (mapv #(hash-map :content %) (chunk-message msg)))))
 
 (defn- create-message! [conn target {:keys [image filename] :as part}]
-  (let [options (cond-> (select-keys part [:content])
+  (let [options (cond-> (select-keys part [:content :allowed-mentions])
                   image (assoc :stream
                                {:content (java.io.ByteArrayInputStream.
                                            (.decode (Base64/getDecoder)
                                                     ^String image))
                                 :filename filename}))]
-    @(apply messaging/create-message! (:rest @conn) target (mapcat identity options))))
+    (delivery! #(apply messaging/create-message! (:rest @conn) target
+                       (mapcat identity options)))))
 
 (defn- send-msg [{:keys [conn]} msg]
   (try
@@ -203,30 +273,90 @@
       (timbre/error "Error sending Discord message:" e))))
 
 (defn- delete-reply! [conn {:keys [id target]}]
-  @(messaging/delete-message! (:rest @conn) target id))
+  (delivery! #(messaging/delete-message! (:rest @conn) target id)))
+
+(defn- replace-reply-at!
+  [conn replies index {:keys [target image content allowed-mentions] :as part}]
+  (let [old (get @replies index)
+        ;; discljord 1.3.1 cannot edit attachment uploads. Upload a replacement
+        ;; first, then remove the old image; ordinary text keeps its message ID.
+        edit? (and old (= target (:target old))
+                   (not image) (not (:image? old)))
+        ;; Unlike create-message!, discljord's edit options retain JSON keys.
+        options (cond-> {:content content}
+                  allowed-mentions (assoc :allowed_mentions allowed-mentions))
+        edited (when edit?
+                 (delivery! #(apply messaging/edit-message!
+                                    (:rest @conn) target (:id old)
+                                    (mapcat identity options))))
+        missing? (= 10008 (or (:code edited) (:code (ex-data edited))))
+        message (if (and edit? (not missing?))
+                  edited
+                  (create-message! conn target part))]
+    (when-not (:id message)
+      (throw (ex-info "Discord did not return a replacement message ID" {})))
+    (swap! replies
+           (fn [records]
+             ;; Buffered normal output may precede the first live part. Reserve
+             ;; those indices without sending the buffered prefix early.
+             (assoc (into records
+                          (repeat (max 0 (- index (count records))) nil))
+                    index {:id (:id message) :target target
+                           :image? (boolean image)})))
+    (when (and old (not edit?)) (delete-reply! conn old))))
 
 (defn- replace-replies! [conn replies parts]
-  (doseq [[index {:keys [target image content] :as part}] (map-indexed vector parts)]
-    (let [old (get @replies index)
-          ;; discljord 1.3.1 cannot edit attachment uploads. Upload a replacement
-          ;; first, then remove the old image; ordinary text keeps its message ID.
-          edit? (and old (= target (:target old))
-                     (not image) (not (:image? old)))
-          edited (when edit?
-                   @(messaging/edit-message! (:rest @conn) target (:id old)
-                                             :content content))
-          missing? (= 10008 (or (:code edited) (:code (ex-data edited))))
-          message (if (and edit? (not missing?))
-                    edited
-                    (create-message! conn target part))]
-      (when-not (:id message)
-        (throw (ex-info "Discord did not return a replacement message ID" {})))
-      (swap! replies assoc index {:id (:id message) :target target
-                                 :image? (boolean image)})
-      (when (and old (not edit?)) (delete-reply! conn old))))
-  (doseq [old (drop (count parts) @replies)]
+  (doseq [[index part] (map-indexed vector parts)]
+    ;; Failed/unknown and unattempted live slots are never automatically sent.
+    ;; Keep their indices so independently buffered later output is not lost.
+    (when (or (nil? (:delivered? part)) @(:delivered? part))
+      (replace-reply-at! conn replies index part)))
+  (doseq [old (keep identity (drop (count parts) @replies))]
     (delete-reply! conn old))
   (swap! replies #(vec (take (count parts) %))))
+
+(defn publish-command-output!
+  "Immediately publish pre-split text chunks to a Discord channel/thread target.
+
+  chunks must be a vector of at most 30 strings, each at most 2000 characters;
+  invalid chunks throw a static IllegalArgumentException before any IO.
+  Returns :published after delivery, :stale without IO if this request's saved
+  revision no longer owns the command, or :unavailable without IO outside a
+  command context. Never fall back on :stale. Delivery errors propagate as
+  static exceptions. Live batches and terminal replay each share a 30s deadline.
+  Failed/unknown and unattempted live slots are not automatically resent;
+  confirmed IDs and independently buffered output survive partial failure.
+  A timed-out dispatched create can still arrive later; it is not cancellable.
+
+  Live parts suppress mentions on create and replay and participate in command
+  edit/reply tracking. Callers own aggregate per-request chunk/byte budgets.
+  The dynamic request context propagates through bound async work, not caches."
+  [target chunks]
+  (when-not (and (vector? chunks)
+                 (<= (count chunks) 30)
+                 (every? #(and (string? %)
+                               (<= (count %) discord-max-message-length))
+                         chunks))
+    (throw (IllegalArgumentException. "Invalid Discord command output chunks")))
+  (if-let [{:keys [conn entry running revision output live?]} *command-context*]
+    (locking (:lock entry)
+      (if-not (and (identical? revision @(:revision entry))
+                   (contains? @running revision))
+        :stale
+        (binding [*delivery-deadline* (live-deadline)]
+          (let [parts (mapv #(hash-map :target target :content %
+                                      :allowed-mentions {:parse []}
+                                      :delivered? (atom false)) chunks)
+                [before _] (swap-vals! output into parts)
+                start (count before)]
+            (reset! live? true)
+            (try
+              (doseq [[offset part] (map-indexed vector parts)]
+                (replace-reply-at! conn (:replies entry) (+ start offset) part)
+                (reset! (:delivered? part) true))
+              :published
+              (catch Exception _ (throw (delivery-error))))))))
+    :unavailable))
 
 (defn stop
   "stop the discord connection"
