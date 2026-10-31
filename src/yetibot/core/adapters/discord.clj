@@ -12,7 +12,10 @@
             [yetibot.core.handler :as handler]
             [yetibot.core.webapp.routes.images :as images]
             [yetibot.core.chat :as chat])
-  (:import [java.util Base64]))
+  (:import [java.util Base64]
+           [java.util.concurrent ScheduledThreadPoolExecutor ThreadFactory
+            TimeUnit]
+           [java.util.concurrent.locks ReentrantLock]))
 
 (spec/def ::type #{"discord"})
 (spec/def ::token string?)
@@ -86,8 +89,10 @@
 (def ^:private live-delivery-timeout-ms 30000)
 (def ^:dynamic ^:private *delivery-deadline* nil)
 
+(defn- monotonic-time [] (System/nanoTime))
+
 (defn- live-deadline []
-  (+ (System/nanoTime) (* 1000000 live-delivery-timeout-ms)))
+  (+ (monotonic-time) (* 1000000 live-delivery-timeout-ms)))
 
 (defn- delivery-error []
   (ex-info "Discord live delivery failed" {}))
@@ -97,10 +102,10 @@
     @(dispatch)
     (try
       ;; A single monotonic deadline covers the whole batch, not each chunk.
-      (let [remaining (- *delivery-deadline* (System/nanoTime))]
+      (let [remaining (- *delivery-deadline* (monotonic-time))]
         (when-not (pos? remaining) (throw (delivery-error)))
         (let [result (dispatch)
-              remaining (- *delivery-deadline* (System/nanoTime))
+              remaining (- *delivery-deadline* (monotonic-time))
               timeout (Object.)]
           (when-not (and (pos? remaining)
                          (instance? clojure.lang.IBlockingDeref result))
@@ -113,7 +118,22 @@
       ;; No raw transport exception, response data, or content escapes here.
       (catch Exception _ (throw (delivery-error))))))
 
-(declare replace-replies!)
+(defn- acquire-command-lock! [^ReentrantLock lock]
+  (if-not *delivery-deadline*
+    (.lock lock)
+    (try
+      (let [remaining (- *delivery-deadline* (monotonic-time))]
+        (when-not (and (pos? remaining)
+                       (.tryLock lock remaining TimeUnit/NANOSECONDS))
+          (throw (delivery-error))))
+      (catch Exception _ (throw (delivery-error))))))
+
+(defmacro ^:private with-command-lock [lock & body]
+  `(let [lock# ~lock]
+     (acquire-command-lock! lock#)
+     (try ~@body (finally (.unlock ^ReentrantLock lock#)))))
+
+(declare replace-replies! retire-status! cleanup-status!)
 
 (defn- register-command! [event conn revision]
   ;; This short metadata lock never waits on the per-command REST IO lock.
@@ -122,10 +142,14 @@
           previous (or (get-in @conn [:active-commands key])
                        (get-in @conn [:commands key]))
           owner {:revision (or (:revision previous) (atom nil))
-                 :lock (or (:lock previous) (Object.))
+                 :lock (or (:lock previous) (ReentrantLock.))
                  :replies (or (:replies previous) (atom []))
                  :running (or (:running previous) (atom #{}))}
           entry (assoc (dissoc owner :running) :event event)]
+      (when-let [status (get-in @conn [:command-statuses key])]
+        (retire-status! {:conn conn :key key :status status :entry entry
+                         :running (:running owner)
+                         :revision @(:revision owner)}))
       (reset! (:revision owner) revision)
       (swap! (:running owner) conj revision)
       (swap! conn
@@ -152,26 +176,37 @@
   (let [revision (Object.)
         [key owner entry] (register-command! event conn revision)
         output (atom [])
-        live? (atom false)]
+        live? (atom false)
+        context {:conn conn :entry entry :key key
+                 :running (:running owner) :revision revision
+                 :output output :live? live? :status (atom {})}]
     (try
       (let [completion
             (binding [*command-output* output
-                      *command-context* {:conn conn :entry entry
-                                         :running (:running owner)
-                                         :revision revision :output output
-                                         :live? live?}]
+                      *command-context* context]
               (when (command? event) (run-message! event yetibot-user)))]
         (async/thread
           (try
             (when completion (async/<!! completion))
-            (locking (:lock entry)
-              (when (identical? revision @(:revision entry))
-                (binding [*delivery-deadline* (when @live? (live-deadline))]
-                  (replace-replies! conn (:replies entry) @output))))
+            (binding [*delivery-deadline* (when @live? (live-deadline))]
+              (locking (:status context)
+                ;; Reserve cleanup before retirement exposes inactive status.
+                (swap! (:status context) assoc :terminal-pending? true)
+                (retire-status! context))
+              (try
+                (with-command-lock (:lock entry)
+                  (try
+                    (when (identical? revision @(:revision entry))
+                      (replace-replies! conn (:replies entry) @output))
+                    (finally (cleanup-status! context))))
+                (finally
+                  (locking (:status context)
+                    (swap! (:status context) dissoc :terminal-pending?)))))
             (catch Exception e
               (timbre/error e "Error replacing Discord command replies"))
             (finally (retire-command! conn key owner revision)))))
       (catch Throwable e
+        (retire-status! context)
         (retire-command! conn key owner revision)
         (throw e)))))
 
@@ -217,9 +252,13 @@
     (let [event-channel (async/chan 100)
           message-channel (discord-ws/connect-bot! (:token config) event-channel :intents #{:guilds :guild-messages :guild-message-reactions :direct-messages :direct-message-reactions})
           rest-connection (messaging/start-connection! (:token config))
-          retcon {:event  event-channel
+          status-connection (try
+                              (messaging/start-connection! (:token config))
+                              (catch Exception _ nil))
+          retcon {:event event-channel
                   :message message-channel
-                  :rest    rest-connection}]
+                  :rest rest-connection
+                  :status-rest status-connection}]
       (reset! conn retcon)
 
       (timbre/debug (pr-str conn))
@@ -315,6 +354,257 @@
     (delete-reply! conn old))
   (swap! replies #(vec (take (count parts) %))))
 
+(defonce ^:private status-scheduler
+  (delay
+    (doto
+      (ScheduledThreadPoolExecutor.
+        1
+        (reify ThreadFactory
+          (newThread [_ task]
+            (doto (Thread. nil task "discord-command-status" 0 false)
+              (.setDaemon true)))))
+      (.setRemoveOnCancelPolicy true))))
+
+(defn- schedule-status! [tick]
+  (let [task (.scheduleWithFixedDelay
+               ^ScheduledThreadPoolExecutor @status-scheduler
+               ^Runnable tick 100 100 TimeUnit/MILLISECONDS)]
+    #(.cancel task false)))
+
+(defn- owns-command? [{:keys [entry running revision]}]
+  (and (identical? revision @(:revision entry))
+       (contains? @running revision)))
+
+(declare status-tick!)
+
+(defn- cancel-status-job! [status]
+  (when-let [cancel (:cancel @status)]
+    (swap! status dissoc :cancel)
+    (try (cancel) (catch Exception _ nil))))
+
+(defn- ensure-status-job! [{:keys [status entry] :as context}]
+  (when-not (:cancel @status)
+    (let [context (assoc (select-keys context
+                                     [:conn :key :running :revision :status])
+                         :entry (select-keys entry
+                                             [:revision :lock :replies]))]
+      (try
+        (swap! status assoc :cancel
+               (schedule-status! #(status-tick! context)))
+        (catch Exception _ (swap! status assoc :failed? true))))))
+
+(defn- retire-status! [{:keys [conn key status] :as context}]
+  (locking status
+    (when (:active? @status) (cancel-status-job! status))
+    (swap! status assoc :started? true :active? false
+           :text nil :sent-text nil)
+    (swap! conn update :command-statuses
+           (fn [records]
+             (if (identical? status (get records key))
+               (dissoc records key)
+               records)))
+    (when (and (:status-rest @conn)
+               (:id @status) (not (:cleanup-attempted? @status)))
+      (when-not (:cleanup-deadline @status)
+        (swap! status assoc :cleanup-deadline
+               (or *delivery-deadline* (live-deadline))))
+      (ensure-status-job! context))))
+
+(defn- safe-status-id? [{:keys [conn entry key status]}]
+  (let [{:keys [id target]} @status
+        current (get-in @conn [:command-statuses key])
+        newer (when (and current (not (identical? current status))) @current)
+        address [target id]]
+    (and id
+         (not= address key)
+         (not= address [(:target newer) (:id newer)])
+         (not-any? #(= address [(:target %) (:id %)]) @(:replies entry)))))
+
+(defn- dispatch-status-cleanup! [{:keys [conn status] :as context}]
+  (when (and (:id @status) (not (:cleanup-attempted? @status)))
+    (swap! status assoc :cleanup-attempted? true)
+    (when (safe-status-id? context)
+      (let [{:keys [target id]} @status]
+        (try
+          (swap! status assoc :cleanup
+                 (when-let [rest (:status-rest @conn)]
+                   (messaging/delete-message! rest target id)))
+          (catch Exception _ nil)))))
+  (cancel-status-job! status))
+
+(defn- cleanup-status! [{:keys [status] :as context}]
+  (try
+    (let [receipt
+          (locking status
+            (if (and *delivery-deadline*
+                     (pos? (- *delivery-deadline* (monotonic-time))))
+              (do
+                (dispatch-status-cleanup! context)
+                (:cleanup @status))
+              (when (or (nil? (:cleanup-deadline @status))
+                        (>= (monotonic-time) (:cleanup-deadline @status)))
+                (cancel-status-job! status)
+                nil)))]
+      (when receipt (delivery! (constantly receipt))))
+    (catch Exception _ nil)))
+
+(defn- status-components [text]
+  [{:type 17 :components [{:type 10 :content text}]}])
+
+(defn- status-receipt! [context create? text value]
+  (let [{:keys [status]} context]
+    (locking status
+      (let [{:keys [id target]} @status
+            valid? (and (map? value) (not (:code value))
+                        (string? (:id value))
+                        (not (str/blank? (:id value)))
+                        (or (nil? (:channel-id value))
+                            (= target (:channel-id value)))
+                        (or create? (= id (:id value))))]
+        (swap! status assoc :pending? false)
+        (if valid?
+          (swap! status assoc :id (:id value)
+                 :sent-text (when (:active? @status) text))
+          (swap! status assoc :failed? true))
+        (when (and create? valid?
+                   (or (not (:active? @status))
+                       (not (owns-command? context))))
+          (swap! status assoc :cleanup-deadline (live-deadline))
+          (retire-status! context))))))
+
+(defn- dispatch-status! [{:keys [conn status] :as context} now]
+  (let [{:keys [id target text]} @status]
+    (swap! status assoc :pending? true :create-attempted? true
+           :next-status (+ now 1000000000))
+    (try
+      (let [rest (:status-rest @conn)
+            _ (when-not rest (throw (delivery-error)))
+            options [:flags 32768 :components (status-components text)
+                     :allowed_mentions {:parse [] :replied_user false}]
+            receipt (if id
+                      (apply messaging/edit-message! rest target id options)
+                      (apply messaging/create-message! rest target options))]
+        (async/take! receipt #(status-receipt! context (nil? id) text %)))
+      (catch Exception _
+        (swap! status assoc :failed? true :pending? false)))))
+
+(defn- dispatch-typing! [{:keys [conn status]}]
+  (when-not (:typing-pending? @status)
+    (swap! status assoc :typing-pending? true)
+    (try
+      (async/take!
+        (when-let [rest (:status-rest @conn)]
+          (messaging/trigger-typing-indicator! rest (:target @status)))
+        (fn [_] (swap! status assoc :typing-pending? false)))
+      (catch Exception _ (swap! status assoc :typing-pending? false)))))
+
+(defn- status-tick! [{:keys [entry status] :as context}]
+  (try
+    (when-not (owns-command? context) (retire-status! context))
+    (locking status
+      (when (and (not (:active? @status))
+                 (:cleanup-deadline @status)
+                 (>= (monotonic-time) (:cleanup-deadline @status)))
+        (cancel-status-job! status)))
+    (let [lock ^ReentrantLock (:lock entry)]
+      (when (.tryLock lock)
+        (try
+          (locking status
+            (let [now (monotonic-time)
+                  {:keys [active? next-typing next-status pending? failed?
+                          text sent-text id create-attempted?
+                          cleanup-deadline terminal-pending?]} @status]
+              (if (and active? (owns-command? context))
+                (do
+                  (when (>= now next-typing)
+                    (swap! status assoc :next-typing (+ now 8000000000))
+                    (when (and (:active? @status) (owns-command? context))
+                      (dispatch-typing! context)))
+                  (when (and (not pending?) (not failed?)
+                             (or id (not create-attempted?))
+                             (not= text sent-text) (>= now next-status)
+                             (:active? @status) (owns-command? context))
+                    (dispatch-status! context now)))
+                (when (and cleanup-deadline (not terminal-pending?))
+                  (if (< now cleanup-deadline)
+                    (dispatch-status-cleanup! context)
+                    (cancel-status-job! status))))))
+          (finally (.unlock lock)))))
+    (catch Exception _ (locking status (cancel-status-job! status)))))
+
+(defn- validate-status-text! [text]
+  ;; Conservative application bound, NOT an asserted Discord protocol maximum.
+  (when-not (and (string? text) (not (str/blank? text))
+                 (<= (.length ^String text) 1800))
+    (throw (IllegalArgumentException. "Invalid Discord command status"))))
+
+(defn start-command-status!
+  "Queue one transient V2 working card and best-effort typing for this request.
+
+  target is a nonblank channel/thread ID string. text is caller-sanitized,
+  nonblank, at most 1800 UTF16 units; never supply drafts or raw tool data.
+  Invalid input throws a static IllegalArgumentException before IO. The target
+  is immutable. Returns :accepted (queued, NOT confirmed delivery), :inactive
+  if already started/finished, :stale if revision ownership was lost, or
+  :unavailable outside a command context or without the ancillary REST lane.
+  There is no direct-send fallback.
+
+  Status is separate from ordered answers. Core never resends unknown/failed
+  status creates/edits or affects publish-command-output!. Snapshots coalesce
+  at about 1Hz; typing is best effort about every 8s. Terminal completion
+  automatically retires status.
+  Async callbacks must convey the original request bindings (e.g. bound-fn),
+  just as for publish-command-output!; deferred work rechecks ownership."
+  [target text]
+  (validate-status-text! text)
+  (when-not (and (string? target) (not (str/blank? target)))
+    (throw (IllegalArgumentException. "Invalid Discord command status")))
+  (if-let [{:keys [conn key status live?] :as context} *command-context*]
+    (locking conn
+      (locking status
+        (cond
+          (not (owns-command? context)) :stale
+          (:started? @status) :inactive
+          (nil? (:status-rest @conn)) :unavailable
+          :else
+          (do
+            (reset! live? true)
+            (let [now (monotonic-time)]
+              (reset! status {:started? true :active? true :target target
+                              :text text :next-status now :next-typing now}))
+            (swap! conn assoc-in [:command-statuses key] status)
+            (ensure-status-job! context)
+            :accepted))))
+    :unavailable))
+
+(defn update-command-status!
+  "Queue the newest bounded sanitized text; unchanged text causes no edit.
+  Same text validation/binding requirements as start-command-status!.
+  Returns :accepted (not a delivery receipt), :inactive before start or after
+  finish, :stale on ownership loss, or :unavailable outside command context."
+  [text]
+  (validate-status-text! text)
+  (if-let [{:keys [status] :as context} *command-context*]
+    (locking status
+      (cond
+        (not (owns-command? context)) :stale
+        (not (:active? @status)) :inactive
+        :else (do (swap! status assoc :text text) :accepted)))
+    :unavailable))
+
+(defn finish-command-status!
+  "Stop future status/typing ticks and queue best-effort known-ID cleanup.
+  Returns :retired, NOT confirmation of deletion; :stale on ownership loss or
+  :unavailable outside command context. Idempotent, including before start.
+  Terminal answer flush and cleanup share one 30s monotonic deadline, answers
+  first. Unknown creates are never resent; late confirmed IDs get separately
+  bounded cleanup. Dispatched REST cannot be cancelled by stopping ticks."
+  []
+  (if-let [context *command-context*]
+    (do (retire-status! context)
+        (if (owns-command? context) :retired :stale))
+    :unavailable))
+
 (defn publish-command-output!
   "Immediately publish pre-split text chunks to a Discord channel/thread target.
 
@@ -339,7 +629,7 @@
                          chunks))
     (throw (IllegalArgumentException. "Invalid Discord command output chunks")))
   (if-let [{:keys [conn entry running revision output live?]} *command-context*]
-    (locking (:lock entry)
+    (with-command-lock (:lock entry)
       (if-not (and (identical? revision @(:revision entry))
                    (contains? @running revision))
         :stale
@@ -362,6 +652,15 @@
   "stop the discord connection"
   [{:keys [conn] :as adapter}]
   (timbre/debug "Closing Discord" (adapter/uuid adapter))
+  (let [rest (:status-rest @conn)]
+    (swap! conn dissoc :status-rest)
+    (doseq [status (vals (:command-statuses @conn))]
+      (locking status
+        (swap! status assoc :active? false :text nil :sent-text nil)
+        (cancel-status-job! status)))
+    (swap! conn assoc :command-statuses {})
+    (when rest
+      (try (messaging/stop-connection! rest) (catch Exception _ nil))))
   (messaging/stop-connection! (:message @conn))
   (async/close!           (:event @conn)))
 
