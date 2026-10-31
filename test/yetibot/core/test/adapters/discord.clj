@@ -16,6 +16,69 @@
                         [yetibot.core.webapp.routes.images :as images]
                         [midje.sweet :refer [fact facts anything => provided]]))
 
+(facts "Discord react accepts Unicode and static/animated custom emoji"
+  (doseq [[emoji encoded] [["<:party:123456789012345678>" "party%3A123456789012345678"]
+                           ["<a:dance:123456789012345678>" "dance%3A123456789012345678"]
+                           ["party:123456789012345678" "party%3A123456789012345678"]
+                           ["👍" "%F0%9F%91%8D"]
+                           ["#️⃣" "%23%EF%B8%8F%E2%83%A3"]]]
+    (let [calls (atom [])
+          adapter {:conn (atom {:rest :fixture}) :yetibot-user (atom {:id "BOT"})}]
+      (with-redefs [messaging/get-channel-messages!
+                    (fn [& _] (doto (promise)
+                                (deliver [{:id "bot" :author {:id "BOT"} :content "result"}
+                                          {:id "command" :author {:id "U"} :content "!react emoji"}
+                                          {:id "target" :author {:id "U"} :content "hello"}])))
+                    messaging/create-reaction!
+                    (fn [& args] (swap! calls conj args)
+                      (doto (promise) (deliver true)))]
+        (fact (discord/react adapter emoji "C") => true)
+        (fact @calls => [(list :fixture "C" "target" encoded)])))))
+
+(fact "Discord explicit-message reactions never select a different target"
+  (let [calls (atom []) adapter {:conn (atom {:rest :fixture})}]
+    (with-redefs [messaging/get-channel-messages!
+                  (fn [& _] (throw (AssertionError. "No history lookup")))
+                  messaging/create-reaction!
+                  (fn [& args] (swap! calls conj args)
+                    (doto (promise) (deliver true)))]
+      (discord/react adapter "<:party:123456789012345678>" "C" "M") => true
+      @calls => [(list :fixture "C" "M" "party%3A123456789012345678")])))
+
+(facts "invalid reaction syntax fails before any Discord request"
+  (doseq [emoji ["" ":party:" "party" "<:party:bad-id>" "👍/../messages" "👍\n"]]
+    (let [calls (atom 0)]
+      (with-redefs [messaging/get-channel-messages! (fn [& _] (swap! calls inc))
+                    messaging/create-reaction! (fn [& _] (swap! calls inc))]
+        (fact (try (discord/react {:conn (atom {})} emoji "C") false
+                   (catch Exception _ true)) => true)
+        (fact @calls => 0)))))
+
+(fact "bot-added reactions cannot delete messages or retrigger observers"
+  (doseq [author-id ["BOT" "human" nil]]
+    (with-redefs [messaging/delete-message!
+                  (fn [& _] (throw (AssertionError. "No reaction-triggered delete")))
+                  messaging/get-channel-message!
+                  (fn [& _] (throw (AssertionError. "No self-reaction lookup")))
+                  handler/handle-raw
+                  (fn [& _] (throw (AssertionError. "No observer feedback loop")))]
+      (fact (discord/handle-event :message-reaction-add
+              (cond-> {:message-id "M" :channel-id "C" :user-id "BOT"
+                       :emoji {:name "❌"}}
+                author-id (assoc :message-author-id author-id))
+              (atom {:rest :fixture}) (atom {:id "BOT"})) => nil))))
+
+(fact "reaction rejection and timeout never report success"
+  (doseq [[response unknown?]
+          [[(doto (promise) (deliver false)) false]
+           [(reify clojure.lang.IBlockingDeref
+              (deref [_ _ timeout-value] timeout-value)) true]]]
+    (with-redefs [messaging/create-reaction! (fn [& _] response)]
+      (try (discord/react {:conn (atom {:rest :fixture})} "👍" "C" "M")
+           :unexpected-success
+           (catch Exception e (:discord/reaction-unknown? (ex-data e))))
+      => unknown?)))
+
 (facts
  "about handle-event message-reaction-add"
  (fact
@@ -255,8 +318,11 @@
                 (merge {:id "command" :channel-id "channel"} update)))
       @calls => [[:create "channel" "1" {:content "before"}]])))
 
-(fact "shorter edited replies remove obsolete Discord chunks"
-  (with-discord-session echo-result
+(fact "shorter edited replies remove obsolete separate Discord replies"
+  (with-discord-session
+    (fn [body _ _]
+      (doseq [text (if (= body "!echo short") ["short"] ["first" "second"])]
+        (chat/send-msg text)))
     (fn [event! calls _]
       (let [long-text (apply str (repeat 2100 "x"))]
         (await-event (event! :message-create
@@ -583,19 +649,19 @@
     (with-discord-session
       (fn [_ _ _]
         (doseq [chunks [nil '("secret") [nil] [42] [{:image "secret"}]
-                        [(str/join (repeat 2001 "s"))]
+                        [(str/join (repeat 4001 "s"))]
                         (vec (repeat 31 "secret"))]]
           (swap! errors conj
                  (try (publish-output! "thread" chunks)
                       :no-error
                       (catch IllegalArgumentException e (.getMessage e)))))
-        (publish-output! "thread" [(str/join (repeat 2000 "x"))])
+        (publish-output! "thread" [(str/join (repeat 4000 "x"))])
         [])
       (fn [event! calls _]
         (await-event (event! :message-create command-message))
         @errors => (vec (repeat 7 "Invalid Discord command output chunks"))
         (mapv first @calls) => [:create :edit]
-        (count (get-in @calls [0 3 :content])) => 2000))))
+        (count (get-in @calls [0 3 :content])) => 4000))))
 
 (fact "live output preserves buffered indices without sending the prefix early"
   (let [published (promise)

@@ -89,6 +89,21 @@
           => "attachment://photo.png"
           (get-in payload [:stream :filename]) => "photo.png")))))
 
+(fact "generated image captions use the same deterministic table renderer"
+  (with-redefs [images/image-store (atom {"photo" {:data "SGVsbG8="}})]
+    (session (fn [& _]
+               (chat/send-msg (str "|Key|Value|\n|---|---|\n|a|b|\n"
+                                   "https://example.org/generated-images/photo.png")))
+      (fn [event! calls _]
+        (await! (event! :message-create original))
+        (let [payload (last (first @calls))]
+          (count @calls) => 1
+          (first (children payload))
+          => {:type 10 :content "```text\nKey  Value\na    b\n```\n"}
+          (get-in (second (children payload)) [:items 0 :media :url])
+          => "attachment://photo.png"
+          (slurp (get-in payload [:stream :content])) => "Hello")))))
+
 (fact "direct external media URLs become galleries instead of broken link previews"
   (session (fn [& _] (chat/send-msg "https://example.org/meme.gif?size=large"))
     (fn [event! calls _]
@@ -229,16 +244,50 @@
             (await! (event! :interaction-create (confirm-click "old-confirmation" payload "alice")))
             @runs => 2))))))
 
-(fact "V2 text splitting preserves Unicode and history excludes button labels"
+(fact "V2 keeps Unicode and headings together through its full text budget"
   (let [text (str (apply str (repeat 1999 "x")) "😀" (apply str (repeat 1000 "y")))
         parts (components/text-parts text)]
     (str/join (map :content parts)) => text
-    (count (:content (first parts))) => 1999
+    (count parts) => 1
+    (count (:content (first parts))) => 3001
     (components/message-text
       (components/payload {:content "answer" :command-key ["channel" "command"]}))
     => "answer"
     (components/message-text (components/payload {:content "https://example.org/photo.png"}))
     => "https://example.org/photo.png"))
+
+(fact "V2 renders 4000 characters inline and attaches an exact longer answer"
+  (let [inline (apply str (repeat 4000 "x"))
+        long (str inline "y")]
+    (components/text-parts inline) => [{:content inline}]
+    (count (components/text-parts long)) => 1
+    (:file (first (components/text-parts long))) => long))
+
+(fact "ordinary medium-length replies are one card, not legacy 2000-char cuts"
+  (let [answer (str (apply str (repeat 1998 "x")) "\n\n### The verdict\nKeep this together.")]
+    (session (fn [& _] (chat/send-msg answer))
+      (fn [event! calls _]
+        (await! (event! :message-create original))
+        (count @calls) => 1
+        (get-in (last (first @calls)) [:components 0 :components 0 :content])
+        => answer))))
+
+(fact "Markdown tables become aligned code blocks without losing cells"
+  (let [answer (str "Before\n\n| Name | Value |\n| --- | --- |\n"
+                    "| Cash | 12.00 |\n| CCY | USD |\n\nAfter")]
+    (:content (first (components/text-parts answer)))
+    => (str "Before\n\n```text\nName  Value\nCash  12.00\nCCY   USD\n```\n\nAfter")))
+
+(fact "tables inside code fences are not reformatted"
+  (let [code "```markdown\n| A | B |\n| --- | --- |\n| 1 | 2 |\n```"]
+    (:content (first (components/text-parts code))) => code))
+
+(fact "a table that expands beyond Discord's budget retains its exact source file"
+  (let [answer (str "| Name | Value |\n| --- | --- |\n| "
+                    (apply str (repeat 300 "W")) " | one |\n"
+                    (str/join "\n" (repeat 20 "| a | b |")))]
+    (:file (first (components/text-parts answer))) => answer
+    (<= (count (:content (first (components/text-parts answer)))) 4000) => true))
 
 (fact "sanitized progress remains publicly available after status retirement"
   (session (fn [& _]
