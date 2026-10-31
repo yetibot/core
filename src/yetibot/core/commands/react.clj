@@ -9,7 +9,8 @@
     [yetibot.core.hooks :refer [cmd-hook]]))
 
 (defn react-cmd
-  "react <emoji> # add a reaction to the last message in the channel"
+  "react <emoji> # add a reaction to the last message in the channel
+   react <:name:id> # use a custom Discord emoji (animated <a:name:id> also works)"
   {:yb/cat #{:fun}}
   [{emoji :match chat-source :chat-source}]
   (let [adapter-type (:adapter chat-source)]

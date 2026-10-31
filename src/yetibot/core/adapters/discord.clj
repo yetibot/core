@@ -15,7 +15,8 @@
             [yetibot.core.handler :as handler]
             [yetibot.core.webapp.routes.images :as images]
             [yetibot.core.chat :as chat])
-  (:import [java.util Base64]
+  (:import [java.net URLEncoder]
+           [java.util Base64]
            [java.util.concurrent ScheduledThreadPoolExecutor ThreadFactory
             TimeUnit]
            [java.util.concurrent.locks ReentrantLock]))
@@ -43,9 +44,15 @@
         ;; known bot-message delete/ignore events require no message lookup.
         message (delay @(messaging/get-channel-message!
                           rest-conn channel-id message-id))
-        author-id (or message-author-id (get-in @message [:author :id]))
+        own-reaction? (and bot-id (= user-id bot-id))
+        author-id (when-not own-reaction?
+                    (or message-author-id (get-in @message [:author :id])))
         own-message? (= author-id bot-id)]
     (cond
+      ;; Native react (and the react command) must not trigger observers or
+      ;; indirectly delete a bot message by adding its own cross reaction.
+      own-reaction? nil
+
       (and own-message? (= emoji-name "❌"))
       (messaging/delete-message! rest-conn channel-id message-id)
 
@@ -392,6 +399,8 @@
   (when-let [[url id ext] (re-find #"https?://\S+?/generated-images/([^./\s]+)\.(png|gif|mp4)" msg)]
     {:url url :id id :ext ext}))
 
+;; Ordinary content and conservative caller budgeting. V2 text uses the
+;; separate components/max-text-length budget.
 (def discord-max-message-length 2000)
 
 (defn- message-parts [msg]
@@ -399,10 +408,12 @@
         data (:data (get @images/image-store id))]
     (if data
       (let [caption (str/replace msg url "")
-            image {:image data :filename (str id "." ext)}]
-        (if (<= (count caption) discord-max-message-length)
-          [(cond-> image (not (str/blank? caption)) (assoc :content caption))]
-          (into [image] (components/text-parts caption))))
+            image {:image data :filename (str id "." ext)}
+            caption-part (when-not (str/blank? caption)
+                           (first (components/text-parts caption)))]
+        (if (:file caption-part)
+          [image caption-part]
+          [(merge image caption-part)]))
       (components/text-parts msg))))
 
 (defn- command-part [part]
@@ -737,7 +748,7 @@
 (defn publish-command-output!
   "Immediately publish pre-split text chunks to a Discord channel/thread target.
 
-  chunks must be a vector of at most 30 strings, each at most 2000 characters;
+  chunks must be a vector of at most 30 strings, each at most 4000 characters;
   invalid chunks throw a static IllegalArgumentException before any IO.
   Returns :published after delivery, :stale without IO if this request's saved
   revision no longer owns the command, or :unavailable without IO outside a
@@ -754,7 +765,7 @@
   (when-not (and (vector? chunks)
                  (<= (count chunks) 30)
                  (every? #(and (string? %)
-                               (<= (count %) discord-max-message-length))
+                               (<= (count %) components/max-text-length))
                          chunks))
     (throw (IllegalArgumentException. "Invalid Discord command output chunks")))
   (if-let [{:keys [conn entry running revision output live?]} *command-context*]
@@ -764,9 +775,9 @@
         :stale
         (binding [*delivery-deadline* (live-deadline)]
           (let [text (apply str chunks)
-                raw-parts (if (> (count text) 6000)
+                raw-parts (if (> (count text) components/max-text-length)
                             (components/text-parts text)
-                            (mapv #(hash-map :content %) chunks))
+                            (vec (mapcat components/text-parts chunks)))
                 parts (mapv #(command-part
                                (assoc % :target target
                                         :allowed-mentions {:parse []}
@@ -798,24 +809,50 @@
   (messaging/stop-connection! (:message @conn))
   (async/close!           (:event @conn)))
 
+(defn reaction-emoji
+  "Normalize Unicode, <:name:id>, <a:name:id> or name:id for Discord.
+   Shortcodes alone cannot identify a custom emoji. No network lookup."
+  [emoji]
+  (when-not (and (string? emoji) (<= (count emoji) 100)
+                 (not (re-find #"\p{Cntrl}" emoji)))
+    (throw (ex-info "Use a Unicode emoji or <:name:id> custom emoji." {})))
+  (let [emoji (str/trim emoji)
+        custom (or (re-matches #"<a?:([A-Za-z0-9_]{1,32}):([0-9]{1,20})>" emoji)
+                   (re-matches #"([A-Za-z0-9_]{1,32}):([0-9]{1,20})" emoji))]
+    (cond
+      custom (str (second custom) ":" (nth custom 2))
+      (and (re-find #"[^\x00-\x7F]" emoji)
+           (re-matches #"[\p{S}\p{M}\u200D0-9#*]+" emoji)) emoji
+      :else (throw (ex-info "Use a Unicode emoji or <:name:id> custom emoji." {})))))
+
 (defn react
-  "reacts to messages in a given channel for a specific adapter that are
-   non-YB commands and not from the YB user"
-  [adapter emoji channel-id]
-  (timbre/debug "react" {:adapter adapter :emoji emoji :channel channel-id})
-  (let [conn (:conn adapter)
-        rest-conn (:rest @conn)
-        yb-id (:id (:yetibot-user adapter))
-        messages @(messaging/get-channel-messages! rest-conn channel-id :limit 10)
-        non-yb-non-cmd (->> messages
-                            (filter #(not= yb-id (-> % :author :id)))
-                            (filter #(not (str/starts-with? (components/message-text %) "!"))))
-        msg (first non-yb-non-cmd)
-        message-id (:id msg)]
-    (timbre/debug "react with"
-                  {:msg msg :emoji emoji :channel channel-id :message-id message-id})
-    (when message-id
-      @(messaging/create-reaction! rest-conn channel-id message-id emoji))))
+  "React to the latest non-command/non-bot message, or one explicit message.
+   Explicit targets stay in the supplied channel (including Discord threads)."
+  ([adapter emoji channel-id]
+   (let [emoji (reaction-emoji emoji)
+         rest-conn (:rest @(:conn adapter))
+         yb-id (:id @(:yetibot-user adapter))
+         messages (deref (messaging/get-channel-messages!
+                           rest-conn channel-id :limit 10) 10000 nil)
+         message-id (->> messages
+                         (filter #(not= yb-id (get-in % [:author :id])))
+                         (filter #(not (str/starts-with?
+                                         (components/message-text %) "!")))
+                         first :id)]
+     (when message-id (react adapter emoji channel-id message-id))))
+  ([adapter emoji channel-id message-id]
+   (let [emoji (URLEncoder/encode (reaction-emoji emoji) "UTF-8")
+         result (try
+                  (deref (messaging/create-reaction!
+                           (:rest @(:conn adapter)) channel-id message-id emoji)
+                         10000 ::unconfirmed)
+                  (catch Exception _ ::unconfirmed))]
+     ;; discljord returns true only for HTTP 204; never claim success on a
+     ;; timeout, closed channel, rejected request, or transport exception.
+     (when-not (true? result)
+       (throw (ex-info "Discord did not confirm the reaction."
+                       {:discord/reaction-unknown? (not (false? result))})))
+     true)))
 
 (defrecord Discord
            [config
