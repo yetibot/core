@@ -8,6 +8,7 @@
             [org.httpkit.client :as http]
             [discljord.util :as util]
             [yetibot.core.adapters.discord :as discord]
+            [yetibot.core.test.adapters.discord-payload :as payload]
             [yetibot.core.chat :as chat]
             [yetibot.core.handler :as handler]
             [midje.sweet :refer [fact facts =>]]))
@@ -67,11 +68,11 @@
           messaging/create-message!
           (fn [_ target & opts]
             (let [id (str "synthetic-" (swap! ids inc))]
-              (swap! calls conj [:create target id (apply hash-map opts)])
+              (swap! calls conj [:create target id (payload/logical (apply hash-map opts))])
               (receipt {:id id :channel-id target})))
           messaging/edit-message!
           (fn [_ target id & opts]
-            (swap! calls conj [:edit target id (apply hash-map opts)])
+            (swap! calls conj [:edit target id (payload/logical (apply hash-map opts))])
             (receipt {:id id :channel-id target}))
           messaging/delete-message!
           (fn [_ target id]
@@ -253,7 +254,7 @@
              (fn [& args]
                (let [result (apply create args)
                      opts (apply hash-map (drop 2 args))]
-                 (if (:flags opts) held result)))]
+                 (if (payload/status? opts) held result)))]
             (let [completion (event! :message-create event)]
               (try
                 @ready => :accepted
@@ -299,7 +300,7 @@
             [messaging/edit-message!
              (fn [& args]
                (let [result (apply edit args)]
-                 (if (:flags (apply hash-map (drop 3 args))) held result)))]
+                 (if (payload/status? (apply hash-map (drop 3 args))) held result)))]
             (let [completion (event! :message-create event)]
               (try
                 @ready => :accepted
@@ -339,7 +340,7 @@
               [messaging/create-message!
                (fn [& args]
                  (if (and (= failure :create)
-                          (:flags (apply hash-map (drop 2 args))))
+                          (payload/status? (apply hash-map (drop 2 args))))
                    (receipt {:code 50013})
                    (apply create args)))
                messaging/edit-message!
@@ -388,7 +389,7 @@
           (with-redefs
             [messaging/create-message!
              (fn [& args]
-               (if (:flags (apply hash-map (drop 2 args)))
+               (if (payload/status? (apply hash-map (drop 2 args)))
                  (do (apply create args) held)
                  (apply create args)))]
             (let [old (event! :message-create event)]
@@ -525,7 +526,7 @@
             [messaging/create-message!
              (fn [& args]
                (let [p (apply create args)]
-                 (if (:flags (apply hash-map (drop 2 args)))
+                 (if (payload/status? (apply hash-map (drop 2 args)))
                    p
                    (reify
                      clojure.lang.IBlockingDeref
@@ -633,7 +634,7 @@
               [messaging/create-message!
                (fn [& args]
                  (let [p (apply create args)]
-                   (if (:flags (apply hash-map (drop 2 args)))
+                   (if (payload/status? (apply hash-map (drop 2 args)))
                      held
                      (receipt {:id "shared-synthetic-id"
                                :channel-id (second args)}))))
