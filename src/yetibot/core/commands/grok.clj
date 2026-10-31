@@ -3,6 +3,7 @@
             [yetibot.core.hooks :refer [cmd-hook]]
             [yetibot.core.util.xai :as xai]
             [yetibot.core.adapters.adapter :as a]
+            [yetibot.core.adapters.discord-components :as components]
             [yetibot.core.chat :as chat]
             [discljord.messaging :as discord]
             [clojure.string :as string]
@@ -78,7 +79,7 @@
                     formatted (map (fn [m]
                                      (let [is-bot? (or (get-in m [:author :bot])
                                                        (= (:username (:author m)) "Yetibot"))
-                                           content (:content m)]
+                                           content (components/message-text m)]
                                        (if is-bot?
                                          {:role "assistant" :content (clean-assistant-response content)}
                                          {:role "user" :content (clean-grok-prompt content)})))

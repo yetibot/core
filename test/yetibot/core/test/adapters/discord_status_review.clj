@@ -11,6 +11,7 @@
             [discljord.util :as util]
             [org.httpkit.client :as http]
             [yetibot.core.adapters.discord :as discord]
+            [yetibot.core.test.adapters.discord-payload :as payload]
             [yetibot.core.chat :as chat]
             [yetibot.core.test.adapters.discord-status :as status]
             [midje.sweet :refer [fact =>]])
@@ -61,14 +62,14 @@
                               (:content (first (:multipart options))))
                   body (when payload
                          (json/read-str payload :key-fn keyword))
-                  card? (= 32768 (:flags body))
+                  card? (payload/status? body)
                   hold? (and card? (= method operation))]
               (swap! wire conj [method card?])
               (when (and (= method :edit) card?)
                 (swap! status-edits inc))
               (when hold? (deliver held true))
               (when (and (not card?) (= method operation)
-                         (= "review final" (:content body)))
+                         (= "review final" (:content (payload/logical body))))
                 (deliver final-http true))
               (delay
                 (when hold? (deref release-http 3000 :timeout))
@@ -270,7 +271,7 @@
                 (with-redefs
                   [messaging/create-message!
                    (fn [& args]
-                     (if (:flags (apply hash-map (drop 2 args)))
+                     (if (payload/status? (apply hash-map (drop 2 args)))
                        (do (apply create args) held)
                        (reify clojure.lang.IBlockingDeref
                          (deref [_ ms timeout]
@@ -483,7 +484,7 @@
             [messaging/edit-message!
              (fn [lane target id & options]
                (if (and (= target "status-thread")
-                        (:flags (apply hash-map options)))
+                        (payload/status? (apply hash-map options)))
                  (do (swap! edits inc) (#'status/receipt {:code 50013}))
                  (apply edit lane target id options)))]
             (let [completion (event! :message-create status/event)]

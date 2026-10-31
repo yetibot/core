@@ -2,6 +2,7 @@
   (:require             [clojure.core.async :as async]
                         [clojure.string :as str]
                         [yetibot.core.adapters.discord :as discord]
+                        [yetibot.core.test.adapters.discord-payload :as payload]
                         [discljord.messaging :as messaging]
                         [yetibot.core.handler :as handler]
                         [yetibot.core.models.users :as users]
@@ -161,7 +162,8 @@
                           "Check out the celebration: http://localhost:3003/generated-images/fc62974c-0c61-4be6-8241-d1f79cd1eac0.png ! Very cool!")))
   => "created-message-result"
   (provided (messaging/create-message! :fake-rest 456
-                                      :content "Check out the celebration:  ! Very cool!"
+                                      :flags 32768 :components anything
+                                      :allowed-mentions {:parse [] :replied_user false}
                                       :stream anything) => (future "created-message-result")))
  (fact
   "sends message with attachment stream without content if text is blank"
@@ -171,6 +173,8 @@
                           "http://localhost:3003/generated-images/fc62974c-0c61-4be6-8241-d1f79cd1eac0.png")))
   => "created-message-result"
   (provided (messaging/create-message! :fake-rest 456
+                                      :flags 32768 :components anything
+                                      :allowed-mentions {:parse [] :replied_user false}
                                       :stream anything) => (future "created-message-result"))))
 
 (defn- await-event [result]
@@ -204,12 +208,12 @@
                   messaging/create-message!
                   (fn [_ target & options]
                     (let [id (str (swap! next-id inc))
-                          payload (apply hash-map options)]
+                          payload (payload/logical (apply hash-map options))]
                       (swap! calls conj [:create target id payload])
                       (deliver (promise) {:id id :channel-id target})))
                   messaging/edit-message!
                   (fn [_ target id & options]
-                    (swap! calls conj [:edit target id (apply hash-map options)])
+                    (swap! calls conj [:edit target id (payload/logical (apply hash-map options))])
                     (deliver (promise) {:id id :channel-id target}))
                   messaging/delete-message!
                   (fn [_ target id]
@@ -677,7 +681,7 @@
                   (count (:active-commands @conn)) => 1
                   (set (keys (get-in @conn
                                     [:active-commands ["channel" "command"]])))
-                  => #{:revision :lock :replies :running}
+                  => #{:revision :lock :replies :running :details :confirmation}
                   (await-event
                     (event! :message-create
                             (assoc command-message :id "last"

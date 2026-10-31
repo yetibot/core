@@ -22,6 +22,7 @@
    [discljord.messaging :as discord]
    [taoensso.timbre :refer [debug info warn error]]
    [yetibot.core.adapters.adapter :as a]
+   [yetibot.core.adapters.discord-components :as components]
    [yetibot.core.chat :as chat]
    [yetibot.core.config :refer [get-config]]
    [yetibot.core.db :as db]
@@ -607,7 +608,7 @@
         ""
         (let [lines (->> (all-channel-messages channel-id)
                          (sort-by :timestamp)
-                         (map (fn [m] (str (get-in m [:author :username]) ": " (:content m))))
+                         (map (fn [m] (str (get-in m [:author :username]) ": " (components/message-text m))))
                          (remove string/blank?))]
           (if (<= (count lines) 1)
             ""
