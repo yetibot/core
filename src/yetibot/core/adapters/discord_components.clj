@@ -74,17 +74,16 @@
                 []))]
       (str/join "\n" (remove str/blank? (mapcat texts (:components message)))))))
 
-(defn private-payload [text]
+(defn interaction-payload [text]
   (-> (payload {:content (if (> (count text) 2000)
                           (str (excerpt text 1800) "\n\n-# Preview shortened; send the command's help command for full documentation.")
                           text)})
-      (assoc :flags (+ 32768 64))
       (dissoc :allowed-mentions)
       (assoc :allowed_mentions {:parse [] :replied_user false})))
 
 (defn confirmation-payload [key token]
   (update-in
-    (private-payload "Run the original command again? This may incur AI costs or repeat side effects.")
+    (interaction-payload "Run the original command again? This may incur AI costs or repeat side effects.")
     [:components 0 :components] conj
     {:type 1 :components
      [{:type 2 :style 4 :label "Confirm rerun"

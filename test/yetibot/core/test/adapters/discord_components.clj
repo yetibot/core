@@ -41,6 +41,10 @@
                   messaging/delete-message!
                   (fn [_ channel id]
                     (swap! calls conj [:delete channel id]) (receipt true))
+                  messaging/delete-original-interaction-response!
+                  (fn [_ application _]
+                    (swap! calls conj [:interaction-delete application])
+                    (receipt true))
                   messaging/create-interaction-response!
                   (fn [_ id _ type & options]
                     (swap! calls conj [:interaction id type (apply hash-map options)])
@@ -109,7 +113,7 @@
 (defn- confirm-click [id payload user]
   (-> (click id (:custom_id (button payload "Confirm rerun")) user)
       (assoc-in [:message :id] "private-confirmation")
-      (assoc-in [:message :flags] 64)))
+      (assoc-in [:message :flags] 0)))
 
 (fact "Run again requires confirmation, acknowledges before execution and replaces the reply"
   (let [runs (atom [])]
@@ -122,10 +126,11 @@
           (reset! calls [])
           (await! (event! :interaction-create (click "prepare" id "alice")))
           (count @runs) => 1
+          (bit-and 64 (get-in (last (last @calls)) [:data :flags] 0)) => 0
           (let [confirmation (confirm-click "click-1" (:data (last (last @calls))) "alice")]
             (reset! calls [])
             (await! (event! :interaction-create confirmation))
-            (mapv first @calls) => [:interaction :edit]
+            (mapv first @calls) => [:interaction :interaction-delete :edit]
           (nth (first @calls) 2) => 6
           (get-in (last (last @calls)) [:components 0 :components 0 :content]) => "meme 2"
           (mapv #(subvec % 0 2) @runs)
@@ -135,7 +140,26 @@
             (await! (event! :interaction-create confirmation))
             (count @runs) => 2))))))
 
-(fact "another user cannot rerun, but help is private and available to readers"
+(fact "unconfirmed confirmation cleanup does not retry or discard a rerun"
+  (let [runs (atom 0) deletes (atom 0)]
+    (session (fn [& _] (swap! runs inc) (chat/send-msg "answer"))
+      (fn [event! calls _]
+        (await! (event! :message-create original))
+        (let [id (:custom_id (button (last (first @calls)) "Run again"))]
+          (await! (event! :interaction-create (click "prepare-cleanup" id "alice")))
+          (let [event (confirm-click "cleanup-timeout"
+                        (:data (last (last @calls))) "alice")]
+            (with-redefs [messaging/delete-original-interaction-response!
+                          (fn [& _]
+                            (swap! deletes inc)
+                            (reify clojure.lang.IBlockingDeref
+                              (deref [_ _ default] default)))]
+              (await! (event! :interaction-create event))
+              (await! (event! :interaction-create event))
+              @runs => 2
+              @deletes => 1)))))))
+
+(fact "another user cannot rerun; help and refusals are public"
   (let [runs (atom 0)]
     (with-redefs [help/docs (atom {"meme" #{"meme random # fetch a random meme"}})]
       (session (fn [& _] (swap! runs inc) (chat/send-msg "meme"))
@@ -147,7 +171,7 @@
             (reset! calls [])
             (await! (event! :interaction-create (click "denied" again "bob")))
             @runs => 1
-            (bit-and 64 (get-in (last (last @calls)) [:data :flags] 0)) => 64
+            (bit-and 64 (get-in (last (last @calls)) [:data :flags] 0)) => 0
             (await! (event! :interaction-create (click "help" help-id "bob")))
             @runs => 1
             (get-in (last (last @calls)) [:data :components 0 :components 0 :content])
@@ -216,7 +240,7 @@
     (components/message-text (components/payload {:content "https://example.org/photo.png"}))
     => "https://example.org/photo.png"))
 
-(fact "sanitized progress remains privately available after status retirement"
+(fact "sanitized progress remains publicly available after status retirement"
   (session (fn [& _]
              (discord/start-command-status! "channel" "Working")
              (discord/update-command-status! "Tools: 1/12 · 11 remaining\n#1 docs_search — success")
@@ -227,6 +251,7 @@
       (let [payload (last (first (filter #(= :create (first %)) @calls)))
             id (:custom_id (button payload "Show details"))]
         (boolean id) => true
-        (await! (event! :interaction-create (click "details" id "alice")))
+        (await! (event! :interaction-create (click "details" id "bob")))
+        (get-in (last (last @calls)) [:data :flags]) => 32768
         (get-in (last (last @calls)) [:data :components 0 :components 0 :content])
         => "**Tool details**\nTools: 1/12 · 11 remaining\n#1 docs_search — success"))))

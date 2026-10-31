@@ -248,7 +248,7 @@
 (defn- interaction-reply! [conn event text]
   (messaging/create-interaction-response!
     (:rest @conn) (:id event) (:token event) 4
-    :data (components/private-payload text)))
+    :data (components/interaction-payload text)))
 
 (defn- rerun! [conn event yetibot-user entry expected key]
   (let [reserved? (locking conn
@@ -265,6 +265,19 @@
         (let [ack (messaging/create-interaction-response!
                     (:rest @conn) (:id event) (:token event) 6)]
           (when (= true (deref ack 2500 false))
+            ;; Consume the confirmation before paid work. Removing the original
+            ;; component response works for public and older ephemeral cards.
+            (reset! (:confirmation entry) nil)
+            (try
+              (when-not (= true
+                           (deref
+                             (messaging/delete-original-interaction-response!
+                               (:rest @conn)
+                               (or (:application-id event) (:id @yetibot-user))
+                               (:token event)) 2500 false))
+                (timbre/warn "Discord rerun confirmation cleanup unconfirmed"))
+              (catch Exception _
+                (timbre/warn "Discord rerun confirmation cleanup failed")))
             (when-let [completion (run-command! (:event entry) conn yetibot-user expected)]
               (async/<!! completion))))
         (finally (swap! conn update :reruns disj key))))))
@@ -296,8 +309,7 @@
                   known? (and entry own-message?
                               (or (not confirm?)
                                   (and (= confirmation (:token pending))
-                                       (identical? expected @(:revision entry))
-                                       (pos? (bit-and 64 (get-in event [:message :flags] 0)))))
+                                       (identical? expected @(:revision entry))))
                               (some #(and (= (:channel-id event) (:target %))
                                           (= (if confirm? (:reply-id pending)
                                                (get-in event [:message :id]))
