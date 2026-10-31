@@ -822,7 +822,11 @@
     (cond
       custom (str (second custom) ":" (nth custom 2))
       (and (re-find #"[^\x00-\x7F]" emoji)
-           (re-matches #"[\p{S}\p{M}\u200D0-9#*]+" emoji)) emoji
+           ;; Emoji include punctuation, tags and newer JVM-unknown pictographs.
+           (re-matches
+             #"(?x)[\p{S}\p{M}\u200D\u203C\u2049\u2139\u3030\u303D
+                     \x{1F000}-\x{1FAFF}\x{E0020}-\x{E007F}0-9\#*]+"
+             emoji)) emoji
       :else (throw (ex-info "Use a Unicode emoji or <:name:id> custom emoji." {})))))
 
 (defn react

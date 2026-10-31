@@ -21,6 +21,12 @@
                            ["<a:dance:123456789012345678>" "dance%3A123456789012345678"]
                            ["party:123456789012345678" "party%3A123456789012345678"]
                            ["👍" "%F0%9F%91%8D"]
+                           ["ℹ️" "%E2%84%B9%EF%B8%8F"]
+                           ["‼️" "%E2%80%BC%EF%B8%8F"]
+                           ["⁉️" "%E2%81%89%EF%B8%8F"]
+                           ["〰️" "%E3%80%B0%EF%B8%8F"]
+                           ["〽️" "%E3%80%BD%EF%B8%8F"]
+                           ["🫩" "%F0%9F%AB%A9"]
                            ["#️⃣" "%23%EF%B8%8F%E2%83%A3"]]]
     (let [calls (atom [])
           adapter {:conn (atom {:rest :fixture}) :yetibot-user (atom {:id "BOT"})}]
@@ -34,6 +40,11 @@
                       (doto (promise) (deliver true)))]
         (fact (discord/react adapter emoji "C") => true)
         (fact @calls => [(list :fixture "C" "target" encoded)])))))
+
+(fact "Unicode subdivision flags retain their emoji tag characters"
+  (let [flag (str "🏴" "\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65"
+                       "\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F")]
+    (discord/reaction-emoji flag) => flag))
 
 (fact "Discord explicit-message reactions never select a different target"
   (let [calls (atom []) adapter {:conn (atom {:rest :fixture})}]
