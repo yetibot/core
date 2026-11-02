@@ -2,6 +2,7 @@
   "Bounded opt-in public snapshots and read-only Discord navigation."
   (:require [clojure.data.json :as json]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [yetibot.core.adapters.discord-components :as components]))
 
 (defn initial []
@@ -110,12 +111,17 @@
 
 (defn parse-control [id]
   (when (and (string? id) (<= (count id) 100))
-    (when-let [[_ channel message token kind node page]
-               (re-matches
-                 #"yb:view:([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16}):([de]):([0-9]{1,4}):([0-9]{1,2})"
-                 id)]
-      {:action "view" :key [channel message] :token token :kind kind
-       :node (Long/parseLong node) :page (Long/parseLong page)})))
+    (or
+      (when-let [[_ channel message token kind node page]
+                 (re-matches
+                   #"yb:view:([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16}):([de]):([0-9]{1,4}):([0-9]{1,2})"
+                   id)]
+        {:action "view" :key [channel message] :token token :kind kind
+         :node (Long/parseLong node) :page (Long/parseLong page)})
+      (when-let [[_ channel message token]
+                 (re-matches
+                   #"yb:error-hide:([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16})" id)]
+        {:action "error-hide" :key [channel message] :token token}))))
 
 (defn- summary [v]
   (cond
@@ -128,10 +134,9 @@
   {:type 2 :style 2 :label label
    :custom_id (control-id key token kind node page)})
 
-(defn payload
-  "Return nil for malformed navigation. Only retained public snapshots are read.
-  Node IDs/selected values never select arbitrary paths or invoke commands."
-  [state key kind node-id page selected]
+(defn- view-payload
+  [state key kind node-id page selected
+   {:keys [preview-limit inline?] :or {preview-limit 2700}}]
   (let [s @state
         nodes (tree (root-value s kind))
         current (get nodes node-id)
@@ -155,7 +160,7 @@
                       value)
             encoded (-> (with-out-str (json/pprint preview :escape-unicode false))
                         (str/replace "`" "\\u0060"))
-            shortened? (> (count encoded) 2700)
+            shortened? (> (count encoded) preview-limit)
             title (if (= kind "e") "Error details" "Explore data")
             path (str (if (seq path) (str/join " › " path) "Overview")
                       (when (seq children)
@@ -164,7 +169,7 @@
                              " of " (count children))))
             content (str "**" title "**\n"
                          (str/replace (components/excerpt path 160) "`" "ˋ")
-                         "\n\n```json\n" (components/excerpt encoded 2700) "\n```"
+                         "\n\n```json\n" (components/excerpt encoded preview-limit) "\n```"
                          (when shortened? "\nPreview shortened; open a field to inspect it.")
                          (when (= kind "e")
                            "\nOnly retained public diagnostics are shown. Raw responses and private data were not retained for this view.")
@@ -172,7 +177,8 @@
                            "\nOther result data is not automatically public.")
                          "\n-# Bounded public snapshot · up to 8 results · large values shortened.")
             token (:token s)
-            base (-> (components/payload {:content content :elapsed (:elapsed s)})
+            base (-> (components/payload
+                       {:content content :elapsed (when-not inline? (:elapsed s))})
                      (dissoc :allowed-mentions)
                      (assoc :allowed_mentions {:parse [] :replied_user false}))
             rows (cond-> []
@@ -205,3 +211,57 @@
                             (conj (navigation-button "Next" key token kind
                                                      node-id (inc page))))}))]
         (update-in base [:components 0 :components] into rows)))))
+
+(defn payload
+  "Return nil for malformed navigation. Only retained public snapshots are read.
+  Node IDs/selected values never select arbitrary paths or invoke commands."
+  [state key kind node-id page selected]
+  (view-payload state key kind node-id page selected {}))
+
+(defn inline-error-payload
+  "Expand reviewed diagnostics inside a retained public reply. The base is
+  JSON-only outbound presentation, not raw command/provider data. Never upload
+  files or clear attachments; collapsing restores the exact original card."
+  [state key base node page selected]
+  (when-let [pane (view-payload state key "e" node page selected
+                          {:preview-limit 1600 :inline? true})]
+    (when (and (= 1 (count (:components base)))
+               (= 17 (get-in base [:components 0 :type])))
+      (let [children (get-in base [:components 0 :components])
+            elapsed-index
+            (last (keep-indexed
+                    (fn [i c]
+                      (when (and (= 10 (:type c))
+                                 (re-matches #"-# [0-9]+[.][0-9]s"
+                                             (or (:content c) ""))) i)) children))
+            elapsed (when elapsed-index (get children elapsed-index))
+            children
+            (into []
+              (keep-indexed
+                (fn [i c]
+                  (when (not= i elapsed-index)
+                    (if (and (= 10 (:type c)) (> (count (:content c)) 1400))
+                      ;; Leave room for even a long closing Markdown fence.
+                      (update c :content
+                        #(str (components/answer-preview % 650)
+                              "\n-# Error message shortened while details are open."
+                              " Hide details to restore it."))
+                      c))) children))
+            hide-id (str "yb:error-hide:" (str/join ":" key) ":" (:token @state))
+            children (walk/postwalk
+                       (fn [c]
+                         (if (and (map? c)
+                                  (= (components/button-id "error" key)
+                                     (:custom_id c)))
+                           (assoc c :label "Hide error details" :custom_id hide-id)
+                           c)) children)
+            children (cond-> (into (conj children {:type 14 :divider true :spacing 1})
+                                    (get-in pane [:components 0 :components]))
+                       elapsed (conj elapsed))
+            result (assoc-in base [:components 0 :components] children)
+            nodes (filter map? (tree-seq coll? seq result))]
+        (when (and (<= (reduce + 0 (keep #(when (= 10 (:type %))
+                                           (count (:content %))) nodes))
+                       components/max-text-length)
+                   (<= (count (filter :type nodes)) 40))
+          result)))))

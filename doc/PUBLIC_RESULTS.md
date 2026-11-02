@@ -51,6 +51,18 @@ page and announce that large snapshots may be shortened.
 Navigation is public and read-only. Components refer to bounded snapshot node
 IDs, not arbitrary paths or command arguments. Each view is revision-token
 bound and restricted to bot-authored messages in the command's reply
-channel/thread. Selecting a field, Back or paging edits only the separate viewer
-message. Original answers are preserved. Rerun authorization, confirmation and
-replay protection are separate and unchanged.
+channel/thread. **Explore data** opens a separate viewer; its field, Back and
+paging controls update that viewer without replacing the answer.
+
+**Error details** expands the tracked original reply in place. Its navigation
+also stays inline, and **Hide error details** restores the exact original card.
+Only JSON-only outbound public presentation is retained for restoration, never
+upload streams or raw result data. Restoration is capped at the ordinary
+30-reply limit; overflow notices do not offer an inline error control. Attachments are neither uploaded again nor
+cleared, and one original elapsed caption is preserved. Long error text may be
+shortened only while details are open; collapsing restores it in full.
+
+Inline updates additionally require the actual tracked reply ID, matching
+snapshot token and current revision. Updates serialize with reply replacement,
+recheck ownership immediately before IO and never retry an unknown outcome.
+Rerun authorization, confirmation and replay protection remain unchanged.

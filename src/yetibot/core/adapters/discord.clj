@@ -389,6 +389,33 @@
     (:rest @conn) (:id event) (:token event) 4
     :data (components/interaction-payload text)))
 
+(defn- inline-error! [conn event entry expected
+                     {:keys [action key token node page]}]
+  (binding [*delivery-deadline* (+ (monotonic-time) 2500000000)]
+    (with-command-lock (:lock entry)
+      (let [state (:inspection entry)
+            reply (some #(when (and (= (:channel-id event) (:target %))
+                                    (= (get-in event [:message :id]) (:id %))) %)
+                        @(:replies entry))
+            current? #(and (identical? expected @(:revision entry))
+                           (identical? state
+                             (get-in @conn [:commands key :inspection])))]
+        (when (and state (current?) (:sealed? @state)
+                   (= (:inspection-token reply) (:token @state))
+                   (or (= action "error") (= token (:token @state))))
+          (when-let [data (if (= action "error-hide")
+                           (:inspection-base reply)
+                           (inspection/inline-error-payload
+                             state key (:inspection-base reply)
+                             (or node 0) (or page 0)
+                             (get-in event [:data :values])))]
+            ;; Source revisions can change before obtaining this same lock.
+            ;; Recheck immediately before IO; never retry an unknown update.
+            (when (current?)
+              (delivery! #(messaging/create-interaction-response!
+                            (:rest @conn) (:id event) (:token event) 7 :data data))
+              true)))))))
+
 (defn- rerun! [conn event yetibot-user entry expected key]
   (let [reserved? (locking conn
                     (when-not (or (contains? (:reruns @conn) key)
@@ -423,7 +450,7 @@
 
 (defmethod handle-event :interaction-create
   [_ event conn yetibot-user]
-  (when-let [{:keys [action key confirmation token kind node page]}
+  (when-let [{:keys [action key confirmation token kind node page] :as control}
              (or (components/parse-button (get-in event [:data :custom-id]))
                  (inspection/parse-control (get-in event [:data :custom-id])))]
     ;; Claim an interaction once before dispatch. Never retain its token.
@@ -449,10 +476,11 @@
                   known? (and entry own-message?
                               (identical? (:inspection entry)
                                 (get-in @conn [:commands key :inspection]))
-                              (if (= action "view")
-                                (and (= token (:token @(:inspection entry)))
-                                     (some #(= (:channel-id event) (:target %))
-                                           @(:replies entry)))
+                              (or (not (contains? #{"view" "error-hide"} action))
+                                  (= token (:token @(:inspection entry))))
+                              (if (and (= action "view") (= kind "d"))
+                                (some #(= (:channel-id event) (:target %))
+                                      @(:replies entry))
                                 (and
                                   (or (not confirm?)
                                       (and (= confirmation (:token pending))
@@ -467,10 +495,16 @@
                 (interaction-reply! conn event
                   "This command's buttons have expired. Please send the command again.")
 
-                (contains? #{"view" "data" "error"} action)
+                (or (contains? #{"error" "error-hide"} action)
+                    (and (= action "view") (= kind "e")))
+                (when-not (inline-error! conn event entry expected control)
+                  (interaction-reply! conn event
+                    "This error view has expired or is unavailable."))
+
+                (contains? #{"view" "data"} action)
                 (if-let [data (inspection/payload
                                 (:inspection entry) key
-                                (or kind (if (= action "error") "e" "d"))
+                                (or kind "d")
                                 (or node 0) (or page 0)
                                 (get-in event [:data :values]))]
                   (messaging/create-interaction-response!
@@ -581,6 +615,7 @@
       (:details-state part) (assoc :details @(:details-state part))
       (some-> (:inspection part) deref :sealed?)
       (merge (select-keys @(:inspection part) [:data? :error?]))
+      (false? (:inspection-restorable? part)) (assoc :error? false)
       (:timing part) (assoc :elapsed (elapsed-label (:timing part))))))
 
 (defn- create-message! [conn target {:keys [image file filename] :as part}]
@@ -610,7 +645,8 @@
 
 (defn- replace-reply-at!
   [conn replies index {:keys [target image file] :as part}]
-  (let [old (get @replies index)
+  (let [part (assoc part :inspection-restorable? (< index chat/max-msg-count))
+        old (get @replies index)
         ;; discljord 1.3.1 cannot edit attachment uploads. Upload a replacement
         ;; first, then remove the old image; ordinary text keeps its message ID.
         edit? (and old (= target (:target old))
@@ -635,8 +671,18 @@
              ;; those indices without sending the buffered prefix early.
              (assoc (into records
                           (repeat (max 0 (- index (count records))) nil))
-                    index {:id (:id message) :target target
-                           :image? (boolean (or image file))})))
+                    index
+                    (cond-> {:id (:id message) :target target
+                             :image? (boolean (or image file))}
+                      (and (:inspection-restorable? part)
+                           (:inspection part)
+                           (:sealed? @(:inspection part))
+                           (:error? @(:inspection part)))
+                      (assoc :inspection-token (:token @(:inspection part))
+                             :inspection-base
+                             (assoc (select-keys options [:flags :components])
+                                    :allowed_mentions
+                                    {:parse [] :replied_user false}))))))
     (when (and old (not edit?)) (delete-reply! conn old))))
 
 (defn- replace-replies! [conn replies parts]
