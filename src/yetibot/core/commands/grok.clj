@@ -32,7 +32,8 @@
   "Spin a Discord thread off the triggering message; returns the thread channel
    id, or the original channel id if threading isn't possible."
   [channel-id message-id title]
-  (or (try
+  (or chat/*command-thread*
+      (try
         (:id @(discord/start-thread-with-message!
                (rest-conn) channel-id message-id (subs title 0 (min 90 (count title))) 1440))
         (catch Exception e (info "start-thread! fell back:" (.getMessage e)) nil))

@@ -1,5 +1,14 @@
 # yetibot.core change log
 
+## Unreleased
+
+- `thread <command>` runs a whole Discord command expression, including pipes,
+  in a thread on the requesting message. Edits and confirmed reruns reuse it.
+  Requires a server text channel and thread permissions; uncertain creation
+  never executes the command or retries the create request.
+- Rich Discord command answers, media, files, errors and working cards show
+  shared measured elapsed time. Slack and intermediate values are unchanged.
+
 ## `[yetibot/core "20201010.155802.10604b4"]`
 
 - [Add grep -v command #151](https://github.com/yetibot/yetibot.core/pull/151)
