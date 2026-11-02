@@ -4,6 +4,7 @@
             [discljord.messaging :as messaging]
             [midje.sweet :refer [fact facts =>]]
             [yetibot.core.adapters.discord :as discord]
+            [yetibot.core.adapters.discord-inspection :as inspection]
             [yetibot.core.chat :as chat]
             [yetibot.core.db.observe :as observers]
             [yetibot.core.handler :as handler]
@@ -157,3 +158,112 @@
         (await! (click! data {:message {:id "viewer" :author {:id "bot"}}}))
         (str/includes? (text (last (last @calls))) "expired") => true
         @executions => 2))))
+
+(fact "error details expand and collapse the original card without a new message"
+  (session {:result/error "Weather unavailable"
+            :result/public-error {:http-status 503 :stage "weather lookup"}}
+    (fn [calls _ _ click!]
+      (let [original (last (last @calls))]
+        (await! (click! {:custom-id (:custom_id
+                                     (button original "Error details"))}))
+        (let [[_ type expanded] (last @calls)]
+          type => 7
+          (str/includes? (text expanded) "Weather unavailable") => true
+          (str/includes? (text expanded) "503") => true
+          (some? (button expanded "Hide error details")) => true
+          (await! (click! {:custom-id (:custom_id
+                                       (button expanded "Hide error details"))})))
+        (second (last @calls)) => 7
+        (:components (last (last @calls))) => (:components original)
+        (count (filter #(= :create (first %)) @calls)) => 1
+        @executions => 1))))
+
+(fact "inline error navigation preserves the answer and rejects stale or foreign cards"
+  (session {:result/error "Weather unavailable"
+            :result/public-error {:http-status 503 :stage "weather lookup"}}
+    (fn [calls _ event! click!]
+      (await! (click! {:custom-id (:custom_id
+                                    (button (last (last @calls)) "Error details"))}))
+      (let [menu (some #(when (= 3 (:type %)) %) (nodes (last (last @calls))))
+            data {:custom-id (:custom_id menu)
+                  :values [(:value (first (:options menu)))]}]
+        (await! (click! data))
+        (str/includes? (text (last (last @calls))) "Weather unavailable") => true
+        (some? (button (last (last @calls)) "Back")) => true
+        (await! (click! data {:message {:id "another-bot-message"
+                                       :author {:id "bot"}}}))
+        (second (last @calls)) => 4
+        (str/includes? (text (last (last @calls))) "expired") => true
+        (await! (event! :message-update
+                        (assoc source :content "!inspect-fixture edited")))
+        (await! (click! data))
+        (second (last @calls)) => 4
+        (str/includes? (text (last (last @calls))) "expired") => true
+        @executions => 2))))
+
+(fact "overflow replies do not offer an unrestorable inline error control"
+  (let [state (atom (assoc (inspection/initial) :sealed? true
+                          :error? true :data? true))
+        payload (#'discord/reply-options
+                  {:content "Overflow notice" :command-key ["200" "100"]
+                   :inspection state :inspection-restorable? false})]
+    (button payload "Error details") => nil
+    (some? (button payload "Explore data")) => true
+    (some? (button payload "Run again")) => true))
+
+(fact "ownership is rechecked after rendering and before an inline update"
+  (session {:result/error "Weather unavailable"
+            :result/public-error {:http-status 503}}
+    (fn [calls conn _ click!]
+      (let [render inspection/inline-error-payload
+            control {:custom-id (:custom_id
+                                  (button (last (last @calls)) "Error details"))}]
+        (with-redefs [inspection/inline-error-payload
+                      (fn [& args]
+                        (let [data (apply render args)]
+                          (reset! (get-in @conn
+                                    [:commands ["200" "100"] :revision]) (Object.))
+                          data))]
+          (await! (click! control)))
+        (second (last @calls)) => 4
+        (some #(when (= [:interaction 7] (take 2 %)) %) @calls) => nil
+        @executions => 1))))
+
+(fact "an unknown inline acknowledgement is bounded and never retried"
+  (session {:result/error "Weather unavailable"
+            :result/public-error {:http-status 503}}
+    (fn [calls _ _ click!]
+      (let [attempts (atom 0)
+            control {:custom-id (:custom_id
+                                  (button (last (last @calls)) "Error details"))}]
+        (with-redefs [messaging/create-interaction-response!
+                      (fn [& _] (swap! attempts inc) (promise))]
+          (await! (click! control {:id "one-update"}))
+          (await! (click! control {:id "one-update"})))
+        @attempts => 1
+        (count (filter #(= :create (first %)) @calls)) => 1
+        (count (filter #(= :interaction (first %)) @calls)) => 0
+        @executions => 1))))
+
+(fact "inline expansion respects text limits and restores the exact long answer"
+  (doseq [error [(str "Long error\n\n```text\n"
+                     (apply str (repeat 3800 "x")) "\n```")
+                (str "\n" (apply str (repeat 900 "`")) "\n"
+                     (apply str (repeat 1500 "x")) "\n"
+                     (apply str (repeat 900 "`")))
+                (apply str (repeat 1800 "🙂"))]]
+  (session {:result/error error
+            :result/public-error {:http-status 503 :stage "weather lookup"}}
+    (fn [calls _ _ click!]
+      (let [original (last (last @calls))]
+        (await! (click! {:custom-id (:custom_id
+                                     (button original "Error details"))}))
+        (let [expanded (last (last @calls))]
+          (<= (count (text expanded)) 4000) => true
+          (count (re-seq #"(?m)^-# [0-9]+[.][0-9]s$" (text expanded))) => 1
+          (contains? expanded :stream) => false
+          (contains? expanded :attachments) => false
+          (await! (click! {:custom-id (:custom_id
+                                       (button expanded "Hide error details"))})))
+        (:components (last (last @calls))) => (:components original)
+        @executions => 1)))))

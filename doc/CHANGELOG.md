@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Error details** expands/collapses inside the original Discord reply, with
+  read-only inline navigation and no extra response. Collapsing restores the
+  original card; files, controls and one original elapsed caption are preserved.
+  Updates require the actual tracked reply, frozen snapshot and current revision.
+  **Explore data** remains a separate public viewer.
 - Rich Discord command errors offer **Error details**. Supported commands offer
   **Explore data** from explicitly reviewed public projections, with nested
   field/item selection, Back and paging. Views are public and read-only; no

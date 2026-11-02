@@ -77,13 +77,15 @@
                      fence (or overflow? (nil? rendered))))
             (recur (inc i) (conj output line) next-state overflow?)))))))
 
-(defn- answer-preview [text]
-  (let [table (re-matcher #"(?m)^[^\n]*\|[^\n]*\n[ \t|:-]+\r?\n" text)
-        prose (if (.find table) (subs text 0 (.start table)) text)
-        preview (if (str/blank? prose) "This response contains a table."
-                    (excerpt prose 1800))
-        fence (reduce next-fence nil (str/split-lines preview))]
-    (cond-> preview fence (str "\n" fence))))
+(defn answer-preview
+  ([text] (answer-preview text 1800))
+  ([text limit]
+   (let [table (re-matcher #"(?m)^[^\n]*\|[^\n]*\n[ \t|:-]+\r?\n" text)
+         prose (if (.find table) (subs text 0 (.start table)) text)
+         preview (if (str/blank? prose) "This response contains a table."
+                     (excerpt prose limit))
+         fence (reduce next-fence nil (str/split-lines preview))]
+     (cond-> preview fence (str "\n" fence)))))
 
 (defn text-parts
   ([text] (text-parts text max-text-length))
