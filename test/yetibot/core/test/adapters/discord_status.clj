@@ -97,10 +97,14 @@
 (defn- finish! []
   (status-call 'finish-command-status!))
 
-(defn- card [text]
-  {:flags 32768
-   :components [{:type 17 :components [{:type 10 :content text}]}]
-   :allowed_mentions {:parse [] :replied_user false}})
+(defn- card
+  ([text] (card text "0.0s"))
+  ([text elapsed]
+   {:flags 32768
+    :components [{:type 17 :components
+                  [{:type 10 :content text}
+                   {:type 10 :content (str "-# " elapsed)}]}]
+    :allowed_mentions {:parse [] :replied_user false}}))
 
 (fact "status is request-bound and never falls back to direct IO"
   (with-status-session (constantly nil)
@@ -136,7 +140,7 @@
               (tick 1000)
               (last @calls)
               => [:edit "status-thread" "synthetic-1"
-                  (card "Finished query\nFinished docs")]
+                  (card "Finished query\nFinished docs" "1.0s")]
               (update "Finished query\nFinished docs") => :accepted
               (tick 2000)
               (count @calls) => 3
@@ -503,7 +507,7 @@
                                  [:flags :components :allowed_mentions])
                     (subvec @wire 1 3))
               => [(card "Working @here <@&456>")
-                  (card "Finished @everyone <@123>")]
+                  (card "Finished @everyone <@123>" "1.0s")]
               (every? #(not-any? (set (keys (nth % 2)))
                                 [:content :embeds :stream :allowed-mentions])
                       (subvec @wire 1 3)) => true

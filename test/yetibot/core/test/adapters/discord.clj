@@ -671,8 +671,10 @@
       (fn [event! calls _]
         (await-event (event! :message-create command-message))
         @errors => (vec (repeat 7 "Invalid Discord command output chunks"))
-        (mapv first @calls) => [:create :edit]
-        (count (get-in @calls [0 3 :content])) => 4000))))
+        ;; The accepted 4,000-character input now needs a file because the
+        ;; rich card also reserves space for the shared elapsed caption.
+        (mapv first @calls) => [:create :create :delete]
+        (get-in @calls [0 3 :stream :filename]) => "answer.md"))))
 
 (fact "live output preserves buffered indices without sending the prefix early"
   (let [published (promise)
@@ -758,7 +760,8 @@
                   (count (:active-commands @conn)) => 1
                   (set (keys (get-in @conn
                                     [:active-commands ["channel" "command"]])))
-                  => #{:revision :lock :replies :running :details :confirmation}
+                  => #{:revision :lock :replies :running :details :confirmation
+                       :thread-state}
                   (await-event
                     (event! :message-create
                             (assoc command-message :id "last"
@@ -838,8 +841,8 @@
         (:active-commands @conn) => {}
         (with-redefs [handler/handle-raw
                       (fn [& _] (throw (Exception. "dispatch failure")))]
-          (try (event! :message-create command-message)
-               (catch Exception _ :failed)) => :failed)
+          ;; Dispatch now happens off the gateway thread; await cleanup.
+          (await-event (event! :message-create command-message)))
         (:active-commands @conn) => {})))
   (with-discord-session echo-result
     (fn [event! _ conn]

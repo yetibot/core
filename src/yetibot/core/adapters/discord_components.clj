@@ -85,15 +85,18 @@
         fence (reduce next-fence nil (str/split-lines preview))]
     (cond-> preview fence (str "\n" fence))))
 
-(defn text-parts [text]
-  (if (empty? text)
-    []
-    (let [{rendered :text overflow? :overflow?}
-          (when (<= (count text) max-text-length) (format-tables text))]
-      (if (or (nil? rendered) overflow? (> (count rendered) max-text-length))
-        [{:content (str (answer-preview text) "\n\n-# Full answer attached as Markdown.")
-          :file text :filename "answer.md"}]
-        [{:content rendered}]))))
+(defn text-parts
+  ([text] (text-parts text max-text-length))
+  ([text budget]
+   (if (empty? text)
+     []
+     (let [{rendered :text overflow? :overflow?}
+           (when (<= (count text) budget) (format-tables text))]
+       (if (or (nil? rendered) overflow? (> (count rendered) budget))
+         [{:content (str (answer-preview text)
+                         "\n\n-# Full answer attached as Markdown.")
+           :file text :filename "answer.md"}]
+         [{:content rendered}])))))
 
 (defn- media-url [text]
   (when (and (string? text)
@@ -112,7 +115,8 @@
 
 (defn payload
   "Build a V2 card. Details is a bounded caller-sanitized snapshot, never raw data."
-  [{:keys [content image file filename command-key details allowed-mentions]}]
+  [{:keys [content image file filename command-key details elapsed
+           allowed-mentions]}]
   (let [media (or (when image (str "attachment://" filename)) (media-url content))
         buttons (when command-key
                   (mapv (fn [[action label]]
@@ -125,6 +129,7 @@
                    (conj {:type 10 :content content})
                    media (conj {:type 12 :items [{:media {:url media}}]})
                    file (conj {:type 13 :file {:url (str "attachment://" filename)}})
+                   elapsed (conj {:type 10 :content (str "-# " elapsed)})
                    (seq buttons) (conj {:type 1 :components buttons}))]
     {:flags 32768
      :components [{:type 17 :accent_color accent-color :components children}]

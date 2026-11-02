@@ -7,6 +7,7 @@
             [discljord.connections :as discord-ws]
             [yetibot.core.models.users :as users]
             [yetibot.core.models.help :as help]
+            [yetibot.core.models.admin :as admin]
             [yetibot.core.util.command :as command]
             [yetibot.core.adapters.discord-components :as components]
             [discljord.events :as events]
@@ -89,12 +90,17 @@
   (or (get-in event [:author :bot])
       (= (:id @yetibot-user) (get-in event [:author :id]))))
 
-(defn- run-message! [event yetibot-user]
+(defn- run-message! [event yetibot-user & [route]]
+  ;; Routing changes delivery, never the original authorization/history source.
   (let [cs (assoc (chat/chat-source (:channel-id event)) :raw-event event)]
-    (binding [chat/*target* (:channel-id event)]
-      (handler/handle-raw cs
-                         (discord-user (:author event) (:id @yetibot-user))
-                         :message @yetibot-user {:body (:content event)}))))
+    (binding [chat/*target* (or (:target route) (:channel-id event))
+              chat/*command-thread* (:target route)]
+      (if-let [error (:error route)]
+        (do (chat/send-msg error) nil)
+        (handler/handle-raw cs
+                           (discord-user (:author event) (:id @yetibot-user))
+                           :message @yetibot-user
+                           {:body (or (:body route) (:content event))})))))
 
 (def ^:private live-delivery-timeout-ms 30000)
 (def ^:dynamic ^:private *delivery-deadline* nil)
@@ -145,6 +151,74 @@
 
 (declare replace-replies! retire-status! cleanup-status!)
 
+(defn command-timing?
+  "True when the shared Discord renderer owns this request's elapsed caption."
+  [] (boolean (:timing *command-context*)))
+
+(defn- elapsed-label [{:keys [started finished]}]
+  (when started
+    (String/format java.util.Locale/ROOT "%.1fs"
+      (to-array [(max 0.0 (/ (- (or @finished (monotonic-time)) started)
+                              1000000000.0))]))))
+
+(defn- thread-route! [event conn {:keys [entry revision]} yetibot-user]
+  (when-let [[_ expression]
+             (some->> (:content event) command/extract-command second
+                      (re-matches #"(?s)^thread(?:\s+(.*))?$"))]
+    (let [error #(hash-map :error %)
+          user (discord-user (:author event) (:id @yetibot-user))]
+      (cond
+        (str/blank? expression)
+        (error "Usage: thread <command> (including pipes).")
+        (not (command/command-enabled? "thread"))
+        (error "The thread command is disabled.")
+        (and (admin/admin-only-command? "thread")
+             (not (admin/user-is-admin? user)))
+        (error "Only admins are allowed to execute thread commands.")
+        (not (:guild-id event))
+        (error "Thread commands require a Discord server text channel, not a DM. The command was not run.")
+        :else
+        (with-command-lock (:lock entry)
+          (when (identical? revision @(:revision entry))
+            (let [state (:thread-state entry)
+                  result
+                  (if (:attempted? @state)
+                    @state
+                    (try
+                      (binding [*delivery-deadline* (+ (monotonic-time)
+                                                      10000000000)]
+                        (let [parent (delivery! #(messaging/get-channel!
+                                                  (:rest @conn)
+                                                  (:channel-id event)))]
+                          (if-not (and (#{0 5} (:type parent))
+                                       (= (:guild-id event) (:guild-id parent)))
+                            {:unsupported? true}
+                            (do
+                              ;; Record uncertainty BEFORE dispatch; never retry
+                              ;; a POST after a timeout, edit or rerun.
+                              (when-not (identical? revision @(:revision entry))
+                                (throw (delivery-error)))
+                              (reset! state {:attempted? true})
+                              (let [thread
+                                    (delivery!
+                                      #(messaging/start-thread-with-message!
+                                         (:rest @conn) (:channel-id event)
+                                         (:id event) "Yetibot command" 1440))
+                                    valid? (and (= (:id event) (:id thread))
+                                                (#{10 11} (:type thread))
+                                                (= (:channel-id event)
+                                                   (:parent-id thread)))]
+                                (swap! state assoc :id (when valid? (:id thread))))))))
+                      (catch Exception _ @state)))]
+              (cond
+                (:id result)
+                {:target (:id result)
+                 :body (str command/config-prefix expression)}
+                (:unsupported? result)
+                (error "Start thread commands in a server text channel, not inside another thread. The command was not run.")
+                :else
+                (error "Discord did not confirm the thread. The command was not run. Check thread permissions and send a new message; this request will not retry creation.")))))))))
+
 (defn- register-command! [event conn revision & [expected]]
   ;; This short metadata lock never waits on the per-command REST IO lock.
   (locking conn
@@ -156,7 +230,8 @@
                  :replies (or (:replies previous) (atom []))
                  :running (or (:running previous) (atom #{}))
                  :details (atom nil)
-                 :confirmation (atom nil)}
+                 :confirmation (atom nil)
+                 :thread-state (or (:thread-state previous) (atom {}))}
           entry (assoc (dissoc owner :running) :event event)]
       (when (or (nil? expected) (identical? expected @(:revision owner)))
         (when-let [status (get-in @conn [:command-statuses key])]
@@ -186,42 +261,41 @@
         (swap! conn update :active-commands dissoc key)))))
 
 (defn- run-command! [event conn yetibot-user & [expected]]
-  (let [revision (Object.)]
+  (let [revision (Object.)
+        timing {:started (monotonic-time) :finished (atom nil)}]
     (when-let [[key owner entry] (register-command! event conn revision expected)]
       (let [output (atom [])
             live? (atom false)
-            context {:conn conn :entry entry :key key
+            context {:conn conn :entry entry :key key :timing timing
                      :running (:running owner) :revision revision
                      :output output :live? live? :status (atom {})}]
-        (try
-          (let [completion
-                (binding [*command-output* output
-                          *command-context* context]
-                  (when (command? event) (run-message! event yetibot-user)))]
-            (async/thread
-              (try
-                (when completion (async/<!! completion))
-                (binding [*delivery-deadline* (when @live? (live-deadline))]
-                  (locking (:status context)
-                    ;; Reserve cleanup before retirement exposes inactive status.
-                    (swap! (:status context) assoc :terminal-pending? true)
-                    (retire-status! context))
-                  (try
-                    (with-command-lock (:lock entry)
-                      (try
-                        (when (identical? revision @(:revision entry))
-                          (replace-replies! conn (:replies entry) @output))
-                        (finally (cleanup-status! context))))
-                    (finally
-                      (locking (:status context)
-                        (swap! (:status context) dissoc :terminal-pending?)))))
-                (catch Exception e
-                  (timbre/error e "Error replacing Discord command replies"))
-                (finally (retire-command! conn key owner revision)))))
-          (catch Throwable e
-            (retire-status! context)
-            (retire-command! conn key owner revision)
-            (throw e)))))))
+        (async/thread
+          (binding [*command-output* output *command-context* context]
+            (try
+              (when (and (command? event)
+                         (identical? revision @(:revision entry)))
+                (let [route (thread-route! event conn context yetibot-user)
+                      completion (when (identical? revision @(:revision entry))
+                                   (run-message! event yetibot-user route))]
+                  (when completion (async/<!! completion))))
+              (reset! (:finished timing) (monotonic-time))
+              (binding [*delivery-deadline* (when @live? (live-deadline))]
+                (locking (:status context)
+                  (swap! (:status context) assoc :terminal-pending? true)
+                  (retire-status! context))
+                (try
+                  (with-command-lock (:lock entry)
+                    (try
+                      (when (identical? revision @(:revision entry))
+                        (replace-replies! conn (:replies entry) @output))
+                      (finally (cleanup-status! context))))
+                  (finally
+                    (locking (:status context)
+                      (swap! (:status context) dissoc :terminal-pending?)))))
+              (catch Throwable _
+                (retire-status! context)
+                (timbre/warn "Discord command execution or delivery failed"))
+              (finally (retire-command! conn key owner revision)))))))))
 
 (defmethod handle-event :message-create
   [_ event-data conn yetibot-user]
@@ -410,21 +484,23 @@
       (let [caption (str/replace msg url "")
             image {:image data :filename (str id "." ext)}
             caption-part (when-not (str/blank? caption)
-                           (first (components/text-parts caption)))]
+                           (first (components/text-parts caption (if (command-timing?) 3968 4000))))]
         (if (:file caption-part)
           [image caption-part]
           [(merge image caption-part)]))
-      (components/text-parts msg))))
+      (components/text-parts msg (if (command-timing?) 3968 4000)))))
 
 (defn- command-part [part]
   (if-let [{:keys [key entry]} *command-context*]
-    (assoc part :command-key key :details-state (:details entry))
+    (assoc part :command-key key :details-state (:details entry)
+           :timing (:timing *command-context*))
     part))
 
 (defn- reply-options [part]
   (components/payload
     (cond-> part
-      (:details-state part) (assoc :details @(:details-state part)))))
+      (:details-state part) (assoc :details @(:details-state part))
+      (:timing part) (assoc :elapsed (elapsed-label (:timing part))))))
 
 (defn- create-message! [conn target {:keys [image file filename] :as part}]
   (let [options (cond-> (reply-options part)
@@ -523,7 +599,7 @@
 (defn- ensure-status-job! [{:keys [status entry] :as context}]
   (when-not (:cancel @status)
     (let [context (assoc (select-keys context
-                                     [:conn :key :running :revision :status])
+                                     [:conn :key :running :revision :status :timing])
                          :entry (select-keys entry
                                              [:revision :lock :replies]))]
       (try
@@ -617,7 +693,12 @@
     (try
       (let [rest (:status-rest @conn)
             _ (when-not rest (throw (delivery-error)))
-            options [:flags 32768 :components (status-components text)
+            options [:flags 32768 :components
+                     (cond-> (status-components text)
+                       (:timing context)
+                       (update-in [0 :components] conj
+                                  {:type 10 :content
+                                   (str "-# " (elapsed-label (:timing context)))}))
                      :allowed_mentions {:parse [] :replied_user false}]
             receipt (if id
                       (apply messaging/edit-message! rest target id options)
@@ -776,8 +857,9 @@
         (binding [*delivery-deadline* (live-deadline)]
           (let [text (apply str chunks)
                 raw-parts (if (> (count text) components/max-text-length)
-                            (components/text-parts text)
-                            (vec (mapcat components/text-parts chunks)))
+                            (components/text-parts text 3968)
+                            (vec (mapcat #(components/text-parts % 3968)
+                                         chunks)))
                 parts (mapv #(command-part
                                (assoc % :target target
                                         :allowed-mentions {:parse []}

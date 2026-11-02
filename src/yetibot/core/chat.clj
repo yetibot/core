@@ -24,6 +24,11 @@
   "The target channel a chat should be sent to"
   nil)
 
+(def ^:dynamic *command-thread*
+  "Confirmed Discord thread delivery target for the current outer command.
+   Original chat-source and caller authorization remain unchanged."
+  nil)
+
 (defn validate-sender
   "Does two things:
    - Makes sure an adapter is bound to something truthy. If not, it will try to
