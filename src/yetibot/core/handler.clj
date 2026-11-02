@@ -5,8 +5,9 @@
    [clojure.spec.alpha :as s]
    [clojure.string :refer [blank? join]]
    [taoensso.timbre :refer [trace info error]]
-   [yetibot.core.chat :refer [chat-data-structure]]
+   [yetibot.core.chat :as chat :refer [chat-data-structure]]
    [yetibot.core.util.command :refer [extract-command embedded-cmds]]
+   [yetibot.core.util.public-result :as public-result]
    [yetibot.core.interpreter :as interp]
    [yetibot.core.models.history :as h]
    [yetibot.core.unparser :refer [unparse]]
@@ -143,9 +144,11 @@
 (defn ->handled-expr-results
   [body results]
   (or results
-      [{:timeout? true
-        :result (str "Evaluation of `" body "` timed out after "
-                     (/ expr-eval-timeout-ms 1000) " seconds.")}]))
+      (do
+        (public-result/error! "timeout")
+        [{:timeout? true
+          :result (str "Evaluation of `" body "` timed out after "
+                       (/ expr-eval-timeout-ms 1000) " seconds.")}])))
 
 (defn record-and-run-raw
   "Top level message handler.
@@ -216,11 +219,14 @@
                           :error? error?
                           :result result})
                        (catch Throwable ex
+                         (public-result/error! "exception" (:status (ex-data ex)))
                          (error "error handling expression:" body
                                 (format-exception-log ex))
                          {:embedded? embedded?
                           :error? true
-                          :result (format exception-format ex)})))
+                          :result (if public-result/*capture*
+                                    "Command failed. Open Error details for retained diagnostics."
+                                    (format exception-format ex))})))
                    parsed-cmds))
               (timeout expr-eval-timeout-ms)])]
         (->handled-expr-results body results)))))
@@ -241,8 +247,11 @@
   "When a command response is valid and succesful, it will be passed along
    to be formatted and send to chat adapter, otherwise, log and return nil"
   [{:keys [embedded? error? result] :as _handled-expr-results}]
+  (when error? (public-result/observe! {:result/error true}))
   (if (or (not error?) (not embedded?))
-    (chat-data-structure result)
+    (binding [chat/*target* (chat/command-target)
+              chat/*command-thread* (chat/command-thread-target)]
+      (chat-data-structure result))
     (info "Skip sending error result for embedded command to chat" result)))
 
 (defn handle-raw

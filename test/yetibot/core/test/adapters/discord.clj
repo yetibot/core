@@ -761,7 +761,7 @@
                   (set (keys (get-in @conn
                                     [:active-commands ["channel" "command"]])))
                   => #{:revision :lock :replies :running :details :confirmation
-                       :thread-state}
+                       :thread-state :inspection}
                   (await-event
                     (event! :message-create
                             (assoc command-message :id "last"

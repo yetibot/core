@@ -109,21 +109,23 @@
 (defn parse-button [id]
   (when (string? id)
     (when-let [[_ action channel command token]
-               (re-matches #"yb:(again|help|details|confirm):([^:]+):([^:]+)(?::([a-f0-9-]+))?" id)]
+               (re-matches #"yb:(again|help|details|confirm|data|error):([^:]+):([^:]+)(?::([a-f0-9-]+))?" id)]
       (when (= (= action "confirm") (some? token))
         {:action action :key [channel command] :confirmation token}))))
 
 (defn payload
   "Build a V2 card. Details is a bounded caller-sanitized snapshot, never raw data."
   [{:keys [content image file filename command-key details elapsed
-           allowed-mentions]}]
+           data? error? allowed-mentions]}]
   (let [media (or (when image (str "attachment://" filename)) (media-url content))
         buttons (when command-key
                   (mapv (fn [[action label]]
                           {:type 2 :style 2 :label label
                            :custom_id (button-id action command-key)})
                         (cond-> [["again" "Run again"] ["help" "Help"]]
-                          (seq details) (conj ["details" "Show details"]))))
+                          (seq details) (conj ["details" "Show details"])
+                          error? (conj ["error" "Error details"])
+                          data? (conj ["data" "Explore data"]))))
         children (cond-> []
                    (and (not (str/blank? content)) (not= content media))
                    (conj {:type 10 :content content})

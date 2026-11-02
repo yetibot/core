@@ -29,6 +29,17 @@
    Original chat-source and caller authorization remain unchanged."
   nil)
 
+(def ^:dynamic *command-thread-resolver*
+  "Request-local resolver for an active confirmed Discord thread. Never cached."
+  nil)
+
+(defn command-thread-target []
+  (if *command-thread-resolver*
+    (*command-thread-resolver*)
+    *command-thread*))
+
+(defn command-target [] (or (command-thread-target) *target*))
+
 (defn validate-sender
   "Does two things:
    - Makes sure an adapter is bound to something truthy. If not, it will try to

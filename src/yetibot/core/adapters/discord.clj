@@ -9,7 +9,9 @@
             [yetibot.core.models.help :as help]
             [yetibot.core.models.admin :as admin]
             [yetibot.core.util.command :as command]
+            [yetibot.core.util.public-result :as public-result]
             [yetibot.core.adapters.discord-components :as components]
+            [yetibot.core.adapters.discord-inspection :as inspection]
             [discljord.events :as events]
             [taoensso.timbre :as timbre]
             [yetibot.core.adapters.adapter :as adapter]
@@ -96,7 +98,8 @@
     (binding [chat/*target* (or (:target route) (:channel-id event))
               chat/*command-thread* (:target route)]
       (if-let [error (:error route)]
-        (do (chat/send-msg error) nil)
+        (do (public-result/error! "thread routing")
+            (chat/send-msg error) nil)
         (handler/handle-raw cs
                            (discord-user (:author event) (:id @yetibot-user))
                            :message @yetibot-user
@@ -149,7 +152,7 @@
      (acquire-command-lock! lock#)
      (try ~@body (finally (.unlock ^ReentrantLock lock#)))))
 
-(declare replace-replies! retire-status! cleanup-status!)
+(declare replace-replies! retire-status! cleanup-status! owns-command?)
 
 (defn command-timing?
   "True when the shared Discord renderer owns this request's elapsed caption."
@@ -161,63 +164,103 @@
       (to-array [(max 0.0 (/ (- (or @finished (monotonic-time)) started)
                               1000000000.0))]))))
 
-(defn- thread-route! [event conn {:keys [entry revision]} yetibot-user]
+(defn- status-context [context]
+  (when context
+    (if-let [status-ref (:status-ref context)]
+      (assoc context :status @status-ref) context)))
+
+(defn- confirmed-thread? [event thread]
+  (and (= (:id event) (:id thread))
+       (#{10 11} (:type thread))
+       (= (:channel-id event) (:parent-id thread))
+       (or (nil? (:guild-id thread))
+           (= (:guild-id event) (:guild-id thread)))))
+
+(defn ensure-command-thread!
+  "Confirm one message thread for the active original human command.
+  Changes delivery only. Never retries a creation POST or interprets pipe text.
+  Unknown creates can receive one bounded read-only confirmation lookup."
+  []
+  (let [error #(hash-map :error %)]
+    (if-let [{:keys [conn entry thread-target timing] :as context}
+             *command-context*]
+      (let [event (:event entry)
+            user (discord-user (:author event)
+                               (:id @(:yetibot-user chat/*adapter*)))]
+        (cond
+          (or (not (owns-command? context)) (some? @(:finished timing)))
+          (error "This thread request is no longer active.")
+          (not (command/command-enabled? "thread"))
+          (error "The thread command is disabled.")
+          (and (admin/admin-only-command? "thread")
+               (not (admin/user-is-admin? user)))
+          (error "Only admins are allowed to execute thread commands.")
+          (not (:guild-id event))
+          (error "Thread commands require a Discord server text channel, not a DM. The thread step was not run.")
+          :else
+          (with-command-lock (:lock entry)
+            (if-not (owns-command? context)
+              (error "This thread request is no longer active.")
+              (let [state (:thread-state entry)
+                    result
+                    (if (:attempted? @state)
+                      @state
+                      (try
+                        (binding [*delivery-deadline* (+ (monotonic-time)
+                                                        10000000000)]
+                          (let [parent (delivery! #(messaging/get-channel!
+                                                    (:rest @conn)
+                                                    (:channel-id event)))]
+                            (if-not (and (#{0 5} (:type parent))
+                                         (= (:guild-id event) (:guild-id parent)))
+                              {:unsupported? true}
+                              (do
+                                ;; The dispatch outcome belongs to this source
+                                ;; message, including edits and reruns.
+                                (when-not (owns-command? context)
+                                  (throw (delivery-error)))
+                                (reset! state {:attempted? true})
+                                (let [created
+                                      (delivery!
+                                        #(messaging/start-thread-with-message!
+                                           (:rest @conn) (:channel-id event)
+                                           (:id event) "Yetibot command" 1440))
+                                      thread
+                                      (if (confirmed-thread? event created)
+                                        created
+                                        (delivery! #(messaging/get-channel!
+                                                      (:rest @conn) (:id event))))]
+                                  (swap! state assoc :id
+                                         (when (confirmed-thread? event thread)
+                                           (:id thread))))))))
+                        (catch Exception _ @state)))]
+                (cond
+                  (not (owns-command? context))
+                  (error "This thread request is no longer active.")
+                  (:id result)
+                  (let [target (:id result)
+                        previous (status-context context)]
+                    (when (and (:started? @(:status previous))
+                               (not= target (:target @(:status previous))))
+                      (retire-status! previous)
+                      (reset! (:status-ref context) (atom {})))
+                    (reset! thread-target target)
+                    {:target target})
+                  (:unsupported? result)
+                  (error "Start thread commands in a server text channel, not inside another thread. The thread step was not run.")
+                  :else
+                  (error "Discord did not confirm the thread. Following commands were not run. Check thread permissions and send a new message; this request will not retry creation.")))))))
+      (error "Thread delivery requires an active Discord command in a server text channel."))))
+
+(defn- thread-route! [event]
   (when-let [[_ expression]
              (some->> (:content event) command/extract-command second
                       (re-matches #"(?s)^thread(?:\s+(.*))?$"))]
-    (let [error #(hash-map :error %)
-          user (discord-user (:author event) (:id @yetibot-user))]
-      (cond
-        (str/blank? expression)
-        (error "Usage: thread <command> (including pipes).")
-        (not (command/command-enabled? "thread"))
-        (error "The thread command is disabled.")
-        (and (admin/admin-only-command? "thread")
-             (not (admin/user-is-admin? user)))
-        (error "Only admins are allowed to execute thread commands.")
-        (not (:guild-id event))
-        (error "Thread commands require a Discord server text channel, not a DM. The command was not run.")
-        :else
-        (with-command-lock (:lock entry)
-          (when (identical? revision @(:revision entry))
-            (let [state (:thread-state entry)
-                  result
-                  (if (:attempted? @state)
-                    @state
-                    (try
-                      (binding [*delivery-deadline* (+ (monotonic-time)
-                                                      10000000000)]
-                        (let [parent (delivery! #(messaging/get-channel!
-                                                  (:rest @conn)
-                                                  (:channel-id event)))]
-                          (if-not (and (#{0 5} (:type parent))
-                                       (= (:guild-id event) (:guild-id parent)))
-                            {:unsupported? true}
-                            (do
-                              ;; Record uncertainty BEFORE dispatch; never retry
-                              ;; a POST after a timeout, edit or rerun.
-                              (when-not (identical? revision @(:revision entry))
-                                (throw (delivery-error)))
-                              (reset! state {:attempted? true})
-                              (let [thread
-                                    (delivery!
-                                      #(messaging/start-thread-with-message!
-                                         (:rest @conn) (:channel-id event)
-                                         (:id event) "Yetibot command" 1440))
-                                    valid? (and (= (:id event) (:id thread))
-                                                (#{10 11} (:type thread))
-                                                (= (:channel-id event)
-                                                   (:parent-id thread)))]
-                                (swap! state assoc :id (when valid? (:id thread))))))))
-                      (catch Exception _ @state)))]
-              (cond
-                (:id result)
-                {:target (:id result)
-                 :body (str command/config-prefix expression)}
-                (:unsupported? result)
-                (error "Start thread commands in a server text channel, not inside another thread. The command was not run.")
-                :else
-                (error "Discord did not confirm the thread. The command was not run. Check thread permissions and send a new message; this request will not retry creation.")))))))))
+    (if (str/blank? expression)
+      {:error "Usage: thread <command> (including pipes)."}
+      (let [route (ensure-command-thread!)]
+        (cond-> route (:target route)
+          (assoc :body (str command/config-prefix expression)))))))
 
 (defn- register-command! [event conn revision & [expected]]
   ;; This short metadata lock never waits on the per-command REST IO lock.
@@ -230,6 +273,7 @@
                  :replies (or (:replies previous) (atom []))
                  :running (or (:running previous) (atom #{}))
                  :details (atom nil)
+                 :inspection (atom (inspection/initial))
                  :confirmation (atom nil)
                  :thread-state (or (:thread-state previous) (atom {}))}
           entry (assoc (dissoc owner :running) :event event)]
@@ -266,34 +310,48 @@
     (when-let [[key owner entry] (register-command! event conn revision expected)]
       (let [output (atom [])
             live? (atom false)
+            status (atom {})
             context {:conn conn :entry entry :key key :timing timing
                      :running (:running owner) :revision revision
-                     :output output :live? live? :status (atom {})}]
+                     :output output :live? live? :status status
+                     :status-ref (atom status) :thread-target (atom nil)}]
         (async/thread
-          (binding [*command-output* output *command-context* context]
+          (binding [*command-output* output *command-context* context
+                    public-result/*capture*
+                    (partial inspection/capture! (:inspection entry))
+                    chat/*command-thread-resolver*
+                    (fn []
+                      (when (and (owns-command? context)
+                                 (identical? conn (:conn chat/*adapter*))
+                                 (or (= chat/*target* (first key))
+                                     (= chat/*target* @(:thread-target context))))
+                        @(:thread-target context)))]
             (try
               (when (and (command? event)
                          (identical? revision @(:revision entry)))
-                (let [route (thread-route! event conn context yetibot-user)
+                (let [route (thread-route! event)
                       completion (when (identical? revision @(:revision entry))
                                    (run-message! event yetibot-user route))]
                   (when completion (async/<!! completion))))
               (reset! (:finished timing) (monotonic-time))
-              (binding [*delivery-deadline* (when @live? (live-deadline))]
-                (locking (:status context)
-                  (swap! (:status context) assoc :terminal-pending? true)
-                  (retire-status! context))
-                (try
-                  (with-command-lock (:lock entry)
-                    (try
-                      (when (identical? revision @(:revision entry))
-                        (replace-replies! conn (:replies entry) @output))
-                      (finally (cleanup-status! context))))
-                  (finally
-                    (locking (:status context)
-                      (swap! (:status context) dissoc :terminal-pending?)))))
+              (swap! (:inspection entry) assoc :sealed? true
+                     :elapsed (elapsed-label timing))
+              (let [context (status-context context)]
+                (binding [*delivery-deadline* (when @live? (live-deadline))]
+                  (locking (:status context)
+                    (swap! (:status context) assoc :terminal-pending? true)
+                    (retire-status! context))
+                  (try
+                    (with-command-lock (:lock entry)
+                      (try
+                        (when (identical? revision @(:revision entry))
+                          (replace-replies! conn (:replies entry) @output))
+                        (finally (cleanup-status! context))))
+                    (finally
+                      (locking (:status context)
+                        (swap! (:status context) dissoc :terminal-pending?))))))
               (catch Throwable _
-                (retire-status! context)
+                (retire-status! (status-context context))
                 (timbre/warn "Discord command execution or delivery failed"))
               (finally (retire-command! conn key owner revision)))))))))
 
@@ -365,8 +423,9 @@
 
 (defmethod handle-event :interaction-create
   [_ event conn yetibot-user]
-  (when-let [{:keys [action key confirmation]}
-             (components/parse-button (get-in event [:data :custom-id]))]
+  (when-let [{:keys [action key confirmation token kind node page]}
+             (or (components/parse-button (get-in event [:data :custom-id]))
+                 (inspection/parse-control (get-in event [:data :custom-id])))]
     ;; Claim an interaction once before dispatch. Never retain its token.
     (let [fresh? (locking conn
                    (let [seen (or (:interactions @conn)
@@ -388,18 +447,37 @@
                   own-message? (= (:id @yetibot-user)
                                   (get-in event [:message :author :id]))
                   known? (and entry own-message?
-                              (or (not confirm?)
-                                  (and (= confirmation (:token pending))
-                                       (identical? expected @(:revision entry))))
-                              (some #(and (= (:channel-id event) (:target %))
-                                          (= (if confirm? (:reply-id pending)
-                                               (get-in event [:message :id]))
-                                             (:id %)))
-                                    @(:replies entry)))]
+                              (identical? (:inspection entry)
+                                (get-in @conn [:commands key :inspection]))
+                              (if (= action "view")
+                                (and (= token (:token @(:inspection entry)))
+                                     (some #(= (:channel-id event) (:target %))
+                                           @(:replies entry)))
+                                (and
+                                  (or (not confirm?)
+                                      (and (= confirmation (:token pending))
+                                           (identical? expected @(:revision entry))))
+                                  (some #(and (= (:channel-id event) (:target %))
+                                              (= (if confirm? (:reply-id pending)
+                                                   (get-in event [:message :id]))
+                                                 (:id %)))
+                                        @(:replies entry)))))]
               (cond
                 (not known?)
                 (interaction-reply! conn event
                   "This command's buttons have expired. Please send the command again.")
+
+                (contains? #{"view" "data" "error"} action)
+                (if-let [data (inspection/payload
+                                (:inspection entry) key
+                                (or kind (if (= action "error") "e" "d"))
+                                (or node 0) (or page 0)
+                                (get-in event [:data :values]))]
+                  (messaging/create-interaction-response!
+                    (:rest @conn) (:id event) (:token event)
+                    (if (= action "view") 7 4) :data data)
+                  (interaction-reply! conn event
+                    "This data view has expired or is unavailable."))
 
                 (= action "help")
                 (let [body (second (command/extract-command (:content source)))
@@ -493,6 +571,7 @@
 (defn- command-part [part]
   (if-let [{:keys [key entry]} *command-context*]
     (assoc part :command-key key :details-state (:details entry)
+           :inspection (:inspection entry)
            :timing (:timing *command-context*))
     part))
 
@@ -500,6 +579,8 @@
   (components/payload
     (cond-> part
       (:details-state part) (assoc :details @(:details-state part))
+      (some-> (:inspection part) deref :sealed?)
+      (merge (select-keys @(:inspection part) [:data? :error?]))
       (:timing part) (assoc :elapsed (elapsed-label (:timing part))))))
 
 (defn- create-message! [conn target {:keys [image file filename] :as part}]
@@ -778,7 +859,8 @@
   (validate-status-text! text)
   (when-not (and (string? target) (not (str/blank? target)))
     (throw (IllegalArgumentException. "Invalid Discord command status")))
-  (if-let [{:keys [conn key status live?] :as context} *command-context*]
+  (if-let [{:keys [conn key status live?] :as context}
+           (status-context *command-context*)]
     (locking conn
       (locking status
         (cond
@@ -803,7 +885,8 @@
   finish, :stale on ownership loss, or :unavailable outside command context."
   [text]
   (validate-status-text! text)
-  (if-let [{:keys [status entry] :as context} *command-context*]
+  (if-let [{:keys [status entry] :as context}
+           (status-context *command-context*)]
     (locking status
       (cond
         (not (owns-command? context)) :stale
@@ -821,7 +904,7 @@
   first. Unknown creates are never resent; late confirmed IDs get separately
   bounded cleanup. Dispatched REST cannot be cancelled by stopping ticks."
   []
-  (if-let [context *command-context*]
+  (if-let [context (status-context *command-context*)]
     (do (retire-status! context)
         (if (owns-command? context) :retired :stale))
     :unavailable))
