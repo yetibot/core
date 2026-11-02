@@ -1,7 +1,7 @@
 (ns yetibot.core.interpreter
   "Handles evaluation of a parse tree"
   (:require
-    [yetibot.core.chat :refer [suppress]]
+    [yetibot.core.chat :as chat :refer [suppress]]
     [yetibot.core.unparser :refer [unparse-transformer]]
     [yetibot.core.models.default-command :refer [fallback-enabled?
                                                  configured-default-command]]
@@ -80,7 +80,9 @@
       ;; cmd-with-args.
 
       ;; bind data so that it "leaks" into evaluation of sub expressions
-      (binding [*contextual-data* previous-data]
+      (binding [*contextual-data* previous-data
+                chat/*target* (chat/command-target)
+                chat/*command-thread* (chat/command-thread-target)]
         (debug "piping with *contextual-data*" *contextual-data*)
         (let [cmd-with-args (evaluator cmd-ast)
 
@@ -88,7 +90,9 @@
              ;; - the literal value itself
              ;; - a map containing a :value key and an optional :data key
              command-result
-             (apply
+             (binding [chat/*target* (chat/command-target)
+                       chat/*command-thread* (chat/command-thread-target)]
+              (apply
               handle-cmd
               ;; determine whether to pass args to handle command as an :opts
               ;; collection or as a single value, depending on whether previous
@@ -102,7 +106,7 @@
                    cmd-with-args
                    ;; next time apply pseudo-format to support %s substitution
                    (pseudo-format cmd-with-args (str previous-value)))
-                 extra]))
+                 extra])))
 
              _ (public-result/observe! command-result)
              _ (info "command-result" (color-str :green (pr-str command-result)))

@@ -186,9 +186,12 @@
                                     {:label (if (str/blank? label) "Unnamed field"
                                                 (components/excerpt label 100))
                                      :description
-                                     (components/excerpt
-                                       (if (nil? (:value (get nodes id))) "null"
-                                           (str (summary (:value (get nodes id))))) 100)
+                                     (let [v (:value (get nodes id))
+                                           description (str (summary v))]
+                                       (cond
+                                         (nil? v) "null"
+                                         (str/blank? description) "empty string"
+                                         :else (components/excerpt description 100)))
                                      :value (str id)}) visible)}]})
                    (or parent (pos? page) (> (count children) (* 8 (inc page))))
                    (conj {:type 1 :components

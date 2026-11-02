@@ -9,6 +9,12 @@
   command revisions/cache eviction. Unreviewed result data and private upstream
   bodies are never automatically public.
 
+- `echo hi | thread` is a native pipeline step: it redirects the literal result
+  without interpreting it as another command. Later stages keep the confirmed
+  thread destination while caller/source permissions and structured data stay
+  unchanged. Parent progress is retired before new thread progress starts;
+  unknown creation gets at most one read-only confirmation lookup, never a
+  second POST.
 - `thread <command>` runs a whole Discord command expression, including pipes,
   in a thread on the requesting message. Edits and confirmed reruns reuse it.
   Requires a server text channel and thread permissions; uncertain creation

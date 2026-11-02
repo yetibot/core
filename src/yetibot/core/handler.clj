@@ -5,7 +5,7 @@
    [clojure.spec.alpha :as s]
    [clojure.string :refer [blank? join]]
    [taoensso.timbre :refer [trace info error]]
-   [yetibot.core.chat :refer [chat-data-structure]]
+   [yetibot.core.chat :as chat :refer [chat-data-structure]]
    [yetibot.core.util.command :refer [extract-command embedded-cmds]]
    [yetibot.core.util.public-result :as public-result]
    [yetibot.core.interpreter :as interp]
@@ -249,7 +249,9 @@
   [{:keys [embedded? error? result] :as _handled-expr-results}]
   (when error? (public-result/observe! {:result/error true}))
   (if (or (not error?) (not embedded?))
-    (chat-data-structure result)
+    (binding [chat/*target* (chat/command-target)
+              chat/*command-thread* (chat/command-thread-target)]
+      (chat-data-structure result))
     (info "Skip sending error result for embedded command to chat" result)))
 
 (defn handle-raw

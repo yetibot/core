@@ -79,3 +79,10 @@
     (count (get-in main [:components 0 :components 1 :components])) => 5
     (count (re-seq #"```" (text page))) => 2
     (:allowed_mentions page) => {:parse [] :replied_user false}))
+
+(fact "empty and null fields still have valid nonblank select descriptions"
+  (let [state (capture {:empty "" :blank "  " :nil nil})
+        page (inspect/payload state ["200" "100"] "d" 0 0 nil)
+        menu (get-in page [:components 0 :components 2 :components 0])]
+    (every? #(not (str/blank? (:description %))) (:options menu)) => true
+    (count (:options menu)) => 3))
