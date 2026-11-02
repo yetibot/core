@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Rich Discord command errors offer **Error details**. Supported commands offer
+  **Explore data** from explicitly reviewed public projections, with nested
+  field/item selection, Back and paging. Views are public and read-only; no
+  command is rerun. Snapshots are bounded, frozen at completion and expire with
+  command revisions/cache eviction. Unreviewed result data and private upstream
+  bodies are never automatically public.
+
 - `thread <command>` runs a whole Discord command expression, including pipes,
   in a thread on the requesting message. Edits and confirmed reruns reuse it.
   Requires a server text channel and thread permissions; uncertain creation

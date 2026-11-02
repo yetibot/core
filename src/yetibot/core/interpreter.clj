@@ -6,6 +6,7 @@
     [yetibot.core.models.default-command :refer [fallback-enabled?
                                                  configured-default-command]]
     [yetibot.core.models.channel :as channel]
+    [yetibot.core.util.public-result :as public-result]
     [taoensso.timbre :refer [color-str debug info]]
     [yetibot.core.util.format :refer [pseudo-format to-coll-if-contains-newlines]]))
 
@@ -103,6 +104,7 @@
                    (pseudo-format cmd-with-args (str previous-value)))
                  extra]))
 
+             _ (public-result/observe! command-result)
              _ (info "command-result" (color-str :green (pr-str command-result)))
 
              {value :result/value

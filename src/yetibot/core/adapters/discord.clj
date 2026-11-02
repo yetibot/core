@@ -9,7 +9,9 @@
             [yetibot.core.models.help :as help]
             [yetibot.core.models.admin :as admin]
             [yetibot.core.util.command :as command]
+            [yetibot.core.util.public-result :as public-result]
             [yetibot.core.adapters.discord-components :as components]
+            [yetibot.core.adapters.discord-inspection :as inspection]
             [discljord.events :as events]
             [taoensso.timbre :as timbre]
             [yetibot.core.adapters.adapter :as adapter]
@@ -96,7 +98,8 @@
     (binding [chat/*target* (or (:target route) (:channel-id event))
               chat/*command-thread* (:target route)]
       (if-let [error (:error route)]
-        (do (chat/send-msg error) nil)
+        (do (public-result/error! "thread routing")
+            (chat/send-msg error) nil)
         (handler/handle-raw cs
                            (discord-user (:author event) (:id @yetibot-user))
                            :message @yetibot-user
@@ -230,6 +233,7 @@
                  :replies (or (:replies previous) (atom []))
                  :running (or (:running previous) (atom #{}))
                  :details (atom nil)
+                 :inspection (atom (inspection/initial))
                  :confirmation (atom nil)
                  :thread-state (or (:thread-state previous) (atom {}))}
           entry (assoc (dissoc owner :running) :event event)]
@@ -270,7 +274,9 @@
                      :running (:running owner) :revision revision
                      :output output :live? live? :status (atom {})}]
         (async/thread
-          (binding [*command-output* output *command-context* context]
+          (binding [*command-output* output *command-context* context
+                    public-result/*capture*
+                    (partial inspection/capture! (:inspection entry))]
             (try
               (when (and (command? event)
                          (identical? revision @(:revision entry)))
@@ -279,6 +285,8 @@
                                    (run-message! event yetibot-user route))]
                   (when completion (async/<!! completion))))
               (reset! (:finished timing) (monotonic-time))
+              (swap! (:inspection entry) assoc :sealed? true
+                     :elapsed (elapsed-label timing))
               (binding [*delivery-deadline* (when @live? (live-deadline))]
                 (locking (:status context)
                   (swap! (:status context) assoc :terminal-pending? true)
@@ -365,8 +373,9 @@
 
 (defmethod handle-event :interaction-create
   [_ event conn yetibot-user]
-  (when-let [{:keys [action key confirmation]}
-             (components/parse-button (get-in event [:data :custom-id]))]
+  (when-let [{:keys [action key confirmation token kind node page]}
+             (or (components/parse-button (get-in event [:data :custom-id]))
+                 (inspection/parse-control (get-in event [:data :custom-id])))]
     ;; Claim an interaction once before dispatch. Never retain its token.
     (let [fresh? (locking conn
                    (let [seen (or (:interactions @conn)
@@ -388,18 +397,37 @@
                   own-message? (= (:id @yetibot-user)
                                   (get-in event [:message :author :id]))
                   known? (and entry own-message?
-                              (or (not confirm?)
-                                  (and (= confirmation (:token pending))
-                                       (identical? expected @(:revision entry))))
-                              (some #(and (= (:channel-id event) (:target %))
-                                          (= (if confirm? (:reply-id pending)
-                                               (get-in event [:message :id]))
-                                             (:id %)))
-                                    @(:replies entry)))]
+                              (identical? (:inspection entry)
+                                (get-in @conn [:commands key :inspection]))
+                              (if (= action "view")
+                                (and (= token (:token @(:inspection entry)))
+                                     (some #(= (:channel-id event) (:target %))
+                                           @(:replies entry)))
+                                (and
+                                  (or (not confirm?)
+                                      (and (= confirmation (:token pending))
+                                           (identical? expected @(:revision entry))))
+                                  (some #(and (= (:channel-id event) (:target %))
+                                              (= (if confirm? (:reply-id pending)
+                                                   (get-in event [:message :id]))
+                                                 (:id %)))
+                                        @(:replies entry)))))]
               (cond
                 (not known?)
                 (interaction-reply! conn event
                   "This command's buttons have expired. Please send the command again.")
+
+                (contains? #{"view" "data" "error"} action)
+                (if-let [data (inspection/payload
+                                (:inspection entry) key
+                                (or kind (if (= action "error") "e" "d"))
+                                (or node 0) (or page 0)
+                                (get-in event [:data :values]))]
+                  (messaging/create-interaction-response!
+                    (:rest @conn) (:id event) (:token event)
+                    (if (= action "view") 7 4) :data data)
+                  (interaction-reply! conn event
+                    "This data view has expired or is unavailable."))
 
                 (= action "help")
                 (let [body (second (command/extract-command (:content source)))
@@ -493,6 +521,7 @@
 (defn- command-part [part]
   (if-let [{:keys [key entry]} *command-context*]
     (assoc part :command-key key :details-state (:details entry)
+           :inspection (:inspection entry)
            :timing (:timing *command-context*))
     part))
 
@@ -500,6 +529,8 @@
   (components/payload
     (cond-> part
       (:details-state part) (assoc :details @(:details-state part))
+      (some-> (:inspection part) deref :sealed?)
+      (merge (select-keys @(:inspection part) [:data? :error?]))
       (:timing part) (assoc :elapsed (elapsed-label (:timing part))))))
 
 (defn- create-message! [conn target {:keys [image file filename] :as part}]
