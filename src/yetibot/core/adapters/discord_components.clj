@@ -126,7 +126,7 @@
 (defn payload
   "Build a V2 card. Details is a bounded caller-sanitized snapshot, never raw data."
   [{:keys [content image file filename command-key details details-token elapsed
-           data? data-token error? allowed-mentions]}]
+           data? data-token error? allowed-mentions navigation]}]
   (let [media (or (when image (str "attachment://" filename)) (media-url content))
         buttons (when command-key
                   (mapv (fn [[action label]]
@@ -146,6 +146,7 @@
                    (conj {:type 10 :content content})
                    media (conj {:type 12 :items [{:media {:url media}}]})
                    file (conj {:type 13 :file {:url (str "attachment://" filename)}})
+                   navigation (conj navigation)
                    elapsed (conj {:type 10 :content (str "-# " elapsed)})
                    (seq buttons) (conj {:type 1 :components buttons}))]
     {:flags 32768

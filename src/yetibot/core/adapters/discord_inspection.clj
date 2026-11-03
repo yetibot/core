@@ -61,13 +61,31 @@
                 :else "[unavailable]"))]
       {:value (walk value 0) :budget @left})))
 
-(defn capture! [state {:keys [data? error? public-data? public-data public-error]}]
+(defn- text-pages [text]
+  ;; Larger documents still get the complete Markdown attachment, not a clipped
+  ;; snapshot. Retain at most one 256-Ki UTF-16 public document per command.
+  (when (and (string? text) (< 3968 (count text) 262145))
+    {:text text
+     :pages
+     (loop [remaining text pages []]
+       (if (empty? remaining)
+         pages
+         (let [prefix (components/excerpt remaining 3000)
+               newline (str/last-index-of prefix "\n")
+               end (if (and newline (> newline 1500))
+                     (inc newline) (count prefix))]
+           (recur (subs remaining end)
+                  (conj pages (subs remaining 0 end))))))}))
+
+(defn capture! [state {:keys [data? error? public-data? public-data public-error
+                            public-text]}]
   (swap! state
     (fn [s]
       (if (:sealed? s)
         s
-        (let [s (-> s (update :data? #(or % data?))
-                       (update :error? #(or % error?)))]
+        (let [s (cond-> (-> s (update :data? #(or % data?))
+                             (update :error? #(or % error?)))
+                  public-text (assoc :text-pages (text-pages public-text)))]
         (reduce
           (fn [s [field present? value]]
             (let [budget (get-in s [:budget field])]
@@ -112,6 +130,12 @@
 (defn parse-control [id]
   (when (and (string? id) (<= (count id) 100))
     (or
+      (when-let [[_ channel message token page]
+                 (re-matches
+                   #"yb:page:([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16}):([0-9]{1,3})"
+                   id)]
+        {:action "page" :key [channel message] :token token
+         :page (Long/parseLong page)})
       (when-let [[_ channel message token _operation depth page]
                  (re-matches
                    #"yb:tree:([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16}):([ecpn]):([1-8]):([0-9]{1,2})"
@@ -128,6 +152,49 @@
                  (re-matches
                    #"yb:error-hide:([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16})" id)]
         {:action "error-hide" :key [channel message] :token token}))))
+
+(defn- text-page [state key page]
+  (let [{:keys [token sealed? text-pages]} @state
+        pages (:pages text-pages)]
+    (when (and sealed? (integer? page) (<= 0 page) (< page (count pages)))
+      {:content (str (get pages page) "\n\n-# Page " (inc page) " of "
+                     (count pages) " · Full answer: answer.md")
+       :navigation
+       {:type 1 :components
+        (mapv (fn [[label target disabled?]]
+                {:type 2 :style 2 :label label :disabled disabled?
+                 :custom_id (str "yb:page:" (str/join ":" key) ":" token ":"
+                                 target)})
+              [["Previous" (max 0 (dec page)) (zero? page)]
+               ["Next" (min (dec (count pages)) (inc page))
+                (= page (dec (count pages)))]])}})))
+
+(defn text-page-options
+  "Only page the exact reviewed final output. Transformed pipeline values,
+  unreviewed outputs and oversized documents keep ordinary rendering."
+  [state key source]
+  (when (and (string? source) (= source (get-in @state [:text-pages :text])))
+    (text-page state key 0)))
+
+(defn inline-text-payload [state key base page]
+  (when (and (= 10 (get-in base [:components 0 :components 0 :type]))
+             (some (fn [node]
+                     (when (map? node)
+                       (let [control (parse-control (:custom_id node))]
+                         (and (= "page" (:action control))
+                              (= key (:key control))
+                              (= (:token @state) (:token control))))))
+                   (tree-seq coll? seq base)))
+    (when-let [{:keys [content navigation]} (text-page state key page)]
+      (-> base
+          (assoc-in [:components 0 :components 0 :content] content)
+          (update-in [:components 0 :components]
+            (fn [children]
+              (mapv (fn [c]
+                      (if (some #(= "page" (:action
+                                             (parse-control (:custom_id %))))
+                                (:components c))
+                        navigation c)) children)))))))
 
 (defn- summary [v]
   (cond

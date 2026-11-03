@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Reviewed public text can page inside the original Discord answer with
+  **Previous/Next**, a page indicator and a complete Markdown download.
+  Pages are frozen, bounded and surrogate-safe; only exact final output opts in.
+  Navigation preserves files, controls and the original elapsed caption, uses
+  existing revision/message/token protections and never executes commands.
+
 - **Explore data** expands inside the original Discord reply and becomes
   **Hide data**. The public JSON tree initially shows two levels; **Expand**
   and **Collapse** change one level everywhere. Large views are paged without

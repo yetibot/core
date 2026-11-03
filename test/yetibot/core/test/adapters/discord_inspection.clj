@@ -74,6 +74,65 @@
           (await! (event! :message-create source))
           (check calls conn event! click!))))))
 
+(fact "reviewed public text pages keep files/footer and never execute again"
+  (let [full (str (apply str (repeat 2200 "Full 😀 description. ")) "END")]
+    (session {:result/value full :result/public-text full
+              :result/data {:private "PRIVATE-BODY"}}
+      (fn [calls conn _ click!]
+        (let [answer (last (last @calls))
+              state (get-in @conn [:commands ["200" "100"] :inspection])
+              pages (get-in @state [:text-pages :pages])]
+          (apply str pages) => full
+          (count pages) => #(> % 2)
+          (some? (button answer "Next")) => true
+          (slurp (get-in answer [:stream :content])) => full
+          (:disabled (button answer "Previous")) => true
+          (str/includes? (text answer) "Page 1 of") => true
+          (loop [payload answer n 1]
+            (when (< n (count pages))
+              (await! (click! {:custom-id (:custom_id (button payload "Next"))}))
+              (let [[_ type payload] (last @calls)]
+                type => 7
+                (str/includes? (text payload) (str "Page " (inc n) " of")) => true
+                (<= (count (text payload)) 4000) => true
+                (count (re-seq #"-# [0-9]+[.][0-9]s" (text payload))) => 1
+                (filter #(= 13 (:type %)) (nodes payload))
+                => (filter #(= 13 (:type %)) (nodes answer))
+                (:allowed_mentions payload) => {:parse [] :replied_user false}
+                (recur payload (inc n)))))
+          (:disabled (button (last (last @calls)) "Next")) => true
+          (str/includes? (text (last (last @calls))) "END") => true
+          ;; The same frozen page can be revisited safely, not a command replay.
+          (await! (click! {:custom-id (:custom_id (button answer "Next"))}))
+          @executions => 1
+          (str/includes? (pr-str @state) "PRIVATE-BODY") => false
+          (doseq [overrides [{:channel-id "elsewhere"}
+                             {:message {:id "foreign" :author {:id "bot"}}}
+                             {:message {:id "answer" :author {:id "other"}}}]]
+            (await! (click! {:custom-id (:custom_id (button answer "Next"))}
+                           overrides))
+            (second (last @calls)) => 4)
+          ;; Actual bot reply, but forged snapshot token or page.
+          (doseq [id [(str/replace (:custom_id (button answer "Next"))
+                                  (:token @state) "0000000000000000")
+                       (str/replace (:custom_id (button answer "Next"))
+                                    #":[0-9]+$" ":999")]]
+            (await! (click! {:custom-id id}))
+            (second (last @calls)) => 4)
+          (reset! (:revision (get-in @conn [:commands ["200" "100"]])) (Object.))
+          (swap! conn update :commands dissoc ["200" "100"])
+          (await! (click! {:custom-id (:custom_id (button answer "Next"))}))
+          (second (last @calls)) => 4
+          @executions => 1)))))
+
+(fact "unreviewed text and transformed pipeline output cannot gain paging"
+  (let [full (apply str (repeat 5000 "x"))]
+    (doseq [value [{:result/value full :result/public-text full :unreviewed? true}
+                  {:result/value "Filtered answer" :result/public-text full}]]
+      (session value
+        (fn [calls _ _ _]
+          (button (last (last @calls)) "Next") => nil)))))
+
 (fact "data opens inline at two levels and changes whole-tree depth without reruns"
   (session {:result/value "Weather"
             :result/data {:private "PRIVATE-BODY" :prompt "PRIVATE-PROMPT"}
