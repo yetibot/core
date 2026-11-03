@@ -45,20 +45,30 @@ Current limits: eight data records and eight diagnostic records; six nested
 levels below the root, 32 fields/items per container, 1,200 UTF-16 characters per
 string. Data has a 192-value/8,000-character budget; diagnostics reserve a
 separate 64-value/4,000-character budget. Character budgets apply to retained
-keys/strings, not serialized JSON byte counts. Views show eight fields/items per
-page and announce that large snapshots may be shortened.
+keys/strings, not serialized JSON byte counts. Large snapshots may be shortened
+when retained; opening a view never refetches missing data.
 
-Navigation is public and read-only. Components refer to bounded snapshot node
-IDs, not arbitrary paths or command arguments. Each view is revision-token
-bound and restricted to bot-authored messages in the command's reply
-channel/thread. **Explore data** opens a separate viewer; its field, Back and
-paging controls update that viewer without replacing the answer.
+Navigation is public and read-only. Controls select bounded snapshot depth,
+page or diagnostic node IDs, never arbitrary paths or command arguments. Each
+inline view requires the actual tracked bot reply, channel/thread, frozen
+snapshot token and current revision.
+
+**Explore data** expands inside the original reply and becomes **Hide data**.
+It initially shows two levels (or all available levels for shallower data).
+**Expand** shows one more level everywhere; **Collapse** shows one fewer level
+and both reset to the first page. Collapsed objects/arrays show type/count
+summaries. Scalars retain their JSON types. The JSON preview is paged in
+surrogate-safe chunks of at most 1,500 UTF-16 characters, preferably at line
+boundaries; a large JSON document can continue across pages. Previous/Next
+preserve depth. Depth and paging buttons are disabled at their bounds. There
+is no one-field dropdown or separately posted viewer. Hiding restores the exact
+original card; reopening starts at the two-level overview.
 
 **Error details** expands the tracked original reply in place. Its navigation
 also stays inline, and **Hide error details** restores the exact original card.
 Only JSON-only outbound public presentation is retained for restoration, never
 upload streams or raw result data. Restoration is capped at the ordinary
-30-reply limit; overflow notices do not offer an inline error control.
+30-reply limit; overflow notices do not offer unrestorable inline controls.
 Attachments are neither uploaded again nor cleared, and one original elapsed
 caption is preserved. Long error text may be
 shortened only while details are open; collapsing restores it in full.
@@ -71,10 +81,12 @@ The summary retains only the existing bounded status text (at most 1,800 UTF-16
 characters), never raw tool arguments/results, private reasoning or provider
 responses. Late status writes do not alter an already-published summary.
 
-Tool and error panes share the same JSON-only restoration base and 30-reply
-limit; opening either replaces the other pane. Long answers may be shortened
-only while the tool pane is open; Hide restores their original presentation.
-Neither opening nor hiding executes a command, tool or upstream request.
+Data, tool and error panes share the same JSON-only restoration base and
+30-reply limit; opening one replaces the other pane. Long answers may be
+shortened only while a pane is open; Hide restores their original presentation.
+No opening, hiding, depth or paging action executes a command, tool or upstream
+request. Data navigation is stateless: its tokenized controls encode only a
+bounded depth and page, not mutable paths or new copies of result data.
 
 Inline updates additionally require the actual tracked reply ID, matching
 snapshot token and current revision. Updates serialize with reply replacement,

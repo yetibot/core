@@ -1,5 +1,6 @@
 (ns yetibot.core.test.adapters.discord-inspection
   (:require [clojure.core.async :as async]
+            [clojure.data.json :as json]
             [clojure.string :as str]
             [discljord.messaging :as messaging]
             [midje.sweet :refer [fact facts =>]]
@@ -73,36 +74,47 @@
           (await! (event! :message-create source))
           (check calls conn event! click!))))))
 
-(fact "reviewed public data drills down without retaining or rerunning raw data"
+(fact "data opens inline at two levels and changes whole-tree depth without reruns"
   (session {:result/value "Weather"
             :result/data {:private "PRIVATE-BODY" :prompt "PRIVATE-PROMPT"}
             :result/public-data {:location "Seattle"
                                  :weather {:temperature 21
-                                           :days [{:high 25} {:high 26}]}
+                                           :condition {:description "Light rain"}}
+                                 :units {:temperature "C" :wind "km/h"}
                                  :api_key "PRIVATE-CREDENTIAL"}}
     (fn [calls conn _ click!]
-      (let [answer (last (last @calls))
-            open (button answer "Explore data")]
-        (some? open) => true
-        (await! (click! {:custom-id (:custom_id open)}))
-        (let [[_ type page] (last @calls)
-              menu (some #(when (= 3 (:type %)) %) (nodes page))
-              weather (some #(when (str/starts-with? (:label %) "weather") %)
-                            (:options menu))]
-          type => 4
+      (let [answer (last (last @calls))]
+        (await! (click! {:custom-id (:custom_id (button answer "Explore data"))}))
+        (let [[_ type page] (last @calls)]
+          type => 7
+          (str/includes? (text page) "Weather") => true
           (str/includes? (text page) "Seattle") => true
+          (str/includes? (text page) "temperature") => true
+          (get-in (json/read-str (second (re-find #"(?s)```json\n(.*?)\n```"
+                                                  (text page))))
+                  ["units" "wind"]) => "km/h"
+          (str/includes? (text page) "Light rain") => false
+          (str/includes? (text page) "Depth 2") => true
           (:flags page) => 32768
           (:allowed_mentions page) => {:parse [] :replied_user false}
-          (some? weather) => true
-          (await! (click! {:custom-id (:custom_id menu)
-                           :values [(:value weather)]}
-                          {:message {:id "viewer" :author {:id "bot"}}}))
-          (let [[_ type nested] (last @calls)]
-            type => 7
-            (str/includes? (text nested) "temperature") => true
-            (some? (button nested "Back")) => true
-            (await! (click! {:custom-id (:custom_id (button nested "Back"))}
-                            {:message {:id "viewer" :author {:id "bot"}}}))))
+          (some #(when (= 3 (:type %)) %) (nodes page)) => nil
+          (some? (button page "Expand")) => true
+          (some? (button page "Collapse")) => true
+          (some? (button page "Hide data")) => true
+          (await! (click! {:custom-id (:custom_id (button page "Expand"))}))
+          (let [expanded (last (last @calls))]
+            (str/includes? (text expanded) "Light rain") => true
+            (str/includes? (text expanded) "Depth 3") => true
+            (:disabled (button expanded "Expand")) => true
+            (await! (click! {:custom-id (:custom_id (button expanded "Collapse"))})))
+          (str/includes? (text (last (last @calls))) "Light rain") => false
+          (await! (click! {:custom-id (:custom_id
+                                      (button (last (last @calls)) "Hide data"))})))
+        (:components (last (last @calls))) => (:components answer)
+        ;; Reopening resets to the two-level overview.
+        (await! (click! {:custom-id (:custom_id (button answer "Explore data"))}))
+        (str/includes? (text (last (last @calls))) "Depth 2") => true
+        (count (filter #(= :create (first %)) @calls)) => 1
         @executions => 1
         (str/includes? (pr-str (some-> (get-in @conn
                                          [:commands ["200" "100"] :inspection])
@@ -132,7 +144,7 @@
     (fn [calls _ _ click!]
       (button (last (last @calls)) "Explore data") => nil
       (await! (click! {:custom-id "yb:data:200:100"}))
-      (str/includes? (text (last (last @calls))) "not retained") => true
+      (str/includes? (text (last (last @calls))) "expired") => true
       (str/includes? (pr-str @calls) "PRIVATE-") => false))
   (session {:throw? true}
     (fn [calls _ _ click!]
@@ -146,9 +158,7 @@
     (fn [calls _ event! click!]
       (await! (click! {:custom-id (:custom_id
                                     (button (last (last @calls)) "Explore data"))}))
-      (let [menu (some #(when (= 3 (:type %)) %) (nodes (last (last @calls))))
-            data {:custom-id (:custom_id menu)
-                  :values [(:value (first (:options menu)))]}]
+      (let [data {:custom-id (:custom_id (button (last (last @calls)) "Collapse"))}]
         (await! (click! data {:channel-id "elsewhere"}))
         (str/includes? (text (last (last @calls))) "expired") => true
         (await! (click! data {:message {:id "viewer" :author {:id "attacker"}}}))
@@ -201,69 +211,127 @@
         (str/includes? (text (last (last @calls))) "expired") => true
         @executions => 2))))
 
-(fact "overflow replies do not offer an unrestorable inline error control"
+(fact "overflow replies do not offer unrestorable inline controls"
   (let [state (atom (assoc (inspection/initial) :sealed? true
                           :error? true :data? true))
         payload (#'discord/reply-options
                   {:content "Overflow notice" :command-key ["200" "100"]
                    :inspection state :inspection-restorable? false})]
     (button payload "Error details") => nil
-    (some? (button payload "Explore data")) => true
+    (button payload "Explore data") => nil
     (some? (button payload "Run again")) => true))
 
-(fact "ownership is rechecked after rendering and before an inline update"
-  (session {:result/error "Weather unavailable"
-            :result/public-error {:http-status 503}}
-    (fn [calls conn _ click!]
-      (let [render inspection/inline-error-payload
-            control {:custom-id (:custom_id
-                                  (button (last (last @calls)) "Error details"))}]
-        (with-redefs [inspection/inline-error-payload
-                      (fn [& args]
+(fact "data and error ownership is rechecked after rendering before inline IO"
+  (doseq [data? [false true]]
+    (session (if data?
+               {:result/value "Weather" :result/public-data {:temperature 21}}
+               {:result/error "Weather unavailable"
+                :result/public-error {:http-status 503}})
+      (fn [calls conn _ click!]
+        (let [renderer (if data? #'inspection/inline-data-payload
+                                #'inspection/inline-error-payload)
+              render @renderer
+              control {:custom-id (:custom_id
+                                    (button (last (last @calls))
+                                            (if data? "Explore data" "Error details")))}]
+          (with-redefs-fn
+            {renderer (fn [& args]
                         (let [data (apply render args)]
                           (reset! (get-in @conn
                                     [:commands ["200" "100"] :revision]) (Object.))
-                          data))]
-          (await! (click! control)))
-        (second (last @calls)) => 4
-        (some #(when (= [:interaction 7] (take 2 %)) %) @calls) => nil
-        @executions => 1))))
+                          data))}
+            #(await! (click! control)))
+          (second (last @calls)) => 4
+          (some #(when (= [:interaction 7] (take 2 %)) %) @calls) => nil
+          @executions => 1)))))
 
-(fact "an unknown inline acknowledgement is bounded and never retried"
-  (session {:result/error "Weather unavailable"
-            :result/public-error {:http-status 503}}
-    (fn [calls _ _ click!]
-      (let [attempts (atom 0)
-            control {:custom-id (:custom_id
-                                  (button (last (last @calls)) "Error details"))}]
-        (with-redefs [messaging/create-interaction-response!
-                      (fn [& _] (swap! attempts inc) (promise))]
-          (await! (click! control {:id "one-update"}))
-          (await! (click! control {:id "one-update"})))
-        @attempts => 1
-        (count (filter #(= :create (first %)) @calls)) => 1
-        (count (filter #(= :interaction (first %)) @calls)) => 0
-        @executions => 1))))
+(fact "unknown data/error acknowledgements are bounded and duplicates never retry"
+  (doseq [data? [false true]]
+    (session (if data?
+               {:result/value "Weather" :result/public-data {:temperature 21}}
+               {:result/error "Weather unavailable"
+                :result/public-error {:http-status 503}})
+      (fn [calls _ _ click!]
+        (let [attempts (atom 0)
+              control {:custom-id (:custom_id
+                                    (button (last (last @calls))
+                                            (if data? "Explore data" "Error details")))}]
+          (with-redefs [messaging/create-interaction-response!
+                        (fn [& _] (swap! attempts inc) (promise))]
+            (await! (click! control {:id "one-update"}))
+            (await! (click! control {:id "one-update"})))
+          @attempts => 1
+          (count (filter #(= :create (first %)) @calls)) => 1
+          (count (filter #(= :interaction (first %)) @calls)) => 0
+          @executions => 1)))))
 
-(fact "inline expansion respects text limits and restores the exact long answer"
-  (doseq [error [(str "Long error\n\n```text\n"
+(fact "data/error expansion fits text limits and restores the exact long answer"
+  (doseq [data? [false true]
+          error [(str "Long error\n\n```text\n"
                      (apply str (repeat 3800 "x")) "\n```")
                 (str "\n" (apply str (repeat 900 "`")) "\n"
                      (apply str (repeat 1500 "x")) "\n"
                      (apply str (repeat 900 "`")))
                 (apply str (repeat 1800 "🙂"))]]
-  (session {:result/error error
-            :result/public-error {:http-status 503 :stage "weather lookup"}}
+  (session (if data?
+             {:result/value error :result/public-data {:temperature 21}}
+             {:result/error error
+              :result/public-error {:http-status 503 :stage "weather lookup"}})
     (fn [calls _ _ click!]
       (let [original (last (last @calls))]
         (await! (click! {:custom-id (:custom_id
-                                     (button original "Error details"))}))
+                                     (button original (if data? "Explore data"
+                                                               "Error details")))}))
         (let [expanded (last (last @calls))]
-          (<= (count (text expanded)) 4000) => true
+          (reduce + (keep #(when (= 10 (:type %)) (count (:content %)))
+                          (nodes expanded))) => #(<= % 4000)
           (count (re-seq #"(?m)^-# [0-9]+[.][0-9]s$" (text expanded))) => 1
           (contains? expanded :stream) => false
           (contains? expanded :attachments) => false
           (await! (click! {:custom-id (:custom_id
-                                       (button expanded "Hide error details"))})))
+                                       (button expanded (if data? "Hide data"
+                                                                  "Hide error details")))})))
         (:components (last (last @calls))) => (:components original)
         @executions => 1)))))
+
+(fact "data and diagnostics replace one another inline using one original base"
+  (session {:result/error "Weather unavailable"
+            :result/public-error {:http-status 503 :stage "weather lookup"}
+            :result/public-data {:temperature 21}}
+    (fn [calls _ _ click!]
+      (let [original (last (last @calls))]
+        (await! (click! {:custom-id (:custom_id (button original "Explore data"))}))
+        (let [data (last (last @calls))]
+          (some? (button data "Hide data")) => true
+          (await! (click! {:custom-id (:custom_id (button data "Error details"))})))
+        (let [error (last (last @calls))]
+          (some? (button error "Hide error details")) => true
+          (button error "Hide data") => nil
+          (str/includes? (text error) "**Explore data**") => false
+          (await! (click! {:custom-id (:custom_id (button error "Explore data"))})))
+        (let [data (last (last @calls))]
+          (str/includes? (text data) "**Error details**") => false
+          (some? (button data "Error details")) => true
+          (await! (click! {:custom-id (:custom_id (button data "Hide data"))})))
+        (:components (last (last @calls))) => (:components original)
+        (count (filter #(= :create (first %)) @calls)) => 1
+        @executions => 1))))
+
+(fact "data controls reject forged tokens, other bot replies and legacy viewers"
+  (session {:result/value "Answer" :result/public-data {:nested {:value 21}}}
+    (fn [calls conn _ click!]
+      (let [original (last (last @calls))
+            token (:token @(get-in @conn [:commands ["200" "100"] :inspection]))
+            control {:custom-id (:custom_id (button original "Explore data"))}]
+        (await! (click! control {:message {:id "unrelated" :author {:id "bot"}}}))
+        (second (last @calls)) => 4
+        (await! (click! {:custom-id (str/replace (:custom-id control) token
+                                                 "0000000000000000")}))
+        (second (last @calls)) => 4
+        (await! (click! {:custom-id (str "yb:view:200:100:" token ":d:0:0")}))
+        (second (last @calls)) => 4
+        (swap! conn update :commands dissoc ["200" "100"])
+        (await! (click! control))
+        (str/includes? (text (last (last @calls))) "expired") => true
+        (count (filter #(= :create (first %)) @calls)) => 1
+        @executions => 1))))

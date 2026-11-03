@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Explore data** expands inside the original Discord reply and becomes
+  **Hide data**. The public JSON tree initially shows two levels; **Expand**
+  and **Collapse** change one level everywhere. Large views are paged without
+  rerunning or refetching data. Hiding restores the original answer, media/files
+  and elapsed caption. Data, tool and error panes share one bounded restoration
+  base; stale or foreign controls cannot update another reply.
 - **Show details** now expands the frozen public tool-call summary inside the
   original Discord reply and becomes **Hide details**. Hiding restores the
   original answer, files/media and elapsed caption. Inspection never reruns
@@ -11,10 +17,9 @@
   read-only inline navigation and no extra response. Collapsing restores the
   original card; files, controls and one original elapsed caption are preserved.
   Updates require the actual tracked reply, frozen snapshot and current revision.
-  **Explore data** remains a separate public viewer.
 - Rich Discord command errors offer **Error details**. Supported commands offer
-  **Explore data** from explicitly reviewed public projections, with nested
-  field/item selection, Back and paging. Views are public and read-only; no
+  **Explore data** from explicitly reviewed public projections. Error details
+  retain field/item selection, Back and paging. Views are public and read-only; no
   command is rerun. Snapshots are bounded, frozen at completion and expire with
   command revisions/cache eviction. Unreviewed result data and private upstream
   bodies are never automatically public.

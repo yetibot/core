@@ -1,5 +1,6 @@
 (ns yetibot.core.test.adapters.discord-inspection-projection
-  (:require [clojure.string :as str]
+  (:require [clojure.data.json :as json]
+            [clojure.string :as str]
             [midje.sweet :refer [fact =>]]
             [yetibot.core.adapters.discord-components :as components]
             [yetibot.core.adapters.discord-inspection :as inspect]
@@ -12,8 +13,21 @@
         (public-result/reviewed {:result/public-data value})))
     (swap! state assoc :sealed? true :elapsed "1.2s") state))
 
-(defn- text [page]
-  (str/join "\n" (keep :content (get-in page [:components 0 :components]))))
+(defn- maps [data] (filter map? (tree-seq coll? seq data)))
+(defn- text [page] (components/message-text page))
+(defn- button [data label]
+  (some #(when (= label (:label %)) %) (maps data)))
+(defn- base [state content]
+  (-> (components/payload {:content content :command-key ["200" "100"]
+                            :data? true :data-token (:token @state)
+                            :elapsed "1.2s"})
+      (dissoc :allowed-mentions)
+      (assoc :allowed_mentions {:parse [] :replied_user false})))
+(defn- page [state depth n]
+  (inspect/inline-data-payload state ["200" "100"] (base state "Answer") depth n))
+(defn- preview [data]
+  (some #(when (str/starts-with? (or (:content %) "") "**Explore data**")
+           (second (re-find #"(?s)```json\n(.*?)\n```" (:content %)))) (maps data)))
 
 (fact "public capture does not mutate pipeline data or trust serialized tags"
   (let [value {:result/value "Answer" :result/data {:private "SECRET"}}
@@ -35,54 +49,89 @@
                         :authorization "PRIVATE-CREDENTIAL"
                         :object (Object.)})
         data (first (:data @state))
-        page (inspect/payload state ["200" "100"] "d" 0 0 nil)]
+        view (page state nil 0)]
     (count (get data "array")) => 32
     (count (get data "text")) => 1200
     (str/includes? (pr-str data) "END") => false
     (str/includes? (pr-str data) "PRIVATE-") => false
     (get data "object") => "[unavailable]"
     (< (count (pr-str @state)) 50000) => true
-    (<= (count (text page)) components/max-text-length) => true
-    (str/includes? (text page) "shortened") => true
+    (<= (count (text view)) components/max-text-length) => true
+    (str/includes? (text view) "shortened") => true
     (let [before @state]
       (inspect/capture! state {:data? true :public-data? true
                               :public-data {:late "not retained"}})
       @state => before)))
 
-(fact "paging and nested controls resolve only snapshot nodes"
-  (let [state (capture (mapv #(hash-map :value %) (range 20)))
-        page (inspect/payload state ["200" "100"] "d" 0 0 nil)
-        children (get-in page [:components 0 :components])
-        menu (first (:components (some #(when (= 3 (get-in % [:components 0 :type]))
-                                                         %) children)))
-        next (some #(when (= "Next" (:label %)) %)
-                   (mapcat :components children))
-        control (inspect/parse-control (:custom_id next))]
-    (count (:options menu)) => 8
-    (:page control) => 1
-    (every? #(<= (count (:custom_id %)) 100)
-            (concat [menu] (filter :custom_id (mapcat :components children))))
-    => true
-    (some? (inspect/payload state ["200" "100"] "d" 0 1 nil)) => true
-    (inspect/payload state ["200" "100"] "d" 9999 0 nil) => nil
-    (inspect/payload state ["200" "100"] "d" 0 99 nil) => nil
-    (inspect/payload state ["200" "100"] "d" 0 0 ["9999"]) => nil
-    (inspect/payload state ["200" "100"] "d" 0 0 []) => nil
-    (inspect/payload state ["200" "100"] "d" 0 0 ["1" "2"]) => nil))
+(fact "whole-tree depth reveals every branch and resets paging"
+  (let [state (capture {:a {:nested {:leaf "alpha"}}
+                        :b {:nested {:leaf "beta"}}})
+        initial (page state nil 0)
+        expanded (page state 3 0)]
+    (str/includes? (text initial) "Depth 2") => true
+    (string? (get-in (json/read-str (preview initial)) ["a" "nested"])) => true
+    (string? (get-in (json/read-str (preview initial)) ["b" "nested"])) => true
+    (get-in (json/read-str (preview expanded)) ["a" "nested" "leaf"]) => "alpha"
+    (get-in (json/read-str (preview expanded)) ["b" "nested" "leaf"]) => "beta"
+    (:disabled (button expanded "Expand")) => true
+    (:disabled (button (page state 1 0) "Collapse")) => true
+    (:depth (inspect/parse-control (:custom_id (button expanded "Collapse")))) => 2
+    (:page (inspect/parse-control (:custom_id (button expanded "Collapse")))) => 0
+    (page state 0 0) => nil
+    (page state 4 0) => nil
+    (page state 2 -1) => nil
+    (page state 2 99) => nil
+    (page state "2" 0) => nil))
 
-(fact "all main controls fit one row and data cannot escape its JSON fence"
-  (let [main (components/payload {:content "Answer" :command-key ["200" "100"]
-                                   :details "Host-owned detail" :data? true
-                                   :error? true})
-        state (capture {:value "```\n@everyone\n```"})
-        page (inspect/payload state ["200" "100"] "d" 0 0 nil)]
-    (count (get-in main [:components 0 :components 1 :components])) => 5
-    (count (re-seq #"```" (text page))) => 2
-    (:allowed_mentions page) => {:parse [] :replied_user false}))
+(fact "paging preserves every JSON character, typed value and Unicode pair"
+  (let [state (capture (mapv #(hash-map :index % :label
+                                       (str % (apply str (repeat 80 "🙂`\\\""))))
+                            (range 20)))
+        initial (page state 2 0)
+        pages (loop [n 0 result []]
+                (let [view (page state 2 n)
+                      result (conj result (preview view))]
+                  (<= (count (text view)) 4000) => true
+                  (count (re-seq #"```" (preview view))) => 0
+                  (boolean (re-find #"[\uD800-\uDBFF]$" (preview view))) => false
+                  (if (:disabled (button view "Next")) result
+                      (recur (inc n) result))))]
+    (> (count pages) 1) => true
+    (json/read-str (apply str pages)) => (first (:data @state))
+    (:page (inspect/parse-control (:custom_id (button initial "Next")))) => 1
+    (:disabled (button initial "Previous")) => true
+    (every? #(<= (count %) 100) (keep :custom_id (maps initial))) => true
+    (apply distinct? (keep :custom_id (maps initial))) => true
+    (inspect/parse-control "yb:tree:200:100:0123456789abcdef:e:9:0") => nil
+    (inspect/parse-control "yb:tree:200:100:0123456789abcdef:e:2:100") => nil
+    (inspect/parse-control "yb:tree:200:100:0123456789abcdef:e:2:/private") => nil))
 
-(fact "empty and null fields still have valid nonblank select descriptions"
-  (let [state (capture {:empty "" :blank "  " :nil nil})
-        page (inspect/payload state ["200" "100"] "d" 0 0 nil)
-        menu (get-in page [:components 0 :components 2 :components 0])]
-    (every? #(not (str/blank? (:description %))) (:options menu)) => true
-    (count (:options menu)) => 3))
+(fact "null, empty, boolean, numeric and array values retain their JSON types"
+  (let [value {:empty "" :blank "  " :nil nil :false false :number 3
+               :list [1 nil false ""] :object {} :array []}
+        state (capture value)]
+    (json/read-str (preview (page state nil 0))) => (first (:data @state))
+    (:allowed_mentions (page state nil 0)) => {:parse [] :replied_user false}
+    (some #(when (= 3 (:type %)) %) (maps (page state nil 0))) => nil))
+
+(fact "long fenced answers, media and files survive bounded inline expansion"
+  (doseq [answer [(apply str (repeat 1800 "🙂"))
+                  (str "\n" (apply str (repeat 900 "`")) "\n"
+                       (apply str (repeat 1500 "x")) "\n"
+                       (apply str (repeat 900 "`")))]]
+    (let [state (capture {:public (apply str (repeat 1000 "x"))})
+          original (-> (base state answer)
+                       (update-in [:components 0 :components] into
+                         [{:type 12 :items [{:media {:url "attachment://image.png"}}]}
+                          {:type 13 :file {:url "attachment://answer.md"}}]))
+          expanded (inspect/inline-data-payload state ["200" "100"] original nil 0)]
+      (some? expanded) => true
+      (<= (count (text expanded)) 4000) => true
+      (<= (count (filter :type (maps expanded))) 40) => true
+      (count (re-seq #"(?m)^-# [0-9]+[.][0-9]s$" (text expanded))) => 1
+      (filter #(#{12 13} (:type %)) (maps expanded))
+      => (filter #(#{12 13} (:type %)) (maps original))
+      (contains? expanded :stream) => false
+      (contains? expanded :attachments) => false
+      (some? (button expanded "Hide data")) => true
+      (button original "Hide data") => nil)))
