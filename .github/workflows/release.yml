@@ -8,45 +8,58 @@ on:
 
 jobs:
   test:
-    # Containers must run in Linux based operating systems
-    runs-on: ubuntu-latest
-    # Docker Hub image that `container-job` executes in
-    container: clojure:temurin-17-lein-bookworm
-    services:
-      # Label used to access the service container
-      postgres:
-        # Docker Hub image
-        image: postgres
-        # Provide the password for postgres
-        env:
-          POSTGRES_USER: yetibot
-          POSTGRES_PASSWORD: yetibot
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    env:
+      JAVA_TOOL_OPTIONS: -Xmx1024m
     steps:
-      - name: checkout
-        uses: actions/checkout@v6
-      - name: maven cache
+      - uses: actions/checkout@v6
+      - name: Reuse exact-tree PR validation
+        id: validated
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/ci/reuse_pr.py
+      - name: CI gate regression tests
+        run: python3 -m unittest discover -s .github/ci -v
+      - uses: actions/setup-java@v6
+        if: steps.validated.outputs.reuse != 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: DeLaGuardo/setup-clojure@13
+        if: steps.validated.outputs.reuse != 'true'
+        with:
+          lein: 2.11.2
+      - name: Maven cache
+        if: steps.validated.outputs.reuse != 'true'
         uses: actions/cache@v5
         with:
-          path: /root/.m2/repository
+          path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('project.clj') }}
           restore-keys: |
             ${{ runner.os }}-maven-
-
-      - name: install git
-        run: apt-get update && apt-get -y install git
-
-      # runs the tests and generates code coverage metrics
-      - name: test
+      - name: Start Postgres for unvalidated changes
+        if: steps.validated.outputs.reuse != 'true'
+        run: |
+          docker run -d --name ci-postgres \
+            -e POSTGRES_USER=yetibot -e POSTGRES_PASSWORD=yetibot \
+            -p 127.0.0.1:5432:5432 postgres
+          for _attempt in {1..30}; do
+            docker exec ci-postgres pg_isready -U yetibot && exit 0
+            sleep 1
+          done
+          exit 1
+      - name: Midje
+        if: steps.validated.outputs.reuse != 'true'
+        timeout-minutes: 6
         env:
-          YETIBOT_DB_URL: postgresql://yetibot:yetibot@postgres:5432/yetibot
-          CLOVERAGE_VERSION: 1.1.2
-        run: lein with-profile +test cloverage --codecov --runner midje
+          YETIBOT_DB_URL: postgresql://yetibot:yetibot@localhost:5432/yetibot
+        run: |
+          timeout --signal=QUIT --kill-after=20s 240s \
+            lein with-profile +test midje :all
 
   deploy:
     runs-on: ubuntu-latest
@@ -75,9 +88,9 @@ jobs:
       - name: timestamp
         # by setting INFERV_TIMESTAMP_MS we will get deterministic versions from
         # `lein pprint :version`
-        run: echo "INFERV_TIMESTAMP_MS=`date +%s%3N`" >> $GITHUB_ENV
+        run: echo "INFERV_TIMESTAMP_MS=$(date +%s%3N)" >> "$GITHUB_ENV"
       - name: version
-        run: echo "YB_VERSION=`lein pprint :version | sed 's/\"//g'`" >> $GITHUB_ENV
+        run: echo "YB_VERSION=$(lein pprint :version | tr -d '"')" >> "$GITHUB_ENV"
       - name: verify
         run: env
 
