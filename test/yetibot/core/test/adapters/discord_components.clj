@@ -289,18 +289,149 @@
     (:file (first (components/text-parts answer))) => answer
     (<= (count (:content (first (components/text-parts answer)))) 4000) => true))
 
-(fact "sanitized progress remains publicly available after status retirement"
-  (session (fn [& _]
-             (discord/start-command-status! "channel" "Working")
-             (discord/update-command-status! "Tools: 1/12 · 11 remaining\n#1 docs_search — success")
-             (discord/finish-command-status!)
-             (chat/send-msg "Final answer"))
+(def tool-summary "Tools: 1/12 · 11 remaining\n#1 docs_search — success")
+
+(defn- tool-answer [answer]
+  (discord/start-command-status! "channel" "Working")
+  (discord/update-command-status! tool-summary)
+  (discord/finish-command-status!)
+  (chat/send-msg answer))
+
+(fact "Show details expands frozen progress inline and Hide restores the card"
+  (let [runs (atom 0)]
+    (session (fn [& _] (swap! runs inc) (tool-answer "Final answer"))
+      (fn [event! calls conn]
+        (await! (event! :message-create original))
+        (let [base (last (first (filter #(= :create (first %)) @calls)))
+              id (:custom_id (button base "Show details"))]
+          (boolean id) => true
+          ;; Late status mutation must not replace the frozen public summary.
+          (reset! (get-in @conn [:commands ["channel" "command"] :details])
+                  "Late progress must not appear")
+          (await! (event! :interaction-create (click "details" id "bob")))
+          (let [expanded (:data (last (last @calls)))]
+            (nth (last @calls) 2) => 7
+            (:flags expanded) => 32768
+            (first (children expanded)) => {:type 10 :content "Final answer"}
+            (str/includes? (components/message-text expanded) tool-summary) => true
+            (str/includes? (components/message-text expanded) "Late progress") => false
+            (some? (button expanded "Hide details")) => true
+            (button expanded "Show details") => nil
+            (some? (button expanded "Run again")) => true
+            (some? (button expanded "Help")) => true
+            (await! (event! :interaction-create
+                      (click "hide-details"
+                             (:custom_id (button expanded "Hide details")) "alice"))))
+          (nth (last @calls) 2) => 7
+          (:components (:data (last (last @calls)))) => (:components base)
+          (count (filter #(= :create (first %)) @calls)) => 1
+          @runs => 1)))))
+
+(fact "inline tool details preserve media without retaining or reuploading streams"
+  (with-redefs [images/image-store (atom {"photo" {:data "SGVsbG8="}})]
+    (session (fn [& _]
+               (tool-answer "Caption https://example.org/generated-images/photo.png"))
+      (fn [event! calls conn]
+        (await! (event! :message-create original))
+        (let [base (last (first (filter #(= :create (first %)) @calls)))]
+          (await! (event! :interaction-create
+                    (click "media-details" (:custom_id (button base "Show details")) "bob")))
+          (let [expanded (:data (last (last @calls)))]
+            (nth (last @calls) 2) => 7
+            (some #(= 12 (:type %)) (children expanded)) => true
+            (contains? expanded :stream) => false
+            (contains? expanded :attachments) => false
+            (some #(instance? java.io.InputStream %)
+                  (tree-seq coll? seq @(get-in @conn
+                                        [:commands ["channel" "command"] :replies]))) => nil
+            (await! (event! :interaction-create
+                      (click "hide-media" (:custom_id (button expanded "Hide details")) "bob"))))
+          (:components (:data (last (last @calls)))) => (:components base))))))
+
+(fact "tool detail controls reject foreign messages and previous command revisions"
+  (session (fn [& _] (tool-answer "Answer"))
     (fn [event! calls _]
       (await! (event! :message-create original))
-      (let [payload (last (first (filter #(= :create (first %)) @calls)))
-            id (:custom_id (button payload "Show details"))]
-        (boolean id) => true
-        (await! (event! :interaction-create (click "details" id "bob")))
-        (get-in (last (last @calls)) [:data :flags]) => 32768
-        (get-in (last (last @calls)) [:data :components 0 :components 0 :content])
-        => "**Tool details**\nTools: 1/12 · 11 remaining\n#1 docs_search — success"))))
+      (let [base (last (first (filter #(= :create (first %)) @calls)))
+            id (:custom_id (button base "Show details"))]
+        (doseq [[n path value] [["wrong-message" [:message :id] "unrelated"]
+                                ["wrong-channel" [:channel-id] "another"]
+                                ["wrong-author" [:message :author :id] "another-bot"]]]
+          (await! (event! :interaction-create (assoc-in (click n id "bob") path value)))
+          (nth (last @calls) 2) => 4)
+        (await! (event! :message-update (assoc original :content "!meme edited")))
+        (await! (event! :interaction-create (click "old-details" id "bob")))
+        (nth (last @calls) 2) => 4
+        (str/includes? (components/message-text (:data (last (last @calls)))) "expired") => true))))
+
+(fact "an uncertain detail update is bounded and duplicate clicks never retry it"
+  (session (fn [& _] (tool-answer "Answer"))
+    (fn [event! calls _]
+      (await! (event! :message-create original))
+      (let [base (last (first (filter #(= :create (first %)) @calls)))
+            event (click "uncertain-details"
+                         (:custom_id (button base "Show details")) "bob")
+            attempts (atom 0)]
+        (with-redefs [messaging/create-interaction-response!
+                      (fn [& _] (swap! attempts inc) (promise))]
+          (await! (event! :interaction-create event))
+          (await! (event! :interaction-create event)))
+        @attempts => 1
+        (count (filter #(= :create (first %)) @calls)) => 1))))
+
+(fact "tool expansion rechecks ownership immediately before updating Discord"
+  (session (fn [& _] (tool-answer "Answer"))
+    (fn [event! calls conn]
+      (await! (event! :message-create original))
+      (let [base (last (first (filter #(= :create (first %)) @calls)))
+            render components/inline-details-payload]
+        (with-redefs [components/inline-details-payload
+                      (fn [& args]
+                        (let [data (apply render args)]
+                          (reset! (get-in @conn
+                                    [:commands ["channel" "command"] :revision])
+                                  (Object.))
+                          data))]
+          (await! (event! :interaction-create
+                    (click "lost-owner" (:custom_id (button base "Show details")) "bob"))))
+        (nth (last @calls) 2) => 4
+        (some #(and (= :interaction (first %)) (= 7 (nth % 2))) @calls) => nil))))
+
+(fact "unsealed or overflow replies do not offer unrestorable tool details"
+  (doseq [[sealed? restorable?] [[false true] [true false]]]
+    (let [payload (#'discord/reply-options
+                    {:content "Answer" :command-key ["channel" "command"]
+                     :details-state (atom tool-summary)
+                     :inspection (atom {:sealed? sealed? :data? true
+                                        :token "0123456789abcdef"})
+                     :inspection-restorable? restorable?})]
+      (button payload "Show details") => nil
+      (some? (button payload "Run again")) => true)))
+
+(fact "expansion fits Discord text limits and Hide restores the exact long answer"
+  (doseq [answer [(apply str (repeat 3900 "x"))
+                  (str "\n" (apply str (repeat 900 "`")) "\n"
+                       (apply str (repeat 1500 "x")) "\n"
+                       (apply str (repeat 900 "`")))
+                  (apply str (repeat 1800 "🙂"))
+                  (apply str (repeat 4500 "x"))]]
+    (session (fn [& _]
+               (discord/start-command-status! "channel" "Working")
+               (discord/update-command-status!
+                 (str tool-summary "\n" (apply str (repeat 1500 "x"))))
+               (discord/finish-command-status!)
+               (chat/send-msg answer))
+      (fn [event! calls _]
+        (await! (event! :message-create original))
+        (let [base (last (first (filter #(= :create (first %)) @calls)))]
+          (await! (event! :interaction-create
+                    (click "long-details" (:custom_id (button base "Show details")) "bob")))
+          (let [expanded (:data (last (last @calls)))
+                text (components/message-text expanded)]
+            (nth (last @calls) 2) => 7
+            (<= (count text) 4000) => true
+            (count (re-seq #"(?m)^-# [0-9]+[.][0-9]s$" text)) => 1
+            (str/includes? text tool-summary) => true
+            (await! (event! :interaction-create
+                      (click "hide-long" (:custom_id (button expanded "Hide details")) "bob"))))
+          (:components (:data (last (last @calls)))) => (:components base))))))

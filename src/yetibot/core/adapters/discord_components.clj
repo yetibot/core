@@ -1,6 +1,7 @@
 (ns yetibot.core.adapters.discord-components
   "Discord-only presentation. No command execution or private provider data."
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.walk :as walk]))
 
 (def accent-color 0x08B8CD)
 
@@ -111,19 +112,28 @@
 (defn parse-button [id]
   (when (string? id)
     (when-let [[_ action channel command token]
-               (re-matches #"yb:(again|help|details|confirm|data|error):([^:]+):([^:]+)(?::([a-f0-9-]+))?" id)]
-      (when (= (= action "confirm") (some? token))
-        {:action action :key [channel command] :confirmation token}))))
+               (re-matches #"yb:(again|help|details|details-hide|confirm|data|error):([^:]+):([^:]+)(?::([a-f0-9-]+))?" id)]
+      (let [details? (contains? #{"details" "details-hide"} action)]
+        (when (if details?
+                (or (and (= action "details") (nil? token))
+                    (and token (re-matches #"[a-f0-9]{16}" token)))
+                (= (= action "confirm") (some? token)))
+          (cond-> {:action action :key [channel command]
+                   :confirmation (when-not details? token)}
+            (and details? token) (assoc :token token)))))))
 
 (defn payload
   "Build a V2 card. Details is a bounded caller-sanitized snapshot, never raw data."
-  [{:keys [content image file filename command-key details elapsed
+  [{:keys [content image file filename command-key details details-token elapsed
            data? error? allowed-mentions]}]
   (let [media (or (when image (str "attachment://" filename)) (media-url content))
         buttons (when command-key
                   (mapv (fn [[action label]]
                           {:type 2 :style 2 :label label
-                           :custom_id (button-id action command-key)})
+                           :custom_id (str (button-id action command-key)
+                                           (when (and (= action "details")
+                                                      details-token)
+                                             (str ":" details-token)))})
                         (cond-> [["again" "Run again"] ["help" "Help"]]
                           (seq details) (conj ["details" "Show details"])
                           error? (conj ["error" "Error details"])
@@ -138,6 +148,50 @@
     {:flags 32768
      :components [{:type 17 :accent_color accent-color :components children}]
      :allowed-mentions (or allowed-mentions {:parse [] :replied_user false})}))
+
+(defn inline-details-payload
+  "Expand only frozen, caller-sanitized tool progress inside a public card.
+  No streams or attachment edits; Hide uses the untouched original base."
+  [base key token details]
+  (when (and (string? details) (seq details)
+             (= 1 (count (:components base)))
+             (= 17 (get-in base [:components 0 :type])))
+    (let [children (get-in base [:components 0 :components])
+          text-length #(reduce + 0 (keep (fn [c]
+                                           (when (= 10 (:type c))
+                                             (count (:content c)))) %))
+          pane {:type 10 :content (str "**Tool details**\n" (excerpt details 1800))}
+          shorten? (> (+ (text-length children) (count (:content pane)))
+                      max-text-length)
+          children (mapv (fn [c]
+                           (if (and shorten? (= 10 (:type c))
+                                    (> (count (:content c)) 1400))
+                             (update c :content
+                               #(str (answer-preview % 650)
+                                     "\n-# Answer shortened while details are open."
+                                     " Hide details to restore it."))
+                             c)) children)
+          start (or (first (keep-indexed
+                             (fn [i c]
+                               (when (or (= 1 (:type c))
+                                         (and (= 10 (:type c))
+                                              (re-matches #"-# [0-9]+[.][0-9]s"
+                                                          (:content c)))) i))
+                             children))
+                    (count children))
+          children (into (conj (subvec children 0 start)
+                               {:type 14 :divider true :spacing 1} pane)
+                         (subvec children start))
+          show-id (str (button-id "details" key) ":" token)
+          children (walk/postwalk
+                     (fn [c]
+                       (if (and (map? c) (= show-id (:custom_id c)))
+                         (assoc c :label "Hide details"
+                                  :custom_id (str (button-id "details-hide" key)
+                                                  ":" token))
+                         c)) children)]
+      (when (<= (text-length children) max-text-length)
+        (assoc-in base [:components 0 :components] children)))))
 
 (defn message-text
   "Read visible text/media from legacy or V2 messages, excluding button labels."

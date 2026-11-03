@@ -389,7 +389,7 @@
     (:rest @conn) (:id event) (:token event) 4
     :data (components/interaction-payload text)))
 
-(defn- inline-error! [conn event entry expected
+(defn- inline-details! [conn event entry expected
                      {:keys [action key token node page]}]
   (binding [*delivery-deadline* (+ (monotonic-time) 2500000000)]
     (with-command-lock (:lock entry)
@@ -403,8 +403,15 @@
         (when (and state (current?) (:sealed? @state)
                    (= (:inspection-token reply) (:token @state))
                    (or (= action "error") (= token (:token @state))))
-          (when-let [data (if (= action "error-hide")
-                           (:inspection-base reply)
+          (when-let [data (case action
+                           "details"
+                           (components/inline-details-payload
+                             (:inspection-base reply) key token
+                             (:tool-details reply))
+                           "details-hide"
+                           (when (seq (:tool-details reply))
+                             (:inspection-base reply))
+                           "error-hide" (:inspection-base reply)
                            (inspection/inline-error-payload
                              state key (:inspection-base reply)
                              (or node 0) (or page 0)
@@ -476,7 +483,8 @@
                   known? (and entry own-message?
                               (identical? (:inspection entry)
                                 (get-in @conn [:commands key :inspection]))
-                              (or (not (contains? #{"view" "error-hide"} action))
+                              (or (not (contains? #{"view" "error-hide" "details"
+                                                   "details-hide"} action))
                                   (= token (:token @(:inspection entry))))
                               (if (and (= action "view") (= kind "d"))
                                 (some #(= (:channel-id event) (:target %))
@@ -495,11 +503,13 @@
                 (interaction-reply! conn event
                   "This command's buttons have expired. Please send the command again.")
 
-                (or (contains? #{"error" "error-hide"} action)
+                (or (contains? #{"error" "error-hide" "details" "details-hide"} action)
                     (and (= action "view") (= kind "e")))
-                (when-not (inline-error! conn event entry expected control)
+                (when-not (inline-details! conn event entry expected control)
                   (interaction-reply! conn event
-                    "This error view has expired or is unavailable."))
+                    (if (contains? #{"details" "details-hide"} action)
+                      "This tool view has expired or is unavailable."
+                      "This error view has expired or is unavailable.")))
 
                 (contains? #{"view" "data"} action)
                 (if-let [data (inspection/payload
@@ -521,11 +531,6 @@
                     (str "**Help · " topic "**\n"
                          (if (seq docs) (str/join "\n\n" (sort docs))
                            "No help found for this command."))))
-
-                (= action "details")
-                (interaction-reply! conn event
-                  (str "**Tool details**\n"
-                       (or @(:details entry) "No tool details are available.")))
 
                 (not= (:id actor) (get-in source [:author :id]))
                 (interaction-reply! conn event
@@ -612,7 +617,11 @@
 (defn- reply-options [part]
   (components/payload
     (cond-> part
-      (:details-state part) (assoc :details @(:details-state part))
+      (:details-state part)
+      (assoc :details (when (and (some-> (:inspection part) deref :sealed?)
+                                (not= false (:inspection-restorable? part)))
+                       @(:details-state part))
+             :details-token (some-> (:inspection part) deref :token))
       (some-> (:inspection part) deref :sealed?)
       (merge (select-keys @(:inspection part) [:data? :error?]))
       (false? (:inspection-restorable? part)) (assoc :error? false)
@@ -677,8 +686,10 @@
                       (and (:inspection-restorable? part)
                            (:inspection part)
                            (:sealed? @(:inspection part))
-                           (:error? @(:inspection part)))
+                           (or (:error? @(:inspection part))
+                               (some-> (:details-state part) deref seq)))
                       (assoc :inspection-token (:token @(:inspection part))
+                             :tool-details (some-> (:details-state part) deref)
                              :inspection-base
                              (assoc (select-keys options [:flags :components])
                                     :allowed_mentions
