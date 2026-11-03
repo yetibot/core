@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Show details** now expands the frozen public tool-call summary inside the
+  original Discord reply and becomes **Hide details**. Hiding restores the
+  original answer, files/media and elapsed caption. Inspection never reruns
+  tools; raw arguments/results stay private. Controls expire with the command
+  revision and are available only after completion on restorable replies.
 - **Error details** expands/collapses inside the original Discord reply, with
   read-only inline navigation and no extra response. Collapsing restores the
   original card; files, controls and one original elapsed caption are preserved.

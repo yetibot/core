@@ -58,9 +58,23 @@ paging controls update that viewer without replacing the answer.
 also stays inline, and **Hide error details** restores the exact original card.
 Only JSON-only outbound public presentation is retained for restoration, never
 upload streams or raw result data. Restoration is capped at the ordinary
-30-reply limit; overflow notices do not offer an inline error control. Attachments are neither uploaded again nor
-cleared, and one original elapsed caption is preserved. Long error text may be
+30-reply limit; overflow notices do not offer an inline error control.
+Attachments are neither uploaded again nor cleared, and one original elapsed
+caption is preserved. Long error text may be
 shortened only while details are open; collapsing restores it in full.
+
+**Show details** expands the frozen, caller-sanitized tool progress summary
+inside the same reply and becomes **Hide details**. Hiding restores the exact
+original card, including media/files and the original elapsed caption. Details
+are available after terminal reconciliation, not during live answer updates.
+The summary retains only the existing bounded status text (at most 1,800 UTF-16
+characters), never raw tool arguments/results, private reasoning or provider
+responses. Late status writes do not alter an already-published summary.
+
+Tool and error panes share the same JSON-only restoration base and 30-reply
+limit; opening either replaces the other pane. Long answers may be shortened
+only while the tool pane is open; Hide restores their original presentation.
+Neither opening nor hiding executes a command, tool or upstream request.
 
 Inline updates additionally require the actual tracked reply ID, matching
 snapshot token and current revision. Updates serialize with reply replacement,
