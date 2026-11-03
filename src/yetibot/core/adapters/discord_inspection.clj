@@ -112,6 +112,12 @@
 (defn parse-control [id]
   (when (and (string? id) (<= (count id) 100))
     (or
+      (when-let [[_ channel message token _operation depth page]
+                 (re-matches
+                   #"yb:tree:([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16}):([ecpn]):([1-8]):([0-9]{1,2})"
+                   id)]
+        {:action "tree" :key [channel message] :token token
+         :depth (Long/parseLong depth) :page (Long/parseLong page)})
       (when-let [[_ channel message token kind node page]
                  (re-matches
                    #"yb:view:([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16}):([de]):([0-9]{1,4}):([0-9]{1,2})"
@@ -125,8 +131,10 @@
 
 (defn- summary [v]
   (cond
-    (map? v) (str "object · " (count v) " fields")
-    (vector? v) (str "array · " (count v) " items")
+    (map? v) (str "object · " (count v)
+                  (if (= 1 (count v)) " field" " fields"))
+    (vector? v) (str "array · " (count v)
+                     (if (= 1 (count v)) " item" " items"))
     (string? v) (components/excerpt v 80)
     :else v))
 
@@ -217,6 +225,63 @@
   Node IDs/selected values never select arbitrary paths or invoke commands."
   [state key kind node-id page selected]
   (view-payload state key kind node-id page selected {}))
+
+(defn- depth-preview [value depth]
+  (cond
+    (and (zero? depth) (coll? value) (seq value)) (summary value)
+    (map? value) (into (empty value)
+                      (map (fn [[k v]] [k (depth-preview v (dec depth))])) value)
+    (vector? value) (mapv #(depth-preview % (dec depth)) value)
+    :else value))
+
+(defn- json-pages [encoded]
+  (loop [remaining encoded pages []]
+    (if (empty? remaining)
+      pages
+      (let [prefix (components/excerpt remaining 1500)
+            newline (str/last-index-of prefix "\n")
+            end (if (and (> (count remaining) 1500) newline (> newline 750))
+                  (inc newline) (count prefix))]
+        (recur (subs remaining end) (conj pages (subs remaining 0 end)))))))
+
+(defn inline-data-payload
+  "Show the frozen public tree at up to two levels initially. Depth/page
+  controls are stateless and bounded; no paths, providers or commands run."
+  [state key base depth page]
+  (let [s @state value (root-value s "d")
+        max-depth (reduce max 1 (map #(count (:path %)) (tree value)))
+        depth (or depth (min 2 max-depth))
+        page (or page 0)]
+    (when (and (:sealed? s) (:data? s) (integer? depth)
+               (<= 1 depth max-depth) (integer? page) (<= 0 page 99))
+      (let [encoded (-> (with-out-str
+                         (json/pprint (depth-preview value depth)
+                                      :escape-unicode false))
+                        (str/replace "`" "\\u0060"))
+            pages (json-pages encoded)
+            token (:token s)
+            button (fn [label operation level page disabled?]
+                     {:type 2 :style 2 :label label :disabled disabled?
+                      :custom_id (str "yb:tree:" (str/join ":" key) ":" token
+                                      ":" operation ":" level ":" page)})]
+        (when-let [preview (get pages page)]
+          (components/inline-pane-payload
+            base
+            [{:type 10 :content
+              (str "**Explore data**\nDepth " depth " · Page " (inc page)
+                   " of " (count pages) "\n\n```json\n" preview "\n```"
+                   "\n-# Retained public snapshot · collapsed branches show type/count."
+                   " Large values may be shortened.")}
+             {:type 1 :components
+              (cond-> [(button "Collapse" "c" (max 1 (dec depth)) 0 (= depth 1))
+                       (button "Expand" "e" (min max-depth (inc depth)) 0
+                               (= depth max-depth))]
+                (> (count pages) 1)
+                (conj (button "Previous" "p" depth (max 0 (dec page)) (zero? page))
+                      (button "Next" "n" depth (min (dec (count pages)) (inc page))
+                              (= page (dec (count pages))))))}]
+            (str (components/button-id "data" key) ":" token)
+            (str (components/button-id "data-hide" key) ":" token) "Hide data"))))))
 
 (defn inline-error-payload
   "Expand reviewed diagnostics inside a retained public reply. The base is

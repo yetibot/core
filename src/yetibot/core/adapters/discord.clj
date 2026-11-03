@@ -390,7 +390,7 @@
     :data (components/interaction-payload text)))
 
 (defn- inline-details! [conn event entry expected
-                     {:keys [action key token node page]}]
+                     {:keys [action key token node page depth]}]
   (binding [*delivery-deadline* (+ (monotonic-time) 2500000000)]
     (with-command-lock (:lock entry)
       (let [state (:inspection entry)
@@ -412,6 +412,12 @@
                            (when (seq (:tool-details reply))
                              (:inspection-base reply))
                            "error-hide" (:inspection-base reply)
+                           "data-hide" (when (:data? @state)
+                                         (:inspection-base reply))
+                           "data" (inspection/inline-data-payload
+                                    state key (:inspection-base reply) nil 0)
+                           "tree" (inspection/inline-data-payload
+                                    state key (:inspection-base reply) depth page)
                            (inspection/inline-error-payload
                              state key (:inspection-base reply)
                              (or node 0) (or page 0)
@@ -457,7 +463,7 @@
 
 (defmethod handle-event :interaction-create
   [_ event conn yetibot-user]
-  (when-let [{:keys [action key confirmation token kind node page] :as control}
+  (when-let [{:keys [action key confirmation token kind] :as control}
              (or (components/parse-button (get-in event [:data :custom-id]))
                  (inspection/parse-control (get-in event [:data :custom-id])))]
     ;; Claim an interaction once before dispatch. Never retain its token.
@@ -484,44 +490,34 @@
                               (identical? (:inspection entry)
                                 (get-in @conn [:commands key :inspection]))
                               (or (not (contains? #{"view" "error-hide" "details"
-                                                   "details-hide"} action))
+                                                   "details-hide" "data" "data-hide"
+                                                   "tree"} action))
                                   (= token (:token @(:inspection entry))))
-                              (if (and (= action "view") (= kind "d"))
-                                (some #(= (:channel-id event) (:target %))
-                                      @(:replies entry))
-                                (and
-                                  (or (not confirm?)
-                                      (and (= confirmation (:token pending))
-                                           (identical? expected @(:revision entry))))
-                                  (some #(and (= (:channel-id event) (:target %))
-                                              (= (if confirm? (:reply-id pending)
-                                                   (get-in event [:message :id]))
-                                                 (:id %)))
-                                        @(:replies entry)))))]
+                              (not (and (= action "view") (= kind "d")))
+                              (or (not confirm?)
+                                  (and (= confirmation (:token pending))
+                                       (identical? expected @(:revision entry))))
+                              (some #(and (= (:channel-id event) (:target %))
+                                          (= (if confirm? (:reply-id pending)
+                                               (get-in event [:message :id]))
+                                             (:id %)))
+                                    @(:replies entry)))]
               (cond
                 (not known?)
                 (interaction-reply! conn event
                   "This command's buttons have expired. Please send the command again.")
 
-                (or (contains? #{"error" "error-hide" "details" "details-hide"} action)
+                (or (contains? #{"error" "error-hide" "details" "details-hide"
+                                 "data" "data-hide" "tree"} action)
                     (and (= action "view") (= kind "e")))
                 (when-not (inline-details! conn event entry expected control)
                   (interaction-reply! conn event
-                    (if (contains? #{"details" "details-hide"} action)
+                    (cond
+                      (contains? #{"details" "details-hide"} action)
                       "This tool view has expired or is unavailable."
-                      "This error view has expired or is unavailable.")))
-
-                (contains? #{"view" "data"} action)
-                (if-let [data (inspection/payload
-                                (:inspection entry) key
-                                (or kind "d")
-                                (or node 0) (or page 0)
-                                (get-in event [:data :values]))]
-                  (messaging/create-interaction-response!
-                    (:rest @conn) (:id event) (:token event)
-                    (if (= action "view") 7 4) :data data)
-                  (interaction-reply! conn event
-                    "This data view has expired or is unavailable."))
+                      (contains? #{"data" "data-hide" "tree"} action)
+                      "This data view has expired or is unavailable."
+                      :else "This error view has expired or is unavailable.")))
 
                 (= action "help")
                 (let [body (second (command/extract-command (:content source)))
@@ -622,9 +618,11 @@
                                 (not= false (:inspection-restorable? part)))
                        @(:details-state part))
              :details-token (some-> (:inspection part) deref :token))
+      (:inspection part)
+      (assoc :data-token (:token @(:inspection part)))
       (some-> (:inspection part) deref :sealed?)
       (merge (select-keys @(:inspection part) [:data? :error?]))
-      (false? (:inspection-restorable? part)) (assoc :error? false)
+      (false? (:inspection-restorable? part)) (assoc :error? false :data? false)
       (:timing part) (assoc :elapsed (elapsed-label (:timing part))))))
 
 (defn- create-message! [conn target {:keys [image file filename] :as part}]
@@ -687,6 +685,7 @@
                            (:inspection part)
                            (:sealed? @(:inspection part))
                            (or (:error? @(:inspection part))
+                               (:data? @(:inspection part))
                                (some-> (:details-state part) deref seq)))
                       (assoc :inspection-token (:token @(:inspection part))
                              :tool-details (some-> (:details-state part) deref)

@@ -112,28 +112,31 @@
 (defn parse-button [id]
   (when (string? id)
     (when-let [[_ action channel command token]
-               (re-matches #"yb:(again|help|details|details-hide|confirm|data|error):([^:]+):([^:]+)(?::([a-f0-9-]+))?" id)]
-      (let [details? (contains? #{"details" "details-hide"} action)]
-        (when (if details?
-                (or (and (= action "details") (nil? token))
+               (re-matches #"yb:(again|help|details|details-hide|confirm|data|data-hide|error):([^:]+):([^:]+)(?::([a-f0-9-]+))?" id)]
+      (let [snapshot? (contains? #{"details" "details-hide" "data" "data-hide"}
+                                 action)]
+        (when (if snapshot?
+                (or (and (contains? #{"details" "data"} action) (nil? token))
                     (and token (re-matches #"[a-f0-9]{16}" token)))
                 (= (= action "confirm") (some? token)))
           (cond-> {:action action :key [channel command]
-                   :confirmation (when-not details? token)}
-            (and details? token) (assoc :token token)))))))
+                   :confirmation (when-not snapshot? token)}
+            (and snapshot? token) (assoc :token token)))))))
 
 (defn payload
   "Build a V2 card. Details is a bounded caller-sanitized snapshot, never raw data."
   [{:keys [content image file filename command-key details details-token elapsed
-           data? error? allowed-mentions]}]
+           data? data-token error? allowed-mentions]}]
   (let [media (or (when image (str "attachment://" filename)) (media-url content))
         buttons (when command-key
                   (mapv (fn [[action label]]
                           {:type 2 :style 2 :label label
                            :custom_id (str (button-id action command-key)
-                                           (when (and (= action "details")
-                                                      details-token)
-                                             (str ":" details-token)))})
+                                           (when-let [token (case action
+                                                              "details" details-token
+                                                              "data" data-token
+                                                              nil)]
+                                             (str ":" token)))})
                         (cond-> [["again" "Run again"] ["help" "Help"]]
                           (seq details) (conj ["details" "Show details"])
                           error? (conj ["error" "Error details"])
@@ -149,27 +152,26 @@
      :components [{:type 17 :accent_color accent-color :components children}]
      :allowed-mentions (or allowed-mentions {:parse [] :replied_user false})}))
 
-(defn inline-details-payload
-  "Expand only frozen, caller-sanitized tool progress inside a public card.
-  No streams or attachment edits; Hide uses the untouched original base."
-  [base key token details]
-  (when (and (string? details) (seq details)
-             (= 1 (count (:components base)))
+(defn inline-pane-payload
+  "Insert a bounded public pane before the original footer/controls. Retain
+  media/files without attachment edits; Hide uses the untouched JSON-only base."
+  [base pane show-id hide-id hide-label]
+  (when (and (= 1 (count (:components base)))
              (= 17 (get-in base [:components 0 :type])))
     (let [children (get-in base [:components 0 :components])
+          maps #(filter map? (tree-seq coll? seq %))
           text-length #(reduce + 0 (keep (fn [c]
-                                           (when (= 10 (:type c))
-                                             (count (:content c)))) %))
-          pane {:type 10 :content (str "**Tool details**\n" (excerpt details 1800))}
-          shorten? (> (+ (text-length children) (count (:content pane)))
+                                          (when (= 10 (:type c))
+                                            (count (:content c)))) (maps %)))
+          shorten? (> (+ (text-length children) (text-length pane))
                       max-text-length)
           children (mapv (fn [c]
                            (if (and shorten? (= 10 (:type c))
                                     (> (count (:content c)) 1400))
                              (update c :content
                                #(str (answer-preview % 650)
-                                     "\n-# Answer shortened while details are open."
-                                     " Hide details to restore it."))
+                                     "\n-# Answer shortened while this view is open. "
+                                     hide-label " to restore it."))
                              c)) children)
           start (or (first (keep-indexed
                              (fn [i c]
@@ -179,19 +181,27 @@
                                                           (:content c)))) i))
                              children))
                     (count children))
-          children (into (conj (subvec children 0 start)
-                               {:type 14 :divider true :spacing 1} pane)
+          children (into (into (conj (subvec children 0 start)
+                                    {:type 14 :divider true :spacing 1}) pane)
                          (subvec children start))
-          show-id (str (button-id "details" key) ":" token)
           children (walk/postwalk
                      (fn [c]
                        (if (and (map? c) (= show-id (:custom_id c)))
-                         (assoc c :label "Hide details"
-                                  :custom_id (str (button-id "details-hide" key)
-                                                  ":" token))
-                         c)) children)]
-      (when (<= (text-length children) max-text-length)
-        (assoc-in base [:components 0 :components] children)))))
+                         (assoc c :label hide-label :custom_id hide-id) c))
+                     children)
+          result (assoc-in base [:components 0 :components] children)]
+      (when (and (<= (text-length children) max-text-length)
+                 (<= (count (filter :type (maps result))) 40))
+        result))))
+
+(defn inline-details-payload
+  "Expand only frozen, caller-sanitized tool progress inside a public card."
+  [base key token details]
+  (when (and (string? details) (seq details))
+    (inline-pane-payload
+      base [{:type 10 :content (str "**Tool details**\n" (excerpt details 1800))}]
+      (str (button-id "details" key) ":" token)
+      (str (button-id "details-hide" key) ":" token) "Hide details")))
 
 (defn message-text
   "Read visible text/media from legacy or V2 messages, excluding button labels."
