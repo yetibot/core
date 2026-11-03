@@ -64,7 +64,11 @@
 (defn- text-pages [text]
   ;; Larger documents still get the complete Markdown attachment, not a clipped
   ;; snapshot. Retain at most one 256-Ki UTF-16 public document per command.
-  (when (and (string? text) (< 3968 (count text) 262145))
+  (when (and (string? text) (< 3968 (count text) 262145)
+             ;; A metadata safety bound can leave an unpaired surrogate. The
+             ;; excerpt splitter must never loop on an empty final prefix.
+             (.canEncode (.newEncoder java.nio.charset.StandardCharsets/UTF_8)
+                         ^CharSequence text))
     {:text text
      :pages
      (loop [remaining text pages []]

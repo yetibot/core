@@ -62,6 +62,11 @@
             (inspect/capture! state {:public-text (str full "LATE")})
             @state => before))
         (:text-pages @state) => nil)))
+  (doseq [broken [(str (apply str (repeat 5000 "x")) (char 0xd800))
+                  (str (char 0xdc00) (apply str (repeat 5000 "x")))]]
+    (let [state (atom (inspect/initial))]
+      (inspect/capture! state {:public-text broken})
+      (:text-pages @state) => nil))
   (doseq [size [3968 262144 262145]]
     (let [state (atom (inspect/initial)) text (apply str (repeat size "x"))]
       (inspect/capture! state {:public-text text})
