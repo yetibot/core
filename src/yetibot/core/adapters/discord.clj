@@ -418,6 +418,8 @@
                                     state key (:inspection-base reply) nil 0)
                            "tree" (inspection/inline-data-payload
                                     state key (:inspection-base reply) depth page)
+                           "page" (inspection/inline-text-payload
+                                    state key (:inspection-base reply) page)
                            (inspection/inline-error-payload
                              state key (:inspection-base reply)
                              (or node 0) (or page 0)
@@ -491,7 +493,7 @@
                                 (get-in @conn [:commands key :inspection]))
                               (or (not (contains? #{"view" "error-hide" "details"
                                                    "details-hide" "data" "data-hide"
-                                                   "tree"} action))
+                                                   "tree" "page"} action))
                                   (= token (:token @(:inspection entry))))
                               (not (and (= action "view") (= kind "d")))
                               (or (not confirm?)
@@ -508,11 +510,13 @@
                   "This command's buttons have expired. Please send the command again.")
 
                 (or (contains? #{"error" "error-hide" "details" "details-hide"
-                                 "data" "data-hide" "tree"} action)
+                                 "data" "data-hide" "tree" "page"} action)
                     (and (= action "view") (= kind "e")))
                 (when-not (inline-details! conn event entry expected control)
                   (interaction-reply! conn event
                     (cond
+                      (= "page" action)
+                      "This listing has expired or is unavailable."
                       (contains? #{"details" "details-hide"} action)
                       "This tool view has expired or is unavailable."
                       (contains? #{"data" "data-hide" "tree"} action)
@@ -622,6 +626,9 @@
       (assoc :data-token (:token @(:inspection part)))
       (some-> (:inspection part) deref :sealed?)
       (merge (select-keys @(:inspection part) [:data? :error?]))
+      (and (:inspection part) (not= false (:inspection-restorable? part)))
+      (merge (inspection/text-page-options
+               (:inspection part) (:command-key part) (:file part)))
       (false? (:inspection-restorable? part)) (assoc :error? false :data? false)
       (:timing part) (assoc :elapsed (elapsed-label (:timing part))))))
 
@@ -686,6 +693,9 @@
                            (:sealed? @(:inspection part))
                            (or (:error? @(:inspection part))
                                (:data? @(:inspection part))
+                               (inspection/text-page-options
+                                 (:inspection part) (:command-key part)
+                                 (:file part))
                                (some-> (:details-state part) deref seq)))
                       (assoc :inspection-token (:token @(:inspection part))
                              :tool-details (some-> (:details-state part) deref)

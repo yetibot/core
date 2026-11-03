@@ -48,6 +48,21 @@ separate 64-value/4,000-character budget. Character budgets apply to retained
 keys/strings, not serialized JSON byte counts. Large snapshots may be shortened
 when retained; opening a view never refetches missing data.
 
+A producer may additionally opt its already-redacted, human-readable display
+into text paging with `:result/public-text` under the same reviewed marker.
+Never put raw catalogs, schemas, provider maps or private tool output there.
+The Discord adapter only enables paging when this text exactly matches the
+final Markdown attachment; transformations in a pipeline do not resurrect an
+earlier listing. One complete public document of at most 262,144 UTF-16 units
+is retained separately from the bounded data tree. Larger documents retain the
+ordinary complete Markdown fallback; they are not silently truncated into pages.
+Pages contain at most 3,000 UTF-16 units, prefer line boundaries and never split
+surrogate pairs. Previous/Next update only the tracked original reply, keeping
+its file, controls and single original elapsed caption. Bounds are disabled and
+a page indicator remains visible. There is no rediscovery or execution during
+navigation. Opening another pane uses the first page as its restoration base;
+paging returns to the frozen document and replaces the temporary pane.
+
 Navigation is public and read-only. Controls select bounded snapshot depth,
 page or diagnostic node IDs, never arbitrary paths or command arguments. Each
 inline view requires the actual tracked bot reply, channel/thread, frozen

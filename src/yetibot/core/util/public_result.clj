@@ -25,6 +25,8 @@
                        (true? (get-in result [:result/data :isError])))
            :public-data? data?
            :public-data (when data? (:result/public-data result))
+           ;; Explicitly reviewed human-readable output, not :result/data.
+           :public-text (when approved? (:result/public-text result))
            :public-error (when approved? (:result/public-error result))}))
       (catch Exception _ nil)))
   result)

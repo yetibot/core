@@ -42,6 +42,36 @@
     (binding [public-result/*capture* (fn [_] (throw (Exception. "private")))]
       (public-result/observe! value) => value)))
 
+(fact "public text requires review and retains every Unicode character within bounds"
+  (doseq [reviewed? [false true]]
+    (let [state (atom (inspect/initial))
+          full (str (apply str (repeat 11000 "😀")) "\nEND")
+          result {:result/public-text full}]
+      (binding [public-result/*capture* #(inspect/capture! state %)]
+        (public-result/observe! (if reviewed? (public-result/reviewed result)
+                                   result)))
+      (if reviewed?
+        (let [pages (get-in @state [:text-pages :pages])]
+          (apply str pages) => full
+          (every? #(<= (count %) 3000) pages) => true
+          (not-any? #(Character/isHighSurrogate (last %)) pages) => true
+          (swap! state assoc :sealed? true)
+          (inspect/text-page-options state ["200" "100"] full) => map?
+          (inspect/text-page-options state ["200" "100"] "Changed") => nil
+          (let [before @state]
+            (inspect/capture! state {:public-text (str full "LATE")})
+            @state => before))
+        (:text-pages @state) => nil)))
+  (doseq [size [3968 262144 262145]]
+    (let [state (atom (inspect/initial)) text (apply str (repeat size "x"))]
+      (inspect/capture! state {:public-text text})
+      (boolean (:text-pages @state)) => (= size 262144)))
+  (doseq [id ["yb:page:200:100:0000000000000000:-1"
+             "yb:page:200:100:0000000000000000:1000"
+             "yb:page:other:100:0000000000000000:0"
+             "yb:page:200:100:bad:0"]]
+    (inspect/parse-control id) => nil))
+
 (fact "snapshots bound infinite collections, depth, text and unsupported objects"
   (let [state (capture {:array (range)
                         :deep (nth (iterate #(hash-map :child %) "END") 30)
