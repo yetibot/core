@@ -33,6 +33,19 @@ exception/timeout categories and a valid numeric status when available. Discord
 shows a safe exception summary; other adapters keep their existing behavior.
 If approved details were not retained, the viewer says so.
 
+Data/text inspection follows the **completed outer pipeline**, not its
+intermediate stages. Per-stage reviewed error diagnostics are still retained.
+The interpreter carries only authenticated public fields in `:public-result`;
+ordinary raw `:data` never gains review by passing through a collection command.
+A reviewed sequential public projection must match the incoming rows' order and
+cardinality. Collection operations select/filter/reorder those companion records
+with the same indices, including a single draw for random/shuffle. Duplicate
+removal retains the first value's corresponding records; flattening a multiline
+value repeats its companion record for each resulting line. `xargs` and `repeat`
+aggregate reviewed child projections in output order, leaving unreviewed
+positions nil rather than copying raw child results. Unknown transformations or
+unaligned/unreviewed input do not publish stale upstream data.
+
 The request-local observer does not alter values or data flowing through pipes.
 Only bounded copies of approved fields enter the existing command cache;
 unsupported objects are unavailable and obvious credential/private field names
@@ -59,7 +72,7 @@ ordinary complete Markdown fallback; they are not silently truncated into pages.
 Pages contain at most 3,000 UTF-16 units, prefer line boundaries and never split
 surrogate pairs. Markdown code fences are closed at page boundaries and reopened
 on continuation pages; these presentation-only markers never alter the stored
-text or Markdown download. Fence markers longer than64 characters retain the
+text or Markdown download. Fence markers longer than 64 characters retain the
 ordinary download fallback so synthetic markers cannot exceed the message
 budget. Previous/Next update only the tracked original reply, keeping
 its file, controls and single original elapsed caption. Bounds are disabled and

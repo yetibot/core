@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Keep reviewed public data paired with collection values through random,
+  head/tail/take, filters, reordering, duplicate removal and flattening. Publish
+  only completed pipeline data, not intermediate catalogs; retain per-stage
+  error diagnostics separately. Fix xargs companion data being replaced by nils,
+  deduplicate by visible value, and repeat metadata for multiline expansion.
+  Raw/private data never gains public review through collection operations.
+
 - Paginated public Markdown closes and reopens code fences across pages while
   leaving the complete download unchanged. Overlong fence markers keep the
   ordinary Markdown fallback rather than overflowing Discord's text budget.

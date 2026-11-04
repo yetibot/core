@@ -273,7 +273,7 @@
     values => (contains {:result/value ["red" "green" "blue"]})
     values => (contains {:result/data [{"red" "red"} {"green" "green"}
                                        {"blue" "blue"}]})
-    values => (contains {:result/data-collection [nil nil nil]})))
+    values => (contains {:result/data-collection (map value->data opts)})))
 
  (let [values (-> (ci/command-execution-info "xargs keys"
                                              (-> params (dissoc :opts)))
@@ -284,7 +284,7 @@
     values => (contains {:result/value [["red"] ["green"] ["blue"]]})
     values => (contains {:result/data [{"red" "red"} {"green" "green"}
                                        {"blue" "blue"}]})
-    values => (contains {:result/data-collection [nil nil nil]})))
+    values => (contains {:result/data-collection (map value->data opts)})))
 
  (let [values (-> (ci/command-execution-info
                    "xargs render {{name}}"

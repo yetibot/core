@@ -14,6 +14,7 @@
               psuedo-format
               split-kvs-with]]
             [yetibot.core.util.command :refer [error?]]
+            [yetibot.core.util.public-result :as public]
             [yetibot.core.util.command-info :refer [command-execution-info]]
             [yetibot.core.util.format :refer [format-exception-log]]))
 
@@ -36,29 +37,31 @@
 
 (defn coll-cmd
   "Helper to define commands that operate only on collections"
-  [f]
-  (with-meta
-    (fn [{:keys [data-collection] :as cmd-args}]
-      (let [coll-or-error (ensure-coll cmd-args)]
-        (if (error? coll-or-error)
-          coll-or-error
-          (let [result (f coll-or-error)]
-            {:result/value result
-             :result/data (f data-collection)}))))
-    {:yb/cat #{:util :collection}}))
+  [f & [data-f]]
+  (let [data-f (or data-f f)]
+    (with-meta
+      (fn [{:keys [data-collection] :as cmd-args}]
+        (let [coll-or-error (ensure-coll cmd-args)]
+          (if (error? coll-or-error)
+            coll-or-error
+            (let [result (f coll-or-error)]
+              (public/transform-collection cmd-args
+                {:result/value result :result/data (data-f data-collection)}
+                data-f)))))
+      {:yb/cat #{:util :collection}})))
 
 ; random
 (defn random
   "random <list> # returns a random item from <list>
    random # generate a random number"
   {:yb/cat #{:util :collection}}
-  [{:keys [data-collection] items :opts}]
+  [{:keys [data-collection] items :opts :as cmd-args}]
   (if (not-empty items)
     (let [idx (rand-int (count (ensure-items-collection items)))
           item (nth items idx)
           data (when data-collection (nth data-collection idx))]
-      {:result/value item
-       :result/data data})
+      (public/transform-collection cmd-args
+        {:result/value item :result/data data} #(nth % idx)))
     (str (rand 100000))))
 
 (cmd-hook #"random"
@@ -72,10 +75,9 @@
         f (if (= 1 n) single-fn (partial multi-fn n))]
     (if (error? coll-or-error)
       coll-or-error
-      (merge
-        {:result/value (f coll-or-error)}
-        (when data-collection
-          {:result/data (f data-collection)})))))
+      (public/transform-collection cmd-map
+        (merge {:result/value (f coll-or-error)}
+               (when data-collection {:result/data (f data-collection)})) f))))
 
 (def head (partial head-or-tail first take))
 
@@ -126,10 +128,10 @@
     (if (error? coll-or-error)
       coll-or-error
       (let [value (drop-last coll-or-error)]
-        {:result/value value
-         :result/data (if data-collection
-                        (drop-last data-collection)
-                        value)}))))
+        (public/transform-collection cmd-args
+          {:result/value value
+           :result/data (if data-collection (drop-last data-collection) value)}
+          drop-last)))))
 
 (cmd-hook #"droplast"
   _ drop-last-cmd)
@@ -143,10 +145,9 @@
     (if (error? coll-or-error)
       coll-or-error
       (let [value (rest coll-or-error)]
-        {:result/value value
-         :result/data (if data-collection
-                        (rest data-collection)
-                        value)}))))
+        (public/transform-collection cmd-args
+          {:result/value value
+           :result/data (if data-collection (rest data-collection) value)} rest)))))
 
 (cmd-hook #"rest"
   _ rest-cmd)
@@ -159,9 +160,9 @@
   [{:keys [args opts data data-collection] :as cmd-params}]
   (if (s/blank? args)
     ;; passthrough if no args
-    {:result/value opts
-     :result/data data
-     :result/data-collection data-collection}
+    (public/forward cmd-params
+      {:result/value opts :result/data data
+       :result/data-collection data-collection})
     (if-let [itms (or (ensure-items-collection opts)
                       (ensure-items-collection data-collection))]
       (let [indexed-itms (map-indexed (comp identity vector) itms)
@@ -169,7 +170,7 @@
                     command-execution-info :matched-sub-cmd meta :yb/cat)
             ;; do not propagate top-level data or data-collection args to the
             ;; cmd that xargs is running for each item
-            params (dissoc cmd-params :data :data-collection)
+            params (dissoc cmd-params :data :data-collection :public-result)
             cmd-runner (if (contains? cat :async) 'map 'pmap)
             _ (debug "xargs using cmd-runner:" cmd-runner "for command"
                      (pr-str args))
@@ -179,8 +180,10 @@
                (try
                  (let [;; there may or may not be data from the previous pipe
                        possible-data (nth data-collection idx)
-                       params-with-data (when data-collection
-                                          (assoc params :data possible-data))
+                       params-with-data
+                       (cond-> (assoc params :public-result
+                                      (public/item-projection cmd-params idx))
+                         data-collection (assoc :data possible-data))
                        _ (info "data for" idx possible-data
                                {:current-contextual *contextual-data*
                                 :params-with-data params-with-data})
@@ -216,9 +219,14 @@
                           (format-exception-log ex))
                    ex)))
              indexed-itms)]
-        {:result/value (map :result/value xargs-results)
-         :result/data-collection (map :result/data-collection xargs-results)
-         :result/data (map :result/data xargs-results)})
+        (public/aggregate
+          {:result/value (map :result/value xargs-results)
+           :result/data-collection
+           (map #(or (:result/data-collection %)
+                     (when-let [path (:result/collection-path %)]
+                       (get-in (:result/data %) path))
+                     (:result/data %)) xargs-results)
+           :result/data (map :result/data xargs-results)} xargs-results))
       {:result/error (str "Expected a collection")})))
 
 (cmd-hook #"xargs"
@@ -233,7 +241,7 @@
         join-char (if (empty? match) "" match)]
     (if (error? coll-or-error)
       coll-or-error
-      (s/join join-char coll-or-error))))
+      (public/forward cmd-args (s/join join-char coll-or-error)))))
 
 (cmd-hook #"join"
   #"(?is).+" join
@@ -254,10 +262,10 @@
 (defn trim
   "trim <string> # remove whitespace from both ends of <string>"
   {:yb/cat #{:util :collection}}
-  [{:keys [args data data-collection]}]
-  {:result/data data
-   :result/data-collection data-collection
-   :result/value (s/trim args)})
+  [{:keys [args data data-collection] :as cmd-args}]
+  (public/forward cmd-args
+    {:result/data data :result/data-collection data-collection
+     :result/value (s/trim args)}))
 
 (cmd-hook #"trim"
   _ trim)
@@ -276,27 +284,37 @@
 (defn unwords
   "unwords <list> # join <list> with a single space"
   {:yb/cat #{:util :collection}}
-  [{args :args opts :opts}]
-  (if (nil? opts)
-    args ; no collection, return the value as-is
-    (s/join " " (ensure-items-collection opts))))
+  [{args :args opts :opts :as cmd-args}]
+  (public/forward cmd-args
+    (if (nil? opts)
+      args ; no collection, return the value as-is
+      (s/join " " (ensure-items-collection opts)))))
 
 (cmd-hook #"unwords"
   _ unwords)
 
 ;; flatten
 (defn flatten-cmd
-  "flatten <nested list> # completely flattens a nested data struture after splitting on newlines"
+  "flatten <nested list> # flatten nested items/lines with corresponding data"
   {:yb/cat #{:util :collection}}
   [{:keys [data-collection] :as cmd-args}]
-  (let [error-or-coll (ensure-coll cmd-args)]
-    (if (error? error-or-coll)
-      error-or-coll
-      {:result/value (->> error-or-coll
-                          flatten
-                          (map s/split-lines)
-                          flatten)
-       :result/data (flatten data-collection)})))
+  (let [items (ensure-coll cmd-args)]
+    (if (error? items)
+      items
+      (letfn [(leaves [v path]
+                (if (sequential? v)
+                  (mapcat (fn [[idx item]] (leaves item (conj path idx)))
+                          (map-indexed vector v))
+                  (map #(vector path %) (s/split-lines v))))
+              (at-path [data path]
+                (reduce (fn [v idx]
+                          (if (sequential? v) (nth v idx nil) v)) data path))]
+        (let [rows (vec (leaves items []))
+              select (fn [data] (mapv #(at-path data (first %)) rows))]
+          (public/transform-collection cmd-args
+            {:result/value (mapv second rows)
+             :result/data (when data-collection (select data-collection))}
+            select))))))
 
 (cmd-hook #"flatten"
   _ flatten-cmd)
@@ -314,15 +332,25 @@
 ; unletters
 (def unletters
   "unletters <list> # join <list> without a delimiter"
-  (coll-cmd (partial s/join "")))
+  (coll-cmd (partial s/join "") identity))
 
 (cmd-hook #"unletters"
   _ unletters)
 
 ; set
-(def set-cmd
-  "set <list> # returns the set of distinct elements in <list> and does not preserve order"
-  (coll-cmd (comp seq set)))
+(declare transform-opts-with-data)
+
+(defn set-cmd
+  "set <list> # keep distinct values and their first corresponding data rows"
+  {:yb/cat #{:util :collection}}
+  [cmd-args]
+  (transform-opts-with-data
+    (fn [rows]
+      (second
+        (reduce (fn [[seen kept] [_ value :as row]]
+                  (if (contains? seen value) [seen kept]
+                    [(conj seen value) (conj kept row)]))
+                [#{} []] rows))) cmd-args))
 
 (cmd-hook #"set"
   _ set-cmd)
@@ -353,7 +381,7 @@
   (coll-cmd
     #(->> %
           (map (comp read-string str))
-          (reduce +))))
+          (reduce +)) identity))
 
 (cmd-hook #"sum"
   _ sum-cmd)
@@ -368,9 +396,10 @@
                              f)
             ordering (map first re-ordering)
             opts (map second re-ordering)
-            data (map (partial nth data-collection) ordering)]
-        {:result/value opts
-         :result/data data}))))
+            select #(mapv (partial nth %) ordering)
+            data (when data-collection (select data-collection))]
+        (public/transform-collection cmd-args
+          {:result/value opts :result/data data} select)))))
 
 (defn shuffle-cmd
   "shuffle <list> # shuffle the order of a piped collection"
@@ -442,7 +471,7 @@
 (defn grep-cmd
   "grep <pattern> <list> # filters the items in <list> by <pattern>"
   {:yb/cat #{:util :collection}}
-  [{:keys [match opts args data-collection]} & [grep-options]]
+  [{:keys [match opts args data-collection] :as cmd-args} & [grep-options]]
   (let [pattern (re-pattern (str "(?i)" match)) ;; enable case insensitive search
         items (-> opts ensure-items-collection ensure-items-seqential)]
     (if items
@@ -454,8 +483,9 @@
             data (when data-collection
                    (map (partial nth data-collection) ordering))
             ]
-        {:result/value value
-         :result/data data})
+        (public/transform-collection cmd-args
+          {:result/value value :result/data data}
+          #(mapv (partial nth %) ordering)))
       {:result/error
        (str "Expected a collection but you only gave me `" args "`")})))
 
@@ -480,10 +510,10 @@
 (defn tee-cmd
   "tee <list-or-args> # output <list-or-args> to chat then return it (useful for pipes)"
   {:yb/cat #{:util :collection}}
-  [{:keys [data opts args]}]
+  [{:keys [data opts args] :as cmd-args}]
   (chat-data-structure (or opts args))
-  {:result/value (or opts args)
-   :result/data data})
+  (public/forward cmd-args
+    {:result/value (or opts args) :result/data data}))
 
 (cmd-hook #"tee"
   _ tee-cmd)
@@ -524,12 +554,10 @@
 (defn keys-cmd
   "keys <map> # return the keys from <map>"
   {:yb/cat #{:util :collection}}
-  [{items :opts :keys [data data-collection]}]
-  {:result/value (if (map? items)
-                   (keys items)
-                   (split-kvs-with first items))
-   :result/data data
-   :result/data-collection data-collection})
+  [{items :opts :keys [data data-collection] :as cmd-args}]
+  (public/forward cmd-args
+    {:result/value (if (map? items) (keys items) (split-kvs-with first items))
+     :result/data data :result/data-collection data-collection}))
 
 (cmd-hook #"keys"
   _ keys-cmd)
@@ -538,13 +566,10 @@
 (defn vals-cmd
   "vals <map> # return the vals from <map>"
   {:yb/cat #{:util :collection}}
-  [{items :opts :keys [data data-collection]}]
-  {:result/value
-   (if (map? items)
-     (vals items)
-     (split-kvs-with second items))
-   :result/data data
-   :result/data-collection data-collection})
+  [{items :opts :keys [data data-collection] :as cmd-args}]
+  (public/forward cmd-args
+    {:result/value (if (map? items) (vals items) (split-kvs-with second items))
+     :result/data data :result/data-collection data-collection}))
 
 (cmd-hook #"vals"
   _ vals-cmd)
@@ -553,10 +578,10 @@
 (defn raw-cmd
   "raw <coll> | <args> # output a string representation of piped <coll> or <args>"
   {:yb/cat #{:util :collection}}
-  [{:keys [data data-collection opts args]}]
-  {:result/data data
-   :result/data-collection data-collection
-   :result/value (pr-str (or opts args))})
+  [{:keys [data data-collection opts args] :as cmd-args}]
+  (public/forward cmd-args
+    {:result/data data :result/data-collection data-collection
+     :result/value (pr-str (or opts args))}))
 
 (defn raw-all-cmd
   "raw all <coll> | <args> # output a string representation of all command context"
@@ -637,7 +662,8 @@
 (defn repeat-cmd
   "repeat <n> <cmd> # repeat <cmd> <n> times"
   {:yb/cat #{:util}}
-  [{[_ n cmd] :match :keys [user opts chat-source data data-collection]}]
+  [{[_ n cmd] :match :keys [user opts chat-source data data-collection
+                           public-result]}]
   (let [n (read-string n)]
     (when (> n max-repeat)
       (chat-data-structure
@@ -663,6 +689,7 @@
             #(handle-cmd cmd {:chat-source chat-source
                               :data data
                               :data-collection data-collection
+                              :public-result public-result
                               :user user
                               :opts opts}))
 
@@ -678,8 +705,7 @@
           data (map :result/data results)
           ]
       (info (pr-str (doall results)))
-      {:result/value values
-       :result/data data})))
+      (public/aggregate {:result/value values :result/data data} results))))
 
 (cmd-hook #"repeat"
   #"(\d+)\s(.+)" repeat-cmd)
