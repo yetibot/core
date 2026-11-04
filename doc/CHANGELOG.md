@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Paginated public Markdown closes and reopens code fences across pages while
+  leaving the complete download unchanged. Overlong fence markers keep the
+  ordinary Markdown fallback rather than overflowing Discord's text budget.
+
 - Reviewed public text can page inside the original Discord answer with
   **Previous/Next**, a page indicator and a complete Markdown download.
   Pages are frozen, bounded and surrogate-safe; only exact final output opts in.

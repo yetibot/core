@@ -77,6 +77,32 @@
              "yb:page:200:100:bad:0"]]
     (inspect/parse-control id) => nil))
 
+(fact "text navigation closes and reopens code fences without changing downloads"
+  (doseq [fence ["```" "~~~"]]
+    (let [full (str "Intro\n\n" fence "typescript\n"
+                    (apply str (repeat 500 "const value = 1;\n"))
+                    fence "\n\nTail")
+          state (atom (inspect/initial))
+          _ (inspect/capture! state {:public-text full})
+          _ (swap! state assoc :sealed? true)
+          options (inspect/text-page-options state ["200" "100"] full)
+          base (components/payload (assoc options :command-key ["200" "100"]))
+          pages (get-in @state [:text-pages :pages])]
+      (apply str pages) => full
+      (doseq [n (range (count pages))]
+        (let [payload (inspect/inline-text-payload state ["200" "100"] base n)
+              content (get-in payload [:components 0 :components 0 :content])]
+          (even? (count (re-seq #"(?m)^(?:`{3,}|~{3,})" content))) => true
+          (str/includes? content (str "Page " (inc n) " of")) => true
+          (<= (count content) components/max-text-length) => true)))))
+
+(fact "overlong Markdown fence markers keep the ordinary download fallback"
+  (let [state (atom (inspect/initial))
+        full (str (apply str (repeat 65 "`")) "\n"
+                  (apply str (repeat 5000 "x"))) ]
+    (inspect/capture! state {:public-text full})
+    (:text-pages @state) => nil))
+
 (fact "snapshots bound infinite collections, depth, text and unsupported objects"
   (let [state (capture {:array (range)
                         :deep (nth (iterate #(hash-map :child %) "END") 30)

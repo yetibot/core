@@ -68,7 +68,9 @@
              ;; A metadata safety bound can leave an unpaired surrogate. The
              ;; excerpt splitter must never loop on an empty final prefix.
              (.canEncode (.newEncoder java.nio.charset.StandardCharsets/UTF_8)
-                         ^CharSequence text))
+                         ^CharSequence text)
+             ;; Reopening/closing fences must fit inside the message budget.
+             (not (re-find #"(?m)^ {0,3}(?:`{65,}|~{65,})" text)))
     {:text text
      :pages
      (loop [remaining text pages []]
@@ -161,7 +163,8 @@
   (let [{:keys [token sealed? text-pages]} @state
         pages (:pages text-pages)]
     (when (and sealed? (integer? page) (<= 0 page) (< page (count pages)))
-      {:content (str (get pages page) "\n\n-# Page " (inc page) " of "
+      {:content (str (components/page-preview pages page)
+                     "\n\n-# Page " (inc page) " of "
                      (count pages) " · Full answer: answer.md")
        :navigation
        {:type 1 :components
