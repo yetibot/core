@@ -57,7 +57,11 @@ earlier listing. One complete public document of at most 262,144 UTF-16 units
 is retained separately from the bounded data tree. Larger documents retain the
 ordinary complete Markdown fallback; they are not silently truncated into pages.
 Pages contain at most 3,000 UTF-16 units, prefer line boundaries and never split
-surrogate pairs. Previous/Next update only the tracked original reply, keeping
+surrogate pairs. Markdown code fences are closed at page boundaries and reopened
+on continuation pages; these presentation-only markers never alter the stored
+text or Markdown download. Fence markers longer than64 characters retain the
+ordinary download fallback so synthetic markers cannot exceed the message
+budget. Previous/Next update only the tracked original reply, keeping
 its file, controls and single original elapsed caption. Bounds are disabled and
 a page indicator remains visible. There is no rediscovery or execution during
 navigation. Opening another pane uses the first page as its restoration base;

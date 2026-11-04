@@ -27,6 +27,19 @@
       marker)
     active))
 
+(defn page-preview
+  "Keep a Markdown code fence local to each page. Storage/download text is
+  unchanged; continuation pages reopen the active fence without guessing a
+  language. Callers bound source text and fence-marker length before paging."
+  [pages page]
+  (let [before (str/join "" (take page pages))
+        body (nth pages page)
+        active #(reduce next-fence nil (str/split-lines %))
+        opening (active before)
+        closing (active (str before body))]
+    (str (when opening (str opening "\n")) body
+         (when closing (str "\n" closing)))))
+
 (defn- table-row [line]
   (when (and line (re-find #"(?<!\\)\|" line))
     (let [cells (mapv str/trim (str/split (str/trim line) #"(?<!\\)\|" -1))
