@@ -13,6 +13,7 @@
 (def ^:dynamic *current-user*)
 (def ^:dynamic *yetibot-user*)
 (def ^:dynamic *chat-source*)
+(def ^:private ^:dynamic *expression-depth* 0)
 (def
   ^{:dynamic true
     :doc
@@ -56,6 +57,7 @@
         extra {:raw previous-value
                :data (or previous-data *contextual-data* previous-value)
                :data-collection previous-data-collection
+               :public-result (:public-result acc)
                :settings (:settings acc)
                :skip-next-n (:skip-next-n acc)
                :next-cmds (and next-cmds-ast (unparse-transformer next-cmds-ast))
@@ -108,7 +110,9 @@
                    (pseudo-format cmd-with-args (str previous-value)))
                  extra])))
 
-             _ (public-result/observe! command-result)
+             ;; Retain per-stage error diagnostics, but publish data/text only
+             ;; from the completed outer pipeline, never intermediate catalogs.
+             _ (public-result/observe! command-result false)
              _ (info "command-result" (color-str :green (pr-str command-result)))
 
              {value :result/value
@@ -140,14 +144,16 @@
              (info "Caught error in pipeline" error)
              (reduced
               {:error
-               (str "💥 Error in `" cmd-with-args "`: " error " 💥")}))
+               (str "💥 Error in `" cmd-with-args "`: " error " 💥")
+               :public-result (public-result/projection command-result)}))
            ;; otherwise continue reducing
            (if (and (map? command-result) value)
              (assoc acc
                     :value value
                     :data-collection data-collection
-                    :data data)
-             (assoc acc :value command-result))))))))
+                    :data data
+                    :public-result (public-result/projection command-result))
+             (assoc acc :value command-result :public-result nil))))))))
 
 (defn handle-expr
   "Called by the parser AST transformer with a partially-evaluated AST.
@@ -165,16 +171,17 @@
   [evaluator cmds]
   (info "reduce commands" (prn-str cmds))
   ; look up the settings for channel in *chat-source*
-  (let [channel-settings (channel/settings-for-chat-source *chat-source*)]
-    (reduce
-     (partial #'pipe-cmds evaluator)
-     ;; Allow commands to consume n next commands in the pipeline and inform
-     ;; the reducer to skip over them. This is useful e.g. queries that can be
-     ;; optimized by "pushing down" the operating into the query engine.
-     {:settings channel-settings
-      :skip-next-n (atom 0)
-      :value ""
-      :data nil}
-     ;; let each command peak into the next command so it can decide whether it
-     ;; wants to consume it.
-     (partition-all (count cmds) 1 cmds))))
+  (let [channel-settings (channel/settings-for-chat-source *chat-source*)
+        outer? (zero? *expression-depth*)
+        result
+        (binding [*expression-depth* (inc *expression-depth*)]
+          (reduce
+            (partial #'pipe-cmds evaluator)
+            ;; Commands may consume subsequent pipeline stages, e.g. queries
+            ;; that push a collection operation into their query engine.
+            {:settings channel-settings :skip-next-n (atom 0)
+             :value "" :data nil}
+            (partition-all (count cmds) 1 cmds)))]
+    (when outer?
+      (public-result/observe! (:public-result result)))
+    result))
