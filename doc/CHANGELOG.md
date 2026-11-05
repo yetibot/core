@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Admit reply-scoped AI continuations only from successful, terminally delivered
+  owned answers. Keep closed routing metadata in the bounded command cache,
+  tied to its revision and actual same-channel reply IDs. Explicit commands
+  override it; duplicates, bot messages, errors, stale/deleted/evicted parents
+  and unconfirmed delivery never start an implicit turn. Applications receive
+  the original human body as literal data, not reconstructed command text.
+
 - Discord command answers use native message replies without author pings,
   including streams with custom allowed-mention settings. Cards and file
   uploads reference the requesting message only in its original channel/thread;
