@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-- Discord command answers use native message replies without author pings.
-  Cards and file uploads reference the requesting message only when delivered
-  in its original channel/thread; edits retain their reference, explicit
+- Discord command answers use native message replies without author pings,
+  including streams with custom allowed-mention settings. Cards and file
+  uploads reference the requesting message only in its original channel/thread;
+  edits retain their reference, explicit
   cross-channel/new-thread routing stays unchanged, and deleted requesting
   messages do not cause a command rerun or blind send retry.
 
