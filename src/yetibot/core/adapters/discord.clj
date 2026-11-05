@@ -634,11 +634,14 @@
 
 (defn- create-message! [conn target {:keys [image file filename] :as part}]
   (let [[source message-id] (:command-key part)
-        options (cond-> (reply-options part)
+        payload (reply-options part)
+        options (cond-> payload
                   (and message-id (= source target))
                   (assoc :message-reference
                          {:message_id message-id :channel_id target
-                          :fail_if_not_exists false})
+                          :fail_if_not_exists false}
+                         :allowed-mentions
+                         (assoc (:allowed-mentions payload) :replied_user false))
                   (or image file)
                   (assoc :stream
                          {:content (java.io.ByteArrayInputStream.

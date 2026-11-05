@@ -4,9 +4,11 @@
             [yetibot.core.adapters.discord :as discord]))
 
 (facts "ordinary command answers use native replies without mentions"
-  (doseq [file? [false true]]
+  (doseq [file? [false true]
+          overrides [{} {:allowed-mentions {:parse []}}]]
     (let [calls (atom [])
-          part (cond-> {:content "answer" :command-key ["100" "200"]}
+          part (cond-> (merge {:content "answer"
+                               :command-key ["100" "200"]} overrides)
                  file? (assoc :file "full answer" :filename "answer.md"))]
       (with-redefs [messaging/create-message!
                     (fn [_ channel & options]
