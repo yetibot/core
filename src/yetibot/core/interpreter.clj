@@ -14,6 +14,9 @@
 (def ^:dynamic *yetibot-user*)
 (def ^:dynamic *chat-source*)
 (def ^:private ^:dynamic *expression-depth* 0)
+(def ^:dynamic *pipeline-input*
+  "Input data/provenance for one trusted nested expression, consumed once."
+  nil)
 (def
   ^{:dynamic true
     :doc
@@ -173,14 +176,18 @@
   ; look up the settings for channel in *chat-source*
   (let [channel-settings (channel/settings-for-chat-source *chat-source*)
         outer? (zero? *expression-depth*)
+        input *pipeline-input*
         result
-        (binding [*expression-depth* (inc *expression-depth*)]
+        (binding [*expression-depth* (inc *expression-depth*)
+                  *pipeline-input* nil]
           (reduce
             (partial #'pipe-cmds evaluator)
             ;; Commands may consume subsequent pipeline stages, e.g. queries
             ;; that push a collection operation into their query engine.
             {:settings channel-settings :skip-next-n (atom 0)
-             :value "" :data nil}
+             :value "" :data (:data input)
+             :data-collection (:data-collection input)
+             :public-result (public-result/projection (:public-result input))}
             (partition-all (count cmds) 1 cmds)))]
     (when outer?
       (public-result/observe! (:public-result result)))

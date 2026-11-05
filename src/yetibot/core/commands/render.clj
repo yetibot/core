@@ -5,6 +5,7 @@
             selmer.util
             [taoensso.timbre :refer [info]]
             [yetibot.core.hooks :refer [cmd-hook]]
+            [yetibot.core.util.public-result :as public]
             [yetibot.core.interpreter :refer [handle-cmd]]))
 
 ;; configure html unescaping in Selmer since our target is not HTML:
@@ -46,14 +47,17 @@
   [{data :data match :match raw :raw :as args}]
   (info "render-cmd" {:data data :match match :raw raw})
   (try
-    (let [template (if (and raw (not (coll? raw)))
-                     (string/replace match (str " " raw) "") ;; remove piped args
+    (let [suffix (when (and (some? raw) (not (coll? raw))
+                            (seq (str raw)))
+                   (str " " raw))
+          template (if (and suffix (string/ends-with? match suffix))
+                     (subs match 0 (- (count match) (count suffix)))
                      match)
           rendered (if (sequential? data)
-                     (map (partial render template) data)
+                     (mapv (partial render template) data)
                      (render template data))]
-      {:result/data {:data data :template template}
-       :result/value rendered})
+      (public/forward args
+        {:result/data data :result/value rendered}))
     (catch Exception e
       (info "Error rendering template")
       ;; (debug e)

@@ -8,7 +8,7 @@
     [yetibot.core.chat :refer [*target* *adapter-uuid* chat-data-structure]]
     [yetibot.core.db.cron :as db]
     [yetibot.core.util.format :refer [remove-surrounding-quotes]]
-    [taoensso.timbre :refer [error debug info color-str]]
+    [taoensso.timbre :refer [info]]
     [hara.io.scheduler.tab :as tab]
     [hara.io.scheduler :as cron]
     [yetibot.core.hooks :refer [cmd-hook]]))
@@ -26,39 +26,46 @@
   ;; if the task doesn't exist this silently fails
   (cron/delete-task scheduler (id-to-task-id id)))
 
-(defn- wire-cron!
+(def ^:dynamic *scheduled?* false)
+
+(defn- management-allowed! []
+  (when *scheduled?*
+    (throw (ex-info "Scheduled commands cannot manage cron schedules." {}))))
+
+(defn wire-cron!
+  "Install/replace a persisted task. Trusted callers must authorize its scope
+  and owner before calling; this never evaluates the command immediately."
   [{:keys [id user-id chat-source-room chat-source-adapter schedule cmd] :as cron}]
-  (info "wire-cron!" (color-str :green (pr-str cron)))
+  (info "wire-cron!" (select-keys cron [:id :chat-source-room]))
   (let [chat-source {:room chat-source-room
                      :is-private false
                      :uuid (read-string chat-source-adapter)}
-        handler (fn [t]
-                  (info "cron triggered:" (pr-str t))
-                  (info id chat-source-room chat-source-adapter schedule cmd)
+        handler (fn [_]
+                  (info "cron triggered" {:id id :room chat-source-room})
                   (try
-                    (binding [*chat-source* chat-source
+                    (binding [*scheduled?* true
+                              *chat-source* chat-source
                               *current-user* {:id user-id}
                               *target* chat-source-room
                               *adapter-uuid* (read-string chat-source-adapter)]
                       (let [expr (str command/config-prefix cmd)
-                            [{:keys [error? timeout? result] :as expr-result}]
+                            [{:keys [error? timeout? result]}]
                             (record-and-run-raw expr nil nil)]
-                        (info "cron result" (pr-str expr-result))
+                        (info "cron evaluated" {:id id :error? error?
+                                                :timeout? timeout?})
                         (if (and result (not error?) (not timeout?))
                           (chat-data-structure result)
                           (info
                             "Skipping cron because it errored or timed out"
-                            (pr-str expr-result)))))
+                            {:id id}))))
                     (catch Throwable e
                       (info "Error in cron:" e))))
         task-id (id-to-task-id id)]
     ;; if a task with the same ID already exists, delete it before re-adding it
     (delete-task-if-exists! id)
     ;; add the task to the scheduler!
-    (info (color-str :yellow "scheduling task:")
-          (pr-str (cron/add-task scheduler task-id
-                                 {:handler handler
-                                  :schedule schedule})))))
+    (cron/add-task scheduler task-id
+                   {:handler handler :schedule schedule})))
 
 (defn- load-and-wire-crons! []
   (cron/start! scheduler)
@@ -112,6 +119,7 @@
     user :user
     {:keys [uuid room] :as chat-source} :chat-source}]
 
+  (management-allowed!)
   ;; validate `cron-schedule` before persisting
   ;; Note: tab/valid-tab? makes very weak gaurantees
   (if (tab/valid-tab? cron-schedule)
@@ -139,12 +147,14 @@
 (defn stop-cmd
   "cron stop # stop all scheduled tasks"
   [_]
+  (management-allowed!)
   (cron/stop! scheduler)
   "Stopped cron tasks 🛑")
 
 (defn start-cmd
   "cron start # start all scheduled tasks if not already started"
   [_]
+  (management-allowed!)
   (if (cron/stopped? scheduler)
     (and
       (cron/start! scheduler)
@@ -154,6 +164,7 @@
 (defn list-cmd
   "cron list # list the configured cron tasks"
   [{{:keys [uuid room]} :chat-source}]
+  (management-allowed!)
   (let [crons (db/query {:where/map {:chat-source-adapter (pr-str uuid)}})]
     {:result/value (map format-cron-entity crons)
      :result/data crons}))
@@ -161,6 +172,7 @@
 (defn remove-cmd
   "cron remove <task-id> # remove a task by id"
   [{[_ id] :match}]
+  (management-allowed!)
   (let [int-id (read-string id)]
     (if-let [[entity] (db/query {:where/map {:id int-id}})]
       (do

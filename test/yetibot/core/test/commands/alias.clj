@@ -97,7 +97,9 @@
           (when f (f {:args "bob" :user user :yetibot-user bot}))
           => "alias result"
           @runs => [[(str command/config-prefix "echo hi bob") user bot
-                     {:record-yetibot-response? false}]])))))
+                     {:record-yetibot-response? false
+                      :retain-pipeline? true
+                      :pipeline-input {}}]])))))
 
 (facts "creating and replacing aliases retain their acknowledgments"
   (doseq [[old expected] [[nil "mp alias created"]

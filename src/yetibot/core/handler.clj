@@ -177,7 +177,8 @@
 
    Otherwise returns nil for non expressions.
    "
-  [body user yetibot-user & [{:keys [record-yetibot-response?]
+  [body user yetibot-user & [{:keys [record-yetibot-response? retain-pipeline?
+                                        pipeline-input]
                               :or {record-yetibot-response? true}}]]
   (trace "record-and-run-raw" body record-yetibot-response?
          interp/*chat-source*)
@@ -201,13 +202,13 @@
              [(go (map
                    (fn [parse-tree]
                      (try
-                       (let [{:keys [result error?] :as handled-expr-info}
-                             (->handled-expr-info (handle-parsed-expr
-                                                   interp/*chat-source*
-                                                   user
-                                                   yetibot-user
-                                                   parse-tree)
-                                                  parse-tree)]
+                       (let [pipeline
+                             (binding [interp/*pipeline-input*
+                                       (when retain-pipeline? pipeline-input)]
+                               (handle-parsed-expr interp/*chat-source* user
+                                                   yetibot-user parse-tree))
+                             {:keys [result error?] :as handled-expr-info}
+                             (->handled-expr-info pipeline parse-tree)]
 
                          (add-bot-response-to-history handled-expr-info
                                                       yetibot-user
@@ -215,9 +216,15 @@
                                                       correlation-id)
 
                          ;; don't report errors on embedded commands
-                         {:embedded? embedded?
-                          :error? error?
-                          :result result})
+                         (cond-> {:embedded? embedded?
+                                  :error? error?
+                                  :result result}
+                           ;; Trusted nested callers can retain data/provenance.
+                           ;; Ordinary chat/history results remain value-only.
+                           retain-pipeline?
+                           (assoc :pipeline-result
+                                  (select-keys pipeline
+                                    [:data :data-collection :public-result]))))
                        (catch Throwable ex
                          (public-result/error! "exception" (:status (ex-data ex)))
                          (error "error handling expression:" body

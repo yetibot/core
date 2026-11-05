@@ -7,6 +7,7 @@
                                       remove-surrounding-quotes]]
     [yetibot.core.handler :refer [record-and-run-raw]]
     [yetibot.core.util.command :as command]
+    [yetibot.core.util.public-result :as public]
     [yetibot.core.models.help :as help]
     [yetibot.core.db.alias :as model]
     [yetibot.core.hooks :refer [cmd-hook cmd-unhook]]))
@@ -14,7 +15,7 @@
 (def method-like-replacement-prefix "\\$")
 
 (defn- build-alias-cmd-fn [cmd]
-  (fn [{:keys [user args yetibot-user]}]
+  (fn [{:keys [user args yetibot-user] :as input}]
     (let [args (if (empty? args) [] (s/split args #" "))
           ;; this binding must be constrained to just computing the expr so it
           ;; doesn't interfere with regular/default substitution in the
@@ -26,8 +27,21 @@
                                       ;; response since the parent command
                                       ;; execution that evaluated the alias
                                       ;; will record the nested response
-                                      {:record-yetibot-response? false})]
-      (first (map :result results)))))
+                                      {:record-yetibot-response? false
+                                       :retain-pipeline? true
+                                       :pipeline-input
+                                       (select-keys input [:data :data-collection
+                                                           :public-result])})
+          {:keys [result error? timeout? pipeline-result]} (first results)]
+      (cond
+        (or error? timeout?)
+        (public/forward pipeline-result {:result/error result})
+        pipeline-result
+        (public/forward pipeline-result
+          {:result/value result
+           :result/data (:data pipeline-result)
+           :result/data-collection (:data-collection pipeline-result)})
+        :else result))))
 
 (defn- existing-alias [cmd-name]
   (first (model/query {:where/map {:cmd-name cmd-name}})))

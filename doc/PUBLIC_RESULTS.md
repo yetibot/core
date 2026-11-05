@@ -46,6 +46,15 @@ aggregate reviewed child projections in output order, leaving unreviewed
 positions nil rather than copying raw child results. Unknown transformations or
 unaligned/unreviewed input do not publish stale upstream data.
 
+Aliases retain the nested expression's raw data, companion collection and
+already-authenticated public projection. They do not review untrusted fields.
+`render` preserves those input records and their reviewed projection while
+changing only the display value; its `:result/data` is the original data, not
+`{:data ... :template ...}`. A nested `weather | render` alias can therefore
+flow through `xargs`, sorting and selections without losing weather records.
+The handler exposes nested pipeline state only to explicit trusted callers;
+ordinary chat responses and history do not retain that private envelope.
+
 The request-local observer does not alter values or data flowing through pipes.
 Only bounded copies of approved fields enter the existing command cache;
 unsupported objects are unavailable and obvious credential/private field names
