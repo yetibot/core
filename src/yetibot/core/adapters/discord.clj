@@ -154,6 +154,76 @@
 
 (declare replace-replies! retire-status! cleanup-status! owns-command?)
 
+(defn- valid-continuation? [route]
+  (and (map? route)
+       (every? #{:command :provider :model :provider-signature :no-tools
+                 :verified-free :toolset :max-tool-calls} (keys route))
+       (contains? #{"ai" "grok" "zen"} (:command route))
+       (every? #(and (string? %) (re-matches #"[A-Za-z0-9@._:/-]{1,200}" %))
+               [(:provider route) (:model route)])
+       (string? (:provider-signature route))
+       (re-matches #"[a-f0-9]{64}" (:provider-signature route))
+       (every? #(or (not (contains? route %)) (boolean? (get route %)))
+               [:no-tools :verified-free])
+       (or (not (contains? route :toolset))
+           (and (string? (:toolset route))
+                (re-matches #"[A-Za-z0-9._-]{1,100}" (:toolset route))))
+       (or (not (contains? route :max-tool-calls))
+           (and (integer? (:max-tool-calls route))
+                (<= 1 (:max-tool-calls route) 20)))))
+
+(defn- valid-followup? [conn {:keys [parent-key parent-revision route]}]
+  (let [entry (get-in @conn [:commands parent-key])
+        continuation (some-> entry :continuation deref)]
+    (and entry (:ready? continuation)
+         (identical? parent-revision @(:revision entry))
+         (identical? parent-revision (:revision continuation))
+         (= route (:route continuation)))))
+
+(defn command-followup
+  "Host-owned route for this active literal follow-up, nil for ordinary commands.
+   :stale means ownership changed: fail closed, never parse the plain body."
+  []
+  (when-let [followup (:followup *command-context*)]
+    (if (and (owns-command? *command-context*)
+             (valid-followup? (:conn *command-context*) followup))
+      (:route followup) :stale)))
+
+(defn remember-command-continuation!
+  "Trusted application code may mark a successful standalone AI answer.
+   Closed metadata only: never prompts, credentials, arguments or callbacks.
+   Admission waits for successful terminal delivery and current ownership."
+  [route]
+  (when-not (valid-continuation? route)
+    (throw (IllegalArgumentException. "Invalid AI continuation route")))
+  (if-let [{:keys [entry conn revision] :as context} *command-context*]
+    (if (and (owns-command? context)
+             (identical? conn (:conn chat/*adapter*)))
+      (do (reset! (:continuation entry) {:route route :revision revision})
+          :accepted)
+      :stale)
+    :unavailable))
+
+(defn- followup-route [event conn]
+  (let [reference (:message-reference event)
+        channel (:channel-id event) id (:message-id reference)
+        snowflake? #(and (string? %) (re-matches #"[0-9]{1,20}" %))]
+    (when (and (map? reference) (= 0 (get reference :type 0))
+               (= channel (get reference :channel-id channel))
+               (every? snowflake? [channel id (:id event)])
+               (< (bigint id) (bigint (:id event)))
+               (string? (:content event)) (not (str/blank? (:content event))))
+      (some (fn [[key entry]]
+              (let [continuation (some-> entry :continuation deref)
+                    followup {:parent-key key
+                              :parent-revision (:revision continuation)
+                              :route (:route continuation)}]
+                (when (and (valid-followup? conn followup)
+                           (some #(and (= channel (:target %)) (= id (:id %)))
+                                 @(:replies entry)))
+                  followup)))
+            (:commands @conn)))))
+
 (defn command-timing?
   "True when the shared Discord renderer owns this request's elapsed caption."
   [] (boolean (:timing *command-context*)))
@@ -262,7 +332,7 @@
         (cond-> route (:target route)
           (assoc :body (str command/config-prefix expression)))))))
 
-(defn- register-command! [event conn revision & [expected]]
+(defn- register-command! [event conn revision & [expected followup]]
   ;; This short metadata lock never waits on the per-command REST IO lock.
   (locking conn
     (let [key [(:channel-id event) (:id event)]
@@ -275,8 +345,9 @@
                  :details (atom nil)
                  :inspection (atom (inspection/initial))
                  :confirmation (atom nil)
+                 :continuation (atom nil)
                  :thread-state (or (:thread-state previous) (atom {}))}
-          entry (assoc (dissoc owner :running) :event event)]
+          entry (assoc (dissoc owner :running) :event event :followup followup)]
       (when (or (nil? expected) (identical? expected @(:revision owner)))
         (when-let [status (get-in @conn [:command-statuses key])]
           (retire-status! {:conn conn :key key :status status :entry entry
@@ -304,14 +375,16 @@
                              (get-in @conn [:active-commands key :running])))
         (swap! conn update :active-commands dissoc key)))))
 
-(defn- run-command! [event conn yetibot-user & [expected]]
+(defn- run-command! [event conn yetibot-user & [expected followup]]
   (let [revision (Object.)
         timing {:started (monotonic-time) :finished (atom nil)}]
-    (when-let [[key owner entry] (register-command! event conn revision expected)]
+    (when-let [[key owner entry]
+               (register-command! event conn revision expected followup)]
       (let [output (atom [])
             live? (atom false)
             status (atom {})
             context {:conn conn :entry entry :key key :timing timing
+                     :followup followup
                      :running (:running owner) :revision revision
                      :output output :live? live? :status status
                      :status-ref (atom status) :thread-target (atom nil)}]
@@ -327,9 +400,10 @@
                                      (= chat/*target* @(:thread-target context))))
                         @(:thread-target context)))]
             (try
-              (when (and (command? event)
+              (when (and (if followup (valid-followup? conn followup)
+                             (command? event))
                          (identical? revision @(:revision entry)))
-                (let [route (thread-route! event)
+                (let [route (when-not followup (thread-route! event))
                       completion (when (identical? revision @(:revision entry))
                                    (run-message! event yetibot-user route))]
                   (when completion (async/<!! completion))))
@@ -345,7 +419,10 @@
                     (with-command-lock (:lock entry)
                       (try
                         (when (identical? revision @(:revision entry))
-                          (replace-replies! conn (:replies entry) @output))
+                          (replace-replies! conn (:replies entry) @output)
+                          (when-not (:error? @(:inspection entry))
+                            (swap! (:continuation entry)
+                                   #(when % (assoc % :ready? true)))))
                         (finally (cleanup-status! context))))
                     (finally
                       (locking (:status context)
@@ -358,15 +435,26 @@
 (defmethod handle-event :message-create
   [_ event-data conn yetibot-user]
   (when-not (bot-message? event-data yetibot-user)
-    (if (and (:id event-data) (command? event-data))
-      (run-command! event-data conn yetibot-user)
-      (run-message! event-data yetibot-user))))
+    (let [explicit? (when (string? (:content event-data))
+                      (command/extract-command (:content event-data)))
+          followup (when-not explicit? (followup-route event-data conn))]
+      (cond
+        followup
+        ;; Duplicate gateway creates must not repeat an implicit paid turn.
+        (locking conn
+          (let [key [(:channel-id event-data) (:id event-data)]]
+            (when-not (or (get-in @conn [:commands key])
+                          (get-in @conn [:active-commands key]))
+              (run-command! event-data conn yetibot-user nil followup))))
+        (and (:id event-data) (command? event-data))
+        (run-command! event-data conn yetibot-user)
+        :else (run-message! event-data yetibot-user)))))
 
 (defmethod handle-event :message-update
   [_ event-data conn yetibot-user]
   ;; Discord also sends updates for link previews. Only content/attachment
   ;; changes should rerun commands; partial events retain the original context.
-  (when (and (contains? event-data :content)
+  (when (and (string? (:content event-data))
              (not (bot-message? event-data yetibot-user)))
     (let [previous (get-in @conn [:commands [(:channel-id event-data)
                                            (:id event-data)]])]
@@ -382,7 +470,30 @@
                      (or (nil? previous)
                          (not= (select-keys original [:content :attachments])
                                (select-keys event [:content :attachments]))))
-            (run-command! event conn yetibot-user)))))))
+            (let [followup (when-not (command/extract-command (:content event))
+                             (or (followup-route event conn)
+                                 (:followup previous)))]
+              (run-command! event conn yetibot-user nil followup))))))))
+
+(defn- forget-continuations! [conn channel ids]
+  (locking conn
+    (doseq [[key entry] (:commands @conn)]
+      (cond
+        (and (= channel (first key)) (contains? ids (second key)))
+        (do (reset! (:revision entry) nil)
+            (swap! conn update :commands #(cache/evict % key)))
+        (some #(and (= channel (:target %)) (contains? ids (:id %)))
+              @(:replies entry))
+        (when-let [state (:continuation entry)] (reset! state nil)))))
+  nil)
+
+(defmethod handle-event :message-delete
+  [_ event conn _]
+  (forget-continuations! conn (:channel-id event) #{(:id event)}))
+
+(defmethod handle-event :message-delete-bulk
+  [_ event conn _]
+  (forget-continuations! conn (:channel-id event) (set (:ids event))))
 
 (defn- interaction-reply! [conn event text]
   (messaging/create-interaction-response!
@@ -459,7 +570,9 @@
                 (timbre/warn "Discord rerun confirmation cleanup unconfirmed"))
               (catch Exception _
                 (timbre/warn "Discord rerun confirmation cleanup failed")))
-            (when-let [completion (run-command! (:event entry) conn yetibot-user expected)]
+            (when-let [completion
+                       (run-command! (:event entry) conn yetibot-user
+                                     expected (:followup entry))]
               (async/<!! completion))))
         (finally (swap! conn update :reruns disj key))))))
 
