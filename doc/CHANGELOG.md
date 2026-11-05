@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Discord command answers use native message replies without author pings.
+  Cards and file uploads reference the requesting message only when delivered
+  in its original channel/thread; edits retain their reference, explicit
+  cross-channel/new-thread routing stays unchanged, and deleted requesting
+  messages do not cause a command rerun or blind send retry.
+
+- Preserve structured data and authenticated public projections through nested
+  aliases and render. Render keeps its input records (not a template wrapper),
+  so xargs/sort/select can keep formatted rows and weather data paired. Normal
+  chat/history results remain value-only. Scheduled commands cannot manage cron
+  schedules, including through aliases; trusted scheduler integrations can
+  register persisted tasks without executing them immediately.
+
 - Keep reviewed public data paired with collection values through random,
   head/tail/take, filters, reordering, duplicate removal and flattening. Publish
   only completed pipeline data, not intermediate catalogs; retain per-stage
