@@ -5,6 +5,7 @@
     [clojure.stacktrace :refer [print-stack-trace]]
     [nrepl.server :as nrepl]
     [yetibot.core.db :as db]
+    [yetibot.core.util.ai-usage :as usage]
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.logging :as logging]
     [yetibot.core.webapp.handler :as web]
@@ -43,9 +44,11 @@
 
 (defn -main [& args]
   (do
+    (usage/require-tracking!)
     (welcome-message!)
     (start-nrepl!)
     (db/start)
+    (usage/start!)
     (logging/start)
     (monitoring/start)
     (adapters/start)

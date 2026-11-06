@@ -8,6 +8,7 @@
    [yetibot.core.chat :as chat :refer [chat-data-structure]]
    [yetibot.core.util.command :refer [extract-command embedded-cmds]]
    [yetibot.core.util.public-result :as public-result]
+   [yetibot.core.util.ai-usage :as usage]
    [yetibot.core.interpreter :as interp]
    [yetibot.core.models.history :as h]
    [yetibot.core.unparser :refer [unparse]]
@@ -100,7 +101,8 @@
   (binding [interp/*current-user* user
             interp/*yetibot-user* yetibot-user
             interp/*chat-source* chat-source]
-    (transformer parse-tree)))
+    (binding [usage/*context-id* (usage/context-id)]
+      (transformer parse-tree))))
 
 (defn ->handled-expr-info
   "Helper to transform a handled user expression (command) and return an info

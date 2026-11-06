@@ -6,7 +6,8 @@
             [clojure.string :as string]
             [taoensso.timbre :refer [info warn error]]
             [yetibot.core.config :refer [get-config]]
-            [yetibot.core.db.image-budget :as image-budget])
+            [yetibot.core.db.image-budget :as image-budget]
+            [yetibot.core.util.ai-usage :as usage])
   (:import [java.time YearMonth]
            [java.time.format DateTimeFormatter]
            [java.util Base64]))
@@ -51,16 +52,16 @@
    "Default estimated cost per generated image in USD (gemini-3.1-flash-image-preview pricing, tied to default-model)."
    0.039)
 
+(def ^:private image-model-costs
+  {"gemini-3.1-flash-image-preview" 0.039})
+
 (def ^:private default-monthly-budget
   "Default monthly budget in USD for image generation."
   5.00)
 
 (defn cost-per-image []
    (or (parse-number (-> config :cost :per))
-       (case (gemini-model)
-         "gemini-3.1-flash-image-preview" 0.039
-         ;; Add other models and their costs here as needed
-         default-cost-per-image)))
+       (get image-model-costs (gemini-model) default-cost-per-image)))
 
 (defn- monthly-budget []
    (or (parse-number (-> config :monthly :budget)) default-monthly-budget))
@@ -308,11 +309,23 @@
                 system-instruction
                 (assoc :systemInstruction
                        {:parts [{:text system-instruction}]}))
-         response (client/post url
-                               {:content-type :json
-                                :body (json/write-str body)
-                                :as :json
-                                :throw-exceptions false})
+         response (usage/capture!
+                    {:provider "gemini" :model model :operation "image"
+                     :secrets [api-key]}
+                    #(client/post url
+                       {:content-type :json :body (json/write-str body)
+                        :as :json :throw-exceptions false
+                        :redirect-strategy :none :retry-handler (fn [& _] false)})
+                    (fn [response]
+                      (let [image (extract-image (:body response))
+                            price (when (and image
+                                             (or (contains? image-model-costs model)
+                                                 (some? (get-in config [:cost :per]))))
+                                    (cost-per-image))]
+                        (cond-> (usage/response-metrics response)
+                          image (assoc :images 1)
+                          (usage/amount? price)
+                          (assoc :usd price :cost_kind "estimate")))))
          status (:status response)]
      (when-not (<= 200 status 299)
        (let [error-msg (extract-api-error (:body response))]
@@ -402,8 +415,9 @@
         resp (client/post url (merge veo-http-timeouts
                                      {:content-type :json
                                       :body (json/write-str body)
-                                      :as :json
-                                      :throw-exceptions false}))]
+                                      :as :json :throw-exceptions false
+                                      :redirect-strategy :none
+                                      :retry-handler (fn [& _] false)}))]
     (if (<= 200 (:status resp) 299)
       (get-in resp [:body :name])
       (let [msg (extract-api-error (:body resp))]
@@ -450,13 +464,25 @@
    (check-budget!)
    (let [model (or model (veo-model))
          duration (or duration (veo-duration))
-         op (veo-start prompt (some-> (first image-urls) veo-image-part) model duration)
-         _ (info "veo: generation started" op)
-         done (veo-poll op)
-         uri (get-in done [:response :generateVideoResponse :generatedSamples 0 :video :uri])]
-     (when (string/blank? uri)
-       (throw (ex-info "No video was generated. Try a different prompt."
-                       {:type :no-video-generated :response (:response done)})))
-     (let [data (veo-download uri)]
-       (record-image-generated! (veo-cost-units-for-model model duration))
-       {:data data :mime-type "video/mp4"}))))
+         image (some-> (first image-urls) veo-image-part)]
+     (usage/capture!
+       {:provider "gemini" :model model :operation "video"
+        :secrets [(:key config)]}
+       (fn []
+         (let [op (veo-start prompt image model duration)
+               _ (info "veo: generation started" op)
+               done (veo-poll op)
+               uri (get-in done [:response :generateVideoResponse
+                                 :generatedSamples 0 :video :uri])]
+           (when (string/blank? uri)
+             (throw (ex-info "No video was generated. Try a different prompt."
+                             {:type :no-video-generated})))
+           (let [data (veo-download uri)]
+             (record-image-generated! (veo-cost-units-for-model model duration))
+             {:data data :mime-type "video/mp4"})))
+       (fn [_]
+         (cond-> {:seconds duration}
+           (or (= model default-veo-model)
+               (usage/amount? (get-in config [:veo :cost-per-second])))
+           (assoc :usd (calculate-video-cost model duration)
+                  :cost_kind "estimate")))))))
