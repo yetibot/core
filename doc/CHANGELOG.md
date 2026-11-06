@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Reserve anonymous durable AI usage rows before model HTTP requests and Gemini
+  CLI spawn. Refuse unrecorded inference, retain completed results if final
+  ledger accounting fails, and never retry paid work for bookkeeping. Cover
+  legacy xAI, Gemini image/video and agent sessions; bind anonymous command and
+  delegated-request contexts without changing the handler API. Add consistent,
+  bounded timeframe aggregates with separate reported/estimated USD, unknown
+  usage and an idempotent rollout marker. See [AI usage](AI_USAGE.md).
+
 - Admit reply-scoped AI continuations only from successful, terminally delivered
   owned answers. Keep closed routing metadata in the bounded command cache,
   tied to its revision and actual same-channel reply IDs. Explicit commands

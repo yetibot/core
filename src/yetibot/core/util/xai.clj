@@ -4,7 +4,8 @@
             [clojure.data.json :as json]
             [clojure.spec.alpha :as s]
             [taoensso.timbre :refer [info error]]
-            [yetibot.core.config :refer [get-config]]))
+            [yetibot.core.config :refer [get-config]]
+            [yetibot.core.util.ai-usage :as usage]))
 
 (s/def ::key string?)
 (s/def ::config (s/keys :req-un [::key]))
@@ -62,7 +63,6 @@
   ([prompt] (generate-image prompt nil nil))
   ([prompt image-urls] (generate-image prompt nil image-urls))
   ([prompt system-instruction image-urls]
-   (println "DEBUG: generate-image called with prompt=" (pr-str prompt) "system-instruction=" (pr-str system-instruction) "image-urls=" (pr-str image-urls))
    (let [api-key (:key config)
          has-images? (seq image-urls)
          url (if has-images?
@@ -99,12 +99,22 @@
                     (assoc b :image {:url (first image-urls)
                                      :type "image_url"}))
                   b))
-         response (client/post url
-                               {:headers {"Authorization" (str "Bearer " api-key)}
-                                :content-type :json
-                                :body (json/write-str body)
-                                :as :json
-                                :throw-exceptions false})
+         response (usage/capture!
+                    {:provider "xai" :model (:model body) :operation "image"
+                     :secrets [api-key]}
+                    #(client/post url
+                       {:headers {"Authorization" (str "Bearer " api-key)}
+                        :content-type :json :body (json/write-str body)
+                        :as :json :throw-exceptions false
+                        :redirect-strategy :none :retry-handler (fn [& _] false)})
+                    (fn [response]
+                      (let [metrics (usage/xai-metrics (:model body) response)]
+                        (cond-> metrics
+                          (get-in response [:body :data 0 :b64_json])
+                          (merge {:images 1}
+                                 (when-not (:usd metrics)
+                                   {:usd cost-per-image
+                                    :cost_kind "estimate"}))))))
          status (:status response)]
      (if (<= 200 status 299)
        (if-let [b64-data (get-in (:body response) [:data 0 :b64_json])]
@@ -170,12 +180,15 @@
        body {:model "grok-4.7"
             :input input
             :tools [{:type "web_search"} {:type "x_search"}]}
-       response (client/post url
-                            {:headers {"Authorization" (str "Bearer " api-key)}
-                             :content-type :json
-                             :body (json/write-str body)
-                             :as :json
-                             :throw-exceptions false})
+       response (usage/capture!
+                  {:provider "xai" :model (:model body) :operation "text"
+                   :secrets [api-key]}
+                  #(client/post url
+                     {:headers {"Authorization" (str "Bearer " api-key)}
+                      :content-type :json :body (json/write-str body)
+                      :as :json :throw-exceptions false
+                      :redirect-strategy :none :retry-handler (fn [& _] false)})
+                  (partial usage/xai-metrics (:model body)))
        status (:status response)]
        (if (<= 200 status 299)
        (let [output (get-in (:body response) [:output])

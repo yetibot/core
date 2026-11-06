@@ -35,7 +35,8 @@
    [yetibot.core.models.help :as help]
    [yetibot.core.commands.alias :as alias]
    [yetibot.core.handler :refer [record-and-run-raw]]
-   [yetibot.core.util.gemini :as gemini])
+   [yetibot.core.util.gemini :as gemini]
+   [yetibot.core.util.ai-usage :as usage])
   (:import
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]
@@ -544,22 +545,25 @@
       (.put "GIT_CONFIG_KEY_2" "url.https://github.com/.insteadOf")
       (.put "GIT_CONFIG_VALUE_2" "ssh://git@github.com/"))
     (info "running gemini agent" (cli-bin) "in" (str workdir))
-    (let [proc (.start pb)
-          timed-out (atom false)
-          ;; hard wall-clock cap: kill the run if it overruns
-          watchdog (future
-                     (Thread/sleep (agent-timeout-ms))
-                     (when (.isAlive proc)
-                       (reset! timed-out true)
-                       (kill-tree! proc)))
-          stdout (slurp (.getInputStream proc))
-          exit (.waitFor proc)]
-      (future-cancel watchdog)
-      (let [parsed (parse-json-raw stdout)]
-        {:response (redact (:response parsed))
-         :stats (:stats parsed)
-         :exit exit
-         :timed-out @timed-out}))))
+    (usage/capture!
+      {:provider "gemini" :model (model) :operation "agent"
+       :secrets [(gemini-key) token]}
+      (fn []
+        (let [proc (.start pb)
+              timed-out (atom false)
+              ;; Hard wall-clock cap, including descendant processes.
+              watchdog (future
+                         (Thread/sleep (agent-timeout-ms))
+                         (when (.isAlive proc)
+                           (reset! timed-out true)
+                           (kill-tree! proc)))
+              stdout (slurp (.getInputStream proc))
+              exit (.waitFor proc)]
+          (future-cancel watchdog)
+          (let [parsed (parse-json-raw stdout)]
+            {:response (redact (:response parsed))
+             :stats (:stats parsed) :exit exit :timed-out @timed-out})))
+      usage/cli-metrics)))
 
 ;; ---------------------------------------------------------------------------
 ;; Discord thread plumbing (guarded; degrades to plain replies elsewhere)
