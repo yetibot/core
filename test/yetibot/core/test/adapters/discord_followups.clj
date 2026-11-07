@@ -77,6 +77,16 @@
       (:route (last @seen)) => route
       (count @sent) => 3)))
 
+(fact "larger pinned budgets survive owned literal followups"
+  (with-redefs [route (assoc route :max-tool-calls 128
+                                  :max-output-tokens 262144)]
+    (session
+      (fn [{:keys [send! seen sent]}]
+        (send! (event "100" "!ai first"))
+        (send! (event "300" "--max-output-tokens 1 | echo literal" "200"))
+        (:route (last @seen)) => route
+        (count @sent) => 2))))
+
 (fact "explicit commands override, duplicates do not re-run paid followups"
   (session
     (fn [{:keys [send! seen sent]}]
@@ -145,7 +155,10 @@
                (assoc route :headers {"Authorization" "private"})
                (assoc route :callback identity)
                (assoc route :toolset (apply str (repeat 101 "x")))
-               (assoc route :max-tool-calls 21)
+               (assoc route :max-tool-calls 129)
+               (assoc route :max-output-tokens 262145)
+               (assoc route :max-output-tokens 0)
+               (assoc route :max-output-tokens "65536")
                (assoc route :verified-free "true")]]
     (try (host 'remember-command-continuation! bad) :unsafe
          (catch IllegalArgumentException _ :blocked)) => :blocked))

@@ -157,7 +157,8 @@
 (defn- valid-continuation? [route]
   (and (map? route)
        (every? #{:command :provider :model :provider-signature :no-tools
-                 :verified-free :toolset :max-tool-calls} (keys route))
+                 :verified-free :toolset :max-tool-calls :max-output-tokens}
+               (keys route))
        (contains? #{"ai" "grok" "zen"} (:command route))
        (every? #(and (string? %) (re-matches #"[A-Za-z0-9@._:/-]{1,200}" %))
                [(:provider route) (:model route)])
@@ -170,7 +171,10 @@
                 (re-matches #"[A-Za-z0-9._-]{1,100}" (:toolset route))))
        (or (not (contains? route :max-tool-calls))
            (and (integer? (:max-tool-calls route))
-                (<= 1 (:max-tool-calls route) 20)))))
+                (<= 1 (:max-tool-calls route) 128)))
+       (or (not (contains? route :max-output-tokens))
+           (and (integer? (:max-output-tokens route))
+                (<= 1 (:max-output-tokens route) 262144)))))
 
 (defn- valid-followup? [conn {:keys [parent-key parent-revision route]}]
   (let [entry (get-in @conn [:commands parent-key])
