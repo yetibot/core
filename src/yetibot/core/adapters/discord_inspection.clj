@@ -2,7 +2,6 @@
   "Bounded opt-in public snapshots and read-only Discord navigation."
   (:require [clojure.data.json :as json]
             [clojure.string :as str]
-            [clojure.walk :as walk]
             [yetibot.core.adapters.discord-components :as components]))
 
 (defn initial []
@@ -142,11 +141,11 @@
                    id)]
         {:action "page" :key [channel message] :token token
          :page (Long/parseLong page)})
-      (when-let [[_ channel message token _operation depth page]
+      (when-let [[_ action channel message token _operation depth page]
                  (re-matches
-                   #"yb:tree:([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16}):([ecpn]):([1-8]):([0-9]{1,2})"
+                   #"yb:(tree|error-tree):([0-9]{1,20}):([0-9]{1,20}):([a-f0-9]{16}):([ecpn]):([1-8]):([0-9]{1,2})"
                    id)]
-        {:action "tree" :key [channel message] :token token
+        {:action action :key [channel message] :token token
          :depth (Long/parseLong depth) :page (Long/parseLong page)})
       (when-let [[_ channel message token kind node page]
                  (re-matches
@@ -318,16 +317,21 @@
                   (inc newline) (count prefix))]
         (recur (subs remaining end) (conj pages (subs remaining 0 end)))))))
 
-(defn inline-data-payload
-  "Show the frozen public tree at up to two levels initially. Depth/page
-  controls are stateless and bounded; no paths, providers or commands run."
-  [state key base depth page]
-  (let [s @state value (root-value s "d")
+(defn- inline-tree-payload
+  "Render either frozen public snapshot with shared depth and paging controls."
+  [state key base kind depth page]
+  (let [s @state
+        error? (= kind "e")
+        value (root-value s kind)
+        action (if error? "error-tree" "tree")
+        panel (if error? "error" "data")
+        title (if error? "Error details" "Explore data")
         max-depth (reduce max 1 (map #(count (:path %)) (tree value)))
         depth (or depth (min 2 max-depth))
         page (or page 0)]
-    (when (and (:sealed? s) (:data? s) (integer? depth)
-               (<= 1 depth max-depth) (integer? page) (<= 0 page 99))
+    (when (and (:sealed? s) (get s (if error? :error? :data?))
+               (integer? depth) (<= 1 depth max-depth)
+               (integer? page) (<= 0 page 99))
       (let [encoded (-> (with-out-str
                          (json/pprint (depth-preview value depth)
                                       :escape-unicode false))
@@ -336,14 +340,18 @@
             token (:token s)
             button (fn [label operation level page disabled?]
                      {:type 2 :style 2 :label label :disabled disabled?
-                      :custom_id (str "yb:tree:" (str/join ":" key) ":" token
-                                      ":" operation ":" level ":" page)})]
+                      :custom_id (str "yb:" action ":" (str/join ":" key) ":"
+                                      token ":" operation ":" level ":" page)})]
         (when-let [preview (get pages page)]
           (components/inline-pane-payload
             base
             [{:type 10 :content
-              (str "**Explore data**\nDepth " depth " · Page " (inc page)
+              (str "**" title "**\nDepth " depth " · Page " (inc page)
                    " of " (count pages) "\n\n```json\n" preview "\n```"
+                   (when error?
+                     (str "\nOnly retained public diagnostics are shown."
+                          " Raw responses and private data were not retained"
+                          " for this view."))
                    "\n-# Retained public snapshot · collapsed branches show type/count."
                    " Large values may be shortened.")}
              {:type 1 :components
@@ -354,53 +362,17 @@
                 (conj (button "Previous" "p" depth (max 0 (dec page)) (zero? page))
                       (button "Next" "n" depth (min (dec (count pages)) (inc page))
                               (= page (dec (count pages))))))}]
-            (str (components/button-id "data" key) ":" token)
-            (str (components/button-id "data-hide" key) ":" token) "Hide data"))))))
+            (cond-> (components/button-id panel key)
+              (not error?) (str ":" token))
+            (str (components/button-id (str panel "-hide") key) ":" token)
+            (if error? "Hide error details" "Hide data")))))))
+
+(defn inline-data-payload
+  "Inspect retained public data without providers or command execution."
+  [state key base depth page]
+  (inline-tree-payload state key base "d" depth page))
 
 (defn inline-error-payload
-  "Expand reviewed diagnostics inside a retained public reply. The base is
-  JSON-only outbound presentation, not raw command/provider data. Never upload
-  files or clear attachments; collapsing restores the exact original card."
-  [state key base node page selected]
-  (when-let [pane (view-payload state key "e" node page selected
-                          {:preview-limit 1600 :inline? true})]
-    (when (and (= 1 (count (:components base)))
-               (= 17 (get-in base [:components 0 :type])))
-      (let [children (get-in base [:components 0 :components])
-            elapsed-index
-            (last (keep-indexed
-                    (fn [i c]
-                      (when (and (= 10 (:type c))
-                                 (re-matches #"-# [0-9]+[.][0-9]s"
-                                             (or (:content c) ""))) i)) children))
-            elapsed (when elapsed-index (get children elapsed-index))
-            children
-            (into []
-              (keep-indexed
-                (fn [i c]
-                  (when (not= i elapsed-index)
-                    (if (and (= 10 (:type c)) (> (count (:content c)) 1400))
-                      ;; Leave room for even a long closing Markdown fence.
-                      (update c :content
-                        #(str (components/answer-preview % 650)
-                              "\n-# Error message shortened while details are open."
-                              " Hide details to restore it."))
-                      c))) children))
-            hide-id (str "yb:error-hide:" (str/join ":" key) ":" (:token @state))
-            children (walk/postwalk
-                       (fn [c]
-                         (if (and (map? c)
-                                  (= (components/button-id "error" key)
-                                     (:custom_id c)))
-                           (assoc c :label "Hide error details" :custom_id hide-id)
-                           c)) children)
-            children (cond-> (into (conj children {:type 14 :divider true :spacing 1})
-                                    (get-in pane [:components 0 :components]))
-                       elapsed (conj elapsed))
-            result (assoc-in base [:components 0 :components] children)
-            nodes (filter map? (tree-seq coll? seq result))]
-        (when (and (<= (reduce + 0 (keep #(when (= 10 (:type %))
-                                           (count (:content %))) nodes))
-                       components/max-text-length)
-                   (<= (count (filter :type nodes)) 40))
-          result)))))
+  "Inspect retained public diagnostics using the same controls as public data."
+  [state key base depth page]
+  (inline-tree-payload state key base "e" depth page))

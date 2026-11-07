@@ -26,7 +26,9 @@
 (defn- page [state depth n]
   (inspect/inline-data-payload state ["200" "100"] (base state "Answer") depth n))
 (defn- preview [data]
-  (some #(when (str/starts-with? (or (:content %) "") "**Explore data**")
+  (some #(when (some (fn [title]
+                      (str/starts-with? (or (:content %) "") title))
+                    ["**Explore data**" "**Error details**"])
            (second (re-find #"(?s)```json\n(.*?)\n```" (:content %)))) (maps data)))
 
 (fact "public capture does not mutate pipeline data or trust serialized tags"
@@ -196,3 +198,48 @@
       (contains? expanded :attachments) => false
       (some? (button expanded "Hide data")) => true
       (button original "Hide data") => nil)))
+
+(fact "error depth and paging keep the complete retained JSON and typed controls"
+  (let [state (atom (inspect/initial))
+        note (apply str (repeat 80 "🙂`\""))
+        value {:calls (mapv (fn [i]
+                             {:call i :outcome "error"
+                              :diagnostic {:code "request-rejected"
+                                           :note (str i note)}})
+                           (range 7))}]
+    (binding [public-result/*capture* #(inspect/capture! state %)]
+      (public-result/observe!
+        (public-result/reviewed {:result/error "Some calls failed"
+                                :result/public-error value})))
+    (swap! state assoc :sealed? true)
+    (let [original (-> (components/payload
+                        {:content "Five answers retained" :error? true
+                         :command-key ["200" "100"] :elapsed "1.2s"})
+                      (dissoc :allowed-mentions))
+          page #(inspect/inline-error-payload state ["200" "100"] original %1 %2)
+          initial (page nil 0)
+          pages (loop [n 0 pages []]
+                  (let [view (page 4 n)
+                        pages (conj pages (preview view))]
+                    (some? view) => true
+                    (<= (count (text view)) 4000) => true
+                    (:disabled (button view "Expand")) => true
+                    (if (:disabled (button view "Next")) pages
+                        (recur (inc n) pages))))]
+      (> (count pages) 1) => true
+      (json/read-str (apply str pages)) => (first (:errors @state))
+      (str/includes? (text initial) "Depth 2") => true
+      (str/includes? (text initial) "not retained") => true
+      (:disabled (button (page 1 0) "Collapse")) => true
+      (:action (inspect/parse-control (:custom_id (button initial "Expand"))))
+      => "error-tree"
+      (:action (inspect/parse-control (:custom_id (button (page 4 0) "Next"))))
+      => "error-tree"
+      (some? (button initial "Hide error details")) => true
+      (button initial "Hide data") => nil
+      (page 0 0) => nil
+      (page 5 0) => nil
+      (page 2 99) => nil
+      (inspect/inline-data-payload state ["200" "100"] original 2 0) => nil
+      (swap! state assoc :error? false)
+      (page 2 0) => nil)))
