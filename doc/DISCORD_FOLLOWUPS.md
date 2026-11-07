@@ -10,7 +10,9 @@ Discord reply IDs. There is no additional conversation-text session store.
 
 `remember-command-continuation!` accepts `:command`, `:provider`, `:model` and a
 64-character lowercase `:provider-signature`, plus optional boolean `:no-tools`
-and `:verified-free`, bounded `:toolset` and integer `:max-tool-calls` (1–20).
+and `:verified-free`, bounded `:toolset`, integer `:max-tool-calls` (1–128)
+and integer `:max-output-tokens` (1–262144). These host-owned effective budgets
+are pinned routing options, never parsed from literal reply text.
 Unknown fields, callbacks, prompts, credentials and executable text are not
 accepted. It returns `:accepted`, `:stale` or `:unavailable`; invalid metadata
 throws a static `IllegalArgumentException`. Applications must verify successful
