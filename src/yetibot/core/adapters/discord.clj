@@ -505,7 +505,7 @@
     :data (components/interaction-payload text)))
 
 (defn- inline-details! [conn event entry expected
-                     {:keys [action key token node page depth]}]
+                     {:keys [action key token page depth]}]
   (binding [*delivery-deadline* (+ (monotonic-time) 2500000000)]
     (with-command-lock (:lock entry)
       (let [state (:inspection entry)
@@ -535,10 +535,12 @@
                                     state key (:inspection-base reply) depth page)
                            "page" (inspection/inline-text-payload
                                     state key (:inspection-base reply) page)
-                           (inspection/inline-error-payload
-                             state key (:inspection-base reply)
-                             (or node 0) (or page 0)
-                             (get-in event [:data :values])))]
+                           "error" (inspection/inline-error-payload
+                                     state key (:inspection-base reply) nil 0)
+                           "error-tree" (inspection/inline-error-payload
+                                          state key (:inspection-base reply)
+                                          depth page)
+                           nil)]
             ;; Source revisions can change before obtaining this same lock.
             ;; Recheck immediately before IO; never retry an unknown update.
             (when (current?)
@@ -610,7 +612,7 @@
                                 (get-in @conn [:commands key :inspection]))
                               (or (not (contains? #{"view" "error-hide" "details"
                                                    "details-hide" "data" "data-hide"
-                                                   "tree" "page"} action))
+                                                   "tree" "error-tree" "page"} action))
                                   (= token (:token @(:inspection entry))))
                               (not (and (= action "view") (= kind "d")))
                               (or (not confirm?)
@@ -627,7 +629,7 @@
                   "This command's buttons have expired. Please send the command again.")
 
                 (or (contains? #{"error" "error-hide" "details" "details-hide"
-                                 "data" "data-hide" "tree" "page"} action)
+                                 "data" "data-hide" "tree" "error-tree" "page"} action)
                     (and (= action "view") (= kind "e")))
                 (when-not (inline-details! conn event entry expected control)
                   (interaction-reply! conn event

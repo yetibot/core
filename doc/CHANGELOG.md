@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Share Discord's whole-tree Expand/Collapse and paging controls between Error
+  details and Explore data. Keep error inspection inside the original reply,
+  preserve its answer/media/files/footer and restore it exactly when hidden.
+  Inspect only frozen public diagnostics; never rerun a failed tool or model.
+
 - Reserve anonymous durable AI usage rows before model HTTP requests and Gemini
   CLI spawn. Refuse unrecorded inference, retain completed results if final
   ledger accounting fails, and never retry paid work for bookkeeping. Cover

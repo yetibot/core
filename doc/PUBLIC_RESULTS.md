@@ -89,8 +89,8 @@ a page indicator remains visible. There is no rediscovery or execution during
 navigation. Opening another pane uses the first page as its restoration base;
 paging returns to the frozen document and replaces the temporary pane.
 
-Navigation is public and read-only. Controls select bounded snapshot depth,
-page or diagnostic node IDs, never arbitrary paths or command arguments. Each
+Navigation is public and read-only. Controls select bounded snapshot depth
+or page, never arbitrary paths or command arguments. Each
 inline view requires the actual tracked bot reply, channel/thread, frozen
 snapshot token and current revision.
 
@@ -105,8 +105,11 @@ preserve depth. Depth and paging buttons are disabled at their bounds. There
 is no one-field dropdown or separately posted viewer. Hiding restores the exact
 original card; reopening starts at the two-level overview.
 
-**Error details** expands the tracked original reply in place. Its navigation
-also stays inline, and **Hide error details** restores the exact original card.
+**Error details** uses the same two-level overview, whole-tree **Expand** and
+**Collapse**, and depth-preserving Previous/Next controls as **Explore data**.
+It reads only frozen public diagnostics, not the result-data snapshot. There is
+no per-field dropdown. **Hide error details** restores the exact original card.
+Navigation never retries a failed tool or makes another model request.
 Only JSON-only outbound public presentation is retained for restoration, never
 upload streams or raw result data. Restoration is capped at the ordinary
 30-reply limit; overflow notices do not offer unrestorable inline controls.

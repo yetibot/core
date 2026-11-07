@@ -247,28 +247,52 @@
         (count (filter #(= :create (first %)) @calls)) => 1
         @executions => 1))))
 
-(fact "inline error navigation preserves the answer and rejects stale or foreign cards"
-  (session {:result/error "Weather unavailable"
-            :result/public-error {:http-status 503 :stage "weather lookup"}}
-    (fn [calls _ event! click!]
+(fact "error trees share data depth controls and reject stale or foreign cards"
+  (session {:result/error "One model failed"
+            :result/public-error
+            {:reason "partial-result"
+             :calls [{:model "example-model" :outcome "error"
+                      :diagnostic {:code "request-rejected" :http_status 400}}]}}
+    (fn [calls conn event! click!]
       (await! (click! {:custom-id (:custom_id
                                     (button (last (last @calls)) "Error details"))}))
-      (let [menu (some #(when (= 3 (:type %)) %) (nodes (last (last @calls))))
-            data {:custom-id (:custom_id menu)
-                  :values [(:value (first (:options menu)))]}]
-        (await! (click! data))
-        (str/includes? (text (last (last @calls))) "Weather unavailable") => true
-        (some? (button (last (last @calls)) "Back")) => true
-        (await! (click! data {:message {:id "another-bot-message"
-                                       :author {:id "bot"}}}))
-        (second (last @calls)) => 4
-        (str/includes? (text (last (last @calls))) "expired") => true
-        (await! (event! :message-update
-                        (assoc source :content "!inspect-fixture edited")))
-        (await! (click! data))
-        (second (last @calls)) => 4
-        (str/includes? (text (last (last @calls))) "expired") => true
-        @executions => 2))))
+      (let [initial (last (last @calls))
+            expand (button initial "Expand")]
+        (str/includes? (text initial) "Depth 2") => true
+        (some #(when (= 3 (:type %)) %) (nodes initial)) => nil
+        (some? expand) => true
+        (when expand
+          (let [data {:custom-id (:custom_id expand)}
+                token (:token @(get-in @conn
+                                  [:commands ["200" "100"] :inspection]))]
+            (await! (click! data))
+            (second (last @calls)) => 7
+            (str/includes? (text (last (last @calls))) "Depth 3") => true
+            (await! (click! {:custom-id (:custom_id
+                                  (button (last (last @calls)) "Expand"))}))
+            (str/includes? (text (last (last @calls))) "request-rejected") => true
+            (str/includes? (text (last (last @calls))) "One model failed") => true
+            (await! (click! {:custom-id (:custom_id
+                                  (button (last (last @calls)) "Collapse"))}))
+            (str/includes? (text (last (last @calls))) "Depth 3") => true
+            (doseq [overrides [{:channel-id "another-channel"}
+                               {:message {:id "another-bot-message"
+                                          :author {:id "bot"}}}
+                               {:message {:id "answer"
+                                          :author {:id "other"}}}]]
+              (await! (click! data overrides))
+              (second (last @calls)) => 4)
+            (doseq [id [(str/replace (:custom-id data) token "0000000000000000")
+                         (str/replace (:custom-id data) #":[0-9]+$" ":99")
+                         (str "yb:error-tree:200:100:" token ":e:8:0")]]
+              (await! (click! {:custom-id id}))
+              (second (last @calls)) => 4)
+            (await! (event! :message-update
+                            (assoc source :content "!inspect-fixture edited")))
+            (await! (click! data))
+            (second (last @calls)) => 4
+            (str/includes? (text (last (last @calls))) "expired") => true
+            @executions => 2))))))
 
 (fact "overflow replies do not offer unrestorable inline controls"
   (let [state (atom (assoc (inspection/initial) :sealed? true
