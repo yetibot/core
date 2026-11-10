@@ -89,6 +89,39 @@
           => "attachment://photo.png"
           (get-in payload [:stream :filename]) => "photo.png")))))
 
+(fact "generated SVG and PDF upload as exact downloadable files with captions"
+  (doseq [[ext mime] [["svg" "image/svg+xml"] ["pdf" "application/pdf"]
+                     ["txt" "text/plain"]]]
+    (with-redefs [images/image-store
+                  (atom {"diagram" {:data "SGVsbG8=" :mime-type mime}})]
+      (session (fn [& _]
+                 (chat/send-msg (str "A diagram https://example.org/generated-images/diagram." ext)))
+        (fn [event! calls _]
+          (await! (event! :message-create original))
+          (let [payload (last (first @calls))]
+            (count @calls) => 1
+            (first (children payload)) => {:type 10 :content "A diagram "}
+            (get-in (second (children payload)) [:file :url])
+            => (str "attachment://diagram." ext)
+            (some #(= 12 (:type %)) (children payload)) => nil
+            (slurp (get-in payload [:stream :content])) => "Hello"
+            (get-in payload [:allowed-mentions :replied_user]) => false))))))
+
+(fact "multiple generated diagrams each receive an upload without duplicating a repeated URL"
+  (with-redefs [images/image-store
+                (atom {"one" {:data "SGVsbG8=" :mime-type "image/png"}
+                       "two" {:data "SGVsbG8=" :mime-type "image/svg+xml"}})]
+    (session (fn [& _]
+               (chat/send-msg (str "Diagrams\nhttps://example.org/generated-images/one.png\n"
+                                   "https://example.org/generated-images/two.svg\n"
+                                   "https://example.org/generated-images/one.png")))
+      (fn [event! calls _]
+        (await! (event! :message-create original))
+        (count @calls) => 2
+        (mapv #(get-in (last %) [:stream :filename]) @calls) => ["one.png" "two.svg"]
+        (get-in (first (children (last (second @calls)))) [:file :url])
+        => "attachment://two.svg"))))
+
 (fact "generated image captions use the same deterministic table renderer"
   (with-redefs [images/image-store (atom {"photo" {:data "SGVsbG8="}})]
     (session (fn [& _]

@@ -705,8 +705,11 @@
     (timbre/debug "Guild Channels: " (pr-str guild-channels))
     (guild-channels)))
 
+(def ^:private generated-media-pattern
+  #"https?://[^\s<>]+?/generated-images/([^./\s]+)\.(png|gif|mp4|svg|pdf|jpeg|jpg|webp|txt|utxt|base64)(?![A-Za-z0-9_.-])")
+
 (defn- generated-image-info [msg]
-  (when-let [[url id ext] (re-find #"https?://\S+?/generated-images/([^./\s]+)\.(png|gif|mp4)" msg)]
+  (when-let [[url id ext] (re-find generated-media-pattern msg)]
     {:url url :id id :ext ext}))
 
 ;; Ordinary content and conservative caller budgeting. V2 text uses the
@@ -714,17 +717,28 @@
 (def discord-max-message-length 2000)
 
 (defn- message-parts [msg]
-  (let [{:keys [url id ext]} (generated-image-info msg)
-        data (:data (get @images/image-store id))]
-    (if data
-      (let [caption (str/replace msg url "")
-            image {:image data :filename (str id "." ext)}
+  (let [media (->> (re-seq generated-media-pattern msg)
+                   distinct
+                   (keep (fn [[url id ext]]
+                           (when-let [stored (get @images/image-store id)]
+                             {:url url :image (:data stored)
+                              :filename (str id "." ext)
+                              :download?
+                              (not (contains? images/preview-mime-types
+                                              (or (:mime-type stored)
+                                                  (case ext "png" "image/png"
+                                                            "gif" "image/gif"
+                                                            "mp4" "video/mp4" nil))))}))))
+        budget (if (command-timing?) 3968 4000)]
+    (if (seq media)
+      (let [caption (reduce #(str/replace %1 (:url %2) "") msg media)
+            parts (mapv #(dissoc % :url) media)
             caption-part (when-not (str/blank? caption)
-                           (first (components/text-parts caption (if (command-timing?) 3968 4000))))]
+                           (first (components/text-parts caption budget)))]
         (if (:file caption-part)
-          [image caption-part]
-          [(merge image caption-part)]))
-      (components/text-parts msg (if (command-timing?) 3968 4000)))))
+          (conj parts caption-part)
+          (assoc parts 0 (merge (first parts) caption-part))))
+      (components/text-parts msg budget))))
 
 (defn- command-part [part]
   (if-let [{:keys [key entry]} *command-context*]
