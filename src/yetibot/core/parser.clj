@@ -23,7 +23,8 @@
      <nestable-sub-expr> = <dollar> <lparen> expr <rparen>
      <non-nestable-sub-expr> = dollar !lparen
      words = space* word (space* word)* space*
-     <word> = sub-expr | word-chars | lparen | rparen | quote | literal | regex-pipe | non-nestable-sub-expr
+     <word> = fenced / (sub-expr | word-chars | lparen | rparen | quote | literal | regex-pipe | non-nestable-sub-expr)
+     fenced = #'(?s)(`{3,}|~{3,})[^\\r\\n]*\\r?\\n.*?\\r?\\n\\1(?=[ \\t]*(?:\\r?\\n|$|\\|))'
      <word-chars> = #'[^ `$()|\"]+'
      parened = lparen words rparen
      <regex-pipe> = word-chars pipe word-chars (pipe word-chars)*
@@ -56,6 +57,7 @@
         :space (join nodes)
         :parened (join nodes)
         :literal (join nodes)
+        :fenced (join nodes)
         :sub-expr (let [{:keys [value error] :as evaled}
                         (transformer head)]
                     ;; extract either the error or the value out of the sub-expr

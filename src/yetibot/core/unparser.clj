@@ -11,6 +11,7 @@
     insta/transform
     {:words str
      :literal str
+     :fenced str
      :space str
      :parened str
      :cmd identity
