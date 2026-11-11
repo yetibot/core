@@ -1,10 +1,14 @@
 (ns yetibot.core.webapp.routes.images
   "Serves generated media stored in the in-memory image store."
-  (:require [compojure.core :refer [GET defroutes]]
+  (:require [clojure.string :as str]
+            [compojure.core :refer [GET defroutes]]
             [ring.util.response :as response])
   (:import [java.util Base64]))
 
 (defonce image-store (atom {}))
+
+(def preview-mime-types
+  #{"image/png" "image/jpeg" "image/gif" "image/webp" "video/mp4"})
 
 (def ^:private max-stored-images 100)
 
@@ -29,13 +33,31 @@
   "Serve stored media by id, falling back to default-mime if none was recorded."
   [id default-mime]
   (if-let [{:keys [data mime-type]} (get @image-store id)]
-    (let [bytes (.decode (Base64/getDecoder) ^String data)]
-      (-> (response/response (java.io.ByteArrayInputStream. bytes))
-          (response/content-type (or mime-type default-mime))
-          (response/header "Cache-Control" "public, max-age=3600")))
+    (let [bytes (.decode (Base64/getDecoder) ^String data)
+          mime (or mime-type default-mime)
+          inline? (contains? preview-mime-types mime)]
+      (cond-> (-> (response/response (java.io.ByteArrayInputStream. bytes))
+                  (response/content-type mime)
+                  (response/header "Cache-Control" "public, max-age=3600")
+                  (response/header "X-Content-Type-Options" "nosniff"))
+        ;; Apply to the stored MIME, not the requested suffix: legacy .png
+        ;; URLs must not provide an unprotected alias for an active document.
+        (not inline?)
+        (-> (response/header "Content-Disposition"
+                             (str "attachment; filename=\""
+                                  (str/replace id #"[^A-Za-z0-9_-]" "_")
+                                  "." (case mime "image/svg+xml" "svg"
+                                                 "application/pdf" "pdf" "txt") "\""))
+            (response/header "Content-Security-Policy"
+                             "sandbox; default-src 'none'; style-src 'unsafe-inline'"))))
     (response/not-found "Image not found")))
 
 (defroutes image-routes
   (GET "/generated-images/:id.png" [id] (serve-stored id "image/png"))
   (GET "/generated-images/:id.gif" [id] (serve-stored id "image/gif"))
-  (GET "/generated-images/:id.mp4" [id] (serve-stored id "video/mp4")))
+  (GET "/generated-images/:id.mp4" [id] (serve-stored id "video/mp4"))
+  (GET ["/generated-images/:id.:ext" :ext #"svg|pdf|jpeg|jpg|webp|txt|utxt|base64"]
+       [id ext]
+    (serve-stored id (case ext "svg" "image/svg+xml" "pdf" "application/pdf"
+                               "jpeg" "image/jpeg" "jpg" "image/jpeg"
+                               "webp" "image/webp" "text/plain"))))
