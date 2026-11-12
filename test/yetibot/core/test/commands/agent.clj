@@ -255,3 +255,51 @@
     (agent/agent-run-cmd {:match ["agent run echo hello" "echo hello"]}) => {:result/value "hello"}
     (provided
       (yetibot.core.handler/record-and-run-raw "echo hello" anything nil anything) => [{:result "hello"}])) )
+
+(fact "host inherited routing bypasses CLI configuration and synthetic caller"
+  (let [api (requiring-resolve 'yetibot.core.util.agent-execution/context)
+        calls (atom [])
+        cap (api {:start #(do (swap! calls conj [:start %]) {:result/value "queued"})
+                  :execute-command #(do (swap! calls conj [:command %]) :actual)
+                  :admit-inference identity :generation-limit (constantly 123)})
+        input {:match ["agent work" "work"] :user {:id "caller"}
+               :yetibot-user {:id "bot"} :chat-source {:room "real"}}]
+    (with-bindings {(resolve 'yetibot.core.util.agent-execution/*context*) cap}
+      (with-redefs [agent/configured? (fn [] (throw (AssertionError. "legacy")))
+                    agent/github-token (fn [] (throw (AssertionError. "token")))]
+        (agent/agent-cmd input) => {:result/value "queued"}
+        (agent/agent-run-cmd input) => :actual
+        @calls => [[:start input] [:command input]]))))
+
+(fact "a fake executable characterizes legacy CLI args/settings without inference"
+  (let [dir (.toFile (java.nio.file.Files/createTempDirectory "u1-fake-cli-"
+                      (make-array java.nio.file.attribute.FileAttribute 0)))
+        executable (clojure.java.io/file dir "fake")]
+    (try
+      (spit executable (str "#!/bin/sh\n"
+                            "printf '%s\\n' \"$@\" > args.txt\n"
+                            "printf '%s' \"$GH_TOKEN\" > token.txt\n"
+                            "printf '{\"response\":\"fake\",\"stats\":{}}'\n"))
+      (.setExecutable executable true)
+      (with-redefs [agent/cli-bin (constantly (.getAbsolutePath executable))
+                    agent/gemini-key (constantly "fixture-key")]
+        (let [result (agent/run-gemini-agent dir "fixture" nil nil "fixture-token")
+              settings (json/read-str (slurp (clojure.java.io/file dir ".gemini/settings.json")))
+              args (string/split-lines (slurp (clojure.java.io/file dir "args.txt")))]
+          (:response result) => "fake"
+          (take 6 args) => ["--yolo" "--output-format" "json" "--model"
+                           "gemini-3.6-flash" "--prompt"]
+          (get settings "maxSessionTurns") => 50
+          (get-in settings ["modelConfig" "generateContentConfig" "thinkingConfig"])
+          => {"includeThoughts" false "thinkingBudget" 16000}
+          (agent/agent-timeout-ms) => 900000
+          (slurp (clojure.java.io/file dir "token.txt")) => "fixture-token"))
+      (finally
+        (doseq [file (reverse (file-seq dir))] (.delete file))))))
+
+(fact "forged context and unknown persisted kinds never route to CLI"
+  (with-bindings {(resolve 'yetibot.core.util.agent-execution/*context*) {:start identity}}
+    (try (agent/agent-cmd {:match ["agent work" "work"]})
+         (catch Exception _ :denied)) => :denied)
+  (with-redefs [agent/run-agent (fn [& _] (throw (AssertionError. "CLI")))]
+    (#'agent/resume-run! {:execution-kind "unknown-kind"} 0) => nil))

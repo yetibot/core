@@ -5,7 +5,8 @@
             [clojure.spec.alpha :as s]
             [taoensso.timbre :refer [info error]]
             [yetibot.core.config :refer [get-config]]
-            [yetibot.core.util.ai-usage :as usage]))
+            [yetibot.core.util.ai-usage :as usage]
+            [yetibot.core.util.agent-execution :as execution]))
 
 (s/def ::key string?)
 (s/def ::config (s/keys :req-un [::key]))
@@ -35,6 +36,8 @@
            (clojure.string/trim text)
            prompt))
        (catch Exception e
+         (when (or execution/*context* execution/*origin* usage/*admit-inference*)
+           (throw e))
          (error "xai: failed to optimize prompt:" (.getMessage e))
          prompt)))))
 
@@ -101,6 +104,7 @@
                   b))
          response (usage/capture!
                     {:provider "xai" :model (:model body) :operation "image"
+                     :endpoint url :resource-limits {:images (:n body)}
                      :secrets [api-key]}
                     #(client/post url
                        {:headers {"Authorization" (str "Bearer " api-key)}
@@ -177,11 +181,15 @@
                      (map? (first prompt)))
               prompt
               [{:role "user" :content prompt}])
-       body {:model "grok-4.7"
+       cap (execution/generation-limit)
+       body (cond-> {:model "grok-4.7"
             :input input
             :tools [{:type "web_search"} {:type "x_search"}]}
+              cap (assoc :max_output_tokens cap))
        response (usage/capture!
                   {:provider "xai" :model (:model body) :operation "text"
+                   :endpoint url
+                   :output-cap (when cap {:field "max_output_tokens" :value cap})
                    :secrets [api-key]}
                   #(client/post url
                      {:headers {"Authorization" (str "Bearer " api-key)}

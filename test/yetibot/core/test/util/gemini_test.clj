@@ -2,6 +2,10 @@
   (:require
    [midje.sweet :refer [=> fact facts contains provided anything roughly]]
    [yetibot.core.db.image-budget :as image-budget]
+   [clj-http.client :as client]
+   [clojure.data.json :as json]
+   [yetibot.core.util.agent-execution :as execution]
+   [yetibot.core.util.ai-usage :as usage]
    [yetibot.core.util.gemini :as gemini]))
 
 (facts "about budget-status"
@@ -44,3 +48,28 @@
 (facts "about cost-units calculation"
        (fact "it maps dollar cost to image-equivalent units"
              (gemini/calculate-cost-units 0.10) => integer?))
+
+
+(fact "inherited Gemini cap is on the actual TEXT/IMAGE body, legacy body is unchanged"
+  (let [bodies (atom []) attrs (atom [])
+        cap (execution/context {:start identity :execute-command identity
+                                :admit-inference #(do (swap! attrs conj %) :own)
+                                :finish-operation (fn [& _])
+                                :generation-limit (constantly 321)})]
+    (with-redefs [gemini/config {:key "private"}
+                  gemini/check-budget! (fn [])
+                  gemini/record-image-generated! (fn [])
+                  client/post (fn [url opts]
+                                (swap! bodies conj [url (json/read-str (:body opts) :key-fn keyword)])
+                                {:status 200 :body {:candidates [{:content {:parts
+                                  [{:inlineData {:data "image" :mimeType "image/png"}}]}}]}})]
+      (binding [execution/*context* cap] (gemini/generate-image "fixture"))
+      (gemini/generate-image "fixture")
+      (get-in @bodies [0 1 :generationConfig :maxOutputTokens]) => 321
+      (get-in @bodies [0 1 :generationConfig :candidateCount]) => 1
+      (get-in @bodies [1 1 :generationConfig])
+      => {:responseModalities ["TEXT" "IMAGE"] :imageConfig {:imageSize "512"}}
+      (:endpoint (first @attrs)) => (str "https://generativelanguage.googleapis.com/v1beta/models/"
+                                       (gemini/gemini-model) ":generateContent")
+      (:output-cap (first @attrs)) => {:field "generationConfig.maxOutputTokens"
+                                       :value 321 :candidate-count 1})))

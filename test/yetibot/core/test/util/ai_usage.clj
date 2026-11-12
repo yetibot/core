@@ -115,3 +115,22 @@
                 :output_tokens 5 :reasoning_tokens 1}]}
   (cli-metrics {:exit 0}) => {:state "completed"}
   (cli-metrics {:exit 137 :timed-out true}) => {:state "unknown"})
+
+(fact "optional admission and own receipt run without monthly tracking"
+  (let [calls (atom [])
+        admit (resolve 'yetibot.core.util.ai-usage/*admit-inference*)
+        finish (resolve 'yetibot.core.util.ai-usage/*finish-inference*)]
+    (boolean admit) => true
+    (boolean finish) => true
+    (when (and admit finish)
+      (with-redefs [db/connected? (atom false)]
+        (with-bindings {admit (fn [attrs] (swap! calls conj (:model attrs)) :own)
+                        finish (fn [handle outcome]
+                                 (swap! calls conj [handle (:state outcome)]))}
+          (capture {:provider "fixture" :model "actual" :operation "text"}
+                   (constantly :answer) (constantly {})) => :answer)
+        @calls => ["actual" [:own :definitive]]
+        (with-bindings {admit (fn [_] (throw (ex-info "denied" {})))}
+          (try (capture {} #(swap! calls conj :sent) identity)
+               (catch Exception e (.getMessage e))) => "denied")
+        (some #{:sent} @calls) => nil))))

@@ -7,6 +7,7 @@
                                                  configured-default-command]]
     [yetibot.core.models.channel :as channel]
     [yetibot.core.util.public-result :as public-result]
+    [yetibot.core.util.agent-execution :as execution]
     [taoensso.timbre :refer [color-str debug info]]
     [yetibot.core.util.format :refer [pseudo-format to-coll-if-contains-newlines]]))
 
@@ -87,7 +88,9 @@
       ;; bind data so that it "leaks" into evaluation of sub expressions
       (binding [*contextual-data* previous-data
                 chat/*target* (chat/command-target)
-                chat/*command-thread* (chat/command-thread-target)]
+                chat/*command-thread* (chat/command-thread-target)
+                execution/*value-origin* (or (execution/origin-of acc)
+                                             execution/*value-origin*)]
         (debug "piping with *contextual-data*" *contextual-data*)
         (let [cmd-with-args (evaluator cmd-ast)
 
@@ -110,11 +113,13 @@
                 [(if (empty? (str previous-value))
                    cmd-with-args
                    ;; next time apply pseudo-format to support %s substitution
-                   (pseudo-format cmd-with-args (str previous-value)))
+                   (pseudo-format cmd-with-args (execution/operand (str previous-value)
+                                       execution/*value-origin*)))
                  extra])))
 
              ;; Retain per-stage error diagnostics, but publish data/text only
              ;; from the completed outer pipeline, never intermediate catalogs.
+             _ (execution/forward! command-result acc)
              _ (public-result/observe! command-result false)
              _ (info "command-result" (color-str :green (pr-str command-result)))
 
@@ -151,14 +156,16 @@
                :public-result (public-result/projection command-result)}))
            ;; otherwise continue reducing
            (if (and (map? command-result) value)
-             (assoc acc
+             (execution/forward!
+              (assoc acc
                     :value value
                     :data-collection data-collection
                     :data data
-                    :public-result (public-result/projection command-result))
-             (assoc acc :value command-result :public-result nil))))))))
+                    :public-result (public-result/projection command-result)) command-result)
+             (execution/forward! (assoc acc :value command-result :public-result nil)
+                                 command-result))))))))
 
-(defn handle-expr
+(defn- handle-expr*
   "Called by the parser AST transformer with a partially-evaluated AST.
 
    We need to lazily transform each cmd within the AST so that the commands can
@@ -192,3 +199,7 @@
     (when outer?
       (public-result/observe! (:public-result result)))
     result))
+
+
+(defn handle-expr [evaluator cmds]
+  (execution/with-scope* #(handle-expr* evaluator cmds)))

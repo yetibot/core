@@ -4,6 +4,7 @@
    [clojure.set :refer [intersection]]
    [taoensso.timbre :refer [info]]
    [yetibot.core.handler]
+   [yetibot.core.util.agent-execution :as execution]
    [clojure.string :as s]
    [metrics.timers :as timers]
    [yetibot.core.models.channel :as c]
@@ -104,7 +105,10 @@
    implement its own default behavior."
   [callback cmd-with-args {:keys [chat-source user opts settings] :as extra}]
   (info "handle-with-hooked-cmds" chat-source opts (pr-str settings))
-  (let [[cmd args] (split-command-and-args cmd-with-args)
+  (let [[cmd raw-args] (split-command-and-args cmd-with-args)
+        args (if (seq raw-args)
+               (execution/subtext cmd-with-args (inc (count cmd))
+                                  (count cmd-with-args)) raw-args)
         admin-only-command? (admin/admin-only-command? cmd)
         user-is-admin? (admin/user-is-admin? user)
         _ (info "admin only?" admin-only-command?
@@ -145,7 +149,8 @@
       :else
       (timers/time!
        (timers/timer ["yetibot" cmd (str (:name (meta sub-fn)))])
-       (sub-fn (merge extra {:cmd cmd :args args :match match}))))))
+       (let [input (merge extra {:cmd cmd :args args :match match})]
+         (execution/with-command* cmd-with-args input #(sub-fn input)))))))
 
 ;; Hook the actual handle-cmd called during interpretation.
 ;; TODO remove completely

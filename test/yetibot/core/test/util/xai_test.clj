@@ -2,7 +2,8 @@
   (:require [midje.sweet :refer [facts fact => contains provided throws]]
             [clj-http.client :as client]
             [clojure.data.json :as json]
-            [yetibot.core.util.xai :as xai]))
+            [yetibot.core.util.xai :as xai]
+            [yetibot.core.util.agent-execution :as execution]))
 
 (facts "about xai configured?"
        (fact "it returns true if config has a key"
@@ -293,3 +294,20 @@
        (fact "it falls back when generate-text returns nil"
              (with-redefs [xai/generate-text (fn [p] {:text nil})]
                (xai/optimize-image-prompt "A slapping B") => "A slapping B")))
+
+
+(fact "inherited xAI uses actual responses max_output_tokens without changing legacy"
+  (let [bodies (atom []) attrs (atom [])
+        cap (execution/context {:start identity :execute-command identity
+                                :admit-inference #(do (swap! attrs conj %) :own)
+                                :finish-operation (fn [& _])
+                                :generation-limit (constantly 321)})]
+    (with-redefs [client/post (fn [url opts]
+                                (swap! bodies conj [url (json/read-str (:body opts) :key-fn keyword)])
+                                {:status 200 :body {:output [{:type "message" :content "answer"}]}})]
+      (binding [execution/*context* cap] (xai/generate-text "fixture"))
+      (xai/generate-text "fixture")
+      (get-in @bodies [0 1 :max_output_tokens]) => 321
+      (contains? (get-in @bodies [1 1]) :max_output_tokens) => false
+      (:endpoint (first @attrs)) => "https://api.x.ai/v1/responses"
+      (:output-cap (first @attrs)) => {:field "max_output_tokens" :value 321})))

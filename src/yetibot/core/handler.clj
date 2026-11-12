@@ -9,6 +9,7 @@
    [yetibot.core.util.command :refer [extract-command embedded-cmds]]
    [yetibot.core.util.public-result :as public-result]
    [yetibot.core.util.ai-usage :as usage]
+   [yetibot.core.util.agent-execution :as execution]
    [yetibot.core.interpreter :as interp]
    [yetibot.core.models.history :as h]
    [yetibot.core.unparser :refer [unparse]]
@@ -70,7 +71,8 @@
    that is used by internal functions"
   [body]
   (let [parsed-normal-command (when-let [[_ cmd-body] (extract-command body)]
-                                (parser cmd-body))
+                                (parser (execution/subtext body (- (count body) (count cmd-body))
+                                                           (count body))))
         parsed-cmds (or (and parsed-normal-command [parsed-normal-command])
                         (when (embedded-enabled?) (embedded-cmds body)))
         cmd? (boolean (seq parsed-cmds))]
@@ -152,7 +154,7 @@
           :result (str "Evaluation of `" body "` timed out after "
                        (/ expr-eval-timeout-ms 1000) " seconds.")}])))
 
-(defn record-and-run-raw
+(defn- record-and-run-raw*
   "Top level message handler.
 
    Use this when you want to evaluate a command and all the dynamic vars have
@@ -201,7 +203,7 @@
       (let [embedded? (not parsed-normal-command)
             [results _timeout-result]
             (alts!!
-             [(go (map
+             [(go (doall (map
                    (fn [parse-tree]
                      (try
                        (let [pipeline
@@ -225,8 +227,9 @@
                            ;; Ordinary chat/history results remain value-only.
                            retain-pipeline?
                            (assoc :pipeline-result
-                                  (select-keys pipeline
-                                    [:data :data-collection :public-result]))))
+                                  (execution/forward!
+                                    (select-keys pipeline
+                                      [:data :data-collection :public-result]) pipeline))))
                        (catch Throwable ex
                          (public-result/error! "exception" (:status (ex-data ex)))
                          (error "error handling expression:" body
@@ -236,9 +239,15 @@
                           :result (if public-result/*capture*
                                     "Command failed. Open Error details for retained diagnostics."
                                     (format exception-format ex))})))
-                   parsed-cmds))
+                   parsed-cmds)))
               (timeout expr-eval-timeout-ms)])]
         (->handled-expr-results body results)))))
+
+(defn record-and-run-raw
+  "Evaluate a message in one owning origin scope; closes source admissions even
+   when the asynchronous interpreter times out. Nested aliases share the scope."
+  [& args]
+  (execution/with-scope* #(apply record-and-run-raw* args)))
 
 (defn handle-unparsed-expr
   "Entry point for parsing and evaluation of ad-hoc commands.

@@ -15,6 +15,8 @@
               split-kvs-with]]
             [yetibot.core.util.command :refer [error?]]
             [yetibot.core.util.public-result :as public]
+            [yetibot.core.util.agent-execution :as execution]
+            [yetibot.core.util.format :as format]
             [yetibot.core.util.command-info :refer [command-execution-info]]
             [yetibot.core.util.format :refer [format-exception-log]]))
 
@@ -176,7 +178,7 @@
                      (pr-str args))
             xargs-results
             ((resolve cmd-runner)
-             (fn [[idx item]]
+             (bound-fn [[idx item]]
                (try
                  (let [;; there may or may not be data from the previous pipe
                        possible-data (nth data-collection idx)
@@ -204,7 +206,8 @@
                          ;; repeat 5 jargon | xargs words | xargs head
                           (if (coll? item)
                             [args (merge params-with-data {:raw item :opts item})]
-                            [(psuedo-format args item)
+                            [(format/pseudo-format args
+                               (execution/operand item execution/*value-origin*))
                              (merge params-with-data {:raw item :opts nil})])))
 
                        _ (debug "xargs cmd-result" (pr-str cmd-result))]
@@ -303,7 +306,7 @@
       items
       (letfn [(leaves [v path]
                 (if (sequential? v)
-                  (mapcat (fn [[idx item]] (leaves item (conj path idx)))
+                  (mapcat (bound-fn [[idx item]] (leaves item (conj path idx)))
                           (map-indexed vector v))
                   (map #(vector path %) (s/split-lines v))))
               (at-path [data path]

@@ -36,7 +36,8 @@
    [yetibot.core.commands.alias :as alias]
    [yetibot.core.handler :refer [record-and-run-raw]]
    [yetibot.core.util.gemini :as gemini]
-   [yetibot.core.util.ai-usage :as usage])
+   [yetibot.core.util.ai-usage :as usage]
+   [yetibot.core.util.agent-execution :as execution])
   (:import
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]
@@ -445,6 +446,8 @@
    narration on stdout; stderr is discarded). Returns
    {:response <final answer text or nil> :exit n :timed-out bool}."
   [workdir request context mentions token]
+  (when (or execution/*origin* execution/*context*)
+    (throw (ex-info "CLI sessions cannot enforce inherited admissions." {})))
   ;; cap the agent's turn budget via a workspace settings file, configure custom tools, and hide model reasoning to keep responses concise
   (let [settings-dir (io/file workdir ".gemini")]
     (.mkdirs settings-dir)
@@ -699,8 +702,11 @@
 (defn agent-cmd
   "agent <prompt> # hand the request to Gemini (gh+git) and reply with its answer"
   {:yb/cat #{:util}}
-  [{[_ request] :match chat-source :chat-source}]
-  (cond
+  [{[_ request] :match chat-source :chat-source :as input}]
+  (let [route (execution/agent-route input)]
+    (if (execution/capability? route)
+      (execution/invoke! route :start input)
+      (cond
     (not (configured?)) (say-unconfigured)
     :else
     (let [adapter chat/*adapter*
@@ -731,7 +737,7 @@
                       :on-discord on-discord :status-id status-id :mentions mentions
                       :run-id run-id})))
       ;; the answer is posted out of band; suppress the framework's reply
-      (chat/suppress {}))))
+      (chat/suppress {}))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Resume — re-dispatch runs a restart left in-flight
@@ -784,14 +790,15 @@
     (warn "cannot resume agent run; adapter gone:" adapter-uuid)))
 
 (defn- resume-run!
-  [{:keys [id attempts created-at] :as row} now]
-  (case (resume-action attempts (- now (.getTime created-at))
+  [{:keys [id attempts created-at execution-kind] :as row} now]
+  (when (nil? execution-kind)
+    (case (resume-action attempts (- now (.getTime created-at))
                        (agent-max-attempts) (agent-resume-stale-ms))
     :give-up (do (say-to-run! row (say-gave-up)) (agent-run/delete id))
     :stale   (do (say-to-run! row (say-stale)) (agent-run/delete id))
     :resume  (do (agent-run/update-where {:run-id (:run-id row)}
                                          {:attempts (inc attempts)})
-                 (dispatch-resume! row))))
+                 (dispatch-resume! row)))))
 
 (defn resume-interrupted-runs!
   "On boot, re-dispatch any agent runs a restart left in-flight. Runs in a future
@@ -801,7 +808,8 @@
     (try
       (when (await-ready (agent-resume-ready-ms))
         (let [rows (->> (agent-run/find-all)
-                        (filter #(< (.getTime (:created-at %)) boot-time)))]
+                        (filter #(and (nil? (:execution-kind %))
+                                      (< (.getTime (:created-at %)) boot-time))))]
           (when (seq rows)
             (info "resuming" (count rows) "interrupted agent run(s)"))
           (let [now (System/currentTimeMillis)]
@@ -832,13 +840,16 @@
 (defn agent-run-cmd
   "agent run <command> # run the given yetibot command and print result"
   {:yb/cat #{:util}}
-  [{[_ cmd-str] :match}]
-  (let [user {:username "agent" :name "agent" :id "agent"}
+  [{[_ cmd-str] :match :as input}]
+  (let [route (execution/agent-route input)]
+    (if (execution/capability? route)
+      (execution/invoke! route :execute-command input)
+      (let [user {:username "agent" :name "agent" :id "agent"}
         chat-source {:adapter :agent :room "agent-room"}
         results (binding [interp/*chat-source* chat-source]
                   (record-and-run-raw cmd-str user nil {:record-yetibot-response? false}))
         out (string/join "\n" (map #(or (:result %) (:error %)) results))]
-    {:result/value out}))
+    {:result/value out}))))
 
 ;; Register only when Gemini + GitHub auth are configured.
 (when (configured?)

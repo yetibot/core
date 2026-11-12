@@ -1,6 +1,7 @@
 (ns yetibot.core.util.format
   (:require
     [yetibot.core.util]
+    [yetibot.core.util.agent-execution :as execution]
     [clojure.stacktrace :as st]
     [clojure.string :as s])
   (:import [clojure.lang Associative Sequential]))
@@ -29,7 +30,9 @@
                  (apply max))]
       (reduce
         (fn [acc-to-fmt i]
-          (s/replace acc-to-fmt (re-pattern (str *subst-prefix* (inc i))) (str (nth args i ""))))
+          (execution/substitute acc-to-fmt
+            (re-pattern (str *subst-prefix* (inc i)))
+            (nth args i "")))
         s (range n)))
     s))
 
@@ -39,8 +42,8 @@
    appends the arg to the end of the string instead."
   [s arg]
   (if (re-find (general-subst-pattern) s)
-    (s/replace s (general-subst-pattern) arg)
-    (str s " " arg)))
+    (execution/substitute s (general-subst-pattern) arg)
+    (execution/join-text [s " " arg])))
 
 (defn pseudo-format-n
   "Combination of pseudo-format and format-n - it can do both if the string
@@ -52,11 +55,11 @@
     (let [gen? (re-find (general-subst-pattern) s)
           num? (re-find (num-subst-pattern) s)
           neither? (not (or gen? num?))
-          joined (s/join " " args)]
+          joined (execution/join-text (interpose " " args))]
       (cond-> s
         gen? (pseudo-format joined)
         num? (format-n args)
-        neither? (str " " joined)))))
+        neither? (#(execution/join-text [% " " joined]))))))
 
 ;; chat formaters
 

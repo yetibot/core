@@ -7,7 +7,8 @@
             [taoensso.timbre :refer [info warn error]]
             [yetibot.core.config :refer [get-config]]
             [yetibot.core.db.image-budget :as image-budget]
-            [yetibot.core.util.ai-usage :as usage])
+            [yetibot.core.util.ai-usage :as usage]
+            [yetibot.core.util.agent-execution :as execution])
   (:import [java.time YearMonth]
            [java.time.format DateTimeFormatter]
            [java.util Base64]))
@@ -303,14 +304,20 @@
          image-parts (when (seq image-urls)
                        (keep url->inline-part image-urls))
          parts (into [{:text prompt}] image-parts)
+         cap (execution/generation-limit)
          body (cond-> {:contents [{:parts parts}]
                        :generationConfig {:responseModalities ["TEXT" "IMAGE"]
                                           :imageConfig {:imageSize "512"}}}
+                cap (assoc-in [:generationConfig :maxOutputTokens] cap)
+                cap (assoc-in [:generationConfig :candidateCount] 1)
                 system-instruction
                 (assoc :systemInstruction
                        {:parts [{:text system-instruction}]}))
          response (usage/capture!
                     {:provider "gemini" :model model :operation "image"
+                     :endpoint (first (string/split url #"\?"))
+                     :output-cap (when cap {:field "generationConfig.maxOutputTokens"
+                                            :value cap :candidate-count 1})
                      :secrets [api-key]}
                     #(client/post url
                        {:content-type :json :body (json/write-str body)
@@ -467,6 +474,8 @@
          image (some-> (first image-urls) veo-image-part)]
      (usage/capture!
        {:provider "gemini" :model model :operation "video"
+        :endpoint (format "%s/models/%s:predictLongRunning" api-base model)
+        :resource-limits {:duration-seconds duration}
         :secrets [(:key config)]}
        (fn []
          (let [op (veo-start prompt image model duration)
