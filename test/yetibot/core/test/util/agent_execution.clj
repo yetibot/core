@@ -68,6 +68,11 @@
       (hooks/cmd-hook-resolved #"report" #".*"
         (fn [_] (execution/mark-output!
                    {:result/value "agent work"} family)))
+      (hooks/cmd-hook-resolved #"reportstring" #".*"
+        (fn [_] (execution/mark-output! (String. "agent work") family)))
+      (hooks/cmd-hook-resolved #"reporterror" #".*"
+        (fn [_] (execution/mark-output!
+                   {:result/error "agent work"} family)))
       (hooks/cmd-hook-resolved #"agent" #".*"
         (fn [input] (swap! seen conj [execution/*origin* (:args input)]) "done"))
       (binding [interpreter/*current-user* nil
@@ -249,3 +254,97 @@
               (deref finished 1000 false) => true
               @seen => [])
             (finally (deliver release true))))))))
+
+(fact "subexpression payload lineage survives real echo, words, grep, xargs and aliases"
+  (lineage-fixture
+    (fn [family seen admissions]
+      (#'alias/wire-alias {:cmd-name "payloadalias" :cmd "echo $s"})
+      (#'alias/wire-alias {:cmd-name "computedalias" :cmd "$s"})
+      (doseq [expr ["echo $(report) | %s"
+                    "echo $(reportstring) | %s"
+                    "echo $(report) | echo | %s"
+                    "echo $(report) | words | xargs %s"
+                    "echo $(report) | words | grep agent | xargs %s"
+                    "echo $(report) | payloadalias | %s"
+                    "echo $(report) | computedalias"
+                    "echo $(reporterror) | words | grep agent | xargs %s"]]
+        (reset! seen []) (reset! admissions [])
+        (parser/parse-and-eval expr)
+        (ffirst @seen) => family
+        @admissions => ["agent"]))))
+
+(fact "the original raw handler preserves subexpression family and actual caller"
+  (lineage-fixture
+    (fn [family seen admissions]
+      (let [inputs (atom []) user {:id "caller"} bot {:id "bot"}
+            source {:room "fixture"}]
+        (hooks/cmd-hook-resolved #"agent" #".*"
+          (fn [input]
+            (swap! inputs conj (select-keys input [:user :yetibot-user :chat-source]))
+            (swap! seen conj [execution/*origin* (:args input)]) "done"))
+        (with-redefs [handler/add-user-message-to-history (fn [& _])
+                      handler/add-bot-response-to-history (fn [& _])]
+          (:result (first (handler/record-and-run-raw
+                            "!echo $(report) | %s" user bot
+                            {:record-yetibot-response? false}))) => "done")
+        @inputs => [{:user user :yetibot-user bot :chat-source source}]
+        (ffirst @seen) => family
+        @admissions => ["agent"]))))
+
+(fact "closed subexpression families cannot reach later computed effects"
+  (lineage-fixture
+    (fn [family seen admissions]
+      (execution/close! family)
+      (parser/parse-and-eval "echo $(report) | %s") => (throws Exception)
+      ;; xargs catches child exceptions by design, but must not run the effect.
+      (parser/parse-and-eval "echo $(report) | words | grep agent | xargs %s")
+      @seen => []
+      @admissions => [])))
+
+(fact "literal human agent receiving subexpression report payload stays standalone"
+  (lineage-fixture
+    (fn [_ seen admissions]
+      (parser/parse-and-eval "agent summarize $(report)")
+      @seen => [[nil "summarize agent work"]]
+      @admissions => [])))
+
+(fact "marked error and derived handler results retain family at their real boundaries"
+  (lineage-fixture
+    (fn [family _ admissions]
+      (execution/with-scope*
+        (fn []
+          (let [result (parser/parse-and-eval "reporterror")]
+            (execution/origin-of result) => family
+            (:error result) => "💥 Error in `reporterror`: agent work 💥")
+          (let [result (interpreter/handle-cmd
+                         (execution/operand "agent work" family) {})]
+            result => "done"
+            (execution/origin-of result) => family)))
+      @admissions => ["agent"])))
+
+(fact "alias empty slots do not shift marked arguments into computed controls"
+  (lineage-fixture
+    (fn [family seen admissions]
+      (#'alias/wire-alias {:cmd-name "slotcontrol" :cmd "agent $2"})
+      (#'alias/wire-alias {:cmd-name "slotpayload" :cmd "echo $2"})
+      (execution/with-scope*
+        (fn []
+          ;; The second slot is empty, not the marked third-slot action.
+          (parser/parse-and-eval
+            (execution/join-text ["slotcontrol one  "
+                                  (execution/operand "run" family)]))
+          @seen => [[nil ""]]
+          @admissions => []
+          (reset! seen [])
+          ;; A leading empty slot still leaves the second slot's real offsets.
+          (parser/parse-and-eval
+            (execution/join-text ["slotcontrol  "
+                                  (execution/operand "run" family)]))
+          @seen => [[family "run"]]
+          @admissions => ["agent"]
+          (reset! seen []) (reset! admissions [])
+          (parser/parse-and-eval
+            (execution/join-text ["slotpayload  "
+                                  (execution/operand "agent" family) " | %s"]))
+          @seen => [[family ""]]
+          @admissions => ["agent"])))))

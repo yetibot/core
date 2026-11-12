@@ -59,13 +59,15 @@
    inherited rows keep all counters/fences/uncertainty; host narrows the codec."
   [tx parent existing entity]
   (runs/require-transaction! tx)
-  (let [existing (when existing (runs/lock-row! tx "cron" (:id existing)))]
-    (if (= :inherited (origin-kind existing))
-      (sticky-attrs existing entity)
-      (merge entity (runs/allocation-attrs (runs/reserve-remaining! tx parent))
-             {:execution-origin "app-inherited-v1"
-              :state-revision (if existing (inc (:state-revision existing)) 0)
-              :worker-fence (if existing (inc (:worker-fence existing)) 0)}))))
+  (let [existing (when existing (runs/lock-row! tx "cron" (:id existing)))
+        attrs (if (= :inherited (origin-kind existing))
+                (sticky-attrs existing entity)
+                (merge entity (runs/allocation-attrs (runs/reserve-remaining! tx parent))
+                       {:execution-origin "app-inherited-v1"
+                        :state-revision (if existing (inc (:state-revision existing)) 0)
+                        :worker-fence (if existing (inc (:worker-fence existing)) 0)}))]
+    (runs/bounded-json (:execution-state attrs))
+    attrs))
 
 (defn prepare-write!
   "[tx existing entity] -> classified attrs for BOTH core and native writers.
@@ -89,6 +91,7 @@
                    (= :compatibility-unclassified (origin-kind attrs))))
       (throw (ex-info "Invalid new scheduler origin." {})))
     (when (= :inherited (origin-kind attrs))
+      (runs/bounded-json (:execution-state attrs))
       (runs/verify-schema! tx "cron")
       (when-not (and (= runs/inherited-kind (:execution-kind attrs))
                      (integer? (:execution-limit attrs))

@@ -124,7 +124,9 @@
 
              ;; Retain per-stage error diagnostics, but publish data/text only
              ;; from the completed outer pipeline, never intermediate catalogs.
-             _ (execution/forward! command-result acc)
+             ;; Evaluated subexpressions can introduce a new payload family
+             ;; without making this stage's literal action derived.
+             _ (execution/forward! command-result acc cmd-with-args)
              _ (public-result/observe! command-result false)
              _ (info "command-result" (color-str :green (pr-str command-result)))
 
@@ -156,9 +158,11 @@
            (do
              (info "Caught error in pipeline" error)
              (reduced
-              {:error
-               (str "💥 Error in `" cmd-with-args "`: " error " 💥")
-               :public-result (public-result/projection command-result)}))
+              (execution/forward!
+               {:error
+                (str "💥 Error in `" cmd-with-args "`: " error " 💥")
+                :public-result (public-result/projection command-result)}
+               command-result)))
            ;; otherwise continue reducing
            (if (and (map? command-result) value)
              (execution/forward!

@@ -1,6 +1,7 @@
 (ns yetibot.core.test.db.cron
   (:require [midje.sweet :refer [fact => throws]]
             [clojure.java.jdbc :as sql]
+            [cuerdas.core :refer [snake]]
             [yetibot.core.db :as database]
             [yetibot.core.db.util :as util]
             [yetibot.core.db.cron :as cron]
@@ -150,3 +151,95 @@
             (count (cron/find-all)) => 0))
         (finally (sql/db-do-commands url
                    (str "DROP TABLE IF EXISTS " (util/qualified-table-name "cron"))))))))
+
+(defn with-cron-store [f]
+  (support/with-store
+    (fn [url]
+      (try
+        (database/idempotent-create-table! "cron" (:schema/specs cron/schema))
+        (f url)
+        (finally
+          (sql/db-do-commands url
+            (str "DROP TABLE IF EXISTS " (util/qualified-table-name "cron"))))))))
+
+(def invalid-states
+  ["not-json"
+   (str "\"" (apply str (repeat 2097151 "x")) "\"")
+   ;; Under the character limit, over the UTF-8 byte limit.
+   (str "\"" (apply str (repeat 1048576 "é")) "\"")])
+
+(fact "inherited cron final state rejection rolls back SQL rows and parent reservations"
+  (with-cron-store
+    (fn [url]
+      (doseq [state invalid-states mode [:create :conversion :sticky]
+              writer [:inherit :prepare]]
+        (let [parent (sql/with-db-transaction [tx url]
+                       (support/create-row tx (str (java.util.UUID/randomUUID))))
+              owner {:table "agent_run" :id (:id parent)}
+              existing (case mode
+                         :create nil
+                         :conversion (first (cron/create entity))
+                         :sticky (sql/with-db-transaction [tx url]
+                                   (cron/inherit! tx owner nil
+                                     (assoc entity :execution-state "{}"))))
+              before-parent (runs/read-row url "agent_run" (:id parent))
+              before-rows (sort-by :id (cron/find-all))]
+          (with-redefs-fn {(ns-resolve 'yetibot.core.util.agent-execution 'host)
+                           (atom {:callbacks
+                                  {:write-cron
+                                   (fn [tx locked data _]
+                                     ;; First produce valid inherited attrs, then
+                                     ;; override the FINAL state as a host writer can.
+                                     (let [attrs (cron/inherit-attrs! tx owner locked
+                                                   (assoc data :execution-state "{}"))]
+                                       ;; Native SQL in this same transaction must
+                                       ;; roll back too, not only the reservation.
+                                       (sql/insert! tx (util/qualified-table-name "cron") entity)
+                                       (assoc attrs :execution-state state)))}})}
+            (fn []
+              (sql/with-db-transaction [tx url]
+                (if (= writer :inherit)
+                  (cron/inherit! tx owner existing (assoc entity :execution-state state))
+                  (let [attrs (cron/prepare-write! tx existing entity)]
+                    (if existing
+                      (sql/update! tx (util/qualified-table-name "cron") attrs
+                                   ["id=?" (:id existing)] {:entities snake})
+                      (sql/insert! tx (util/qualified-table-name "cron") attrs
+                                   {:entities snake})))))
+              => (throws Exception)))
+          (runs/read-row url "agent_run" (:id parent)) => before-parent
+          (sort-by :id (cron/find-all)) => before-rows)))))
+
+(fact "inherited cron accepts exact UTF-8 boundary, sticky retained state and null state"
+  (with-cron-store
+    (fn [url]
+      (doseq [state [nil "{}" (str "\"" (apply str (repeat 1048575 "é")) "\"")]]
+        (let [parent (sql/with-db-transaction [tx url]
+                       (support/create-row tx (str (java.util.UUID/randomUUID))))
+              row (sql/with-db-transaction [tx url]
+                    (cron/inherit! tx {:table "agent_run" :id (:id parent)} nil
+                                   (assoc entity :execution-state state)))]
+          (:execution-state (runs/read-row url "cron" (:id row))) => state
+          (cron/update-where {:id (:id row)} {:cmd "echo changed"}) => [1]
+          (:execution-state (runs/read-row url "cron" (:id row))) => state
+          (:execution-limit (runs/read-row url "cron" (:id row))) => 2)))))
+
+(fact "sticky inherited edits validate retained state but legacy rows keep their old contract"
+  (with-cron-store
+    (fn [url]
+      (let [parent (sql/with-db-transaction [tx url] (support/create-row tx "retained-state"))
+            row (sql/with-db-transaction [tx url]
+                  (cron/inherit! tx {:table "agent_run" :id (:id parent)} nil entity))
+            legacy (first (cron/create (assoc entity :execution-state "legacy not-json")))]
+        ;; Characterize old inherited rows admitted before the shared guard.
+        (sql/update! url (util/qualified-table-name "cron")
+                     {:execution_state "not-json"} ["id=?" (:id row)])
+        (let [before (runs/read-row url "cron" (:id row))]
+          (cron/update-where {:id (:id row)} {:cmd "echo changed"}) => (throws Exception)
+          (runs/read-row url "cron" (:id row)) => before
+          (sql/with-db-transaction [tx url]
+            (cron/inherit! tx {:table "agent_run" :id (:id parent)} before
+                           {:cmd "echo changed"})) => (throws Exception)
+          (runs/read-row url "cron" (:id row)) => before)
+        (cron/update-where {:id (:id legacy)} {:cmd "echo legacy"}) => [1]
+        (:execution-state (runs/read-row url "cron" (:id legacy))) => "legacy not-json"))))

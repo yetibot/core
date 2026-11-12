@@ -126,7 +126,11 @@
 (defn mark-text! [text spans] (side-put! :text text (seq spans)))
 (defn value-origin [] (or *origin* *context* *value-origin*))
 (defn forward! [result & sources]
-  (when-let [origin (or *origin* (origin-of result) (some origin-of sources) *value-origin*)]
+  (when-let [origin (or *origin* (origin-of result)
+                       (some #(or (origin-of %)
+                                  (some (fn [[_ _ family]] family) (contributions %)))
+                             sources)
+                       *value-origin*)]
     (mark-output! result origin))
   result)
 
@@ -213,11 +217,11 @@
             (try
               (let [result (f)]
                 (invoke! origin :finish-operation handle {:state :definitive :result result})
-                result)
+                (forward! result))
               (catch Throwable e
                 (invoke! origin :finish-operation handle {:state :unknown})
                 (throw e)))))
-        (f)))))
+        (forward! (f))))))
 (defn agent-route [input]
   (let [origin (or *origin* *context*)
         route (cond origin origin

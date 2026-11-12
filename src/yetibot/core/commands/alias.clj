@@ -17,12 +17,13 @@
 
 (defn- build-alias-cmd-fn [cmd]
   (fn [{:keys [user args yetibot-user] :as input}]
-    (let [args (if (empty? args) [] (let [m (re-matcher #"[^ ]+" args)]
-                                                (loop [out []]
-                                                  (if (.find m)
-                                                    (recur (conj out
-                                                      (execution/subtext args (.start m) (.end m))))
-                                                    out))))
+    (let [args (if (empty? args) []
+                   (second
+                     (reduce (fn [[offset out] arg]
+                               (let [end (+ offset (count arg))]
+                                 [(inc end)
+                                  (conj out (execution/subtext args offset end))]))
+                             [0 []] (s/split args #" "))))
           ;; this binding must be constrained to just computing the expr so it
           ;; doesn't interfere with regular/default substitution in the
           ;; evaluation of piped expressions (i.e. %s instead of $s)

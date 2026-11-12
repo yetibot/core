@@ -7,6 +7,7 @@
             [yetibot.core.commands.help :as command-help]
             [yetibot.core.handler :as handler]
             [yetibot.core.util.command :as command]
+            [yetibot.core.util.agent-execution :as execution]
             [yetibot.core.models.help :as help]
             [midje.util :refer [testable-privates]]))
 
@@ -139,3 +140,41 @@
  (fact
   "returns nil if NOT considered a built-in"
   (built-in? "alias1") => falsey))
+
+(fact "standalone alias arguments keep exact space split slots and trailing behavior"
+  (let [expanded (atom nil)]
+    (with-redefs [handler/record-and-run-raw
+                  (fn [expr & _] (reset! expanded expr) [{:result "fixture"}])]
+      (doseq [[args body expected]
+              [["one  two" "echo $2" "echo "]
+               [" one" "echo $1/$2" "echo /one"]
+               ["one  two" "echo $s" "echo one  two"]
+               [" one  two " "echo" "echo  one  two"]
+               ["one  " "echo $s" "echo one"]
+               ["one\ttwo three" "echo $1" "echo one\ttwo"]
+               ["" "echo $s" "echo "]
+               ["" "echo" "echo"]
+               [nil "echo" "echo"]
+               ["" "echo $1" "echo $1"]
+               ["   " "echo $s" "echo "]]]
+        ((#'alias/build-alias-cmd-fn body) {:args args})
+        @expanded => (str command/config-prefix expected)))))
+
+(fact "alias positional and joined spans preserve original offsets without marking empty text"
+  (execution/with-scope*
+    (fn []
+      (let [family (Object.) expanded (atom nil)
+            args (execution/join-text [(execution/operand "" family) " one  "
+                                       (execution/operand "two" family) " "])]
+        (with-redefs [handler/record-and-run-raw
+                      (fn [expr & _] (reset! expanded expr) [{:result "fixture"}])]
+          (doseq [[body expected spans]
+                  [["echo $1" "!echo " []]
+                   ["echo $2" "!echo one" []]
+                   ["echo $3" "!echo " []]
+                   ["echo $4" "!echo two" [[6 9 family]]]
+                   ["echo $s" "!echo  one  two" [[12 15 family]]]
+                   ["echo" "!echo  one  two" [[12 15 family]]]]]
+            ((#'alias/build-alias-cmd-fn body) {:args args})
+            @expanded => expected
+            (execution/contributions @expanded) => spans))))))

@@ -156,3 +156,11 @@
       (sql/with-db-transaction [tx url] (create-row tx "no-schema"))
       => (throws Exception)
       (count (runs/find-all)) => 0)))
+
+(fact "the shared checkpoint JSON validator preserves the syntax and UTF-8 byte contract"
+  (api "bounded-json" nil) => nil
+  (api "bounded-json" "not-json") => (throws Exception)
+  (let [boundary (str "\"" (apply str (repeat 1048575 "é")) "\"")]
+    (alength (.getBytes boundary "UTF-8")) => 2097152
+    (api "bounded-json" boundary) => boundary
+    (api "bounded-json" (str " " boundary)) => (throws Exception)))

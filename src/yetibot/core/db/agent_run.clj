@@ -96,7 +96,10 @@
   (when-not (= [1] (sql/update! tx (table-name table) attrs ["id=?" id]
                               {:entities snake}))
     (throw (ex-info "Inherited state update was not saved." {}))))
-(defn- bounded-json [state]
+(defn bounded-json
+  "Validate core-owned checkpoint syntax and the two MiB UTF-8 bound. Null
+   state remains valid; host-specific codec/identity checks belong to the host."
+  [state]
   (when state
     (when-not (and (string? state)
                    (<= (alength (.getBytes ^String state "UTF-8")) 2097152))
