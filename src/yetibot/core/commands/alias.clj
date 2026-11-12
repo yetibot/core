@@ -8,6 +8,7 @@
     [yetibot.core.handler :refer [record-and-run-raw]]
     [yetibot.core.util.command :as command]
     [yetibot.core.util.public-result :as public]
+    [yetibot.core.util.agent-execution :as execution]
     [yetibot.core.models.help :as help]
     [yetibot.core.db.alias :as model]
     [yetibot.core.hooks :refer [cmd-hook cmd-unhook]]))
@@ -16,12 +17,18 @@
 
 (defn- build-alias-cmd-fn [cmd]
   (fn [{:keys [user args yetibot-user] :as input}]
-    (let [args (if (empty? args) [] (s/split args #" "))
+    (let [args (if (empty? args) []
+                   (second
+                     (reduce (fn [[offset out] arg]
+                               (let [end (+ offset (count arg))]
+                                 [(inc end)
+                                  (conj out (execution/subtext args offset end))]))
+                             [0 []] (s/split args #" "))))
           ;; this binding must be constrained to just computing the expr so it
           ;; doesn't interfere with regular/default substitution in the
           ;; evaluation of piped expressions (i.e. %s instead of $s)
           expr (binding [*subst-prefix* method-like-replacement-prefix]
-                 (str command/config-prefix (pseudo-format-n cmd args)))
+                 (execution/join-text [command/config-prefix (pseudo-format-n cmd args)]))
           results (record-and-run-raw expr user yetibot-user
                                       ;; avoid double recording the yetibot
                                       ;; response since the parent command
@@ -33,7 +40,8 @@
                                        (select-keys input [:data :data-collection
                                                            :public-result])})
           {:keys [result error? timeout? pipeline-result]} (first results)]
-      (cond
+      (execution/forward!
+       (cond
         (or error? timeout?)
         (public/forward pipeline-result {:result/error result})
         pipeline-result
@@ -41,7 +49,7 @@
           {:result/value result
            :result/data (:data pipeline-result)
            :result/data-collection (:data-collection pipeline-result)})
-        :else result))))
+        :else result) pipeline-result (first results)))))
 
 (defn- existing-alias [cmd-name]
   (first (model/query {:where/map {:cmd-name cmd-name}})))
@@ -105,6 +113,7 @@
                          (format "Replaced existing alias %s. Was `%s`"
                                  cmd-name (:cmd existing))
                          (format "%s alias created" cmd-name))]
+          (execution/remember-alias! cmd-name)
           (wire-alias alias-map)
           (add-alias alias-map)
           response)))

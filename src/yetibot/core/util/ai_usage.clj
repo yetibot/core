@@ -2,7 +2,8 @@
   "Minimal durable AI accounting. Never retains content or credentials."
   (:require [clojure.string :as string]
             [taoensso.timbre :as log]
-            [yetibot.core.db.ai-usage :as store])
+            [yetibot.core.db.ai-usage :as store]
+            [yetibot.core.util.agent-execution :as execution])
   (:import [java.util UUID]))
 
 (defn counter? [x]
@@ -151,7 +152,7 @@
                            (ns-resolve 'connected?) var-get)]
     (true? @state)))
 
-(defn capture!
+(defn- accounted-capture!
   "Save pending before wire IO. Never repeat inference or lose its answer
    because final accounting failed. A standalone utility outside a started
    Yetibot database retains its API; running bots establish tracking at startup."
@@ -197,3 +198,38 @@
                    :http-status status
                    :model-usage (model-usage attrs {} (when status 1))})))
             (throw e)))))))
+
+
+(def ^:dynamic *admit-inference*
+  "Optional host [actual-transport-attrs] -> own admission handle, before IO.
+   Active even without monthly tracking. Denial must throw, never retry." nil)
+(def ^:dynamic *finish-inference*
+  "Optional host [handle {:state :definitive|:unknown ...}] -> receipt only.
+   Must not release any enclosing tool/command barrier or save its checkpoint."
+  nil)
+
+(defn capture! [attrs request project]
+  (let [origin (or execution/*origin* execution/*context*)
+        _ (when (and origin (= "agent" (:operation attrs)))
+            (throw (ex-info "CLI sessions cannot enforce inherited admissions." {})))
+        admit (or *admit-inference*
+                  (when origin #(execution/invoke! origin :admit-inference %)))
+        finish (or *finish-inference*
+                   (when origin #(execution/invoke! origin :finish-operation %1 %2)))
+        handle (when admit
+                 (or (admit (select-keys attrs
+                              [:provider :model :operation :endpoint
+                               :provider-signature :output-cap :resource-limits]))
+                     (throw (ex-info "Inherited inference admission was denied." {}))))
+        sent? (atom false)
+        response (try
+                   (binding [execution/*operation* (or handle execution/*operation*)]
+                     (accounted-capture! attrs
+                       #(do (reset! sent? true) (request)) project))
+                   (catch Throwable e
+                     (when finish
+                       (finish handle {:state (if @sent? :unknown :definitive)
+                                       :sent? @sent? :failed? true}))
+                     (throw e)))]
+    (when finish (finish handle {:state :definitive :sent? true}))
+    response))

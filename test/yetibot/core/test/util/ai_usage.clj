@@ -115,3 +115,60 @@
                 :output_tokens 5 :reasoning_tokens 1}]}
   (cli-metrics {:exit 0}) => {:state "completed"}
   (cli-metrics {:exit 137 :timed-out true}) => {:state "unknown"})
+
+(fact "optional admission and own receipt run without monthly tracking"
+  (let [calls (atom [])
+        admit (resolve 'yetibot.core.util.ai-usage/*admit-inference*)
+        finish (resolve 'yetibot.core.util.ai-usage/*finish-inference*)]
+    (boolean admit) => true
+    (boolean finish) => true
+    (when (and admit finish)
+      (with-redefs [db/connected? (atom false)]
+        (with-bindings {admit (fn [attrs] (swap! calls conj (:model attrs)) :own)
+                        finish (fn [handle outcome]
+                                 (swap! calls conj [handle (:state outcome)]))}
+          (capture {:provider "fixture" :model "actual" :operation "text"}
+                   (constantly :answer) (constantly {})) => :answer)
+        @calls => ["actual" [:own :definitive]]
+        (with-bindings {admit (fn [_] (throw (ex-info "denied" {})))}
+          (try (capture {} #(swap! calls conj :sent) identity)
+               (catch Exception e (.getMessage e))) => "denied")
+        (some #{:sent} @calls) => nil))))
+
+(fact "admission sees only safe actual wire facts and cannot return a nil grant"
+  (let [admit (resolve 'yetibot.core.util.ai-usage/*admit-inference*)
+        finish (resolve 'yetibot.core.util.ai-usage/*finish-inference*)
+        seen (atom nil) calls (atom 0)]
+    (with-redefs [db/connected? (atom false)]
+      (with-bindings {admit #(do (reset! seen %) :own)
+                      finish (fn [& _])}
+        (capture {:provider "fixture" :model "one" :operation "text"
+                  :endpoint "https://fixture/v1/chat" :secrets ["private"]
+                  :prompt "private-content"} (constantly :answer) identity)
+        @seen => {:provider "fixture" :model "one" :operation "text"
+                   :endpoint "https://fixture/v1/chat"})
+      (with-bindings {admit (constantly nil)}
+        (try (capture {} #(swap! calls inc) identity)
+             (catch Exception _ :denied)) => :denied
+        @calls => 0))))
+
+(fact "nested usage completes only its own inference handle and conveys parent ownership"
+  (let [admit (resolve 'yetibot.core.util.ai-usage/*admit-inference*)
+        finish (resolve 'yetibot.core.util.ai-usage/*finish-inference*)
+        operation (resolve 'yetibot.core.util.agent-execution/*operation*)
+        events (atom []) ordinal (atom 0)]
+    (with-redefs [db/connected? (atom false)]
+      (with-bindings {admit (fn [_]
+                             (let [n (swap! ordinal inc)]
+                               (swap! events conj [:admit n (var-get operation)]) n))
+                      finish (fn [handle outcome]
+                               (swap! events conj [:finish handle (:state outcome)]))}
+        (capture {:operation "text"}
+          #(capture {:operation "text"} (constantly :inner) identity) identity)
+        => :inner
+        @events => [[:admit 1 nil] [:admit 2 1]
+                    [:finish 2 :definitive] [:finish 1 :definitive]]
+        (reset! events [])
+        (try (capture {:operation "text"} #(throw (Exception. "uncertain")) identity)
+             (catch Exception _ :unknown)) => :unknown
+        @events => [[:admit 3 nil] [:finish 3 :unknown]]))))

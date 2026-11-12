@@ -32,6 +32,8 @@
   (let [handler (atom nil) scheduled? (atom nil)]
     (with-redefs [scheduler/delete-task (fn [& _])
                   scheduler/add-task (fn [_ _ task] (reset! handler (:handler task)))
+                  db/query (fn [_] [{:id 1 :user-id "u" :chat-source-room "test"
+                                    :chat-source-adapter (pr-str :test) :cmd "weather"}])
                   handler/record-and-run-raw
                   (fn [& _] (reset! scheduled? cron/*scheduled?*) [])]
       (cron/wire-cron! {:id 1 :user-id "u" :chat-source-room "test"
@@ -39,3 +41,25 @@
                        :schedule "0 0 8 * * * *" :cmd "weather"})
       (@handler nil)
       @scheduled? => true)))
+
+(fact "even an old legacy closure reloads committed origin on every tick"
+  (let [callback (atom nil)
+        row (atom {:id 7 :chat-source-room "test" :user-id "u"
+                   :chat-source-adapter (pr-str :test) :cmd "old"
+                   :schedule "0 0 8 * * * *"})
+        legacy (atom 0) inherited (atom [])]
+    (with-redefs [scheduler/delete-task (fn [& _])
+                  scheduler/add-task (fn [_ _ task] (reset! callback (:handler task)))
+                  db/query (fn [_] [@row])
+                  handler/record-and-run-raw (fn [& _] (swap! legacy inc) [])]
+      (with-redefs-fn {(ns-resolve 'yetibot.core.util.agent-execution 'host)
+                       (atom {:callbacks {:tick #(swap! inherited conj %)}})}
+        (fn []
+          (cron/wire-cron! @row)
+          (@callback nil)
+          (swap! row assoc :execution-origin "app-inherited-v1" :cmd "new")
+          (@callback nil)
+          (reset! row nil)
+          (@callback nil)
+          @legacy => 1
+          (map :cmd @inherited) => ["new"])))))

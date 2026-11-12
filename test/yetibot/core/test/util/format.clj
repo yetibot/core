@@ -158,3 +158,10 @@
   "it will .."
   (fmt/format-exception-log (Exception. "hello world"))
   => #"(?is)Exception.+hello world.+format\.clj"))
+
+(fact "standalone substitution retains existing regex replacement semantics"
+  (let [attempt (fn [f] (try (f) (catch Exception e (class e))))]
+    (doseq [replacement ["literal" "$0" "$1" "\\value"]]
+      (attempt #(fmt/pseudo-format "echo %s" replacement))
+      => (attempt #(clojure.string/replace "echo %s" #"%s" replacement))))
+  (fmt/format-n "number %1" [42]) => "number 42")

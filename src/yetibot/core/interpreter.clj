@@ -7,6 +7,7 @@
                                                  configured-default-command]]
     [yetibot.core.models.channel :as channel]
     [yetibot.core.util.public-result :as public-result]
+    [yetibot.core.util.agent-execution :as execution]
     [taoensso.timbre :refer [color-str debug info]]
     [yetibot.core.util.format :refer [pseudo-format to-coll-if-contains-newlines]]))
 
@@ -39,8 +40,12 @@
         \newline (pr-str extra))
   (if (fallback-enabled?)
     (if-not (:fallback? extra)
-      (handle-cmd (str (configured-default-command) " " cmd-with-args)
-                  (assoc extra :fallback? true))
+      (binding [execution/*origin*
+                (or execution/*origin*
+                    (execution/dispatch-origin cmd-with-args extra))]
+        (handle-cmd (execution/join-text
+                      [(configured-default-command) " " cmd-with-args])
+                    (assoc extra :fallback? true)))
       ;; if fallback? is true, nothing handled this command so don't try to
       ;; fallback again
       (format "I don't know how to handle %s" cmd-with-args))
@@ -87,7 +92,9 @@
       ;; bind data so that it "leaks" into evaluation of sub expressions
       (binding [*contextual-data* previous-data
                 chat/*target* (chat/command-target)
-                chat/*command-thread* (chat/command-thread-target)]
+                chat/*command-thread* (chat/command-thread-target)
+                execution/*value-origin* (or (execution/origin-of acc)
+                                             execution/*value-origin*)]
         (debug "piping with *contextual-data*" *contextual-data*)
         (let [cmd-with-args (evaluator cmd-ast)
 
@@ -96,7 +103,8 @@
              ;; - a map containing a :value key and an optional :data key
              command-result
              (binding [chat/*target* (chat/command-target)
-                       chat/*command-thread* (chat/command-thread-target)]
+                       chat/*command-thread* (chat/command-thread-target)
+                       execution/*command-template* {:ast cmd-ast :text cmd-with-args}]
               (apply
               handle-cmd
               ;; determine whether to pass args to handle command as an :opts
@@ -110,11 +118,15 @@
                 [(if (empty? (str previous-value))
                    cmd-with-args
                    ;; next time apply pseudo-format to support %s substitution
-                   (pseudo-format cmd-with-args (str previous-value)))
+                   (pseudo-format cmd-with-args (execution/operand (str previous-value)
+                                       execution/*value-origin*)))
                  extra])))
 
              ;; Retain per-stage error diagnostics, but publish data/text only
              ;; from the completed outer pipeline, never intermediate catalogs.
+             ;; Evaluated subexpressions can introduce a new payload family
+             ;; without making this stage's literal action derived.
+             _ (execution/forward! command-result acc cmd-with-args)
              _ (public-result/observe! command-result false)
              _ (info "command-result" (color-str :green (pr-str command-result)))
 
@@ -146,19 +158,23 @@
            (do
              (info "Caught error in pipeline" error)
              (reduced
-              {:error
-               (str "💥 Error in `" cmd-with-args "`: " error " 💥")
-               :public-result (public-result/projection command-result)}))
+              (execution/forward!
+               {:error
+                (str "💥 Error in `" cmd-with-args "`: " error " 💥")
+                :public-result (public-result/projection command-result)}
+               command-result)))
            ;; otherwise continue reducing
            (if (and (map? command-result) value)
-             (assoc acc
+             (execution/forward!
+              (assoc acc
                     :value value
                     :data-collection data-collection
                     :data data
-                    :public-result (public-result/projection command-result))
-             (assoc acc :value command-result :public-result nil))))))))
+                    :public-result (public-result/projection command-result)) command-result)
+             (execution/forward! (assoc acc :value command-result :public-result nil)
+                                 command-result))))))))
 
-(defn handle-expr
+(defn- handle-expr*
   "Called by the parser AST transformer with a partially-evaluated AST.
 
    We need to lazily transform each cmd within the AST so that the commands can
@@ -192,3 +208,7 @@
     (when outer?
       (public-result/observe! (:public-result result)))
     result))
+
+
+(defn handle-expr [evaluator cmds]
+  (execution/with-scope* #(handle-expr* evaluator cmds)))

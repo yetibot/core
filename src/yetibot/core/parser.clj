@@ -1,10 +1,11 @@
 (ns yetibot.core.parser
   (:require [clojure.string :refer [join]]
+            [yetibot.core.util.agent-execution :as execution]
             [instaparse.core :as insta]
             [taoensso.timbre :refer [info]]
             [yetibot.core.interpreter :refer [handle-expr]]))
 
-(def parser
+(def ^:private raw-parser
   "Major components of the parser:
    expr     - the top-level expression made up of cmds and sub-exprs. When multiple
               cmds are present, it implies they should be successively piped.
@@ -38,6 +39,9 @@
      <rparen> = ')'
      <backtick> = <'`'>"))
 
+(defn parser [input]
+  (execution/register-template! (raw-parser input) input))
+
 (defn transformer
   "This is the AST interpreter. It's an alternative to the transformer that
    comes with Instaparse insta/transform which simply evaluates the tree depth
@@ -47,13 +51,14 @@
     (let [[tag & nodes] expr
           head (first nodes)]
       ;; handle the AST nodes adcording to the type of tag
-      (condp = tag
-        :cmd (join (map transformer nodes))
+      (execution/template-result! expr
+       (condp = tag
+        :cmd (execution/join-text (map transformer nodes))
         ;; this is where the magic happens ✨
         ;; eval cmds in order of left to right (lazily)
         ;; piping the result of one to the next
         :expr (handle-expr #'transformer nodes)
-        :words (join (map transformer nodes))
+        :words (execution/join-text (map transformer nodes))
         :space (join nodes)
         :parened (join nodes)
         :literal (join nodes)
@@ -62,9 +67,9 @@
                         (transformer head)]
                     ;; extract either the error or the value out of the sub-expr
                     (info "sub-expr" head evaled)
-                    (or error value))))
+                    (execution/substituted-value! (or error value) evaled)))))
     ;; literal
     expr))
 
 (defn parse-and-eval [input]
-  (-> input parser transformer))
+  (execution/with-scope* #(-> input parser transformer)))

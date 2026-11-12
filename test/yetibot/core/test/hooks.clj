@@ -1,5 +1,8 @@
 (ns yetibot.core.test.hooks
   (:require [yetibot.core.hooks :as h]
+            [yetibot.core.commands.channel]
+            [yetibot.core.models.channel :as channel]
+            [yetibot.core.util.agent-execution :as execution]
             [yetibot.core.observers.karma :refer [hook-wrapper
                                                   message-hook]]
             [clojure.test :refer [function?]]
@@ -104,3 +107,25 @@
          (fact "can load message observer hook without error
                 and return non-empty collection"
                hooks => (every-checker coll? not-empty))))
+
+
+(fact "derived admission is after actual category permission checks"
+  (let [admitted (atom 0) effects (atom 0)
+        cap (execution/context {:start identity :execute-command identity
+                                :admit-inference identity
+                                :generation-limit (constantly 123)
+                                :admit-command (fn [_] (swap! admitted inc) :own)
+                                :finish-operation (fn [& _])})]
+    (with-redefs [h/hooks (atom @h/hooks)
+                  h/re-prefix->topic (atom @h/re-prefix->topic)]
+      (h/cmd-hook-resolved #"protectedwrite" #".*"
+        (with-meta (fn [_] (swap! effects inc)) {:yb/cat #{:private-write}}))
+      (binding [execution/*origin* cap]
+        (h/handle-with-hooked-cmds (fn [& _] :fallback) "protectedwrite payload"
+          {:settings {channel/cat-settings-key #{:private-write}}})
+        => "private-write commands are disabled in this channel🖐"
+        @admitted => 0
+        @effects => 0
+        (h/handle-with-hooked-cmds (fn [& _] :fallback) "protectedwrite payload" {}) => 1
+        @admitted => 1
+        @effects => 1))))

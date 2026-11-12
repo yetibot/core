@@ -4,6 +4,8 @@
   (:require
     [yetibot.core.handler :refer [record-and-run-raw]]
     [yetibot.core.util.command :as command]
+    [clojure.edn :as edn]
+    [yetibot.core.util.agent-execution :as execution]
     [yetibot.core.interpreter :refer [*chat-source* *current-user*]]
     [yetibot.core.chat :refer [*target* *adapter-uuid* chat-data-structure]]
     [yetibot.core.db.cron :as db]
@@ -32,40 +34,45 @@
   (when *scheduled?*
     (throw (ex-info "Scheduled commands cannot manage cron schedules." {}))))
 
+(defn- run-current-cron! [id]
+  ;; Even callbacks wired before conversion must reload the committed marker.
+  (when-let [{:keys [user-id chat-source-room chat-source-adapter cmd] :as row}
+             (first (db/query {:where/map {:id id}}))]
+    (let [kind (db/origin-kind row)]
+      (execution/with-scheduler* kind id
+        (fn []
+          (binding [*scheduled?* true]
+            (case kind
+              :inherited
+              (if-let [tick (execution/host-callback :tick)]
+                (tick row)
+                (info "Inherited cron waits for its execution host" {:id id}))
+              (:legacy-unclassified :compatibility-unclassified :human-literal)
+              (let [uuid (edn/read-string chat-source-adapter)
+                    chat-source {:room chat-source-room :is-private false :uuid uuid}]
+                (binding [*chat-source* chat-source
+                          *current-user* {:id user-id}
+                          *target* chat-source-room *adapter-uuid* uuid]
+                  (let [expr (str command/config-prefix cmd)
+                        [{:keys [error? timeout? result]}]
+                        (record-and-run-raw expr nil nil)]
+                    (when (and result (not error?) (not timeout?))
+                      (chat-data-structure result)))))
+              ;; Absent/deleted/uncommitted, malformed and untrusted markers
+              ;; never default to legacy or create an adapter/human event.
+              (info "Skipping cron with no valid origin" {:id id}))))))))
+
 (defn wire-cron!
-  "Install/replace a persisted task. Trusted callers must authorize its scope
-  and owner before calling; this never evaluates the command immediately."
-  [{:keys [id user-id chat-source-room chat-source-adapter schedule cmd] :as cron}]
-  (info "wire-cron!" (select-keys cron [:id :chat-source-room]))
-  (let [chat-source {:room chat-source-room
-                     :is-private false
-                     :uuid (read-string chat-source-adapter)}
-        handler (fn [_]
-                  (info "cron triggered" {:id id :room chat-source-room})
-                  (try
-                    (binding [*scheduled?* true
-                              *chat-source* chat-source
-                              *current-user* {:id user-id}
-                              *target* chat-source-room
-                              *adapter-uuid* (read-string chat-source-adapter)]
-                      (let [expr (str command/config-prefix cmd)
-                            [{:keys [error? timeout? result]}]
-                            (record-and-run-raw expr nil nil)]
-                        (info "cron evaluated" {:id id :error? error?
-                                                :timeout? timeout?})
-                        (if (and result (not error?) (not timeout?))
-                          (chat-data-structure result)
-                          (info
-                            "Skipping cron because it errored or timed out"
-                            {:id id}))))
-                    (catch Throwable e
-                      (info "Error in cron:" e))))
-        task-id (id-to-task-id id)]
-    ;; if a task with the same ID already exists, delete it before re-adding it
-    (delete-task-if-exists! id)
-    ;; add the task to the scheduler!
-    (cron/add-task scheduler task-id
-                   {:handler handler :schedule schedule})))
+  "Install a callback by row identity, never by a captured grant/command.
+   The caller must authorize and commit the matching origin before ticks run."
+  [{:keys [id schedule]}]
+  (delete-task-if-exists! id)
+  (cron/add-task scheduler (id-to-task-id id)
+    {:handler (fn [_]
+                (try (run-current-cron! id)
+                     (catch Throwable _
+                       (info "Cron invocation failed" {:id id}))))
+     :schedule schedule}))
 
 (defn- load-and-wire-crons! []
   (cron/start! scheduler)
@@ -167,7 +174,7 @@
   (management-allowed!)
   (let [crons (db/query {:where/map {:chat-source-adapter (pr-str uuid)}})]
     {:result/value (map format-cron-entity crons)
-     :result/data crons}))
+     :result/data (map db/public-row crons)}))
 
 (defn remove-cmd
   "cron remove <task-id> # remove a task by id"
