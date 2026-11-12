@@ -2,6 +2,7 @@
   (:require [midje.sweet :refer [fact => throws]]
             [yetibot.core.util.agent-execution :as execution]
             [yetibot.core.parser :as parser]
+            [yetibot.core.handler :as handler]
             [yetibot.core.hooks :as hooks]
             [yetibot.core.interpreter :as interpreter]
             [yetibot.core.models.channel :as channel]
@@ -69,7 +70,10 @@
                    {:result/value "agent work"} family)))
       (hooks/cmd-hook-resolved #"agent" #".*"
         (fn [input] (swap! seen conj [execution/*origin* (:args input)]) "done"))
-      (f family seen admissions))))
+      (binding [interpreter/*current-user* nil
+                interpreter/*yetibot-user* nil
+                interpreter/*chat-source* {:room "fixture"}]
+        (f family seen admissions)))))
 
 (fact "actual parser, formatter, pure transforms and xargs/pmap retain source family"
   (lineage-fixture
@@ -98,3 +102,150 @@
                        (fmt/pseudo-format-n "agent $1 task" [arg]))]
             (parser/parse-and-eval expr)
             (ffirst @seen) => family))))))
+
+(fact "actual alias reparsing conveys admission owner without a second charge"
+  (lineage-fixture
+    (fn [family seen admissions]
+      (#'alias/wire-alias {:cmd-name "boundedalias" :cmd "agent work"})
+      (hooks/cmd-hook-resolved #"aliassource" #".*"
+        (fn [_] (execution/mark-output! {:result/value "boundedalias"} family)))
+      (parser/parse-and-eval "aliassource | %s")
+      (ffirst @seen) => family
+      @admissions => ["boundedalias"]
+      (reset! seen [])
+      (reset! admissions [])
+      (parser/parse-and-eval "boundedalias")
+      (ffirst @seen) => nil
+      @admissions => []
+      (#'alias/wire-alias {:cmd-name "expandedbody" :cmd "$s"})
+      (parser/parse-and-eval "report | expandedbody")
+      (ffirst (take-last 1 @seen)) => family
+      @admissions => ["agent"])))
+
+(fact "nil admissions cannot silently grant permission to dispatch"
+  (let [cap (execution/context {:start identity :execute-command identity
+                                :admit-inference (constantly nil)
+                                :admit-command (constantly nil)
+                                :generation-limit (constantly 123)})
+        calls (atom 0)]
+    (binding [execution/*origin* cap]
+      (try (execution/with-command* "write" {:cmd "write"} #(swap! calls inc))
+           (catch Exception _ :denied)) => :denied
+      @calls => 0)))
+
+(fact "timeout closure prevents later derived effects even if an earlier callback completed"
+  (let [effects (atom 0)
+        cap (execution/context {:start identity :execute-command identity
+                                :admit-inference identity
+                                :admit-command (constantly :own)
+                                :finish-operation (fn [& _])
+                                :generation-limit (constantly 123)})]
+    (execution/with-scope*
+      (fn []
+        (execution/on-close! :cap #(execution/close! cap))
+        (execution/close-scope! execution/*scope*)
+        (binding [execution/*value-origin* cap]
+          (try (execution/with-command* "agent literal" {:cmd "agent"}
+                 #(swap! effects inc))
+               (catch Exception _ :denied)) => :denied)
+        @effects => 0))))
+
+(fact "one failing scope closer cannot leave another source family open"
+  (let [closed (atom 0)]
+    (try
+      (execution/with-scope*
+        #(do (execution/on-close! :bad (fn [] (throw (Exception. "failed closer"))))
+             (execution/on-close! :good (fn [] (swap! closed inc)))))
+      (catch Exception _))
+    @closed => 1))
+
+(fact "the host sees the actual original AST alongside substituted control spans"
+  (lineage-fixture
+    (fn [_ _ _]
+      (let [observed (atom nil)]
+        (with-redefs-fn {(ns-resolve 'yetibot.core.util.agent-execution 'host)
+                         (atom {:callbacks {:command-origin
+                                  #(do (reset! observed %) nil)}})}
+          #(parser/parse-and-eval "report | agent summarize this report"))
+        (get-in @observed [:root-template :text])
+        => "report | agent summarize this report"
+        (first (get-in @observed [:command-template :ast])) => :cmd
+        (get-in @observed [:command-template :text]) => "agent summarize this report"
+        (count (:contributions @observed)) => 1))))
+
+(fact "derived fallback routing cannot launder executable identity"
+  (lineage-fixture
+    (fn [family seen admissions]
+      (hooks/cmd-hook-resolved #"unknownsource" #".*"
+        (fn [_] (execution/mark-output! {:result/value "unknown-identity"} family)))
+      (with-redefs [yetibot.core.models.default-command/fallback-enabled? (constantly true)
+                    yetibot.core.models.default-command/configured-default-command
+                    (constantly "agent")]
+        (parser/parse-and-eval "unknownsource | %s"))
+      (ffirst @seen) => family
+      @admissions => ["agent"])))
+
+(fact "late duplicate closer registration remains once-only"
+  (let [calls (atom 0)]
+    (execution/with-scope*
+      #(do (execution/close-scope! execution/*scope*)
+           (execution/on-close! :same (fn [] (swap! calls inc)))
+           (execution/on-close! :same (fn [] (swap! calls inc)))))
+    @calls => 1))
+
+(fact "installed host callbacks are explicit, reloadable and never infer human from nil"
+  (with-redefs-fn {(ns-resolve 'yetibot.core.util.agent-execution 'host) (atom nil)}
+    (fn []
+      (let [resumed (atom [])
+            callbacks {:classify-agent (fn [_ _] nil)
+                       :resume #(swap! resumed conj (:run-id %))}]
+        (execution/install-host! :test-host callbacks)
+        (execution/install-host! :test-host callbacks)
+        @resumed => []
+        (execution/agent-route {:chat-source {:adapter :api}}) => (throws Exception)
+        (execution/install-host! :another callbacks) => (throws Exception)
+        (execution/resume-inherited!
+          [{:run-id "legacy"} {:run-id "unknown" :execution-kind "unknown"}
+           {:run-id "inherited" :execution-kind "app-inherited-v1"}])
+        @resumed => ["inherited"]
+        (execution/with-scheduler* :legacy-unclassified 1
+          #(execution/agent-route {})) => :legacy-scheduled
+        (execution/with-scheduler* :human-literal 2
+          #(execution/agent-route {})) => :human-literal
+        (binding [execution/*scheduler-origin* {:kind :human-literal :id 2}]
+          (execution/agent-route {})) => (throws Exception)))))
+
+(fact "legacy compatibility labels cannot serve as inherited capabilities"
+  (binding [execution/*origin* :legacy]
+    (execution/agent-route {}) => (throws Exception))
+  (with-redefs-fn {(ns-resolve 'yetibot.core.util.agent-execution 'host)
+                   (atom {:callbacks {:classify-agent (fn [& _] :legacy)}})}
+    #(execution/agent-route {})) => (throws Exception))
+
+
+(fact "the actual handler timeout closes the family before a late derived stage"
+  (lineage-fixture
+    (fn [family seen _]
+      (let [entered (promise) release (promise) finished (promise)
+            original execution/with-command*]
+        (hooks/cmd-hook-resolved #"slowproducer" #".*"
+          (fn [_]
+            (execution/on-close! :family #(execution/close! family))
+            (deliver entered true)
+            @release
+            (execution/mark-output! {:result/value "agent work"} family)))
+        (with-redefs [handler/expr-eval-timeout-ms 100
+                      execution/with-command*
+                      (fn [text input f]
+                        (try (original text input f)
+                             (finally (when (= "agent" (:cmd input))
+                                        (deliver finished true)))))]
+          (try
+            (let [result (handler/record-and-run-raw "!slowproducer | %s" nil nil
+                           {:record-yetibot-response? false})]
+              (deref entered 1000 false) => true
+              (:timeout? (first result)) => true
+              (deliver release true)
+              (deref finished 1000 false) => true
+              @seen => [])
+            (finally (deliver release true))))))))

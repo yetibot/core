@@ -40,8 +40,12 @@
         \newline (pr-str extra))
   (if (fallback-enabled?)
     (if-not (:fallback? extra)
-      (handle-cmd (str (configured-default-command) " " cmd-with-args)
-                  (assoc extra :fallback? true))
+      (binding [execution/*origin*
+                (or execution/*origin*
+                    (execution/dispatch-origin cmd-with-args extra))]
+        (handle-cmd (execution/join-text
+                      [(configured-default-command) " " cmd-with-args])
+                    (assoc extra :fallback? true)))
       ;; if fallback? is true, nothing handled this command so don't try to
       ;; fallback again
       (format "I don't know how to handle %s" cmd-with-args))
@@ -99,7 +103,8 @@
              ;; - a map containing a :value key and an optional :data key
              command-result
              (binding [chat/*target* (chat/command-target)
-                       chat/*command-thread* (chat/command-thread-target)]
+                       chat/*command-thread* (chat/command-thread-target)
+                       execution/*command-template* {:ast cmd-ast :text cmd-with-args}]
               (apply
               handle-cmd
               ;; determine whether to pass args to handle command as an :opts

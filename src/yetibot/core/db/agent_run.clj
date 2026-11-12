@@ -1,8 +1,21 @@
 (ns yetibot.core.db.agent-run
-  "In-flight `!agent` runs. A row exists only while a run is running; the run
-   deletes its own row on any terminal outcome (success/error/timeout). A row
-   left behind means the JVM was killed mid-run (a restart) — those are the runs
-   resumed on the next boot."
+  "Legacy in-flight CLI rows retain their original session/restart semantics.
+   Nullable execution-kind separates inherited rows; unknown non-null kinds
+   must never enter CLI resume. Inherited private JSON codecs/identity/policy
+   belong to the host; core bounds JSON to two MiB and owns atomic ledgers.
+
+   Mutators below take the caller's JDBC transaction, never a new connection:
+   create-inherited! [tx table entity allocation] -> row (schedule after commit);
+   claim! [tx table id revision] -> row+owner or {:status :unknown};
+   admit! [tx owner revision intent] -> own ordinal handle before effects;
+   finish-operation! [tx owner handle outcome] -> row, retains outer barrier;
+   complete-operation! [tx owner handle private-json phase] -> safe outer row;
+   checkpoint! [tx owner revision private-json phase] requires ALL receipts known;
+   transfer! [tx owner child-table entity] -> child+parent reservation atomically.
+   owner is {:table agent_run|cron :id id :fence fence}; table values are strings.
+   allocation is {:limit 0..128 :generation-cap 1..262144}. No defaults/refunds.
+   A failed/unknown commit must recover by the SAME host run ID, never retry or
+   fall back. Stale fences/revisions and unresolved ancestors fail closed."
   (:require [yetibot.core.db.util :as db.util]
             [clojure.java.jdbc :as sql]
             [clojure.data.json :as json]

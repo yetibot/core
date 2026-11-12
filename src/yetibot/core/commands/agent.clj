@@ -448,7 +448,8 @@
   [workdir request context mentions token]
   (when (or execution/*origin* execution/*context*)
     (throw (ex-info "CLI sessions cannot enforce inherited admissions." {})))
-  ;; cap the agent's turn budget via a workspace settings file, configure custom tools, and hide model reasoning to keep responses concise
+  ;; Preserve the legacy settings layout and intended turn/thinking settings.
+  ;; Fake-CLI characterization is not enforcement proof for real CLI 0.44.1.
   (let [settings-dir (io/file workdir ".gemini")]
     (.mkdirs settings-dir)
     (spit (io/file settings-dir "settings.json")
@@ -668,6 +669,8 @@
    status message and post one clean final reply — Gemini's answer plus links to
    any relevant PRs. No intermediate narration."
   [{:keys [request target context-channel on-discord status-id mentions run-id]}]
+  (when (or execution/*origin* execution/*context*)
+    (throw (ex-info "An inherited agent cannot enter the legacy CLI worker." {})))
   (binding [chat/*target* target]
     (sweep-stale-workdirs! (agent-workdir-max-age-ms))
     (let [dir (work-dir target)]

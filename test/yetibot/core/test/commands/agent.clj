@@ -303,3 +303,14 @@
          (catch Exception _ :denied)) => :denied)
   (with-redefs [agent/run-agent (fn [& _] (throw (AssertionError. "CLI")))]
     (#'agent/resume-run! {:execution-kind "unknown-kind"} 0) => nil))
+
+(fact "an accidental inherited legacy worker is rejected before token minting"
+  (let [token-calls (atom 0)]
+    (with-bindings {(resolve 'yetibot.core.util.agent-execution/*context*) :inherited}
+      (with-redefs [agent/github-token #(do (swap! token-calls inc) "fake")
+                    agent/run-gemini-agent (fn [& _] (throw (Exception. "CLI")))
+                    yetibot.core.util.gemini/check-budget! (fn [])
+                    yetibot.core.chat/send-msg (fn [& _])]
+        (try (agent/run-agent {:request "fixture" :target "fixture"})
+             (catch Exception _ :denied)) => :denied
+        @token-calls => 0))))

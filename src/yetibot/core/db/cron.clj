@@ -42,6 +42,17 @@
   (select-keys row [:id :created-at :chat-source-adapter :chat-source-room
                     :user-id :schedule :cmd]))
 
+(defn- sticky-attrs [existing entity]
+  (merge entity
+    (select-keys existing
+      (map first (remove #(= :execution-state (first %)) runs/execution-columns)))
+    {:execution-origin "app-inherited-v1"
+     :execution-state (or (:execution-state entity) (:execution-state existing))
+     :state-revision (inc (:state-revision existing))
+     :worker-fence (inc (:worker-fence existing))
+     :execution-phase (if (= "operation-in-flight" (:execution-phase existing))
+                        "unknown" (:execution-phase existing))}))
+
 (defn inherit-attrs!
   "[tx parent existing entity] -> private SQL attrs. Reserve once on creation
    or conversion, in the SAME transaction as native INSERT/UPDATE. Already
@@ -50,10 +61,11 @@
   (runs/require-transaction! tx)
   (let [existing (when existing (runs/lock-row! tx "cron" (:id existing)))]
     (if (= :inherited (origin-kind existing))
-      (merge entity (select-keys existing (map first runs/execution-columns))
-             {:execution-origin "app-inherited-v1"})
+      (sticky-attrs existing entity)
       (merge entity (runs/allocation-attrs (runs/reserve-remaining! tx parent))
-             {:execution-origin "app-inherited-v1"}))))
+             {:execution-origin "app-inherited-v1"
+              :state-revision (if existing (inc (:state-revision existing)) 0)
+              :worker-fence (if existing (inc (:worker-fence existing)) 0)}))))
 
 (defn prepare-write!
   "[tx existing entity] -> classified attrs for BOTH core and native writers.
@@ -64,20 +76,13 @@
   [tx existing entity]
   (runs/require-transaction! tx)
   (let [existing (when existing (runs/lock-row! tx "cron" (:id existing)))
-        attrs (if (execution/host-active?)
+        attrs (if (or (execution/host-active?) (execution/value-origin))
                 (if-let [write (execution/host-callback :write-cron)]
                   (write tx existing entity (execution/value-origin))
                   (throw (ex-info "Scheduler origin host unavailable." {})))
                 (assoc entity :execution-origin "compatibility-unclassified-v1"))
         attrs (if (= :inherited (origin-kind existing))
-                (merge attrs
-                  (select-keys existing
-                    (map first (remove #(= :execution-state (first %))
-                                       runs/execution-columns)))
-                  {:execution-origin "app-inherited-v1"
-                   :execution-state (or (:execution-state attrs)
-                                        (:execution-state existing))
-                   :state-revision (inc (:state-revision existing))})
+                (sticky-attrs existing attrs)
                 attrs)]
     (when (or (#{:legacy-unclassified :invalid} (origin-kind attrs))
               (and (execution/host-active?)

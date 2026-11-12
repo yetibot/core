@@ -216,7 +216,11 @@
                   (when origin #(execution/invoke! origin :admit-inference %)))
         finish (or *finish-inference*
                    (when origin #(execution/invoke! origin :finish-operation %1 %2)))
-        handle (when admit (admit attrs))
+        handle (when admit
+                 (or (admit (select-keys attrs
+                              [:provider :model :operation :endpoint
+                               :provider-signature :output-cap :resource-limits]))
+                     (throw (ex-info "Inherited inference admission was denied." {}))))
         sent? (atom false)
         response (try
                    (binding [execution/*operation* (or handle execution/*operation*)]

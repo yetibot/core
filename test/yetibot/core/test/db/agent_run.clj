@@ -84,3 +84,75 @@
               (api "transfer!" tx {:table "agent_run" :id (:id parent)}
                    "agent_run" {:run-id "child2" :request "child"}))
             => #(zero? (:execution-limit %))))))))
+
+(fact "safe nested receipts, checkpoints and legacy null rows survive real reconnects"
+  (with-store
+    (fn [url]
+      (let [legacy (first (runs/create {:run-id "legacy" :request "legacy"}))
+            row (sql/with-db-transaction [tx url]
+                  (api "create-inherited!" tx "agent_run"
+                       {:run-id "nested" :request "private" :execution-state "{}"}
+                       {:limit 4 :generation-cap 123}))
+            claim (sql/with-db-transaction [tx url]
+                    (api "claim!" tx "agent_run" (:id row) 0))
+            owner (:owner claim)
+            admit (fn [parent]
+                    (sql/with-db-transaction [tx url]
+                      (let [current (api "read-row" tx "agent_run" (:id row))]
+                        (api "admit!" tx owner (:state-revision current)
+                             {:kind (if parent "inference" "command")
+                              :parent-ordinal parent}))))
+            outer (admit nil) inner (admit (:ordinal outer))
+            nested (admit (:ordinal inner)) last-op (admit (:ordinal nested))]
+        (:execution-kind (api "read-row" url "agent_run" (:id legacy))) => nil
+        (doseq [op [last-op nested inner]]
+          (sql/with-db-transaction [tx url]
+            (api "finish-operation!" tx owner op :definitive))
+          (:execution-phase (api "read-row" url "agent_run" (:id row)))
+          => "operation-in-flight")
+        (sql/with-db-transaction [tx url]
+          (api "checkpoint!" tx owner (:state-revision
+                       (api "read-row" tx "agent_run" (:id row))) "{}" "ready"))
+        => (throws Exception)
+        (sql/with-db-transaction [tx url]
+          (api "complete-operation!" tx owner outer "{\"phase\":\"next\"}" "ready"))
+        => #(= "ready" (:execution-phase %))
+        (let [saved (api "read-row" url "agent_run" (:id row))]
+          (:execution-used saved) => 4
+          (sql/with-db-transaction [tx url]
+            (api "admit!" tx owner (:state-revision saved) {:kind "inference"}))
+          => (throws Exception)
+          (sql/with-db-transaction [tx url]
+            (api "checkpoint!" tx owner 0 "{}" "ready")) => (throws Exception)
+          (sql/with-db-transaction [tx url]
+            (api "checkpoint!" tx owner (:state-revision saved)
+                 (str "\"" (apply str (repeat 2097152 "x")) "\"") "ready"))
+          => (throws Exception)
+          (:execution-state (api "read-row" url "agent_run" (:id row)))
+          => "{\"phase\":\"next\"}")))))
+
+(fact "concurrent durable child transfers cannot duplicate the remaining allowance"
+  (with-store
+    (fn [url]
+      (let [parent (sql/with-db-transaction [tx url] (create-row tx "siblings"))
+            children (doall
+                       (map deref
+                         (for [name ["sibling-a" "sibling-b"]]
+                           (future
+                             (sql/with-db-transaction [tx url]
+                               (api "transfer!" tx {:table "agent_run" :id (:id parent)}
+                                    "agent_run" {:run-id name :request "private"}))))))]
+        (sort (map :execution-limit children)) => [0 2]
+        (:execution-reserved (api "read-row" url "agent_run" (:id parent))) => 2
+        (sql/with-db-transaction [tx url]
+          (api "create-inherited!" tx "agent_run" {:run-id "sibling-a" :request "private"}
+               allocation)) => (throws Exception)))))
+
+(fact "missing inherited schema fails closed instead of using permissive legacy writes"
+  (with-store
+    (fn [url]
+      (sql/db-do-commands url (str "ALTER TABLE " (util/qualified-table-name "agent_run")
+                                  " DROP COLUMN worker_fence"))
+      (sql/with-db-transaction [tx url] (create-row tx "no-schema"))
+      => (throws Exception)
+      (count (runs/find-all)) => 0)))
