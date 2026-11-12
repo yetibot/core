@@ -9,6 +9,7 @@
             [yetibot.core.commands.alias :as alias]
             [yetibot.core.commands.collections]
             [yetibot.core.commands.echo]
+            [yetibot.core.commands.help]
             [yetibot.core.util.format :as fmt]))
 
 (defn api [name & args]
@@ -59,9 +60,11 @@
                   :admit-command #(do (swap! admissions conj (:cmd %)) :outer)
                   :finish-operation (fn [& _])})]
     (try (deref alias/loader) (catch Exception _))
+    ;; Own fallback policy even when help is registered; fallback tests opt in.
     (with-redefs [hooks/hooks (atom @hooks/hooks)
                   hooks/re-prefix->topic (atom @hooks/re-prefix->topic)
-                  channel/settings-for-chat-source (constantly {})]
+                  channel/settings-for-chat-source (constantly {})
+                  yetibot.core.models.default-command/fallback-enabled? (constantly false)]
       (hooks/cmd-hook-resolved #"producer" #".*"
         (fn [_] (execution/mark-output!
                    {:result/value ["agent work"]} family)))
