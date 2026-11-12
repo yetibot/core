@@ -1,6 +1,8 @@
 (ns yetibot.core.test.util.agent-execution
   (:require [midje.sweet :refer [fact => throws]]
             [clojure.core.async :as async]
+            [yetibot.core.config :as config]
+            [yetibot.core.util.config :as config-util]
             [yetibot.core.util.agent-execution :as execution]
             [yetibot.core.parser :as parser]
             [yetibot.core.handler :as handler]
@@ -352,6 +354,30 @@
                                   (execution/operand "agent" family) " | %s"]))
           @seen => [[family ""]]
           @admissions => ["agent"])))))
+
+(fact "command deadlines default to five minutes and validate configured millisecond values"
+  (doseq [[value expected] [[nil 300000] [100 100] ["600000" 600000]
+                            [1 1] [2147483647 2147483647]
+                            [0 300000] [-1 300000] [1.5 300000]
+                            [true 300000] ["invalid" 300000]
+                            ["2147483648" 300000]]]
+    (with-redefs [config/get-config
+                  (partial config-util/get-config {:command {:timeout {:ms value}}})]
+      (handler/configured-expr-eval-timeout-ms) => expected)))
+
+(fact "ordinary commands longer than the former five-second limit complete within the default deadline"
+  (lineage-fixture
+    (fn [_ _ _]
+      (hooks/cmd-hook-resolved #"slowordinary" #".*"
+        (fn [_] (Thread/sleep 5100) "long-ok"))
+      (with-redefs [config/get-config (partial config-util/get-config {})
+                    handler/add-user-message-to-history (fn [& _])
+                    handler/add-bot-response-to-history (fn [& _])]
+        (with-redefs [handler/expr-eval-timeout-ms
+                      (handler/configured-expr-eval-timeout-ms)]
+          (:result (first (handler/record-and-run-raw "!slowordinary" nil nil
+                            {:record-yetibot-response? false})))
+          => "long-ok")))))
 
 (fact "concurrent nested aliases cannot starve command evaluation on async dispatchers"
   (doseq [route [:raw :delivery]]
