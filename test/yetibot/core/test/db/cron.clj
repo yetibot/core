@@ -163,10 +163,11 @@
             (str "DROP TABLE IF EXISTS " (util/qualified-table-name "cron"))))))))
 
 (def invalid-states
-  ["not-json"
-   (str "\"" (apply str (repeat 2097151 "x")) "\"")
-   ;; Under the character limit, over the UTF-8 byte limit.
-   (str "\"" (apply str (repeat 1048576 "é")) "\"")])
+  (concat support/invalid-json-documents
+    ["not-json"
+     (str "\"" (apply str (repeat 2097151 "x")) "\"")
+     ;; Under the character limit, over the UTF-8 byte limit.
+     (str "\"" (apply str (repeat 1048576 "é")) "\"")]))
 
 (fact "inherited cron final state rejection rolls back SQL rows and parent reservations"
   (with-cron-store

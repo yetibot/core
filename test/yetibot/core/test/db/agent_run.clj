@@ -157,6 +157,53 @@
       => (throws Exception)
       (count (runs/find-all)) => 0)))
 
+(def invalid-json-documents
+  ["{} trailing" "{} {}" "{\"a\":1,}" "[1,]"
+   "" " \n\t" "01" "NaN" "// comment\n{}"
+   "{\"token\":\"SYNTHETIC-CHECKPOINT-SENTINEL\",}"])
+
+(fact "checkpoints require one complete strict JSON document without exposing rejected state"
+  (doseq [state invalid-json-documents]
+    (api "bounded-json" state) => (throws Exception)
+    (try (api "bounded-json" state)
+         (catch Exception e (.getMessage e)))
+    => "Private checkpoint must contain one valid JSON document.")
+  (doseq [state [false true 42 {} []]]
+    (api "bounded-json" state) => (throws Exception))
+  (doseq [state ["{}" "[]" "\"text\"" "0" "-1.2e+3"
+                "true" "false" "null" " \n {\"a\":[false,null,1]} \t"]]
+    (identical? state (api "bounded-json" state)) => true))
+
+(fact "invalid complete documents roll back inherited agent creation and checkpoints"
+  (with-store
+    (fn [url]
+      (doseq [state invalid-json-documents]
+        (let [before-count (count (runs/find-all))]
+          (sql/with-db-transaction [tx url]
+            (runs/create-inherited! tx "agent_run"
+              {:run-id (str (java.util.UUID/randomUUID)) :request "private"
+               :execution-state state} allocation)) => (throws Exception)
+          (count (runs/find-all)) => before-count)
+        (let [row (sql/with-db-transaction [tx url]
+                    (create-row tx (str (java.util.UUID/randomUUID))))
+              claim (sql/with-db-transaction [tx url]
+                      (runs/claim! tx "agent_run" (:id row) 0))
+              owner (:owner claim)
+              before (runs/read-row url "agent_run" (:id row))]
+          (sql/with-db-transaction [tx url]
+            (runs/checkpoint! tx owner (:state-revision before) state "ready"))
+          => (throws Exception)
+          (runs/read-row url "agent_run" (:id row)) => before
+          (let [operation (sql/with-db-transaction [tx url]
+                            (let [current (runs/read-row tx "agent_run" (:id row))]
+                              (runs/admit! tx owner (:state-revision current)
+                                           {:kind "command"})))
+                in-flight (runs/read-row url "agent_run" (:id row))]
+            (sql/with-db-transaction [tx url]
+              (runs/complete-operation! tx owner operation state "ready"))
+            => (throws Exception)
+            (runs/read-row url "agent_run" (:id row)) => in-flight))))))
+
 (fact "the shared checkpoint JSON validator preserves the syntax and UTF-8 byte contract"
   (api "bounded-json" nil) => nil
   (api "bounded-json" "not-json") => (throws Exception)

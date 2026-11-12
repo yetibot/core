@@ -19,7 +19,8 @@
   (:require [yetibot.core.db.util :as db.util]
             [clojure.java.jdbc :as sql]
             [clojure.data.json :as json]
-            [cuerdas.core :refer [kebab snake]]))
+            [cuerdas.core :refer [kebab snake]])
+  (:import [com.fasterxml.jackson.core JsonFactory]))
 
 (def inherited-kind "app-inherited-v1")
 (def execution-columns
@@ -97,14 +98,24 @@
                               {:entities snake}))
     (throw (ex-info "Inherited state update was not saved." {}))))
 (defn bounded-json
-  "Validate core-owned checkpoint syntax and the two MiB UTF-8 bound. Null
+  "Require one complete strict JSON document within two MiB of UTF-8. Null
    state remains valid; host-specific codec/identity checks belong to the host."
   [state]
-  (when state
+  (when (some? state)
     (when-not (and (string? state)
                    (<= (alength (.getBytes ^String state "UTF-8")) 2097152))
       (throw (ex-info "Private checkpoint exceeds two MiB." {})))
-    (json/read-str state)
+    (try
+      ;; A prefix read from data.json 0.2.x also accepts trailing commas.
+      ;; A fresh default-strict parser avoids changing global JSON settings.
+      (with-open [parser (.createParser (JsonFactory.) ^String state)]
+        (when-not (.nextToken parser)
+          (throw (IllegalArgumentException.)))
+        (.skipChildren parser)
+        (when (.nextToken parser)
+          (throw (IllegalArgumentException.))))
+      (catch Exception _
+        (throw (ex-info "Private checkpoint must contain one valid JSON document." {}))))
     state))
 (defn- validate-allocation! [{:keys [limit generation-cap]}]
   (when-not (and (integer? limit) (<= 0 limit 128)
