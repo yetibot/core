@@ -1,7 +1,7 @@
 (ns yetibot.core.handler
   (:require
    [yetibot.core.config :refer [get-config]]
-   [clojure.core.async :refer [timeout alts!! go]]
+   [clojure.core.async :refer [timeout alts!! thread]]
    [clojure.spec.alpha :as s]
    [clojure.string :refer [blank? join]]
    [taoensso.timbre :refer [trace info error]]
@@ -203,7 +203,9 @@
       (let [embedded? (not parsed-normal-command)
             [results _timeout-result]
             (alts!!
-             [(go (doall (map
+             ;; Commands may block or recursively await another evaluation.
+             ;; Keep eager execution off core.async's finite go dispatcher pool.
+             [(thread (doall (map
                    (fn [parse-tree]
                      (try
                        (let [pipeline
@@ -291,7 +293,7 @@
   ;; Note: only :message and :react have a body
   (when (and body (= event-type :message))
     (binding [interp/*chat-source* chat-source]
-      (go
+      (thread
         ;; there may be multiple expr-results, as in the case of multiple
         ;; embedded commands in a single body
         (let [expr-results (record-and-run-raw body user yetibot-user)]
