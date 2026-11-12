@@ -50,7 +50,20 @@
       ;; enabled by default
       true)))
 
-(def expr-eval-timeout-ms 5000)
+(s/def ::expr-eval-timeout-ms
+  #(try
+     (and (or (integer? %) (string? %))
+          (<= 1 (Long/parseLong (str %)) Integer/MAX_VALUE))
+     (catch Exception _ false)))
+
+(defn configured-expr-eval-timeout-ms
+  "Startup command deadline in milliseconds; invalid/missing settings use five minutes."
+  []
+  (let [{:keys [value error]} (get-config ::expr-eval-timeout-ms
+                                         [:command :timeout :ms])]
+    (if error 300000 (Long/parseLong (str value)))))
+
+(def expr-eval-timeout-ms (configured-expr-eval-timeout-ms))
 
 (def ^:private exception-format "👮 %s 👮")
 

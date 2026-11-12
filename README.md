@@ -57,6 +57,19 @@ a new command, but cannot replace an earlier untracked reply. Replies sent
 through the chat adapter are tracked; messages a plugin sends directly through
 Discord's API are not.
 
+## Command evaluation deadline
+
+Expression evaluation defaults to **five minutes**. Set a different startup
+limit with `YETIBOT_COMMAND_TIMEOUT_MS`, or the equivalent EDN configuration
+`{:yetibot {:command {:timeout {:ms 300000}}}}`. Values are positive integer
+milliseconds, at most 2,147,483,647; missing or invalid values use five minutes.
+Restart to apply a configuration change.
+
+This deadline does not change provider/tool timeouts, generation limits or call
+budgets. A timeout does not cancel an already-running external request or prove
+that its side effects did not occur; do not automatically retry it. Inherited
+execution scopes close on timeout and reject subsequent derived effects.
+
 ## Dev postgres
 
 To quickly provision a postgresql database to work against, run:
