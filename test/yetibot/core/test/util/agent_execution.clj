@@ -1,5 +1,6 @@
 (ns yetibot.core.test.util.agent-execution
   (:require [midje.sweet :refer [fact => throws]]
+            [clojure.core.async :as async]
             [yetibot.core.util.agent-execution :as execution]
             [yetibot.core.parser :as parser]
             [yetibot.core.handler :as handler]
@@ -351,3 +352,48 @@
                                   (execution/operand "agent" family) " | %s"]))
           @seen => [[family ""]]
           @admissions => ["agent"])))))
+
+(fact "concurrent nested aliases cannot starve command evaluation on async dispatchers"
+  (doseq [route [:raw :delivery]]
+    (lineage-fixture
+      (fn [_ _ _]
+        (let [entered (java.util.concurrent.CountDownLatch. 8)
+              release (promise)
+              threads (atom [])
+              replies (atom [])]
+          (#'alias/wire-alias {:cmd-name "nestedalias" :cmd "echo nested-ok"})
+          (hooks/cmd-hook-resolved #"evaluationgate" #".*"
+            (fn [_]
+              (swap! threads conj (.getName (Thread/currentThread)))
+              (.countDown entered)
+              (deref release 4000 false)
+              "ready"))
+          (with-redefs [handler/expr-eval-timeout-ms 3000
+                        handler/add-user-message-to-history (fn [& _])
+                        handler/add-bot-response-to-history (fn [& _])
+                        handler/dispatch-command-response
+                        #(swap! replies conj (:result %))]
+            (let [jobs (mapv (fn [_]
+                               (future
+                                 (if (= :raw route)
+                                   (:result
+                                     (first
+                                       (handler/record-and-run-raw
+                                         "!evaluationgate | nestedalias" nil nil
+                                         {:record-yetibot-response? false})))
+                                   (async/<!!
+                                     (handler/handle-raw
+                                       {:room "fixture"} nil :message nil
+                                       {:body "!evaluationgate | nestedalias"})))))
+                             (range 8))]
+              (try
+                (.await entered 3000 java.util.concurrent.TimeUnit/MILLISECONDS) => true
+                (deliver release true)
+                (deref (future (mapv deref jobs)) 5000 ::timeout)
+                => (vec (repeat 8 (when (= :raw route) "nested-ok ready")))
+                @replies => (if (= :raw route) [] (vec (repeat 8 "nested-ok ready")))
+                (some #(.startsWith ^String % "async-dispatch-") @threads) => nil
+                (:result (first (handler/record-and-run-raw "!echo still-alive" nil nil
+                                  {:record-yetibot-response? false})))
+                => "still-alive"
+                (finally (deliver release true))))))))))
