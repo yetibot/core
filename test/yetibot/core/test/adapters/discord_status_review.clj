@@ -46,6 +46,7 @@
           agents (atom #{})
           steps (atom [])
           rates (atom 0)
+          rate-observed (promise)
           held (promise)
           release-http (promise)
           final-http (promise)
@@ -89,9 +90,11 @@
                result))
            impl/update-rate-limit
            (fn [limit headers]
-             (when (= "review-bucket" (:x-ratelimit-bucket headers))
-               (swap! rates inc))
-             (rate limit headers))]
+             (let [updated (rate limit headers)]
+               (when (= "review-bucket" (:x-ratelimit-bucket headers))
+                 (swap! rates inc)
+                 (deliver rate-observed true))
+               updated))]
           (with-redefs-fn
             {#'discord/status-receipt!
              (fn [context create? text value]
@@ -161,7 +164,10 @@
                                                  "status-command"] :replies]))
                       => ["review-answer"]
                       (count (filter #(= [operation true] %) @wire))
-                      => 1)))))))
+                      => 1
+                      ;; SDK reply promises precede rate processing. Keep the
+                      ;; observer installed until that processing is observed.
+                      (deref rate-observed 3000 :timeout) => true)))))))
         (set @steps) => #{"Bot review-sdk-answer" "Bot review-sdk-status"}
         (pos? @rates) => true
         (finally
