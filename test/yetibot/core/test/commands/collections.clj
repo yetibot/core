@@ -390,3 +390,43 @@
    (fact
     "using 'repeat' collections command on 'range 5' (an odd number of elements), it should succeed and not throw No value supplied"
     value => [["0" "1" "2" "3" "4"] ["0" "1" "2" "3" "4"]])))
+
+(facts "late-eval-sub-exprs (issue #995)"
+  (fact "args without sub-expressions pass through unchanged"
+    (colls/late-eval-sub-exprs "echo hello") => "echo hello"
+    (colls/late-eval-sub-exprs "") => ""
+    (colls/late-eval-sub-exprs nil) => nil)
+
+  (fact "quoted literals containing $( are left alone"
+    (colls/late-eval-sub-exprs "echo \"cost is $(1)\"") => "echo \"cost is $(1)\""
+    (colls/late-eval-sub-exprs "echo 'literal $(foo) bar'") => "echo 'literal $(foo) bar'")
+
+  (fact "a sub-expression is evaluated once and substituted in place"
+    (let [calls (atom 0)
+          stub (fn [_] (swap! calls inc) {:value "HI"})]
+      (with-redefs [yetibot.core.parser/parse-and-eval stub]
+        (colls/late-eval-sub-exprs "echo item $(echo hi)") => "echo item HI"
+        @calls => 1)))
+
+  (fact "multiple sub-expressions are each evaluated once"
+    (let [calls (atom 0)
+          stub (fn [expr] (swap! calls inc) {:value expr})]
+      (with-redefs [yetibot.core.parser/parse-and-eval stub]
+        (colls/late-eval-sub-exprs "echo $(a) and $(b)") => "echo a and b"
+        @calls => 2)))
+
+  (fact "nested $(..) groups are handled as one unit"
+    (let [seens (atom [])
+          stub (fn [expr] (swap! seens conj expr) {:value "OK"})]
+      (with-redefs [yetibot.core.parser/parse-and-eval stub]
+        (colls/late-eval-sub-exprs "echo x $(echo $(inner))") => "echo x OK"
+        @seens => ["echo $(inner)"])))
+
+  (fact "evaluation errors are substituted as the error text"
+    (with-redefs [yetibot.core.parser/parse-and-eval (constantly {:error "boom"})]
+      (colls/late-eval-sub-exprs "echo $(bad)") => "echo boom"))
+
+  (fact "exceptions during evaluation fall back to the untouched args"
+    (with-redefs [yetibot.core.parser/parse-and-eval
+                  (fn [_] (throw (ex-info "kaboom" {})))]
+      (colls/late-eval-sub-exprs "echo $(kaboom)") => "echo $(kaboom)")))

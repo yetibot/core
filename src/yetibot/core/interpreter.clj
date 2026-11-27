@@ -52,6 +52,22 @@
     ;; return nothing when fallbacks are disabled
     (suppress {})))
 
+(defn- deferred-xargs-stage?
+  "When an xargs stage contains sub-expressions, defer their evaluation until
+   the items are known so each item gets its own evaluation (or none at all),
+   instead of one early evaluation shared by every iteration.
+
+   Detected structurally from the stage's parse tree; the stage is then
+   dispatched with its raw text (sub-expressions intact, rendered in $(..)
+   form) so the xargs command receives them unevaluated and can evaluate them
+   per item. See https://github.com/yetibot/yetibot/issues/995"
+  [cmd-ast]
+  (when (some #(and (vector? %) (= :sub-expr (first %)))
+              (tree-seq vector? rest cmd-ast))
+    (when-let [raw (first (unparse-transformer [cmd-ast]))]
+      (when (re-find #"(?s)^\s*xargs(\s|$)" (str raw))
+        (str raw)))))
+
 (defn pipe-cmds
   "Pipe acc into cmd-with-args by either appending or sending acc as an extra
    :opts"
@@ -96,7 +112,10 @@
                 execution/*value-origin* (or (execution/origin-of acc)
                                              execution/*value-origin*)]
         (debug "piping with *contextual-data*" *contextual-data*)
-        (let [cmd-with-args (evaluator cmd-ast)
+        (let [;; sub-expressions inside an xargs stage must not be evaluated
+              ;; here; xargs re-evaluates them per item. See issue #995.
+              cmd-with-args (or (deferred-xargs-stage? cmd-ast)
+                                (evaluator cmd-ast))
 
              ;; the result of a commad handler can either be:
              ;; - the literal value itself
