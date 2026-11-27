@@ -29,5 +29,5 @@
     {:result/error
      "xAI API is not configured. Set `xai.key` in config."}))
 
-(cmd-hook #"grokimage|grokimg|grok-image|gimg|gi"
+(cmd-hook {"grokimage" #"grokimage|grokimg|grok-image|gimg|gi"}
   #".*" grokimage-cmd)

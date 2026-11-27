@@ -6,7 +6,7 @@
                                                 configured-default-command]]
    [yetibot.core.models.help :refer [fuzzy-get-docs-for get-docs get-docs-for
                                      get-alias-docs]]
-   [yetibot.core.hooks :refer [cmd-hook]]))
+   [yetibot.core.hooks :as hooks :refer [cmd-hook]]))
 
 (def separator "▬▬▬")
 
@@ -66,6 +66,8 @@
   [{prefix :args}]
   (or
     (seq (get-docs-for prefix))
+    (when-let [[pattern] (hooks/find-sub-cmds prefix)]
+      (seq (get-docs-for (get @hooks/re-prefix->topic pattern))))
     (seq (fuzzy-get-docs-for prefix))
     {:result/error
      (format "I couldn't find any help for topic '%s'" prefix)}))
