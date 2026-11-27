@@ -6,6 +6,7 @@
             [yetibot.core.chat :refer [chat-data-structure]]
             [yetibot.core.hooks :refer [cmd-hook]]
             [yetibot.core.interpreter :refer [handle-cmd *contextual-data*]]
+            [yetibot.core.parser :as parser]
             [yetibot.core.models.users :refer [min-user-keys]]
             [yetibot.core.util
              :refer
@@ -156,6 +157,68 @@
 
 ; xargs
 ; example usage: !users | xargs attack
+(defn- subexpr-open-index
+  "Index of the first $( that is not inside a quoted literal, else nil."
+  [s]
+  (loop [i 0 in-q nil]
+    (cond
+      (>= i (count s)) nil
+      (and in-q (= (nth s i) in-q)) (recur (inc i) nil)
+      in-q (recur (inc i) in-q)
+      (or (= (nth s i) \") (= (nth s i) \')) (recur (inc i) (nth s i))
+      (and (< (inc i) (count s))
+           (= (subs s i (+ i 2)) "$(")) i
+      :else (recur (inc i) nil))))
+
+(defn- subexpr-close-index
+  "Index of the ) matching the ( that opens at `open` (position of its $),
+   accounting for nesting and quoted literals. Nil when unbalanced."
+  [s open]
+  (loop [i (+ open 2) depth 1 in-q nil]
+    (if (>= i (count s))
+      nil
+      (let [c (subs s i (inc i))]
+        (cond
+          (and in-q (= c in-q)) (recur (inc i) depth nil)
+          in-q (recur (inc i) depth in-q)
+          (or (= c "\"") (= c "'")) (recur (inc i) depth c)
+          (= c "(") (recur (inc i) (inc depth) nil)
+          (= c ")") (if (= 1 depth) i (recur (inc i) (dec depth) nil))
+          :else (recur (inc i) depth nil))))))
+
+(defn late-eval-sub-exprs
+  "Sub-expressions within an xargs stage arrive unevaluated: the interpreter
+   skips their normal depth-first evaluation so that xargs can evaluate them
+   here, once per item, with `*contextual-data*` bound to the item's data.
+   See https://github.com/yetibot/yetibot/issues/995
+
+     repeat 3 | xargs echo `random`    ;=> three distinct values
+     !karma | xargs echo score of `render {{score}}`
+
+   Only the $(..) groups are evaluated and substituted; the surrounding
+   command text is left for xargs to dispatch per item. Returns the args
+   unchanged when they contain no sub-expressions (the common case), and a
+   sub-expression that fails to evaluate is replaced with its error message.
+   Literal $( inside quoted strings is respected."
+  [args]
+  (if (or (s/blank? args) (not (s/includes? args "$(")))
+    args
+    (try
+      (loop [remaining args out []]
+        (if-let [open (subexpr-open-index remaining)]
+          (if-let [close (subexpr-close-index remaining open)]
+            (let [inner (subs remaining (+ open 2) close)
+                  {:keys [value error]} (parser/parse-and-eval inner)
+                  replacement (str (or error value))]
+              (recur (subs remaining (inc close))
+                     (conj out (subs remaining 0 open) replacement)))
+            ;; unbalanced $( ; drop the marker and keep scanning
+            (recur (str (subs remaining 0 open) (subs remaining (+ open 2))) out))
+          (apply str (concat out [remaining]))))
+      (catch Exception e
+        (debug "xargs late sub-expression evaluation failed:" (pr-str e))
+        args))))
+
 (defn xargs
   "xargs <cmd> <list> # run <cmd> for every item in <list> in parallel; behavior is similar to xargs(1)'s xargs -n1"
   {:yb/cat #{:util :collection}}
@@ -191,24 +254,24 @@
                                 :params-with-data params-with-data})
 
                        cmd-result
-                       ;; allow the data to "leak" into sub commands of the
-                       ;; expression passed to xargs - although at this point
-                       ;; those subcommands would have been evaluated too early,
-                       ;; so this achieves nothing. perhaps it will be useful in
-                       ;; the future. see this issue for more info:
-                       ;; https://github.com/yetibot/yetibot/issues/995
+                       ;; sub-expressions in the expression passed to xargs are
+                       ;; evaluated here, once per item, with the item's data
+                       ;; available as contextual data (late evaluation).
+                       ;; Previously they were evaluated too early, before the
+                       ;; items existed. See issue #995.
                        (binding [*contextual-data* possible-data]
-                         (info "inner contextual-data" *contextual-data*)
-                         (apply
-                          handle-cmd
-                         ;; item could be a collection, such as when xargs is
-                         ;; used on nested collections, e.g.:
-                         ;; repeat 5 jargon | xargs words | xargs head
-                          (if (coll? item)
-                            [args (merge params-with-data {:raw item :opts item})]
-                            [(format/pseudo-format args
-                               (execution/operand item execution/*value-origin*))
-                             (merge params-with-data {:raw item :opts nil})])))
+                         (let [late-args (late-eval-sub-exprs args)]
+                           (info "late-evaluated xargs args" (pr-str late-args))
+                           (apply
+                            handle-cmd
+                           ;; item could be a collection, such as when xargs is
+                           ;; used on nested collections, e.g.:
+                           ;; repeat 5 jargon | xargs words | xargs head
+                            (if (coll? item)
+                              [late-args (merge params-with-data {:raw item :opts item})]
+                              [(format/pseudo-format late-args
+                                 (execution/operand item execution/*value-origin*))
+                               (merge params-with-data {:raw item :opts nil})]))))
 
                        _ (debug "xargs cmd-result" (pr-str cmd-result))]
                    (if (map? cmd-result)
